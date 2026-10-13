@@ -1,32 +1,22 @@
 # 建设目录21：Steam局部合同与APK交叉边界
 
-2026-10-10后继[初始化／选择／确认合同](STEAM_BUILD_LIST_BUSINESS.md)已闭合三目录、五行空行、滚动、资金预检、74载荷及BUILD交接；以下旧“Init／Update待核”保留当批时点，当前范围以该独立合同为准。完整OS投递、父栈退休和建设落点仍独立待证。
+本页整理固定Steam2.56建设目录21的局部绘制、输入登记及与汉化重签APK1.0.8的差异；
+当前结论合并至2026-10-14。三项后继合同分别负责：
 
-2026-10-10补[真实资源安装及旋转准入](STEAM_BUILD_RESOURCE_INSTALL.md)；common两张差异图已在[独立Steam包](../assets/steam-build-common/README.md)发布。Init／Update的列表业务及最终OS输入仍待单独核对，不能从flags32直接推断所有设施当前可建。
+- [初始化／选择／确认](STEAM_BUILD_LIST_BUSINESS.md)：三目录、五行空行、专用跟窗、资金预检、21→74预览返回及BUILD交接。
+- [图块与朝向全集](STEAM_MAPCHIP_PATTERNS.md)：两个pattern数组、85设施反向对应及SEB请求；raw21固定朝向0均有效。
+- [资源安装及旋转准入](STEAM_BUILD_RESOURCE_INSTALL.md)：地图资源组根身份、安装／退休与flags32软键资格；common两张差异图已在[独立Steam包](../assets/steam-build-common/README.md)发布。
 
-后继[Steam图块与朝向全集](STEAM_MAPCHIP_PATTERNS.md)已闭合两个pattern数组、85设施反向对应及SEB实际请求，raw21朝向0全部有效；另明确common图98／103跨版像素差异。旋转准入、语言覆盖及资源动态安装仍待证，不以资源索引替代操作合同。
-
-2026-10-08。本专题服务已确认的Steam 2.56 UI／操作还原目标；固定汉化重签APK1.0.8仍作为规则基线。
-这里只读既有局部探针及冻结Java来源，不启动游戏、不改存档、不修改维护Owner或产品。
-2026-10-09后继已从具名`_draw`入口闭合raw21局部分支的行绘制、图块调用、marker及滚动注册；
-Steam与APK的行margin／类目命中矩形存在差异，分别登记。目录初始化／确认业务、最终OS命中及原窗口仍未全部闭合。
+这些是静态来源合同，不等于维护Owner／完整快照、原窗口或产品接入验收。
+Steam与APK的行margin／类目命中矩形不同；最终OS投递、完整父栈退休和建设落点仍分别核验。
 
 ## 来源与证据范围
 
-| 输入 | 身份／范围 |
-| --- | --- |
-| Steam GameAssembly.dll | SHA-256 `9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b55ab1a` |
-| Steam global-metadata.dat | SHA-256 `80e17b3c1f7b7a844d64be27918e16cacfab05d70d7f33c0a61e45d830d7a369` |
-| Steam methods.json | SHA-256 `399156eff1f2623623d489b3e36ab9a83b9695d311c7c91e21b013dafc665c42` |
-| Steam dump.cs | SHA-256 `1bf5680223c495b5d24aa5934831a17e9ecf03b95ba4ddb3ad4b9459c3c81912`；SubForm字段及TYPE_BUILD=21声明 |
-| APK b/g.java | SHA-256 `0eecb47f1996abc34e6fa1ffcbbeeb40d2a597f46168a2583833ed6fe1e33081`；下列具名局部窗口 |
-
-Steam身份、方法登记范围及哈希继承[既有UI证据](../work/steam-ui-coverage/README.md)，
-对应[方法清单](../work/steam-ui-coverage/methods.json)与[检查记录](../work/steam-ui-coverage/CHECK.json)。
-先用既有`analyze.cjs --inspect`消费SetTouchValue及Update_scrollValue有限指令窗口。
-用户明确授权后，新增固定入口只读探针，消费外层draw、Update、Init2各1024字节入口，
-合计唯一3072字节，范围／哈希见入口摘要（本地核对材料，不随仓库交付）。
-外层`SubForm._draw`登记范围197,616字节，本次仅核入口前段，尚未到21分支；不能宣称全部方法或21绘制已认证。
+固定DLL／metadata及APK身份统一见[证据入口](../EVIDENCE.md)与[Steam样本评估](../verification/STEAM_ASSESSMENT.md)。
+Steam方法登记及SubForm字段声明沿用既有methods.json／dump.cs；它们是本地派生定位材料，不另抄一份指纹清单。
+下文保留已核方法地址与局部范围。早期draw／Update／Init2各1024字节的入口探针仅证明外层前段；
+raw21绘制后来已沿`SubForm._draw`入口顺序闭合，实际范围见本页绘制节。
+这仍不表示197,616字节的外层登记跨度全部经过分析；目录业务另由上述真实Init／Update合同负责。
 APK巨型Java方法的普通反编译警告仍有效，图块绘制已另以低层窗口交叉，见[图块合同](PAGES.md#固定apk候选建筑两朝向与目录裁剪)。
 
 ## Steam已证的页面字段与输入
@@ -37,11 +27,11 @@ APK巨型Java方法的普通反编译警告仍有效，图块绘制已另以低�
 
 | 合同 | 实际机器码位置 | 已证内容／限制 |
 | --- | --- | --- |
-| 建设类目事件 | OnTouchEvent RVA0x3160B0；VA0x10316103–0x103161E5 | TYPE21、组件3且value高16位0x50000处理UP／ENTER；类目循环模3，并清scroll／select。名称及注册矩形未知 |
+| 建设类目事件 | OnTouchEvent RVA0x3160B0；VA0x10316103–0x103161E5 | TYPE21、组件3且value高16位0x50000处理UP／ENTER；类目循环模3，并清scroll／select。名称及注册矩形见下文绘制节 |
 | 类目写入 | SetTouchValue RVA0x317600；VA0x10317612–0x10317626 | type高16位0x50000写page_；此方法本身不限定21页 |
-| 列表选择写入 | 同方法VA0x10317653–0x10317667 | type高16位0x20000写select_；不证明21行已注册此value |
-| 滚动写入 | 同方法VA0x10317668–0x1031767C | type高16位0x40000写scrollValue_；不证明21滚动组件绑定 |
-| 通用选择跟窗 | Update_scrollValue RVA0x3284B0；VA0x103284E3–0x103285B0 | select不小于集合长度先归0；scroll高于select则下调；选择越过可见尾则上移窗；scroll过count−disp时归max(0,count−disp)，并夹选择到0…count−1。**21调用及disp实参尚未核** |
+| 列表选择写入 | 同方法VA0x10317653–0x10317667 | type高16位0x20000写select_；21五行的实际注册见下文 |
+| 滚动写入 | 同方法VA0x10317668–0x1031767C | type高16位0x40000写scrollValue_；21组件12／25的实际注册见下文 |
+| 通用选择跟窗 | Update_scrollValue RVA0x3284B0；VA0x103284E3–0x103285B0 | 通用helper按count裁剪选择及首行；**21不调用它**，而用允许空行的五行专用分支，见[业务合同](STEAM_BUILD_LIST_BUSINESS.md#五行范围空行与键盘顺序) |
 
 通用DLGSEL3／LIST10／SLIST11的marker16共享消费者已证：首次未标记UP选择并记key，
 第二次同key UP发逻辑确认，没有点击间隔判定；键盘会清marker。
@@ -52,11 +42,11 @@ Steam适配事件CANCEL=10；APK原始Android ACTION_CANCEL=3，两个事件层�
 
 ## APK21目录及特殊边界
 
-以下是固定APK事实，Steam交叉栏未核部分保留缺口。坐标是原画布局部坐标，不是物理DPI热区。
+以下分别登记固定APK事实与Steam独立交叉结果。坐标是原画布局部坐标，不是物理DPI热区。
 
 | 项目 | APK局部合同／来源 | Steam交叉状态 |
 | --- | --- | --- |
-| 类目／开放集合 | [b/g:10647](../work/decompiled/sources/b/g.java:10647)：3个Vector；定义开放p非0、flags4，住宅kind12还需H>0，按定义j入类；第0类索引1插撤除−1，flag32开放后索引2插移动−2 | Steam只有三类输入消费已证；同集合生成待核 |
+| 类目／开放集合 | [b/g:10647](../work/decompiled/sources/b/g.java:10647)：3个Vector；定义开放p非0、flags4，住宅kind12还需H>0，按定义j入类；第0类索引1插撤除−1，flag32开放后索引2插移动−2 | Steam Init独立核同过滤、定义顺序及哨兵插入；随后还刷新入住标志，见[业务合同](STEAM_BUILD_LIST_BUSINESS.md#目录生成与打开时的副作用) |
 | 类目文字 | [b/g:9604](../work/decompiled/sources/b/g.java:9604)：设备／一般／饮食 | Steam独立metadata literal为設備／一般／飲食，最终中文译文仍走翻译 |
 | 目录原点／外框 | [b/g:9591](../work/decompiled/sources/b/g.java:9591)：J=((c.m+c.o)/2)−87−画布偏移X，K=((c.n+c.p)/2)−104−画布偏移Y；外框175×210 | Steam独立核同局部公式，GameForm VIEW四字段及Graphics原点见下节 |
 | 行／图块 | [b/g:9655](../work/decompiled/sources/b/g.java:9655)：最多5个实际条目；行距37；图块左上(J+10,K+25+37row)，64×32裁剪，RGB(190,242,230)，固定朝向0按原分片画 | Steam核同裁剪；实际DrawMapchip锚为(J+12,K+35+37row)，非直接整PNG |
@@ -66,7 +56,7 @@ Steam适配事件CANCEL=10；APK原始Android ACTION_CANCEL=3，两个事件层�
 | 类目输入登记 | [b/g:9742](../work/decompiled/sources/b/g.java:9742)：DLGSEL3，矩形(J+3+57cat,K+2,54,20)，value=0x50000\|cat，扩命中(0,0,30,0) | Steam为**(J+57cat,K+2,60,20)**，Margin同(0,0,30,0) |
 | 滚动绘制实参 | [b/g:9740](../work/decompiled/sources/b/g.java:9740)：(J+170,K+21,189,count−1,5)传滚动helper | Steam显式宽4、高189；helper注册宽3的组件12与25，见下节 |
 
-APK需要保留两个易被普通列表规则抹掉的边界：
+APK与Steam均需保留两个易被普通列表规则抹掉的边界；Steam自己的Update证据见[业务合同](STEAM_BUILD_LIST_BUSINESS.md#五行范围空行与键盘顺序)：
 
 1. **输入登记始终5行**，实际条目绘制才受`scroll+row<count`限制；集合不足5项时，空行也有登记。
 2. [b/g:11537](../work/decompiled/sources/b/g.java:11537)的键选择上界是`max(count−1,4)`，
@@ -139,11 +129,13 @@ Steam建设候选闪烁、朝向传递及建设确认消费另见[覆盖清单](
 最终为`Seb.DrawFrame(...,resource.images,frame,lineNo=-1)`，由SEB再关联真实图片和裁片。
 
 本链没有将`MapchipData.img_`或`TenantData.icon_`直接拿来画整张建筑PNG。
-本批闭合字段／调用链，但未解Steam这两个pattern数组的全部数值，也未认证所有mapchip图集分片；不能借APK数组填成Steam已核。
+Steam两个pattern数组及85定义到mapchip／SEB的逐片对应已由[图块合同](STEAM_MAPCHIP_PATTERNS.md)独立闭合，不以APK数组填值。
+该合同保留源SEB异常；raw21朝向0有效不代表所有定义都允许朝向1。
 资源摘要（本地核对材料，不随仓库交付）核7个直接图／SEB槽与已发布默认文件字节一致，并追5个SEB图片依赖：
 arrow02／arrow01／finger_r同字节，**number05图103与tenant_resident图98的Steam字节不同于APK发布副本**。
-两个SEB相同不证明其图片也相同；这两张不能直接alias APK，后续需独立Steam解析／发布。
-common图147的INF仍有`20x9`修饰，语言覆盖和最终Image装载另有资格，不把文件hash相同当运行时语言路径已定。
+两个SEB相同不证明其图片也相同；这两张已独立解析并发布于[Steam资源包](../assets/steam-build-common/README.md)，不能alias APK图片。
+地图资源组根身份与安装／退休见[资源安装合同](STEAM_BUILD_RESOURCE_INSTALL.md)；完整语言覆盖、异步图像装载及GPU内部退休仍未因此闭合。
+common图147的INF仍有`20x9`修饰，不把文件hash相同当当前语言的实际命中结果。
 
 ### 实际marker、滚动和箭头注册
 
@@ -157,14 +149,16 @@ common图147的INF仍有`20x9`修饰，语言覆盖和最终Image装载另有资
 
 滚动helper本身在此小方法内只注册组件，不直接画滚动条；最终surface绘制／拖拽仍需后继消费，不能把helper名当已画出滚动图。
 手形最后画common SEB21当前帧，y=`K+33+37*(select-scroll)`；非日文x=J+68，日文x=J+71。
-行marker16现在有真实注册证据，但空行的确认资格仍要交叉Steam21 Update，不能从注册存在推定空行可建或删除有效边界检查。
+行marker16与空行输入资格均已交叉Steam21 Update：空行可以被选中，确认直接返回、不进入BUILD。
+这是注册、选择和确认三层合同，不能因注册存在就删除真实条目范围检查。
 
 ## 下一闭合范围
 
-后继优先交叉真实Init和Update的21专用分支、通用surface滚动／marker最终消费，以及Steam mapchip两组pattern数组。
-上述raw21绘制局部已从入口闭合，不重复当作待定位；仍不能把APK专用空行策略或初始目录直接当Steam事实。
-每个窗口须有已核指令边界、方法登记范围、地址／哈希及预算；大型外层不得按完整方法覆盖报告。
-自然窗口仍需在原程序单独认证最终命中区、滚轮／键盘投递及空行输入，不由静态事实替代。
+当前待接的是21类目／绝对选择／独立首行的Owner与精确恢复、显式绘制计数，以及真实21→74维护返回；
+现窗口局部游标不等于已持久化状态，详见[业务合同的维护缺口](STEAM_BUILD_LIST_BUSINESS.md#软键详情与取消)。
+源端仍需完整ChangeCurrentForm页栈退休、触摸value1生命周期、surface滚动最终消费、当前语言实际命中、
+建设落点后续事务、世界遮挡及完整SEB插值。已核21→74局部Pop与父字段保持不代替这些全局结论。
+自然窗口另认证最终命中区、滚轮／键盘投递及空行输入；静态目录、pattern和旋转资格不重复列为待核。
 
-历史非入口续窗被自动审批拒绝的现场保留于[旧专题工作包](../verification/steam-build-list-contract/README.md)，没有执行该被拒方案。
-本次沿后来已核的具名入口顺序解码前缀完成安全替代，只保存固定入口脚本和有限事实摘要；不写指令全文、原游戏档或构建缓存，无后台进程。
+早期受阻探针及有限入口历史保留于[旧专题工作包](../verification/steam-build-list-contract/README.md)；
+未执行动作不计证据。现行结论以上述具名入口和后继合同为准，不将大型外层登记范围当作完整分析量。

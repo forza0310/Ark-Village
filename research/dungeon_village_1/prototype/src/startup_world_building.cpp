@@ -204,6 +204,44 @@ int free_number(const std::set<int> &used) {
     return n;
 }
 } // namespace
+std::optional<StartupBuildMenuCursor> prepare_startup_build_menu_cursor(
+    const std::array<int, 3> &counts, StartupBuildMenuCursor cursor,
+    StartupBuildMenuDirections directions) {
+    if (std::any_of(counts.begin(), counts.end(), [](int n) { return n < 0; }) ||
+        cursor.page < 0 || cursor.page >= 3)
+        return {};
+    const int upper = std::max(counts[static_cast<std::size_t>(cursor.page)] - 1, 4);
+    // 原五行跟窗允许选择空行；独立scroll可大于selection−4，不能重算抹掉历史。
+    if (cursor.selection < 0 || cursor.selection > upper || cursor.scroll < 0 ||
+        cursor.selection < cursor.scroll ||
+        static_cast<std::int64_t>(cursor.selection) - cursor.scroll >= 5)
+        return {};
+    std::int64_t selected = cursor.selection;
+    if (directions.up) --selected;
+    if (directions.down) ++selected;
+    if (selected < std::numeric_limits<int>::min() ||
+        selected > std::numeric_limits<int>::max())
+        return {};
+    // 只处理原精确哨兵，不能对任意损坏索引夹取或取模。
+    if (selected == -1) {
+        selected = upper;
+        cursor.scroll = static_cast<int>(selected) % upper;
+    } else if (selected == static_cast<std::int64_t>(upper) + 1) {
+        selected = cursor.scroll = 0;
+    }
+    int category_delta = directions.left ? -1 : 0;
+    if (directions.right) category_delta = 1;
+    if (category_delta != 0) {
+        cursor.page = (cursor.page + 3 + category_delta) % 3;
+        selected = cursor.scroll = 0;
+    }
+    if (selected >= static_cast<std::int64_t>(cursor.scroll) + 5)
+        cursor.scroll = static_cast<int>(selected - 4);
+    if (selected < cursor.scroll)
+        cursor.scroll = static_cast<int>(selected);
+    cursor.selection = static_cast<int>(selected);
+    return cursor;
+}
 bool initialize_startup_world_neighbours(State &s) { return refresh_map(s, true); }
 bool refresh_startup_world_map(State &s, bool notices) { return refresh_map(s, false, notices); }
 bool refresh_startup_world_surface(State &s) { return refresh_map(s, false, false, false); }

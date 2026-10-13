@@ -74,6 +74,29 @@ h不含目标但旧位置在内且旧raw为DOWN0时是types0／5／1／3／6，�
 声音出口另有aQ／ap前缀及SoundPlayer暂停守卫；原请求次数不等于实际听见次数。
 维护已接typed音频请求与[单次消费](../prototype/AUDIO_REQUESTS.md)，当前研究窗口取走请求但不播放声音；原绘制准入请求仍按下节已批准方案独立处理，不能在重复展示冻结计划时重发。
 
+## Steam公共SubForm单轮：页面钟、手形与待发jingle
+
+2026-10-14，固定Steam2.56局部静态补核。以下以**一次实际获准的SubForm.Update回调**为单位，不能按世界tick、raylib刷新或秒数重复执行。框架栈顶／暂停／恢复来源复用[已有Steam准入](STEAM_FACILITY_UPGRADE.md#两侧人物与独立frame2)及[父栈合同](INFORMATION_MENU.md)：管理器pause跳过常规更新；只给复核后的栈末就绪页分派Update，插入新栈顶后停止本轮旧页更新。Pop先令子mode4、挂起父mode3转PREUPDATE1，实际恢复在下一框架入口；它不重做父Init。覆盖父页可以重画而不获Update，世界模态暂停也不等于管理器pause。
+
+公共Init只清本页主钟`frame_ +0xA0`，并把`jingle_ +0x140`置−1（VA `10312609–10312616`）；不重置副钟`frame2_ +0xA4`或共享手形SEB。副钟新对象零初值与返回父页保留旧钟是不同前提。页自身后续Init分支可以设置待发jingle，不能因公共Init的−1就判整页没有声音。
+
+| 单次Update原序 | 条件与实际效果 |
+| --- | --- |
+| 1．页面双钟 | `10321B63–10321B84`先主钟、再副钟各执行`(n+1)%INT_MAX`；之后取FormManager并清`untilActiveHide_ +0x8C` |
+| 2．wait | `10321B99–10321BC9`：wait_ +0x160>0先请求DrawAllForms，再减1；减后仍>0立即返回true。双钟已推进，但下列loop／jingle／手形尚未推进；旧wait=1则本轮减到0后继续，不额外等一轮。DrawAllForms（RVA `7E5820`）仅置管理器整栈重画标志+0x0D，不在这里立即执行绘制 |
+| 3．上下箭头重画计数 | `10321BCF–10321BF7`：udArrowCnt +0x1A8>0则减1，恰到0再请求DrawAllForms，不因此提前返回 |
+| 4．loop及待发jingle | `10321BFA–10321C2C`：loopCounter_ +0x9C加1模INT_MAX；jingle_≠−1才调用AppData.PlayJingle，然后清为−1。这是jingle请求，**不是普通PlaySe**，BGM暂静音／恢复及声音出口沿[音频合同](AUDIO_REQUESTS.md#steam已核局部与待核项) |
+| 5．三个共享SEB | `10321C36–10321CF1`依次对common **22→21→23**调用Seb.Frame；之后才分派本页Update／Update2。三者是共享资源对象，不为每页新建，返回父页不从父主钟重算手形 |
+| 6．本页局部动作 | 通用未专门处理的类型于`10321E94–10321E9F`调用Update2并返回其结果；89／92的确认、快进／关闭发生在上述共同前段之后。暂停或没有真实回调时不能仅为显示补跑前段 |
+
+Seb.Frame（RVA `7BFF00`，176字节）还有实际门槛：`AutoAnimation=false`且`IApplication.commonFramesUpdate_=true`才令`currentFrame_ +0x0C=(currentFrame+1)%maxFrame_ +0x10`（`107BFF6F–107BFFAA`）；否则本次Frame不改变相位。两TypeInfo槽`110FFA5C`／`110F77B4`独立解析为Seb／IApplication。common21／22／23分别为finger_r／finger_l／finger_d，三个原SEB的maxFrame均6，图片引用分别70／70／71，沿[正式资源索引](../assets/IMAGE_COVERAGE.json)复用；6个逻辑帧不等于PNG有6列裁片。
+
+已核IApplication cctor把commonFramesUpdate_置true（`107909A7`），实际Update前段亦置true（`1078F98B`）；不能由声明的COMMON_FRAME_MAX=3推断“每三次页面更新才推进”。AutoAnimation按静态标量零默认为false，已读Seb cctor未设置它。本批只核这些生产点，尚未认证两个门槛的全部运行期写者及与框架补帧的联合时序。AutoAnimation=true时手动Frame不推进，OnGUI在共同标志成立时另调用ThisFrameRenderAnimation（`10788ED7–10788EF4`）；该自动列表／渲染后继未在本批展开，不能把手动与自动两路同时加帧。最小平台输入应明确给出这两个门槛及共享SEB当前相位，不能用FPS或页面钟猜值。
+
+分工：页面主／副钟、wait、待发jingle及本页动作归唯一Owner的获准更新；共享SEB相位和平台门槛归共同表现上下文，皮肤只读已准备的帧，冻结计划重复展示不再Frame／发声。未来精确应用恢复若纳入该上下文须独立设计持久身份，本批没有新增载荷或编码；普通世界档也不能被描述为原来保存这些平台SEB相位。89／92正常基础皮肤使用显式身体帧、阴影定义帧及按主钟计算的继续箭头，不读取21／22／23的当前手形帧，所以该共同缺口不改变它们已交的正常基础计划；菜单／目录的手形则实际读取共享当前帧，现静态帧0适配仍不能称完整原调度。
+
+这条共同前段未见游戏随机调用；jingle出口和重画请求是明确副作用。旧wait>1的提前返回不是回滚，已经增加的双钟继续保留；维护事务若随后发生来源／页动作失败，完整候选回滚仍是维护安全策略，不能写成原程序也撤销了前段。APK只沿既有`b/g.java:11088`双钟及延迟概述比较，Steam的AutoAnimation／commonFramesUpdate门槛不外推为Android同一平台调度；完整原窗口动态和自动动画后继仍独立补证。
+
 ## 已确认的维护Owner请求设计
 
 2026-10-08用户授权建设新增测试并采用本方案。现有逻辑回放保持0表现请求，新增独立控制器身份的显式表现请求模式。

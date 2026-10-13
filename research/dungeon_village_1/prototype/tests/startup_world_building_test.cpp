@@ -25,6 +25,55 @@ void check(bool value, const char *message) {
     if (!value)
         throw std::runtime_error(message);
 }
+void build_menu_cursor() {
+    struct Case {
+        std::array<int, 3> counts;
+        StartupBuildMenuCursor before;
+        StartupBuildMenuDirections input;
+        StartupBuildMenuCursor after;
+        const char *message;
+    };
+    constexpr int maximum = std::numeric_limits<int>::max();
+    // 期望值直接按已核21请求算式列出，不调用候选函数生成oracle。
+    const Case cases[] = {
+        {{10,2,0},{0,0,0},{true,false,false,false},{0,9,5},"up wraps to last row then follows five-row window"},
+        {{10,2,0},{0,9,5},{false,true,false,false},{0,0,0},"down wrap resets selection and first row"},
+        {{10,2,0},{0,5,4},{true,false,false,false},{0,4,4},"up within window retains independent first row"},
+        {{10,2,0},{0,4,4},{true,false,false,false},{0,3,3},"up past first row moves first to selection"},
+        {{10,2,0},{0,4,0},{false,true,false,false},{0,5,1},"down past fifth row advances first by one"},
+        {{10,2,0},{0,0,0},{true,true,false,false},{0,0,0},"up and down cancel before exact boundary wrap"},
+        {{10,2,0},{0,8,5},{false,false,true,true},{1,0,0},"right overrides left and resets new category cursor"},
+        {{10,2,0},{0,0,0},{true,false,true,false},{2,0,0},"category change follows vertical wrap and discards old cursor"},
+        {{10,2,0},{2,0,0},{true,false,false,false},{2,4,0},"empty category still has five selectable rows"},
+        {{10,2,0},{1,1,0},{false,true,false,false},{1,2,0},"short category permits selection beyond actual last entry"},
+        {{10,2,0},{2,4,0},{false,true,false,false},{2,0,0},"empty fifth row wraps down to first"},
+        {{10,2,0},{0,9,9},{},{0,9,9},"no input preserves visible first without extra count-minus-five clamp"},
+        {{maximum,0,0},{0,maximum-1,maximum-5},{false,true,false,false},{0,0,0},"INT_MAX count safely reaches exact upper-plus-one sentinel"},
+        {{maximum,0,0},{0,0,0},{true,false,false,false},{0,maximum-1,maximum-5},"large up wrap follows window without signed arithmetic overflow"},
+        {{maximum,0,0},{0,maximum-1,maximum-5},{true,true,false,false},{0,maximum-1,maximum-5},"large simultaneous vertical inputs preserve original cursor"}
+    };
+    for (const auto &c : cases) {
+        const auto result = prepare_startup_build_menu_cursor(c.counts,c.before,c.input);
+        check(result && result->page==c.after.page && result->selection==c.after.selection &&
+                  result->scroll==c.after.scroll,c.message);
+    }
+    struct Fault { std::array<int,3> counts; StartupBuildMenuCursor cursor; const char *message; };
+    const Fault faults[] = {
+        {{10,2,0},{-1,0,0},"negative category explicitly rejected"},
+        {{10,2,0},{3,0,0},"fourth category explicitly rejected"},
+        {{10,-1,0},{0,0,0},"negative count even in unselected category rejected"},
+        {{10,2,0},{0,-1,0},"negative initial selection is not treated as up-wrap sentinel"},
+        {{10,2,0},{0,10,6},"invalid initial upper-plus-one is not silently wrapped"},
+        {{10,2,0},{2,5,1},"initial selection beyond fifth empty row rejected"},
+        {{10,2,0},{0,0,-1},"negative first row rejected"},
+        {{10,2,0},{0,3,4},"first row above selection rejected"},
+        {{10,2,0},{0,5,0},"initial invisible selection rejected instead of repairing broken payload"},
+        {{maximum,0,0},{0,maximum,maximum-4},"INT_MAX invalid selection rejected before directional arithmetic"},
+        {{maximum,0,0},{0,0,maximum},"INT_MAX first row rejected without first-plus-five overflow"}
+    };
+    for (const auto &f : faults)
+        check(!prepare_startup_build_menu_cursor(f.counts,f.cursor,{true,true,true,true}),f.message);
+}
 void new_world_inheritance() {
     auto s = test_support::world_fixture();
     const auto baseline = startup_world_state_digest(s);
@@ -2098,6 +2147,7 @@ void commerce_definition_preview() {
 } // namespace
 int main() {
     try {
+        build_menu_cursor();
         construction_notice_cache();
         normal_construction();
         progression_building_unlocks();

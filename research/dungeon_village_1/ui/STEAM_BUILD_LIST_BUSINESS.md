@@ -35,6 +35,8 @@ Update入口RVA0x321990在VA0x10321DA9识别type21，分支为0x1032599A–0x103
 
 原分支只对精确的−1／upper+1处理首尾循环，并不是对任意坏整数取模或夹取。可维护实现的载荷拒绝仍独立，不能将负数私有选择塞入原算法后声称安全等价。
 
+维护提供[纯游标候选](../prototype/include/dungeon_village_prototype/startup_world_building.hpp)`prepare_startup_build_menu_cursor`：显式接收三类长度、类目／选择／首行及同轮四方向，不读取或修改Owner，不处理确认、软键、时钟及平台marker。宽整数中间运算与坏初态拒绝属于维护保护；函数保留合法尾窗，不用`count−5`重夹首行。它可独立复用，但目前研究窗口仍沿下述旧局部游标，完整接线及持久布局另见[待确认设计](../prototype/PERSISTENCE.md#建设21目录游标与74预览恢复设计待确认)。
+
 ## 鼠标标记和类目触摸
 
 上一[绘制合同](STEAM_BUILD_LIST.md#实际marker滚动和箭头注册)已核21每行注册SLIST11、marker16和绝对select值；结合已核[通用OnTouchDlgSel](STEAM_INTERACTIONS.md#输入选中标记与确认分开)，ENTER／UP写选择，首次未标记UP只记组件key，再次相同key的UP才发0x100000确认。没有双击时间阈值；键盘会清marker，不能把键盘确认夹在两次点击之间当相同前提。
@@ -47,7 +49,13 @@ SubForm.OnTouchEvent针对21的组件3、value高16位0x50000，在UP=1／ENTER=
 
 具名`UpdateSoftKeyBuildWIndow` RVA0x320D60对普通非负定义读取type：type2／3／13用左软标签7、右2；其他type或任意负哨兵用左0、右2。文字来自AppData.SOFTLABELS，实际翻译仍在字体／语言链。
 
-确认0x100000优先。没有确认时，标签2调用Pop；否则标签7且选中ID≥0时构造raw74详情，将value1_=1、tenantData_=当前定义，再Push。这里只认证raw74载荷与调用，不称详情完整输入已核。Pop返回父页的具体窗口／选择保持与FormManager全生命周期仍沿其它合同，不能将目录进入BUILD的ChangeCurrentForm误写成同一个Pop动作。
+确认0x100000优先。没有确认时，标签2调用Pop；否则标签7且选中ID≥0时构造raw74详情，将value1_=1、tenantData_=当前定义，再Push。2026-10-14沿原Update21局部补核`10325CDD–10325D7F`：此ID是**本轮方向、换类与五行跟窗之后**取出的当前`buildList_[page_][select_]`，不是上一轮ID、定义类别或首行；其前段范围不足时为−99。`10325D43`构造74，`10325D4E`写原value1_=1（+B8），`10325D58–10325D5C`绑定tenantData_（+10C），`10325D65`Push。此链不写tenant实例，也不写父21的page_／select_／scrollValue_（+D8/+90/+88）；新子页的页签／选择独立。维护74的`legacy_f`承载定义ID、`legacy_g=1`表达预览，是已有映射策略，不能误抄成原value2_=1。
+
+正常软键7仅由type2／3／13提供；结合初始化，目标必须属于已冻结三类目录、state≠0并带建设位4。没有额外distinction筛选，因此符合入口的普通／装备店／入住／植物布局沿[74自身分派](STEAM_FACILITY_DETAIL.md#五种布局与共同窗框)；住宅type12、道路type6及撤除／移动／空行没有该预览按钮。标签7消费分支本身只重查ID≥0、不重复type条件，这是原合法UI前提，维护应拒绝伪造按钮或错类条目，不能据强行注入soft7创造住宅预览。它也不要求商会85的state=0或saleRank条件，已开放设施即使已有实例仍预览共享定义，不能沿用85专用“未取得定义”校验。
+
+74确认原value1_=1在`1031B5EF–1031B5F9`优先于第二页、住宅追踪和75／79／80业务，跳直接Pop；未确认时soft2也Pop。此局部没有资金、库存、实体、建设模式、定义NEW或目录NEW写入，回到21后也没有从该支重建目录／重新刷新入住标志。沿[现框架合同](INFORMATION_MENU.md#steam9与36输入及框架身份交叉)，子页Pop将其置退休并使真实父页进入PREUPDATE，SubForm.Resume／Finish（RVA1EDFA0）只返回true；父对象仍持原三字段，不能把返回改成新建21并归零。背景重画可夹21的frame到3，不推进主场景经营；确认真正进入BUILD使用ChangeCurrentForm，和预览Pop是两条不同路径。上述是静态局部保持，不认证原窗口动态或最终物理按键。
+
+维护接线缺口：现`build_page_catalogs`保存冻结三类定义ID，`page_phases`至多表达一个类目索引，**不足保存绝对选择与独立首行**。目前研究窗口`startup_view.cpp`的`build_tab/build_selection`是局部变量，首行即时算`max(0,selection−4)`；这既未纳入Owner／codec，也不等价原“向上移动时保留原首行直到越界”的跟窗算法。现74定义预览生产者／恢复校验还只接受85父页及未取得定义。下一步需独立设计21的Owner选择／首行载荷，联合验证当前类目、空行界限、真实条目、父子及退休，再接21→74；不能用恢复时猜首行、把选择塞入类目字段或窗口缓存声称快照已完整。本段只登记所需最小缺口，不改变持久化契约。
 
 ## 确认只进入建设状态，实际扣款在后续
 
@@ -72,4 +80,4 @@ SubForm.OnTouchEvent针对21的组件3、value高16位0x50000，在UP=1／ENTER=
 
 8个具名窗口／必要前缀合计30276字节；Init的21分支888字节，Update的21分支2367字节，52个直接调用或赋值锚可复算。共享true返回只复用旧已核Update证据，未新扫整段方法。没有原窗口、自然建设、维护C++回归或产品接入结果。
 
-剩余：FormManager.ChangeCurrentForm的完整页栈退休、74详情回父、触摸value1生命周期、当前语言／最终OS投递、建设落点／道路／移动／撤除的后继事务及所有世界绘制遮挡。本批已证内容可作为后续实现合同，不把这些独立缺口补成成功。
+剩余：FormManager.ChangeCurrentForm的完整页栈退休、21游标的Owner／恢复接线、触摸value1生命周期、当前语言／最终OS投递、建设落点／道路／移动／撤除的后继事务及所有世界绘制遮挡；74预览Pop回原21的上述静态局部已核，原窗口动态仍独立。本批已证内容可作为后续实现合同，不把这些独立缺口补成成功。

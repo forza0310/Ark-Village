@@ -16,6 +16,18 @@ struct StartupBuildResult {
     StartupBuildDenial denial{StartupBuildDenial::none};
     std::optional<std::uint64_t> created{};
 };
+struct StartupBuildMenuCursor {
+    int page{}, selection{}, scroll{}; // 原21类目、绝对选择、独立首个可见行。
+};
+struct StartupBuildMenuDirections {
+    bool up{}, down{}, left{}, right{}; // 同轮重复脉冲，按原先上下后左右消费。
+};
+// Steam21的纯游标候选：不足五项仍有空行，右覆盖左，换类才清选择／首行。
+// counts仅为冻结三类长度；坏初态明确拒绝，不读取世界或推进页面／随机。
+// 此接口不代表Owner输入接线或持久化载荷已经完成。
+std::optional<StartupBuildMenuCursor> prepare_startup_build_menu_cursor(
+    const std::array<int, 3> &counts, StartupBuildMenuCursor cursor,
+    StartupBuildMenuDirections directions);
 // 原页21普通可建子集（含募集、排除私人住宅/道路），按原定义顺序与j分组。
 std::optional<std::array<std::vector<int>, 3>>
 startup_world_build_catalog(const StartupWorldRuntimeState &state);

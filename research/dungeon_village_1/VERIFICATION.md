@@ -1,5 +1,13 @@
 # 当前研究验证与历史索引
 
+## 建设目录纯游标与公共弹窗调度 2026-10-14
+
+接`7fe54fa`，建设21新增[纯游标候选](prototype/include/dungeon_village_prototype/startup_world_building.hpp)，现building套件覆盖原方向顺序、五行空选、精确绕回、独立首行、同时方向及整数／坏初态边界。单Release动态构建通过，主责CTest **1/1通过2.10秒**（总2.11秒）；不接Owner／codec或窗口，不编其它维护者三份住宅持久化测试，不跑长测。21→74源入口及父字段保持合入[业务合同](ui/STEAM_BUILD_LIST_BUSINESS.md)，新增Owner载荷仅列[待确认设计](prototype/PERSISTENCE.md#建设21目录游标与74预览恢复设计待确认)，不能据纯函数宣称完整恢复。
+
+并行补[公共SubForm单轮](ui/INPUT_RENDER_REQUESTS.md#steam公共subform单轮页面钟手形与待发jingle)：双钟、wait早退、待发jingle及共享手形的真实门槛；完整运行期写者／自动动画后继保留未证。建设文档合并过时缺口并移除重复指纹，没有新增报告、脚本、素材或target。魔法壶外部反馈仍为通道正常但无目标窗口，五项未覆盖、无截图；原动态与维护短测分开。
+
+无新增Owner引用或一次性输出；纯候选固定规模，合法世界历史不称永久有界。Release1374文件／143850015字节，assets850文件／9372783字节；本轮无新增临时取证文件，构建／测试及三个子任务均已结束。差异和受影响文档链接检查通过，只提交已验research，保留他人改动、不推送。
+
 ## Steam商会主页、交易反馈与买卖后继合同 2026-10-14
 
 接`21e4d27`，新增[商会83纯皮肤](prototype/include/dungeon_village_prototype/steam_commerce_skin.hpp)与严格Owner只读桥，复用原出版底图、三类别图标、等级／NEW及私有南瓜裁剪；保持原设施NEW的p!=2，与已批准交易目录p0策略分开。新增83整轮输入上→下→确认优先返回，选择及子页插入在一个候选提交；Session／应用／研究窗口接线，退役原粗绘与逐action主页输入。不增加Owner持久字段／schema／target，中文、Noto、静态手形和PC松开适配不冒称原字体或OS动态。

@@ -48,6 +48,8 @@ void WorldManagement::observe(const app::WorldFrame &frame) {
         facility_catalog_gesture_ = {};
         village_controls_.reset();
         village_gesture_ = {};
+        magic_controls_.reset();
+        magic_gesture_ = {};
     }
     if (!pending_)
         return;
@@ -84,6 +86,8 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
         award_ = {};
         village_controls_.reset();
         village_gesture_.scrolling = false;
+        magic_controls_.reset();
+        magic_gesture_ = {};
         feedback_.clear();
     }
     blocked = blocked || pending();
@@ -149,8 +153,8 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
     }
     if (ui::world_magic_pot_page(page)) {
         const auto view = ui::world_magic_pot_view(state, page);
-        const auto layout = ui::world_commerce_layout(extent);
-        const ui::WorldCommerceInput input{
+        const auto layout = ui::world_magic_pot_layout(extent, view.raw);
+        ui::WorldMagicPotInput input{
             point,
             enter,
             escape,
@@ -158,10 +162,15 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
             down,
             IsKeyPressed(KEY_LEFT),
             IsKeyPressed(KEY_RIGHT),
-            false,
-            hit(mouse, layout.rows) ? -static_cast<int>(GetMouseWheelMove() * 2) : 0};
-        if (const auto intent = ui::world_magic_pot_input(view, layout, input, blocked))
-            queued(session.act_magic_pot(page.id, intent->action, intent->selection));
+            hit(mouse, layout.rows) ? -static_cast<int>(GetMouseWheelMove() * 2) : 0,
+            keyboard_event};
+        input.pointer = mouse;
+        input.pointer_pressed = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+        input.pointer_down = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+        input.pointer_released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
+        if (const auto intent = ui::world_magic_pot_input(view, layout, input, blocked,
+                                                          magic_controls_, &magic_gesture_))
+            queued(session.input_magic_pot(page.id, *intent));
         return true;
     }
     if (ui::world_facility_catalog_page(page)) {
@@ -236,8 +245,8 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
         input.pointer_pressed = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
         input.pointer_down = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
         input.pointer_released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
-        if (const auto intent = ui::world_village_activity_input(view, layout, input, blocked,
-                                                                village_controls_, &village_gesture_))
+        if (const auto intent = ui::world_village_activity_input(
+                view, layout, input, blocked, village_controls_, &village_gesture_))
             queued(session.input_village_activity(page.id, *intent->input));
         return true;
     }
@@ -354,9 +363,8 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
         const auto layout = ui::world_progression_layout(extent, view.raw);
         if (const auto intent = ui::world_progression_input(
                 view, layout, {point, enter, escape, up, down}, blocked, village_controls_))
-            queued(intent->input
-                       ? session.input_rank(page.id, *intent->input)
-                       : session.ack_page(page.id));
+            queued(intent->input ? session.input_rank(page.id, *intent->input)
+                                 : session.ack_page(page.id));
         return true;
     }
     return false;
@@ -381,8 +389,10 @@ bool WorldManagement::draw_page(const State &state, const Page &page, Extent ext
             state, view, ui::world_information_layout(extent, page.legacy_page, view.menu_position),
             skin, enabled, feedback_);
     } else if (ui::world_magic_pot_page(page)) {
-        ui::draw_world_magic_pot(ui::world_magic_pot_view(state, page),
-                                 ui::world_commerce_layout(extent), skin, enabled, feedback_);
+        auto view = ui::world_magic_pot_view(state, page);
+        ui::prepare_world_magic_pot(view, state, skin, magic_gesture_.scrolling);
+        magic_controls_ = ui::draw_world_magic_pot(
+            view, ui::world_magic_pot_layout(extent, view.raw), skin, enabled, feedback_);
     } else if (ui::world_facility_catalog_page(page)) {
         auto view = ui::world_facility_catalog_view(state, page);
         ui::prepare_world_facility_catalog(view, state, skin, facility_catalog_gesture_.scrolling);

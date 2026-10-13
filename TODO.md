@@ -10,7 +10,8 @@
 - [x] 6a0f8e2／395fa0b职业预览、转职演出和赠礼结果计划已消费，真实转职/赠礼窗口通过；共享奖励人物帧已由755fdf2的entry_updates只读桥提供；手形仍静态0，原OS动态单列。
 - [x] 正式755fdf2商品72/79、强化75–77、口碑82双计数/联合恢复及共享人物帧已接；461来源/73适配、720素材，整帧FIFO、玩家冷清及两Debug/Release受影响检查通过，见[B1](docs/stages/B1-playable-prototype.md#research-755fdf2-facility-pages)。158条件图与两次真实新局图不认证OS输入或原字体。
 - [x] 正式fd69d44村办51–54、晋级48–50和七类95领取计划、严格恢复及整帧FIFO已接，467来源/76适配、722素材；窗口和检查见[B1](docs/stages/B1-playable-prototype.md#research-fd69d44-village-progress)。
-- [ ] 接续正式e4dc38a魔法壶41–47目录/演出、同轮输入及严格恢复；沿同一Owner和玩家政策，不接研究窗口宿主。
+- [x] 正式e4dc38a魔法壶41–47目录/演出、同轮FIFO、副钟与严格恢复已接；472来源/77适配，玩家政策保持，见[B1](docs/stages/B1-playable-prototype.md#research-e4dc38a-magic-pot)。
+- [ ] 接续57a31cb/48574b5任务选择、名单、追加/出发与地图追踪；消费正式字号合同，原字体对象/OS动态分别保留缺口。
 - [x] 获批steam-month分段月96→97→98→99及三次独立冷载通过；每段6分钟/10000轮，原季度入口保持，失败观察档不作输入，见[B1](docs/stages/B1-playable-prototype.md#research-e22ed0a-human-ui)。
 
 - [x] 正式bb61d5f普通设施两页维护计划：获批四目标已导入，455来源/70适配保留，新增资源映射现有Steam属性图标；后续c6b1a5b无闭包增量，见[方案](docs/MILESTONES.md#research-bb61d5f-detail-plan)。

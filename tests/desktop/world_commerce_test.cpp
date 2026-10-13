@@ -1,9 +1,9 @@
 // UI owns source identity/currency/selection projection. Frozen commerce suites own transactions.
+#include "../../src/desktop/ui/facilities/world_facility_catalog.hpp"
+#include "../../src/desktop/ui/village/world_commerce.hpp"
+#include "../../src/desktop/ui/village/world_magic_pot.hpp"
 #include "../support/checks.hpp"
 #include "../support/world_fixture.hpp"
-#include "../../src/desktop/ui/village/world_commerce.hpp"
-#include "../../src/desktop/ui/facilities/world_facility_catalog.hpp"
-#include "../../src/desktop/ui/village/world_magic_pot.hpp"
 #include <algorithm>
 
 namespace ark::test {
@@ -38,23 +38,122 @@ void world_commerce() {
                   sim::StartupWorldRuntimeError::none,
               "Explicit pot gate opens actual source41");
         auto page = state.scripts.pages.back();
-        const auto layout = ui::world_commerce_layout({240, 256});
-        ui::WorldCommerceInput input;
+        const auto layout = ui::world_magic_pot_layout({240, 256});
+        ui::WorldMagicPotInput input;
         input.enter = true;
         auto view = ui::world_magic_pot_view(state, page);
         check(!view.initialized && !ui::world_magic_pot_input(view, layout, input, false),
               "Pot rendering does not initialize or act on an unpublished payload");
         check(sim::initialize_startup_world_magic_pot_pages(state), "Source initializes pot41");
+        state.scripts.pages.back().lifecycle = 1; // Explicit visible callsite after Init.
         const auto before = state;
         view = ui::world_magic_pot_view(state, page);
-        check(view.rows.size() == 2 && view.rows[0].name == "投入道具" &&
-                  view.rows[1].name == "开发" &&
-                  ui::world_magic_pot_input(view, layout, input, false)->action ==
-                      sim::StartupMagicPotAction::confirm &&
+        check(view.rows.size() == 2 && view.rows[0].name == "放入道具" &&
+                  view.rows[1].name == "查看调和书" &&
+                  ui::world_magic_pot_input(view, layout, input, false)->confirm &&
                   !ui::world_magic_pot_input(view, layout, input, true) &&
                   same_world_clock(state, before) &&
                   state.scene.random.draws() == before.scene.random.draws(),
               "Pot UI keeps choice order, pending barrier and read-only drawing");
+        auto inventory = state;
+        check(sim::act_startup_world_magic_pot_page(inventory, page.id,
+                                                    sim::StartupMagicPotAction::confirm) ==
+                      sim::StartupWorldRuntimeError::none &&
+                  sim::initialize_startup_world_magic_pot_pages(inventory),
+              "Pot source opens42 for device contract checks");
+        const auto list_page = inventory.scripts.pages.back();
+        auto list = ui::world_magic_pot_view(inventory, list_page);
+        const auto pot_layout = ui::world_magic_pot_layout({240, 256}, 42);
+        ui::WorldFacilityPaintedControls controls;
+        controls.page = list.page;
+        controls.raw = 42;
+        controls.selection = list.selection;
+        controls.first = list.first_visible;
+        controls.count = int(list.rows.size());
+        controls.choice = list.binding;
+        controls.extent = pot_layout.extent;
+        controls.rows.push_back({0, list.rows.front().identity, {25, 95, 190, 16}});
+        std::optional<ui::WorldFacilityPaintedControls> painted = controls;
+        ui::WorldFacilityGesture gesture;
+        input = {};
+        input.click = Vector2{50, 100};
+        const auto first =
+            ui::world_magic_pot_input(list, pot_layout, input, false, painted, &gesture);
+        check(first && first->selection == 0 && !first->confirm && gesture.marked_row == 0,
+              "42 first release marks without consuming inventory");
+        check(!ui::world_magic_pot_input(list, pot_layout, input, true, painted, &gesture),
+              "Pending input cannot turn marker into a repeated payment");
+        const auto second =
+            ui::world_magic_pot_input(list, pot_layout, input, false, painted, &gesture);
+        check(second && second->confirm && second->selection == 0,
+              "42 second release confirms only the committed source row");
+        painted->extent.width = 241;
+        check(!ui::world_magic_pot_input(list, pot_layout, input, false, painted, &gesture),
+              "Resized painted geometry cannot consume a click");
+        painted = controls;
+        input.keyboard_event = true;
+        const auto reset =
+            ui::world_magic_pot_input(list, pot_layout, input, false, painted, &gesture);
+        check(reset && !reset->confirm, "Keyboard resets42 marker before a new release");
+        input = {};
+        input.up = input.down = input.enter = input.escape = true;
+        const auto combined =
+            ui::world_magic_pot_input(list, pot_layout, input, false, painted, &gesture);
+        check(combined && combined->up && combined->down && combined->confirm && combined->cancel,
+              "Simultaneous directions and both actions enter one Owner transaction");
+        list.raw = 43;
+        list.rows.front().known = true;
+        painted->raw = 43;
+        input = {};
+        input.click = Vector2{50, 100};
+        const auto recipe_click =
+            ui::world_magic_pot_input(list, pot_layout, input, false, painted, &gesture);
+        check(recipe_click && recipe_click->selection == 0 && recipe_click->confirm,
+              "43 unmarked recipe release selects and confirms in one frame");
+        list.rows.front().known = false;
+        const auto unknown =
+            ui::world_magic_pot_input(list, pot_layout, input, false, painted, &gesture);
+        check(unknown && unknown->selection == 0 && !unknown->confirm,
+              "Unknown recipe can be selected without entering creation");
+        input = {};
+        input.down = input.enter = true;
+        list.can_confirm = false;
+        const auto next_recipe =
+            ui::world_magic_pot_input(list, pot_layout, input, false, painted, &gesture);
+        check(next_recipe && next_recipe->down && next_recipe->confirm,
+              "Old unknown selection cannot swallow same-frame direction and Enter");
+        list.raw = 42;
+        painted->raw = 42;
+        list.rows.front().known = true;
+        list.rows.resize(8, list.rows.front());
+        painted->count = 8;
+        painted->scroll = Rectangle{220, 85, 6, 110};
+        painted->scroll_visible = 5;
+        input = {};
+        input.pointer = Vector2{223, 90};
+        input.pointer_pressed = input.pointer_down = true;
+        check(ui::world_magic_pot_input(list, pot_layout, input, false, painted, &gesture)
+                      ->scroll->value == 0,
+              "Source track starts an absolute scroll request");
+        input = {};
+        input.pointer = Vector2{223, 120};
+        input.pointer_released = true;
+        input.click = Vector2{50, 100};
+        const auto dragged =
+            ui::world_magic_pot_input(list, pot_layout, input, false, painted, &gesture);
+        check(dragged && dragged->scroll && dragged->scroll->absolute && !dragged->selection &&
+                  !dragged->confirm,
+              "Consumed scroll release cannot spend an item");
+        input = {};
+        input.pointer = Vector2{223, 90};
+        input.pointer_pressed = input.pointer_down = true;
+        ui::world_magic_pot_input(list, pot_layout, input, false, painted, &gesture);
+        input = {};
+        input.pointer_released = true;
+        input.click = Vector2{50, 100};
+        check(!ui::world_magic_pot_input(list, pot_layout, input, true, painted, &gesture) &&
+                  !gesture.scrolling && !gesture.consumed,
+              "Pending drag release clears device capture without a business command");
         // Explicit processing45 callsite: test source counters through the real view rather
         // than constructing can_confirm booleans that merely repeat the input implementation.
         Page processing;
@@ -66,6 +165,7 @@ void world_commerce() {
                   sim::write_startup_world_runtime_scripts(state, inserted.candidate->state) &&
                   sim::initialize_startup_world_magic_pot_pages(state),
               "Source initializes processing-result callsite");
+        state.scripts.pages.back().lifecycle = 1;
         page = state.scripts.pages.back();
         for (const int count : {0, 76, 77, 82, 83}) {
             state.page_counters.at(page.id) = count;
@@ -141,10 +241,12 @@ void world_commerce() {
         painted.count = static_cast<int>(view.rows.size());
         painted.choice = view.choice->identity;
         painted.extent = layout.extent;
-        painted.rows.push_back({0, entries.front(),
-                                {layout.rows.x, layout.rows.y, layout.rows.width, layout.row_height}});
-        const auto clicked = ui::world_facility_catalog_input(
-            view, layout, input, false, painted, layout.extent);
+        painted.rows.push_back(
+            {0,
+             entries.front(),
+             {layout.rows.x, layout.rows.y, layout.rows.width, layout.row_height}});
+        const auto clicked =
+            ui::world_facility_catalog_input(view, layout, input, false, painted, layout.extent);
         check(clicked && clicked->input && clicked->input->selection == 0 &&
                   clicked->input->confirm && !clicked->input->inspect,
               "Source79 row release selects and confirms in one frame without a purchase action");
@@ -158,7 +260,7 @@ void world_commerce() {
         confirmed.catalog.at({1, entries.front()}).newly_unlocked = true;
         const auto stock = confirmed.catalog.at({1, entries.front()}).inventory;
         check(sim::input_startup_world_facility_catalog_page(confirmed, page.id, *clicked->input) ==
-                  sim::StartupWorldRuntimeError::none &&
+                      sim::StartupWorldRuntimeError::none &&
                   confirmed.scripts.pages.back().lifecycle == 4 &&
                   !confirmed.catalog.at({1, entries.front()}).newly_unlocked &&
                   confirmed.catalog.at({1, entries.front()}).inventory == stock &&

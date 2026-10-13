@@ -4525,6 +4525,33 @@ void magic_pot_entry_and_retirement() {
               "actual framework retires four transient payload families and retains global pot "
               "state");
     }
+    auto pending = magic_pot_fixture();
+    check(open_startup_world_magic_pot(pending, StartupMagicPotEntry::main_menu) == E::none,
+          "pending41 is created by the real producer");
+    const auto pending_id = magic_pot_top(pending).id;
+    for (int fault = 0; fault < 5; ++fault) {
+        auto broken = pending;
+        if (fault == 0)
+            broken.page_counters[pending_id] = 7;
+        if (fault == 1)
+            broken.page_phases[pending_id] = 1;
+        if (fault == 2)
+            broken.page_secondary_counters[pending_id] = 0;
+        if (fault == 3)
+            broken.magic_pot_page_lists[pending_id] = {};
+        if (fault == 4)
+            broken.scripts.pages.back().lifecycle = 2;
+        const auto before = startup_world_state_digest(broken);
+        check(!valid_startup_world_magic_pot_page(broken, magic_pot_top(broken)) &&
+                  !initialize_startup_world_magic_pot_pages(broken) &&
+                  startup_world_state_digest(broken) == before,
+              "pending41 rejects nonzero counters, half payload and lost active payload without "
+              "reinitializing");
+    }
+    pending.page_counters[pending_id] = 0;
+    pending.page_phases[pending_id] = 0;
+    check(initialize_startup_world_magic_pot_pages(pending),
+          "pending41 accepts the established producer zero counter/phase boundary");
     auto same_date = magic_pot_fixture();
     same_date.magic_pot_output = {1, 2, 3, 4};
     check(open_startup_world_magic_pot(same_date, StartupMagicPotEntry::main_menu) == E::none &&
@@ -4579,6 +4606,52 @@ void magic_pot_deposit_pages() {
           "42 immediately consumes held potato once, not shop A; ice/pending/comment share one "
           "ticket");
     const auto result = reach_magic_pot_page(s, 44);
+    check(s.page_secondary_counters.count(result) == 1,
+          "44 owns a separately restored animation clock");
+    {
+        auto animation = s;
+        animation.page_counters.at(result) = 34;
+        animation.page_secondary_counters.at(result) = 17;
+        const auto draw_count = animation.scene.random.draws();
+        const auto updated = update_startup_world_magic_pot_page(animation, result);
+        check(updated && updated->page_counters.at(result) == 35 &&
+                  updated->page_secondary_counters.at(result) == 18 &&
+                  test_support::audio_ids(updated->sound_requests) == std::vector<int>{8} &&
+                  updated->sound_requests.back().operation ==
+                      StartupAudioOperation::ordinary_play &&
+                  updated->scene.random.draws() == draw_count,
+              "44 owner emits ordinary SE8 exactly when the admitted main clock reaches35");
+        const auto following = update_startup_world_magic_pot_page(*updated, result);
+        check(
+            following && following->sound_requests.size() == 1 &&
+                following->page_secondary_counters.at(result) == 19,
+            "44 subsequent update does not replay sound and advances independent secondary clock");
+        auto jumped = *following;
+        StartupMagicPotInput confirm;
+        confirm.confirm = true;
+        check(input_startup_world_magic_pot_page(jumped, result, confirm) == E::none &&
+                  jumped.page_counters.at(result) == 85 &&
+                  jumped.page_secondary_counters.at(result) == 19,
+              "44 main fast forward leaves pot animation secondary clock unchanged");
+        jumped.scene.framework_paused = true;
+        const auto frozen = update_startup_world_magic_pot_page(jumped, result);
+        check(frozen && frozen->page_counters.at(result) == 85 &&
+                  frozen->page_secondary_counters.at(result) == 19 &&
+                  input_startup_world_magic_pot_page(jumped, result, confirm) == E::invalid_page,
+              "paused44 freezes both clocks and rejects input");
+        for (int fault = 0; fault < 3; ++fault) {
+            auto broken = s;
+            if (fault == 0)
+                broken.page_secondary_counters.erase(result);
+            if (fault == 1)
+                broken.page_secondary_counters.at(result) = -1;
+            if (fault == 2)
+                broken.page_secondary_counters.at(result) = std::numeric_limits<int>::max();
+            check(!inspect_startup_world_magic_pot_page(broken, result) &&
+                      !update_startup_world_magic_pot_page(broken, result),
+                  "44 rejects absent, negative and unadvanceable secondary clocks");
+        }
+    }
     check(act_startup_world_magic_pot_page(s, list, A::confirm) == E::invalid_page,
           "covered42 rejects stale input while44 owns the top");
     s.page_counters.at(result) = 35;
@@ -4607,6 +4680,99 @@ void magic_pot_deposit_pages() {
               s.magic_pot_display[2][1] == 2 && s.sound_requests.empty(),
           "deposit retirement leaves no dangling page references; global aM/aN stay and no sound "
           "replays");
+    check(s.page_secondary_counters.count(result) == 0,
+          "44 actual Finish releases its secondary clock");
+}
+void magic_pot_input_transactions() {
+    using E = StartupWorldRuntimeError;
+    auto s = magic_pot_fixture();
+    // 只准备七项库存组合；目录仍由42按固定表产生，不替换原定义或期望顺序。
+    std::vector<int> stocked;
+    for (const auto &d : s.rules->items) {
+        s.items.at(d.identity).inventory = stocked.size() < 7 ? 2 : 0;
+        s.catalog.at({0, d.identity}) = s.items.at(d.identity);
+        if (stocked.size() < 7)
+            stocked.push_back(d.identity);
+    }
+    check(open_startup_world_magic_pot(s, StartupMagicPotEntry::main_menu) == E::none,
+          "input41 opens through actual pot entry");
+    const auto root = reach_magic_pot_page(s, 41);
+    StartupMagicPotInput input;
+    input.left = input.right = input.confirm = input.cancel = true;
+    check(input_startup_world_magic_pot_page(s, root, input) == E::none,
+          "41 left then right returns selection0 and confirm wins cancel in one input");
+    const auto directory = reach_magic_pot_page(s, 42);
+    check(inspect_startup_world_magic_pot_page(s, directory)->entries == stocked,
+          "42 input uses the original seven-item order");
+    input = {};
+    input.scroll = StartupMagicPotInput::Scroll{true, 2};
+    input.selection = 6;
+    input.up = input.down = true;
+    input.confirm = input.cancel = true;
+    auto late = s;
+    late.scripts.next_page_id = std::numeric_limits<std::uint64_t>::max();
+    const auto before = startup_world_state_digest(late);
+    check(input_startup_world_magic_pot_page(late, directory, input) == E::script_failed &&
+              startup_world_state_digest(late) == before &&
+              late.magic_pot_page_data.at(directory)[0] == 0 &&
+              late.magic_pot_page_data.at(directory)[1] == 0 && late.scene.random.draws() == 0,
+          "same-round scroll/select/directions and late44 failure roll back cursor, inventory and "
+          "common random");
+    check(input_startup_world_magic_pot_page(s, directory, input) == E::none &&
+              s.magic_pot_page_data.at(directory)[0] == 6 &&
+              s.magic_pot_page_data.at(directory)[1] == 2 &&
+              s.items.at(stocked.back()).inventory == 1 && s.scene.random.draws() == 1,
+          "42 applies scroll, selection, up/down and one confirmed deposit atomically");
+    const auto animation = reach_magic_pot_page(s, 44);
+    input = {};
+    input.cancel = true;
+    check(input_startup_world_magic_pot_page(s, animation, input) == E::none,
+          "44 parsed cancel returns without undoing completed deposit");
+    (void)reach_magic_pot_page(s, 42);
+    // 原Update只修选择可见性，不把合法不足五行的尾窗夹回count-5。
+    s.magic_pot_page_data.at(directory)[1] = 6;
+    input = {};
+    input.up = input.down = true;
+    check(input_startup_world_magic_pot_page(s, directory, input) == E::none &&
+              s.magic_pot_page_data.at(directory)[0] == 6 &&
+              s.magic_pot_page_data.at(directory)[1] == 6,
+          "42 opposite directions preserve the legal short tail window");
+    auto full = s;
+    full.legacy_n[1] = 10;
+    full.scripts.event_calls[105] = 1;
+    input = {};
+    input.selection = 999;
+    input.confirm = true;
+    check(input_startup_world_magic_pot_page(full, directory, input) == E::none &&
+              magic_pot_top(full).id == root && full.scene.random.draws() == 1,
+          "full42 exits before processing an obsolete selection or drawing another ticket");
+    input = {};
+    input.cancel = true;
+    check(input_startup_world_magic_pot_page(s, directory, input) == E::none,
+          "42 parsed cancel follows its normal return script");
+    (void)reach_magic_pot_page(s, 41);
+    input = {};
+    input.right = input.confirm = true;
+    check(input_startup_world_magic_pot_page(s, root, input) == E::none,
+          "41 right and confirm select43 in the same input");
+    const auto recipes = reach_magic_pot_page(s, 43);
+    input = {};
+    input.selection = 6;
+    input.up = input.down = input.left = input.right = true;
+    check(input_startup_world_magic_pot_page(s, recipes, input) == E::none &&
+              s.magic_pot_page_data.at(recipes)[0] == 6 &&
+              s.magic_pot_page_data.at(recipes)[1] == 2 && s.page_phases.at(recipes) == 0,
+          "43 up/down then left/right preserve selected row and tab after viewport repair");
+    input = {};
+    input.right = true;
+    check(input_startup_world_magic_pot_page(s, recipes, input) == E::none &&
+              s.page_phases.at(recipes) == 1,
+          "43 right changes only its original two-tab phase");
+    const auto frozen = startup_world_state_digest(s);
+    input.selection = -1;
+    check(input_startup_world_magic_pot_page(s, recipes, input) == E::invalid_page &&
+              startup_world_state_digest(s) == frozen,
+          "43 invalid selection cannot leave a partial tab change");
 }
 void magic_pot_processing_and_discovery() {
     using A = StartupMagicPotAction;
@@ -5781,6 +5947,7 @@ int main() {
         magic_pot_menu_information();
         magic_pot_entry_and_retirement();
         magic_pot_deposit_pages();
+        magic_pot_input_transactions();
         magic_pot_processing_and_discovery();
         magic_pot_recipe_and_facility_reward();
         magic_pot_equipment_low_level_rewards();

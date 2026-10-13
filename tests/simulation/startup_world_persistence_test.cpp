@@ -438,11 +438,12 @@ void magic_pot_replay(const StartupWorldRuntimeSession &baseline_session,
         p.kind = ref::WorldScriptPageKind::raw_page;
         p.legacy_page = raw;
         p.legacy_g = raw == 46 ? 1 : -1;
+        p.lifecycle = 0; // The real producer queues a pending Init, not a live empty result.
         result.scripts.pages.push_back(p);
-        initialize(result, raw == 45 ? "magic45 queued display" : "magic46 queued discovery");
         result.magic_pot_display = {{{{7, 8, 9, 10, 11}}, {{8, 9, 10, 11, 12}}, {{1, 1, 1, 1, 1}}}};
         result.magic_pot_output = {1, 1, 1, 1}; // 只读演出值组合，不冒充自然处理m的产物。
         result.magic_pot_comment = "就那样吧";
+        initialize(result, raw == 45 ? "magic45 queued display" : "magic46 queued discovery");
         result.page_counters.at(p.id) = raw == 45 ? 83 : 7;
         auto replay = capture(result, raw == 45 ? "magic45 settled display" : "magic46 undiscovered waiting");
         const auto slots = result.legacy_n;

@@ -80,7 +80,8 @@ enum class WorldCommandKind {
     facility_catalog_input,
     facility_item_input,
     village_activity_input,
-    rank_input
+    rank_input,
+    magic_pot_input
 };
 enum class WorldCommandOutcome { applied, rejected };
 struct WorldCommandResult {
@@ -151,6 +152,7 @@ struct WorldCommand {
     simulation::StartupFacilityItemInput facility_item_input;
     simulation::StartupVillageActivityInput village_activity_input;
     simulation::StartupTownRankInput rank_input;
+    simulation::StartupMagicPotInput magic_pot_input;
     simulation::StartupFacilityItemAction facility_item_action{
         simulation::StartupFacilityItemAction::confirm};
     simulation::StartupFacilityCatalogAction facility_catalog_action{
@@ -194,7 +196,7 @@ class WorldSession {
     std::uint64_t act_rank(std::uint64_t page, int selection = 0, bool cancel = false);
     std::uint64_t input_rank(std::uint64_t page, const simulation::StartupTownRankInput &input);
     std::uint64_t input_village_activity(std::uint64_t page,
-                                        const simulation::StartupVillageActivityInput &input);
+                                         const simulation::StartupVillageActivityInput &input);
     // Navigation belongs to the source Owner; the frame only exposes derived visibility.
     std::uint64_t open_main_menu();
     std::uint64_t close_main_menu();
@@ -246,6 +248,8 @@ class WorldSession {
     std::uint64_t open_commerce();
     std::uint64_t open_menu_magic_pot();
     std::uint64_t open_magic_pot();
+    std::uint64_t input_magic_pot(std::uint64_t page,
+                                  const simulation::StartupMagicPotInput &input);
     std::uint64_t act_magic_pot(std::uint64_t page, simulation::StartupMagicPotAction action,
                                 int selection = 0);
     std::uint64_t act_commerce(std::uint64_t page, simulation::StartupCommerceAction action,

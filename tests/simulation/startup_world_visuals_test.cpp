@@ -6,6 +6,7 @@
 #include "steam_facility_skin_example.hpp"
 int check_steam_village_activity_skins(const std::filesystem::path &);
 int check_steam_town_progress_skin(const std::filesystem::path &);
+int check_steam_magic_pot_skins(const std::filesystem::path &);
 
 #include <raylib.h>
 
@@ -924,6 +925,7 @@ int main(int argc, char **argv) {
                                                       : std::filesystem::path{});
         checks += check_steam_village_activity_skins(argv[1]);
         checks += check_steam_town_progress_skin(argv[1]);
+        checks += check_steam_magic_pot_skins(argv[1]);
         owner_mapping();
         coin_effect_queries(argv[1]);
         cpu_portraits(argv[1]);

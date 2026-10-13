@@ -936,14 +936,15 @@ void attribute_result_checks(Checks &check) {
     owner.human_attribute_display={std::array<int,6>{100,100,100,100,100,100},
         std::array<int,6>{130,130,130,130,130,130},std::array<int,6>{30,30,30,30,30,30}};
     owner.human_attribute_display[1][item->effect]=70;owner.human_attribute_display[2][item->effect]=-30;
+    // 100→70的signed余差令终点夹回24；helper返回before100，39才由调用者显示after70。
     for(const auto sample:std::vector<std::array<int,3>>{{1,100,0},{2,100,0},{13,100,0},{14,100,0},
-        {23,100,0},{24,99,0},{25,99,0},{31,99,0},{38,99,0},{39,70,0},{44,70,0},
+        {23,100,0},{24,100,0},{25,100,0},{31,100,0},{38,100,0},{39,70,0},{44,70,0},
         {45,70,1},{59,70,1},{60,70,0},{69,70,0},{70,70,1}}) {
         owner.page_counters[id]=sample[0];plan=steam_human_attribute_result_skin(owner,id,o);
         check(plan&&plan->title=="能力上升", "69只读道具结果标题");
         const auto numbers=parts<SteamFacilityNumber>(*plan);
         check(std::count_if(numbers.begin(),numbers.end(),[](const auto &n){return n.kind==SteamFacilityNumberKind::number;})==6&&
-            std::any_of(numbers.begin(),numbers.end(),[&](const auto &n){return n.kind==SteamFacilityNumberKind::number&&n.parameter==item->effect&&n.value==sample[1];}),"69六主值24/39插值，effect行负差主值下降");
+            std::any_of(numbers.begin(),numbers.end(),[&](const auto &n){return n.kind==SteamFacilityNumberKind::number&&n.parameter==item->effect&&n.value==sample[1];}),"69六主值24/39门槛，effect行负差保持旧值至39再下降");
         check(std::count_if(numbers.begin(),numbers.end(),[](const auto &n){return n.kind!=SteamFacilityNumberKind::number;})==(sample[0]>=2?1:0),"69只effect非零行出差额，其余合法非零不误拒绝或显示");
         const auto imgs=parts<SteamHumanImage>(*plan);
         check(std::any_of(imgs.begin(),imgs.end(),[](const auto &i){return i.asset==SteamHumanAsset::continue_cursor;})==bool(sample[2]),"69满45箭头局部25槽前15可见");
@@ -986,10 +987,11 @@ void attribute_result_checks(Checks &check) {
             const auto numbers=parts<SteamFacilityNumber>(*steam_human_attribute_result_skin(animated,id,o));
             check(std::any_of(numbers.begin(),numbers.end(),[&](const auto &n){return n.parameter==effect&&n.kind==SteamFacilityNumberKind::plus_value&&n.position==std::array<int,2>{202,baseline-bounce[local]};}),"68/69跳动8/12单精度冻结位置oracle");
         }
-        // RateConvert_countAnime源样本：差3提前六槽收口；下降、小差一格和相等独立覆盖。
+        // Steam RVA2A4620与APK一致：差3提前六槽收口，下降／±1保留旧值至调用者末门槛。
         for(const auto sample:std::vector<std::array<int,4>>{{10,13,0,11},{10,13,1,11},{10,13,3,12},{10,13,6,13},
-            {13,10,0,12},{13,10,3,12},{13,10,6,12},{13,10,14,12},{13,10,15,10},
-            {10,11,0,11},{11,10,0,10},{10,10,0,10}}) {
+            {13,10,0,13},{13,10,3,13},{13,10,6,13},{13,10,14,13},{13,10,15,10},
+            {10,11,0,10},{10,11,14,10},{10,11,15,11},
+            {11,10,0,11},{11,10,14,11},{11,10,15,10},{10,10,0,10},{10,10,15,10}}) {
             animated.page_counters[id]=(raw==68?52:24)+sample[2];
             if(raw==68) {
                 animated.equipment_attribute_display[0][effect]=sample[0];animated.equipment_attribute_display[1][effect]=sample[1];animated.equipment_attribute_display[2][effect]=sample[1]-sample[0];
@@ -997,7 +999,7 @@ void attribute_result_checks(Checks &check) {
                 animated.human_attribute_display[0][effect]=sample[0];animated.human_attribute_display[1][effect]=sample[1];animated.human_attribute_display[2][effect]=sample[1]-sample[0];
             }
             const auto numbers=parts<SteamFacilityNumber>(*steam_human_attribute_result_skin(animated,id,o));
-            check(std::any_of(numbers.begin(),numbers.end(),[&](const auto &n){return n.parameter==effect&&n.kind==SteamFacilityNumberKind::number&&n.value==sample[3];}),"68/69countAnime差3/下降停在前值减一至末门槛/±1/零冻结oracle");
+            check(std::any_of(numbers.begin(),numbers.end(),[&](const auto &n){return n.parameter==effect&&n.kind==SteamFacilityNumberKind::number&&n.value==sample[3];}),"68/69countAnime差3/下降及±1保持旧值至末门槛/零冻结oracle");
         }
     }
 }

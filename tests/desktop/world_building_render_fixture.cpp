@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <filesystem>
 #include <functional>
 #include <iostream>
@@ -328,6 +329,7 @@ void render_world_edit_fixture() {
 // One explicit static-page callsite batch, with MAX, rank/commerce gate and stock supplied.
 // Source consumers create/initialize the actual pages; no natural unlock or gameplay claim.
 void world_facility_static_render_fixture() {
+    const bool magic_only = std::getenv("ARK_POT_RENDER_ONLY") != nullptr;
     namespace sim = simulation;
     namespace ui = desktop::ui;
     const auto top_page = [](const auto &state) -> const sim::rules::WorldScriptPage & {
@@ -568,6 +570,8 @@ void world_facility_static_render_fixture() {
     const auto capture = [&](const auto &state, const char *filename, bool narrow,
                              const ui::WorldBuildingView *display_override = nullptr,
                              int first_row = 0) {
+        if (magic_only && !ui::world_magic_pot_page(top_page(state)))
+            return;
         const auto before = state;
         const desktop::Extent extent =
             narrow ? desktop::Extent{240, 256} : desktop::Extent{720, 600};
@@ -583,10 +587,12 @@ void world_facility_static_render_fixture() {
             BeginTextureMode(canvas.texture);
             ClearBackground({145, 211, 247, 255});
             BeginMode2D(raster);
-            if (ui::world_magic_pot_page(page))
-                ui::draw_world_magic_pot(ui::world_magic_pot_view(state, page),
-                                         ui::world_commerce_layout(extent), skin, true);
-            else if (ui::world_commerce_page(page))
+            if (ui::world_magic_pot_page(page)) {
+                auto view = ui::world_magic_pot_view(state, page);
+                ui::prepare_world_magic_pot(view, state, skin);
+                ui::draw_world_magic_pot(view, ui::world_magic_pot_layout(extent, view.raw), skin,
+                                         true);
+            } else if (ui::world_commerce_page(page))
                 ui::draw_world_commerce(ui::world_commerce_view(state, page),
                                         ui::world_commerce_layout(extent), skin, true);
             else if (ui::world_facility_catalog_page(page)) {
@@ -787,11 +793,88 @@ void world_facility_static_render_fixture() {
         const auto file = "raw82-secondary-" + std::to_string(secondary) + "-minimum.png";
         capture(sample, file.c_str(), true);
     }
+    for (auto *s : {&magic, &deposit_list, &deposited, &recipes, &development})
+        s->scripts.pages.back().lifecycle = 1; // Explicit visible frame after complete source Init.
     capture(magic, "raw41-magic-pot.png", true);
     capture(deposit_list, "raw42-pot-items.png", false);
     capture(deposited, "raw44-pot-deposit.png", true);
     capture(recipes, "raw43-pot-recipes.png", false);
     capture(development, "raw47-pot-develop.png", true);
+    // Explicit source callsites, with unchanged payment/Init consumers. Clock mutations below
+    // sample animation boundaries only; these are not a natural discovery/processing claim.
+    for (bool narrow : {true, false}) {
+        capture(magic, narrow ? "pot41-minimum.png" : "pot41-desktop.png", narrow);
+        capture(deposit_list, narrow ? "pot42-minimum.png" : "pot42-desktop.png", narrow);
+        capture(recipes, narrow ? "pot43-minimum.png" : "pot43-desktop.png", narrow);
+        capture(development, narrow ? "pot47-minimum.png" : "pot47-desktop.png", narrow);
+        for (int level : {1, 2, 3}) {
+            auto s = magic;
+            s.legacy_n[11] = level;
+            const auto name =
+                "pot41-level" + std::to_string(level) + (narrow ? "-minimum.png" : "-desktop.png");
+            capture(s, name.c_str(), narrow);
+        }
+        for (int frame : {0, 15, 32, 33, 35, 36, 85, 97, 99}) {
+            auto s = deposited;
+            s.page_counters.at(top_page(s).id) = frame;
+            s.page_secondary_counters.at(top_page(s).id) = 17;
+            const auto name =
+                "pot44-frame" + std::to_string(frame) + (narrow ? "-minimum.png" : "-desktop.png");
+            capture(s, name.c_str(), narrow);
+        }
+        for (int level : {2, 3}) {
+            auto s = deposited;
+            s.legacy_n[11] = level;
+            s.page_counters.at(top_page(s).id) = 27;
+            s.page_secondary_counters.at(top_page(s).id) = 10;
+            const auto name =
+                "pot44-level" + std::to_string(level) + (narrow ? "-minimum.png" : "-desktop.png");
+            capture(s, name.c_str(), narrow);
+        }
+        auto tab = recipes;
+        const auto rid = top_page(tab).id;
+        tab.page_phases.at(rid) = 1;
+        capture(tab, narrow ? "pot43-cost-minimum.png" : "pot43-cost-desktop.png", narrow);
+        const int last = int(tab.magic_pot_page_lists.at(rid).size()) - 1;
+        tab.magic_pot_page_data.at(rid)[0] = tab.magic_pot_page_data.at(rid)[1] = last;
+        capture(tab, narrow ? "pot43-tail-minimum.png" : "pot43-tail-desktop.png", narrow);
+        auto found = magic;
+        sim::rules::WorldScriptPage discovery;
+        discovery.kind = sim::rules::WorldScriptPageKind::raw_page;
+        discovery.legacy_page = 46;
+        discovery.legacy_g = recipe_entries.front();
+        const auto discovered = sim::rules::prepare_world_script_page(
+            sim::startup_world_runtime_scripts(found), discovery);
+        require(discovered.candidate &&
+                    sim::write_startup_world_runtime_scripts(found, discovered.candidate->state) &&
+                    sim::initialize_startup_world_magic_pot_pages(found),
+                "Discovery render callsite rejected");
+        found.page_counters.at(top_page(found).id) = 7;
+        found.scripts.pages.back().lifecycle = 1;
+        capture(found, narrow ? "pot46-minimum.png" : "pot46-desktop.png", narrow);
+        auto report = magic;
+        sim::rules::WorldScriptPage processing;
+        processing.kind = sim::rules::WorldScriptPageKind::raw_page;
+        processing.legacy_page = 45;
+        const auto processed = sim::rules::prepare_world_script_page(
+            sim::startup_world_runtime_scripts(report), processing);
+        require(processed.candidate &&
+                    sim::write_startup_world_runtime_scripts(report, processed.candidate->state),
+                "Report render callsite rejected");
+        report.legacy_n[2] = 3;
+        report.magic_pot_display = {
+            {{980, 100, 0, 42, 20}, {999, 108, 1, 42, 21}, {30, 8, 1, 0, 1}}};
+        require(sim::initialize_startup_world_magic_pot_pages(report), "Report payload rejected");
+        report.scripts.pages.back().lifecycle = 1;
+        for (int frame : {0, 62, 76, 77, 82, 83}) {
+            report.page_counters.at(top_page(report).id) = frame;
+            const auto name =
+                "pot45-frame" + std::to_string(frame) + (narrow ? "-minimum.png" : "-desktop.png");
+            capture(report, name.c_str(), narrow);
+        }
+    }
+    if (magic_only)
+        return;
     // cd13 rendering callsite: six attributes plus mixed lifted-equipment records.
     // This verifies paint order and actual font measurement, not a natural visit/reward.
     auto effects = initial_world();

@@ -140,6 +140,7 @@ class StartupApplication {
     std::string open_magic_pot(StartupMagicPotEntry entry);
     std::string act_magic_pot_page(std::uint64_t page, StartupMagicPotAction action,
                                    int selection = 0);
+    std::string input_magic_pot_page(std::uint64_t page, const StartupMagicPotInput &input);
     std::string open_task_menu();
     std::string open_task_control_menu();
     StartupApplicationTaskResult act_task_page(std::uint64_t page, StartupWorldTaskAction action,

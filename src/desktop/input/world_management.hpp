@@ -30,6 +30,8 @@ class WorldManagement {
         facility_items_.scrolling = false;
         facility_catalog_gesture_.scrolling = false;
         human_gesture_ = {};
+        magic_gesture_.marked_row.reset();
+        magic_gesture_.scrolling = false;
     }
     bool input_page(const app::WorldState &state, const simulation::rules::WorldScriptPage &page,
                     Extent extent, std::optional<Vector2> mouse, bool click, bool back,
@@ -70,6 +72,8 @@ class WorldManagement {
     ui::WorldHumanGesture human_gesture_;
     mutable std::optional<ui::WorldFacilityPaintedControls> village_controls_;
     ui::WorldFacilityGesture village_gesture_;
+    mutable std::optional<ui::WorldFacilityPaintedControls> magic_controls_;
+    ui::WorldFacilityGesture magic_gesture_;
     int edit_mode_{-1};
     std::optional<int> definition_;
     std::optional<simulation::rules::Position> anchor_;

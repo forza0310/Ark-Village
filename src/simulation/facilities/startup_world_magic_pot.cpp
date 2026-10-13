@@ -138,14 +138,33 @@ std::optional<std::uint64_t> open(State &s, int raw, int binding = -1,
     return id;
 }
 bool payload(const State &s, const Page &p);
+bool presentation_payload(const State &s, int raw) {
+    if (raw != 44 && raw != 45) return true;
+    if (raw == 44 && s.magic_pot_comment.empty()) return false;
+    if (raw == 45) {
+        const auto capacity = ref::world_magic_pot_capacity(s.legacy_n[11]);
+        if (!capacity || s.legacy_n[2] < 0 || s.legacy_n[2] > *capacity) return false;
+    }
+    // 冻结scratch仅在有消费者时验证三元关系；增量是原请求量，不是封顶后的差额。
+    for (int column = 0; column < (raw == 44 ? 4 : 5); ++column) {
+        const auto before = s.magic_pot_display[0][column], after = s.magic_pot_display[1][column],
+                   requested = s.magic_pot_display[2][column];
+        if (before < 0 || before > 999 || after < 0 || after > 999 || requested < 0 ||
+            std::int64_t(after) != std::min<std::int64_t>(999, std::int64_t(before) + requested)) return false;
+    }
+    return true;
+}
 bool parent_valid(const State &s, const Page &p) {
     int raw = p.legacy_page == 42 || p.legacy_page == 43 ? 41
               : p.legacy_page == 44 ? 42 : p.legacy_page == 47 ? 43 : -1;
     const auto parent = s.magic_pot_page_parents.find(p.id);
     if (raw == -1) return parent == s.magic_pot_page_parents.end();
     if (parent == s.magic_pot_page_parents.end() || parent->second == p.id) return false;
-    const auto father = page(s, parent->second);
-    if (!father || father->legacy_page != raw || father->kind != ref::WorldScriptPageKind::raw_page ||
+    const auto found = std::find_if(s.scripts.pages.begin(), s.scripts.pages.end(),
+        [&](const auto &entry) { return entry.id == parent->second; });
+    const auto father = found == s.scripts.pages.end() ? nullptr : &*found;
+    if (!father || (p.lifecycle != 4 && father->lifecycle == 4) ||
+        father->legacy_page != raw || father->kind != ref::WorldScriptPageKind::raw_page ||
         !payload(s, *father))
         return false;
     if (p.legacy_page == 47) {
@@ -158,8 +177,8 @@ bool parent_valid(const State &s, const Page &p) {
     // 锚点原父页必须是紧邻下层的存活页，不能任意同类页替代。
     const Page *previous = nullptr;
     for (const auto &entry : s.scripts.pages) {
-        if (entry.lifecycle == 4) continue;
         if (entry.id == p.id) return previous && previous->id == father->id;
+        if (entry.lifecycle == 4 && entry.id != father->id) continue;
         previous = &entry;
     }
     return false;
@@ -168,16 +187,21 @@ void scroll(std::array<int, 3> &v, int count) {
     if (count == 0) { v[0] = v[1] = 0; return; }
     if (v[0] >= count) v[0] = count - 1;
     if (v[1] > v[0]) v[1] = v[0];
-    if (v[1] + 5 <= v[0]) v[1] = v[0] - 4;
+    if (v[0] - v[1] >= 5) v[1] = v[0] - 4;
 }
 bool payload(const State &s, const Page &p) {
     const auto d = s.magic_pot_page_data.find(p.id);
     const auto list = s.magic_pot_page_lists.find(p.id);
     const auto count = s.page_counters.find(p.id), phase = s.page_phases.find(p.id);
-    if (!definitions(s) || !s.magic_pot_pages_initialized.count(p.id) ||
+    if (!definitions(s) || !presentation_payload(s, p.legacy_page) || !s.magic_pot_pages_initialized.count(p.id) ||
         d == s.magic_pot_page_data.end() || list == s.magic_pot_page_lists.end() ||
         count == s.page_counters.end() || phase == s.page_phases.end() ||
         count->second < 0 || phase->second < 0 || !parent_valid(s, p)) return false;
+    const auto secondary = s.page_secondary_counters.find(p.id);
+    if (p.legacy_page == 44) {
+        if (count->second == std::numeric_limits<int>::max() || secondary == s.page_secondary_counters.end() ||
+            secondary->second < 0 || secondary->second == std::numeric_limits<int>::max()) return false;
+    } else if (secondary != s.page_secondary_counters.end()) return false;
     const auto &v = d->second;
     if (v[0] < 0 || v[1] < 0 || list->second.size() > static_cast<std::size_t>(std::numeric_limits<int>::max()))
         return false;
@@ -201,9 +225,8 @@ bool payload(const State &s, const Page &p) {
            (p.legacy_page != 47 || r->second.status != 0);
 }
 bool initialize(State &s, const Page &p) {
+    if (!valid_startup_world_magic_pot_page(s, p) || p.lifecycle == 4) return false;
     if (s.magic_pot_pages_initialized.count(p.id)) return payload(s, p);
-    if (!definitions(s) || !parent_valid(s, p) ||
-        s.magic_pot_page_data.count(p.id) || s.magic_pot_page_lists.count(p.id)) return false;
     std::vector<int> list;
     if (p.legacy_page == 42) {
         const auto entries = item_list(s); if (!entries) return false; list = *entries;
@@ -217,6 +240,7 @@ bool initialize(State &s, const Page &p) {
     s.magic_pot_page_lists.emplace(p.id, std::move(list));
     s.page_counters.try_emplace(p.id, 0);
     s.page_phases.try_emplace(p.id, 0);
+    if (p.legacy_page == 44) s.page_secondary_counters.emplace(p.id, 0);
     s.magic_pot_pages_initialized.insert(p.id);
     if (!payload(s, p)) return false;
     if (p.legacy_page == 41 && !seen(s, 101) && !event(s, 101)) return false;
@@ -296,10 +320,16 @@ bool grant(State &s, int kind, int id) {
 
 bool valid_startup_world_magic_pot_page(const State &s, const Page &p) {
     if (!supported(p.legacy_page) || p.kind != ref::WorldScriptPageKind::raw_page ||
-        p.lifecycle < 0 || p.lifecycle >= 4) return false;
+        p.lifecycle < 0 || p.lifecycle > 4) return false;
+    // 关闭与Finish分开：未Finish的载荷须完整，全量退休后才允许空载荷。
+    if (p.lifecycle == 4 && !s.magic_pot_pages_initialized.count(p.id) &&
+        !s.magic_pot_page_data.count(p.id) && !s.magic_pot_page_lists.count(p.id) &&
+        !s.magic_pot_page_parents.count(p.id) && !s.page_counters.count(p.id) &&
+        !s.page_phases.count(p.id) && !s.page_secondary_counters.count(p.id)) return true;
     if (s.magic_pot_pages_initialized.count(p.id)) return payload(s, p);
-    if (p.lifecycle != 0 || !definitions(s) || !parent_valid(s, p) ||
-        s.magic_pot_page_data.count(p.id) || s.magic_pot_page_lists.count(p.id)) return false;
+    if (p.lifecycle != 0 || !definitions(s) || !presentation_payload(s, p.legacy_page) || !parent_valid(s, p) ||
+        s.magic_pot_page_data.count(p.id) || s.magic_pot_page_lists.count(p.id) ||
+        s.page_secondary_counters.count(p.id)) return false;
     const auto count = s.page_counters.find(p.id), phase = s.page_phases.find(p.id);
     if ((count != s.page_counters.end() && count->second != 0) ||
         (phase != s.page_phases.end() && phase->second != 0)) return false;
@@ -465,6 +495,59 @@ Error act_startup_world_magic_pot_page(State &s, std::uint64_t id, Action action
     } else return Error::invalid_page;
     next.scripts.executing_page.reset(); s = std::move(next); return Error::none;
 }
+Error input_startup_world_magic_pot_page(State &s, std::uint64_t id, const StartupMagicPotInput &input) {
+    const auto p = top(s);
+    if (!p || p->id != id || p->kind != ref::WorldScriptPageKind::raw_page ||
+        !supported(p->legacy_page) || s.scene.framework_paused) return Error::invalid_page;
+    if (!payload(s, *p)) return Error::missing_source;
+    const int raw = p->legacy_page;
+    auto next = s;
+    auto &v = next.magic_pot_page_data.at(id);
+    const auto &list = next.magic_pot_page_lists.at(id);
+    // 原42先退出空池/满壶，才解析方向与确认；退出脚本同样属于本次候选。
+    if (raw == 42 && (list.empty() || next.legacy_n[1] >= *ref::world_magic_pot_capacity(next.legacy_n[11]))) {
+        next.scripts.executing_page = id;
+        if (!exit_deposit(next, id)) return Error::script_failed;
+        next.scripts.executing_page.reset();
+        s = std::move(next); return Error::none;
+    }
+    if ((raw == 41 && (input.up || input.down || input.scroll)) ||
+        (raw == 42 && (input.left || input.right)) ||
+        (raw >= 44 && (input.up || input.down || input.left || input.right || input.selection || input.scroll)) ||
+        (raw == 45 && input.cancel && !input.confirm)) return Error::invalid_page;
+    if (raw <= 43) {
+        const int size = raw == 41 ? 2 : static_cast<int>(list.size());
+        if (size == 0) return Error::missing_source;
+        if (input.scroll) {
+            if (input.scroll->value == std::numeric_limits<int>::max()) return Error::invalid_page;
+            const auto wanted = input.scroll->absolute ? std::int64_t(input.scroll->value)
+                : std::int64_t(v[1]) + input.scroll->value;
+            const auto first = static_cast<int>(std::clamp(wanted, std::int64_t(0),
+                std::int64_t(std::max(0, size - 5))));
+            v[0] += first - v[1]; v[1] = first;
+        }
+        if (input.selection) {
+            if (*input.selection < 0 || *input.selection >= size) return Error::invalid_page;
+            v[0] = *input.selection;
+        }
+        const bool previous = raw == 41 ? input.left : input.up;
+        const bool following = raw == 41 ? input.right : input.down;
+        if (previous) v[0] = v[0] == 0 ? size - 1 : v[0] - 1;
+        if (following) v[0] = v[0] == size - 1 ? 0 : v[0] + 1;
+        if (raw != 41) scroll(v, size);
+        if (raw == 43) {
+            auto &tab = next.page_phases.at(id);
+            if (input.left) tab = 1 - tab;
+            if (input.right) tab = 1 - tab;
+        }
+    }
+    if (input.confirm || input.cancel) {
+        const auto error = act_startup_world_magic_pot_page(next, id,
+            input.confirm ? Action::confirm : Action::cancel);
+        if (error != Error::none) return error;
+    }
+    s = std::move(next); return Error::none;
+}
 std::optional<State> update_startup_world_magic_pot_page(const State &s, std::uint64_t id) {
     const auto p = top(s);
     if (!p || p->id != id || !supported(p->legacy_page)) return {};
@@ -477,6 +560,13 @@ std::optional<State> update_startup_world_magic_pot_page(const State &s, std::ui
         auto &count = next.page_counters.find(id)->second;
         if (count == std::numeric_limits<int>::max()) return {};
         ++count;
+        if (original.legacy_page == 44) {
+            auto &secondary = next.page_secondary_counters.at(id);
+            count %= std::numeric_limits<int>::max();
+            secondary = (secondary + 1) % std::numeric_limits<int>::max();
+            // 原Draw44在35调用SE8；已批准的维护适配将其交给Owner逐更新恰一次输出。
+            if (count == 35) next.sound_requests.push_back({StartupAudioOperation::ordinary_play, 8});
+        }
         if (original.legacy_page == 42) {
             const auto &list = next.magic_pot_page_lists.find(id)->second;
             if ((list.empty() || next.legacy_n[1] >= *ref::world_magic_pot_capacity(next.legacy_n[11])) &&

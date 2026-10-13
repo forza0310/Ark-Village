@@ -6,6 +6,15 @@
 
 复用[研究内容索引](../research/dungeon_village_1/rules/PROGRESSION_CONTENT.md)、[研究路线合同](../research/dungeon_village_1/rules/PROGRESSION_ROUTES.md)和[产品经营覆盖](stages/ACTIVE_VILLAGE_PLAN.md#full-unlock-campaign)，不另建逐ID重复策划库或每批报告。实际玩家取得、消费、效果和冷载证据由产品验收，定义枚举/条件夹具不升级为自然全覆盖。源码按已存在游戏模块与依赖方向组织，高内聚、避免桌面反向承载核心；清理无用/退休/重复过程项前核引用和覆盖归属，保留核心代码、来源适配、DLL防错、存档身份及有效证据。可重建临时输出留忽略build，不恢复research/work重构任务。
 
+<a id="research-e4dc38a-magic-pot"></a>
+### 魔法壶目录与演出接续（e4dc38a）
+
+沿已批准持续goal和有序皮肤接线方案，固定正式e4dc38a，先于57a31cb任务界面接入。迁入41–47只读计划、同轮输入、44独立副钟与严格恢复，并同时接共享人物结果插值修正；保留既有适配与有效断言，不消费研究窗口宿主或未提交募集皮肤。资源复用已打包的壶、人物、数字及奖励图标，不新增策划数据。
+
+现village模块替换旧手写壶页面，解除对商会布局/输入的依赖；复用公共图元执行器、已画几何和滚动捕获，实际字体测宽后执行原序计划。41左右选择；42按marker16两次释放同一已提交行才投入；43无marker，同次选行并确认；44–47沿原计数门槛。整帧DTO经WorldSession一次提交Owner，pending/generation/失焦边界保持，绘制不付款、抽评语、推进计数或发声音。44的SE8只由正式Owner在35计数排一次。
+
+维护世界5/应用8/系统2、玩家schema5及独立产品系统身份保持；副钟沿既有map，不新增玩家持久字段，冷载仍清页面。复用现pages/restore/visuals与产品session/UI/save套件，集中两Debug标准排三个月，补Release受影响、七页/最小窗口/合法尾窗/计数边界条件截图与真实投入流程。原OS输入、字体和自然全解锁分别记录，不把皮肤验收认证为全经营完成。
+
 <a id="research-fd69d44-village-progress"></a>
 ### 村办、晋级与领取接续（fd69d44）
 

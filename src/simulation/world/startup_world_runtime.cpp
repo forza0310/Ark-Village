@@ -1222,6 +1222,10 @@ StartupWorldRuntimeSession::act_magic_pot_page(std::uint64_t page, StartupMagicP
                                                int selection) {
     return act_startup_world_magic_pot_page(state_, page, action, selection);
 }
+StartupWorldRuntimeError StartupWorldRuntimeSession::input_magic_pot_page(
+    std::uint64_t page, const StartupMagicPotInput &input) {
+    return input_startup_world_magic_pot_page(state_, page, input);
+}
 StartupWorldRuntimeError StartupWorldRuntimeSession::act_human_page(std::uint64_t page,
                                                                     StartupHumanPageAction action,
                                                                     int selection) {

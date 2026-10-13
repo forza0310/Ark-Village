@@ -237,10 +237,17 @@ void magic_pot_commands() {
     const auto before = state;
     app::WorldSession session(state);
     const auto generic = session.ack_page(page);
-    const auto deposited = session.act_magic_pot(page, Pot::confirm);
+    sim::StartupMagicPotInput invalid_input;
+    invalid_input.selection = -1;
+    const auto invalid = session.input_magic_pot(page, invalid_input);
+    sim::StartupMagicPotInput deposit_input;
+    deposit_input.up = deposit_input.down = deposit_input.confirm = deposit_input.cancel = true;
+    deposit_input.selection = 0;
+    const auto deposited = session.input_magic_pot(page, deposit_input);
     const auto duplicate = session.act_magic_pot(page, Pot::confirm);
     const auto done = input_frame(session, session.set_paused(true));
     check(!done->failed && input_result(*done, generic).outcome == Outcome::rejected &&
+              input_result(*done, invalid).outcome == Outcome::rejected &&
               input_result(*done, deposited).outcome == Outcome::applied &&
               input_result(*done, duplicate).outcome == Outcome::rejected &&
               task_top(*done->state).legacy_page == 44 &&
@@ -678,55 +685,73 @@ void editing_command_transactions() {
 }
 void village_command_transactions() {
     {
-        auto source=village_fixture();
-        check(sim::open_startup_world_village_activities(source)==sim::StartupWorldRuntimeError::none&&
+        auto source = village_fixture();
+        check(sim::open_startup_world_village_activities(source) ==
+                      sim::StartupWorldRuntimeError::none &&
                   sim::initialize_startup_world_village_activity_pages(source),
               "Batched activity transport opens its real51 source payload");
-        for(int n=0;n<4&&task_top(source).lifecycle==0;++n)source=advance(std::move(source));
-        const auto page=task_top(source).id;
-        check(task_top(source).legacy_page==51&&task_top(source).lifecycle!=0,
+        for (int n = 0; n < 4 && task_top(source).lifecycle == 0; ++n)
+            source = advance(std::move(source));
+        const auto page = task_top(source).id;
+        check(task_top(source).legacy_page == 51 && task_top(source).lifecycle != 0,
               "Batched activity transport waits for actual source lifecycle admission");
         app::WorldSession frames(source);
-        sim::StartupVillageActivityInput bad;bad.selection=99;
-        const auto denied=frames.input_village_activity(page,bad);
-        sim::StartupVillageActivityInput combined;combined.selection=1;combined.down=true;combined.confirm=true;
-        const auto accepted=frames.input_village_activity(page,combined);
-        const auto duplicate=frames.input_village_activity(page,combined);
-        const auto result=input_frame(frames,frames.set_paused(true));
-        check(!result->failed&&input_result(*result,denied).outcome==app::WorldCommandOutcome::rejected&&
-                  input_result(*result,accepted).outcome==app::WorldCommandOutcome::applied&&
-                  input_result(*result,duplicate).outcome==app::WorldCommandOutcome::rejected&&
-                  task_top(*result->state).legacy_page==52&&
-                  result->state->activity_page_bindings.at(task_top(*result->state).id)==16&&
-                  result->state->activity_page_selections.at(page)==0&&
-                  result->state->village_points==source.village_points&&
-                  result->state->quarter_counter==source.quarter_counter&&
-                  result->state->events_held==source.events_held&&
-                  result->state->scene.random.draws()==source.scene.random.draws(),
-              "One FIFO frame applies selection then direction then preview; stale duplicate cannot pay or redraw portraits");
+        sim::StartupVillageActivityInput bad;
+        bad.selection = 99;
+        const auto denied = frames.input_village_activity(page, bad);
+        sim::StartupVillageActivityInput combined;
+        combined.selection = 1;
+        combined.down = true;
+        combined.confirm = true;
+        const auto accepted = frames.input_village_activity(page, combined);
+        const auto duplicate = frames.input_village_activity(page, combined);
+        const auto result = input_frame(frames, frames.set_paused(true));
+        check(!result->failed &&
+                  input_result(*result, denied).outcome == app::WorldCommandOutcome::rejected &&
+                  input_result(*result, accepted).outcome == app::WorldCommandOutcome::applied &&
+                  input_result(*result, duplicate).outcome == app::WorldCommandOutcome::rejected &&
+                  task_top(*result->state).legacy_page == 52 &&
+                  result->state->activity_page_bindings.at(task_top(*result->state).id) == 16 &&
+                  result->state->activity_page_selections.at(page) == 0 &&
+                  result->state->village_points == source.village_points &&
+                  result->state->quarter_counter == source.quarter_counter &&
+                  result->state->events_held == source.events_held &&
+                  result->state->scene.random.draws() == source.scene.random.draws(),
+              "One FIFO frame applies selection then direction then preview; stale duplicate "
+              "cannot pay or redraw portraits");
         frames.stop();
     }
     {
-        auto source=initial();
-        sim::rules::WorldScriptPage p;p.kind=sim::rules::WorldScriptPageKind::raw_page;
-        p.legacy_page=48;p.lifecycle=0;
-        const auto opened=sim::rules::prepare_world_script_page(sim::startup_world_runtime_scripts(source),p);
-        check(opened.candidate&&sim::write_startup_world_runtime_scripts(source,opened.candidate->state)&&
+        auto source = initial();
+        sim::rules::WorldScriptPage p;
+        p.kind = sim::rules::WorldScriptPageKind::raw_page;
+        p.legacy_page = 48;
+        p.lifecycle = 0;
+        const auto opened =
+            sim::rules::prepare_world_script_page(sim::startup_world_runtime_scripts(source), p);
+        check(opened.candidate &&
+                  sim::write_startup_world_runtime_scripts(source, opened.candidate->state) &&
                   sim::initialize_startup_world_town_progress_pages(source),
               "Batched rank transport initializes the real48 phase selection");
-        const auto page=task_top(source).id;
+        const auto page = task_top(source).id;
         app::WorldSession frames(source);
-        sim::StartupTownRankInput bad;bad.selection=5;
-        const auto denied=frames.input_rank(page,bad);
-        sim::StartupTownRankInput combined;combined.selection=2;combined.up=true;
-        const auto moved=frames.input_rank(page,combined);
-        const auto result=input_frame(frames,frames.set_paused(true));
-        check(!result->failed&&input_result(*result,denied).outcome==app::WorldCommandOutcome::rejected&&
-                  input_result(*result,moved).outcome==app::WorldCommandOutcome::applied&&
-                  result->state->page_phases.at(page)==1&&result->state->rank==source.rank&&
-                  result->state->scene.world.world.ai.accounting.funds()==source.scene.world.world.ai.accounting.funds()&&
-                  result->state->scene.random.draws()==source.scene.random.draws(),
-              "Rank selection belongs to Owner; malformed row refuses without funds, promotion or RNG");
+        sim::StartupTownRankInput bad;
+        bad.selection = 5;
+        const auto denied = frames.input_rank(page, bad);
+        sim::StartupTownRankInput combined;
+        combined.selection = 2;
+        combined.up = true;
+        const auto moved = frames.input_rank(page, combined);
+        const auto result = input_frame(frames, frames.set_paused(true));
+        check(!result->failed &&
+                  input_result(*result, denied).outcome == app::WorldCommandOutcome::rejected &&
+                  input_result(*result, moved).outcome == app::WorldCommandOutcome::applied &&
+                  result->state->page_phases.at(page) == 1 && result->state->rank == source.rank &&
+                  result->state->scene.world.world.ai.accounting.funds() ==
+                      source.scene.world.world.ai.accounting.funds() &&
+                  result->state->scene.random.draws() == source.scene.random.draws(),
+              "Rank selection belongs to Owner; malformed row refuses without funds, promotion or "
+              "RNG");
         frames.stop();
     }
     auto state = village_fixture();

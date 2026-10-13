@@ -205,6 +205,10 @@ void apply_world_decision(WorldState &state, const WorldCommand &command,
                       state, command.page, command.magic_pot_action, command.selection)
                 : Error::invalid_page;
         break;
+    case Kind::magic_pot_input:
+        result.runtime_error = simulation::input_startup_world_magic_pot_page(
+            state, command.page, command.magic_pot_input);
+        break;
     case Kind::open_menu_tasks:
     case Kind::open_task_menu:
         result.runtime_error = simulation::open_startup_world_runtime_task_menu(state);
@@ -751,6 +755,14 @@ std::uint64_t WorldSession::open_magic_pot() {
     command.kind = WorldCommandKind::open_magic_pot;
     return submit(command);
 }
+std::uint64_t WorldSession::input_magic_pot(std::uint64_t page,
+                                            const simulation::StartupMagicPotInput &input) {
+    WorldCommand command;
+    command.kind = WorldCommandKind::magic_pot_input;
+    command.page = page;
+    command.magic_pot_input = input;
+    return submit(command);
+}
 std::uint64_t WorldSession::act_magic_pot(std::uint64_t page,
                                           simulation::StartupMagicPotAction action, int selection) {
     WorldCommand command;
@@ -777,15 +789,16 @@ std::uint64_t WorldSession::act_rank(std::uint64_t page, int selection, bool can
     return submit(command);
 }
 std::uint64_t WorldSession::input_rank(std::uint64_t page,
-                                      const simulation::StartupTownRankInput &input) {
+                                       const simulation::StartupTownRankInput &input) {
     WorldCommand command;
     command.kind = WorldCommandKind::rank_input;
     command.page = page;
     command.rank_input = input;
     return submit(command);
 }
-std::uint64_t WorldSession::input_village_activity(
-    std::uint64_t page, const simulation::StartupVillageActivityInput &input) {
+std::uint64_t
+WorldSession::input_village_activity(std::uint64_t page,
+                                     const simulation::StartupVillageActivityInput &input) {
     WorldCommand command;
     command.kind = WorldCommandKind::village_activity_input;
     command.page = page;

@@ -8,6 +8,8 @@
 
 `startup_clear_skin(stage, stage_counter, page_counter)`返回计分背景、按原序排列的右大臣／左秘书及可选继续箭头。阶段计数与页面计数不可混用：stage4按页面计数四步切换角色；继续箭头只在0／3／6阶段恰满门槛且页面相位大于20时请求。非法阶段、负计数和超阶段门槛显式返回空结果；页面计数INT_MAX合法取模。
 
+Steam完整局部绘制由[steam_clear_score_skin.hpp](include/dungeon_village_prototype/steam_clear_score_skin.hpp)独立提供：按原序输出窗框、背景、两角色、阶段正文、累计／旧纪录和全局Touch2。`SteamClearScoreInput`分开阶段钟与主钟，六行只读；数字是带分组的普通Font文字，不使用SEB或擅加数量单位。标题和阶段3数字两次测宽由调用后端提供；中文文案沿APK适配，English仅选择已核标签位置。`steam_clear_score_input`从真实应用取得完整关联，拒绝未初始化、错页、缺钟或阶段不符，不在绘制中补字段／奖励。旧APK图片接口保留原有独立oracle，不冒充Steam整页。
+
 `sprite<0`时直接裁PNG；否则按指定sprite／frame／layer解析原SEB，并在外部锚点上**只加一次**SEB偏移。角色的(-7,-22)是脚底偏移；箭头frame0只占14×5原图的左侧7×5。大臣SEB历史10／11帧越界不属于raw17请求，不能放宽素材校验让其通过。
 
 绘制顺序需由调用方维持背景→内框→右大臣／左秘书→阶段文字／提示→累计与最高分的源层关系；背景、角色、标记分开返回，便于插入尚未实现的窗口和文字。stage6满门槛是否被框架绘制、stage7何时退休仍由原调度资格决定，局部查询不承诺这些状态可见。

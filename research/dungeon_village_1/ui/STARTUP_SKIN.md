@@ -167,14 +167,15 @@ common SEB2 arrow01＋图片72，frame0，锚(213,179)，stage6用(213,167)。
 
 **必须保留两个钟。** `SubForm.frame_`偏移`0xA0`决定角色动作和箭头闪烁；
 `clearPoint_cnt`偏移`0x1C0`决定阶段文字显隐，`clearPoint_mode/index`分别在`0x1BC/0x1C4`。
-`Init`在`10312616`显式清`frame_`，17分支`10314B87–10314BBF`停BGM、捕获旧最高分并统计六类。
+`Init`在`10312616`显式清`frame_`，17分支`10314B87–10314BBF`调用`AppData.PlayBgm(0)`、捕获旧最高分并统计六类。这里切换到资源0（标题曲），不是`StopBgm`；此前“停BGM”措辞已按真实调用RVA25F6D0纠正。
 通用`Update`先在`10321B63–74`对主钟执行一次`(+1)%INT_MAX`，
 正常到达17分支`10321DA0→103262D9`后，`Update_clearPoint`又在`103211F4–10321204`执行一次相同推进。
 因此**实际调用到计分专支的一轮主钟推进两次**；两次取模须顺序执行，阶段钟另按阶段门槛推进／饱和／清零。
 通用等待提前返回时仅发生首次主钟推进，不能将所有框架轮统一写成加2。
 专支不因阶段切换清主钟；阶段钟清0与主钟不是同一字段。框架是否调用本表单、暂停及退休资格仍由上游负责，本局部不换算秒数。
-目前应用`clear.counter`及复写的`page_counters`是阶段钟，不能直接拿它们绘Steam演员或箭头；
-接完整皮肤／精确应用恢复时须另行维护独立主钟，现适配窗口不代表这条链已实现。
+维护应用`clear.counter`及复写的`page_counters`继续保存阶段钟，独立主钟复用`page_secondary_counters`；
+[正式计划与只读应用桥](../prototype/include/dungeon_village_prototype/steam_clear_score_skin.hpp)已接研究窗口、初始化／恢复／退休。
+只支持已核自然raw17的wait0产生链，不把现有毫秒等待挪作SubForm.wait；通用非零wait及完整原框架调度仍是独立缺口。
 
 | 绘制层／条件 | Steam直接读者 |
 | --- | --- |

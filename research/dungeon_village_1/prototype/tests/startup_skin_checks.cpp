@@ -1,4 +1,5 @@
 #include "dungeon_village_prototype/startup_skin.hpp"
+#include "dungeon_village_prototype/steam_clear_score_skin.hpp"
 #include "dungeon_village_prototype/startup_information.hpp"
 #include "dungeon_village_prototype/steam_information_skin.hpp"
 #include "dungeon_village_prototype/startup_world_information.hpp"
@@ -357,6 +358,126 @@ void phases(Checks &check) {
     const auto maximum=startup_clear_skin(4,65,std::numeric_limits<int>::max());
     check(maximum && maximum->actors[0].frame==7 && maximum->actors[1].frame==6 &&
               !maximum->continue_marker,"页面INT_MAX合法取模，无计数增长或溢出");
+}
+void steam_clear_score_skin_checks(Checks &check) {
+    // 仅绘制条件夹具：六数量/六得分是独立字面，不构造自然通关或第二套计分消费者。
+    StartupClearScoreRows rows{{{1234,5678},{2,20},{3,30},{4,40},{5,50},{6,60}}};
+    SteamClearScoreInput in;in.rows=rows;in.sum=1234567890123LL;in.captured_high_score=9876543210LL;
+    SteamClearScoreOptions options;options.title_widths=std::array<int,2>{84,86};options.score_widths={12,14};
+    auto body=[](const SteamClearScorePlan &p) {
+        std::vector<SteamHumanOverviewText> result;
+        for(const auto &op:p.operations)if(const auto *t=std::get_if<SteamHumanOverviewText>(&op))
+            if(t->rectangle[1]>=105&&t->rectangle[1]<=127)result.push_back(*t);
+        return result;
+    };
+    auto images=[](const SteamClearScorePlan &p) {
+        std::vector<SteamHumanImage> result;
+        for(const auto &op:p.operations)if(const auto *v=std::get_if<SteamHumanImage>(&op))result.push_back(*v);
+        return result;
+    };
+    auto words=[&](const SteamClearScorePlan &p) {
+        std::vector<std::string> result;for(const auto &t:body(p))result.push_back(t.value);return result;
+    };
+    for(int stage=0;stage<8;++stage)for(int phase:{14,15,39,40,44,45}) {
+        in.stage=stage;in.stage_counter=phase;in.main_counter=4;
+        const auto plan=steam_clear_score_skin(in,options);check(bool(plan),"Steam17八阶段阈值条件可绘");
+        std::vector<std::string> expected;
+        if(stage==0){if(phase>=15)expected.push_back("那么赶紧开始计算");if(phase>=45)expected.push_back("通关点数吧。");}
+        if(stage==1){if(phase>=15)expected.push_back("街道人气");if(phase>=45)expected.push_back("1,234");}
+        if(stage==2&&phase>=15)expected.push_back("通关点数…");
+        if(stage==3&&phase>=15)expected={"5,678","点追加!!"};
+        if(stage==4)expected={"排行榜更新！"};
+        if(stage==5&&phase>=15)expected.push_back("接下来…");
+        if(stage==6){if(phase>=15)expected.push_back("通关点数的计算");if(phase>=40)expected.push_back("就是这样。");}
+        check(words(*plan)==expected,"Steam17阶段钟独立决定正文，14/15、39/40、44/45不串阶段");
+        for(const auto &t:body(*plan))check(!t.layout&&!t.rich&&t.font_size==0,
+            "Steam17正文普通Font，数量空单位不变成SEB数字或TextLayout");
+        const auto parts=images(*plan);
+        check(parts.size()==3&&
+            parts[0].asset==SteamHumanAsset::ceremony_background&&parts[0].position==std::array<int,2>{30,105}&&
+            parts[0].crop==std::array<int,4>{0,0,180,80}&&
+            parts[1].asset==SteamHumanAsset::president&&parts[1].position==std::array<int,2>{190,181}&&
+            parts[1].frame==(stage==4?7:1)&&parts[2].asset==SteamHumanAsset::secretary&&
+            parts[2].position==std::array<int,2>{51,181}&&parts[2].frame==(stage==4?6:0),
+            "Steam17出版背景及大臣先秘书的资源锚，演员只读独立主钟");
+        check(plan->soft_labels==std::array<int,2>{0,0},"Steam17源空软标签，不借管理页取消");
+        const auto *touch=std::get_if<SteamStartupTouch>(&plan->operations.back());
+        check(touch&&touch->component==2&&touch->value==0&&touch->option==2&&!touch->rectangle&&!touch->image_draw,
+            "Steam17末尾全局Touch2保留option2，无自造按钮矩形");
+    }
+    // 底层phases已负责全面主钟取模；完整计划仅补角色/箭头的独立接线。
+    for(const auto sample:std::array<std::array<int,4>,5>{{{0,74,21,0},{0,75,20,0},{0,75,21,1},{3,46,21,0},{6,65,39,1}}}) {
+        in.stage=sample[0];in.stage_counter=sample[1];in.main_counter=sample[2];
+        const auto plan=steam_clear_score_skin(in,options);check(bool(plan),"Steam17箭头接线条件绘制");
+        const auto parts=images(*plan);const auto count=std::count_if(parts.begin(),parts.end(),[](const auto &p){
+            return p.asset==SteamHumanAsset::continue_cursor;});
+        check(count==sample[3],"Steam17箭头phase恰门槛且main余数大于20，不夹限或沿阶段钟闪烁");
+        if(count)check(parts.back().position==std::array<int,2>{213,sample[0]==6?167:179}&&parts.back().frame==0,
+            "Steam17第六阶段独立箭头167，其余179");
+    }
+    in.stage=3;in.stage_counter=15;in.main_counter=8;
+    auto plan=*steam_clear_score_skin(in,options);const auto split=body(plan);
+    check(split[0].rectangle==std::array<int,4>{90,117,0,0}&&split[1].rectangle==std::array<int,4>{104,117,0,0}&&
+        split[0].anchor==0&&split[1].anchor==0&&split[0].rgb==std::array<int,3>{0,100,255}&&
+        split[1].rgb==std::array<int,3>{92,51,31},"Steam17加分用固定留宽48，两次测宽12/14，先蓝数字再棕后缀");
+    std::array<std::size_t,5> layers{};layers.fill(plan.operations.size());
+    for(std::size_t index=0;index<plan.operations.size();++index) {
+        const auto &op=plan.operations[index];
+        if(const auto *frame=std::get_if<SteamStartupFrameDraw>(&op))if(const auto *r=std::get_if<StartupSkinRect>(frame)) {
+            if(!r->outline&&r->rect==std::array<int,4>{17,81,207,96})layers[0]=index;
+            if(!r->outline&&r->rect==std::array<int,4>{21,85,197,52})layers[2]=index;
+        }
+        if(const auto *image=std::get_if<SteamHumanImage>(&op)) {
+            if(image->asset==SteamHumanAsset::ceremony_background)layers[1]=index;
+            if(image->asset==SteamHumanAsset::president)layers[3]=index;
+            if(image->asset==SteamHumanAsset::secretary)layers[4]=index;
+        }
+    }
+    check(layers[4]<plan.operations.size()&&layers[0]<layers[1]&&layers[1]<layers[2]&&layers[2]<layers[3]&&layers[3]<layers[4],
+        "Steam17外box→180×80背景→内box覆盖→大臣→秘书，不能把框层整体提前");
+    for(const auto oracle:std::array<std::array<int,3>,4>{{{static_cast<int>(SteamHumanAsset::ceremony_background),13,-1},
+        {static_cast<int>(SteamHumanAsset::president),171,46},{static_cast<int>(SteamHumanAsset::secretary),172,31},
+        {static_cast<int>(SteamHumanAsset::continue_cursor),72,2}}}) {
+        const auto resource=steam_human_resource(static_cast<SteamHumanAsset>(oracle[0]));
+        check(resource&&resource->image==oracle[1]&&resource->sprite==oracle[2],"Steam17已出版图像/SEB独立身份，沿现资源表不造副本");
+    }
+    constexpr std::array<const char*,6> names{"街道人气","任务完成数","设施发现数","冒险者全员LV合计","自宅数","努力度总和"};
+    in.stage=1;in.stage_counter=45;
+    for(int row=0;row<6;++row){in.row=row;check(body(*steam_clear_score_skin(in,options))[0].value==names[row],
+        "Steam17六类名称按固定定义原序，非当前世界统计口径");}
+    in.row=6;in.stage=7;in.stage_counter=9999;in.rows.reset();options.score_widths={};
+    for(bool english:{false,true}) {
+        options.english=english;plan=*steam_clear_score_skin(in,options);
+        std::vector<SteamHumanOverviewText> labels;
+        for(const auto &op:plan.operations)if(const auto *t=std::get_if<SteamHumanOverviewText>(&op))labels.push_back(*t);
+        check(body(plan).empty()&&labels.size()==4&&labels[0].rectangle==std::array<int,4>{english?33:93,78,0,0}&&
+            labels[0].anchor==(english?1:4)&&labels[1].value=="1,234,567,890,123点"&&
+            labels[1].rectangle==std::array<int,4>{213,78,0,0}&&labels[1].anchor==4&&
+            labels[2].rectangle==std::array<int,4>{93,192,0,0}&&labels[2].rgb==std::array<int,3>{0,100,255}&&
+            labels[3].value=="9,876,543,210点"&&labels[3].rectangle==std::array<int,4>{213,192,0,0},
+            "Steam17活跃末阶段row6无第七行，English只换累计标签，普通long与捕获旧纪录独立");
+    }
+    check(steam_clear_score_number(0)=="0"&&steam_clear_score_number(999)=="999"&&
+        steam_clear_score_number(1000)=="1,000"&&steam_clear_score_number(std::numeric_limits<std::int64_t>::max())==
+        "9,223,372,036,854,775,807"&&!steam_clear_score_number(-1),"Steam17非负long普通千位分组边界独立oracle");
+    in.stage=3;in.row=0;in.rows=rows;in.stage_counter=14;
+    check(bool(steam_clear_score_skin(in,options)),"Steam17尚未显示score不要求其测宽");
+    in.stage_counter=15;check(!steam_clear_score_skin(in,options),"Steam17显示score缺两次测宽拒绝");
+    options.score_widths={12,14};
+    for(int fault=0;fault<12;++fault) {
+        auto bad=in;auto o=options;
+        if(fault==0)bad.stage=8;if(fault==1)bad.stage_counter=-1;if(fault==2)bad.main_counter=std::numeric_limits<int>::max();
+        if(fault==3)bad.row=6;if(fault==4)bad.rows.reset();if(fault==5)bad.sum=-1;if(fault==6)bad.captured_high_score=-1;
+        if(fault==7)(*bad.rows)[5].count=-1;if(fault==8)(*bad.rows)[5].score=-1;if(fault==9)o.title_widths.reset();
+        if(fault==10)o.score_widths[0]=-1;if(fault==11)o.score_widths[1]=4097;
+        check(!steam_clear_score_skin(bad,o),"Steam17坏钟/行/负值/坏实测宽显式拒，不以补值过验");
+    }
+    const auto stable=*steam_clear_score_skin(in,options);const auto input_rows=*in.rows;
+    for(int repeat=0;repeat<5;++repeat){const auto again=steam_clear_score_skin(in,options);
+        check(again&&again->operations.size()==stable.operations.size()&&(*in.rows)[0].count==input_rows[0].count&&
+            (*in.rows)[5].score==input_rows[5].score&&in.stage_counter==15&&in.main_counter==8&&
+            in.sum==1234567890123LL&&in.captured_high_score==9876543210LL,
+            "Steam17重复纯查询规模稳定，不推进钟/数量/累加分数/覆盖旧纪录");}
 }
 struct SpriteOracle {
     int sprite, image, frames;
@@ -2007,6 +2128,7 @@ int check_startup_skin(const std::filesystem::path &source_root,
     Checks check;
     const auto assets=tables(source_root,check);
     phases(check);
+    steam_clear_score_skin_checks(check);
     frame_geometry(check);
     income_information(check);
     income_skin(check,source_root);

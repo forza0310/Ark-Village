@@ -138,6 +138,8 @@ Options parse_options(int argc, char **argv) {
           options.inspect_page != "residence-candidates" &&
           options.inspect_page != "effort-result" &&
           options.inspect_page != "mastery-announcement" && options.inspect_page != "mastery-bonus" && options.inspect_page != "mastery-choice" &&
+            options.inspect_page != "clear-count" && options.inspect_page != "clear-score" &&
+            options.inspect_page != "clear-record" && options.inspect_page != "clear-closing" &&
           options.inspect_page != "gift-facility" && options.inspect_page != "gift-profession" &&
           options.inspect_page != "gift-equipment" && options.inspect_page != "gift-item" &&
           options.inspect_page != "award-giving" && options.inspect_page != "award-lift" &&

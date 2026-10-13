@@ -292,8 +292,9 @@ struct StartupApplicationReplayAccess {
                  "系统资金纪录与世界运行镜像不同");
             const auto *p=top(s);
             if(has_clear) {
-                need(a.page_==Page::world && is_clear(p) && p->id==*a.clear_id_ && !s.scene.framework_paused,
+                need(a.page_==Page::world && is_clear(p) && p->id==*a.clear_id_ && p->lifecycle==2 && !s.scene.framework_paused,
                      "计分控制器页面引用或暂停资格非法");
+                need(valid_startup_world_clear_page(s,*p),"计分页缺完整阶段钟/独立主钟");
                 const auto counter=s.page_counters.find(p->id), phase=s.page_phases.find(p->id);
                 need(counter!=s.page_counters.end() && phase!=s.page_phases.end() &&
                      counter->second==a.clear_->counter && phase->second==a.clear_->stage,
@@ -307,10 +308,12 @@ struct StartupApplicationReplayAccess {
                     need((*rows.candidate)[i].count==(*a.clear_rows_)[i].count &&
                          (*rows.candidate)[i].score==(*a.clear_rows_)[i].score,"捕获六行不是当前世界投影");
             } else if(is_clear(p)) {
-                const auto counter=s.page_counters.find(p->id), phase=s.page_phases.find(p->id);
-                need((counter==s.page_counters.end() || counter->second==0) &&
-                     (phase==s.page_phases.end() || phase->second==0),"已推进raw17缺应用计分控制器");
+                need(p->lifecycle==0&&valid_startup_world_clear_page(s,*p),"已推进raw17缺应用计分控制器");
             }
+            for(const auto &page:s.scripts.pages)
+                if(page.kind==ref::WorldScriptPageKind::raw_page&&page.legacy_page==17&&page.lifecycle!=0&&page.lifecycle!=4)
+                    need(has_clear&&p&&p->id==page.id&&a.clear_id_&&*a.clear_id_==page.id,
+                         "已推进raw17缺应用计分控制器");
         } else need(!has_clear,"无世界却存在计分控制器");
     }
     static Bytes control(const StartupApplication &a) {

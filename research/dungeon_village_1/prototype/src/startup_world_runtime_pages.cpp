@@ -532,6 +532,16 @@ bool valid_startup_world_runtime_task_victory_page(const State &s,const ref::Wor
     return true;
 }
 
+bool valid_startup_world_clear_page(const State &s,const ref::WorldScriptPage &p) {
+    if(!s.rules||p.id==0||p.kind!=ref::WorldScriptPageKind::raw_page||p.legacy_page!=17||p.lifecycle<0||p.lifecycle>4)return false;
+    const auto stage=s.page_phases.find(p.id),counter=s.page_counters.find(p.id),main=s.page_secondary_counters.find(p.id);
+    if(p.lifecycle==0)return stage==s.page_phases.end()&&counter==s.page_counters.end()&&main==s.page_secondary_counters.end();
+    if(stage==s.page_phases.end()||counter==s.page_counters.end()||main==s.page_secondary_counters.end()||
+       counter->second<0||counter->second==std::numeric_limits<int>::max()||
+       main->second<0||main->second==std::numeric_limits<int>::max())return false;
+    if(p.lifecycle==4)return stage->second==7&&counter->second==0;
+    return stage->second>=0&&stage->second<=6;
+}
 bool valid_startup_world_gift_notice_page(const State &s,const ref::WorldScriptPage &p) {
     const auto id=p.id;
     if(!s.rules||p.kind!=ref::WorldScriptPageKind::raw_page||p.legacy_page!=94||p.lifecycle<0||p.lifecycle>4||
@@ -639,8 +649,8 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
     if (state.scene.framework_paused || top == state.scripts.pages.rend() || top->id != id ||
         top->kind == ref::WorldScriptPageKind::scene)
         return Error::invalid_page;
-    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 58)
-        return Error::invalid_page; // 镜头页由真实逐帧跟踪收尾，确认不提前关闭。
+    if (top->kind == ref::WorldScriptPageKind::raw_page && (top->legacy_page == 58||top->legacy_page==17))
+        return Error::invalid_page; // 58由逐帧跟踪收尾；17只能由应用Owner计分，均不能通用确认关闭。
     if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==30&&
        (top->lifecycle!=2||!valid_startup_world_runtime_task_victory_page(state,*top)))
         return Error::missing_source;
@@ -823,6 +833,8 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
 Error cancel_startup_world_runtime_page(State &state, std::uint64_t id) {
     const auto catalogue = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
                                        [](const auto &p) { return p.lifecycle != 4; });
+    if(catalogue!=state.scripts.pages.rend()&&catalogue->id==id&&catalogue->kind==ref::WorldScriptPageKind::raw_page&&
+       catalogue->legacy_page==17)return Error::invalid_page;
     if(catalogue!=state.scripts.pages.rend()&&catalogue->id==id&&catalogue->kind==ref::WorldScriptPageKind::raw_page&&
        (catalogue->legacy_page==31||catalogue->legacy_page==32)) {
         StartupTaskPageInput input;input.cancel=true;
@@ -1015,6 +1027,7 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
                                   [](const auto &p) { return p.lifecycle != 4; });
     if (top == state.scripts.pages.rend() || top->kind == ref::WorldScriptPageKind::scene)
         return {};
+    if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==17)return {};
     if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==30&&
        (top->lifecycle!=2||!valid_startup_world_runtime_task_victory_page(state,*top)))return {};
     if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==96&&

@@ -723,7 +723,7 @@ struct Validation {
             if (!counter(n))
                 return fail("page: 计数非法");
         for (const auto &[id, n] : s.page_secondary_counters)
-            if (!counter(n)||!page_kind(id,{22,24,28,30,44,50,70,81,82,96})||
+            if (!counter(n)||!page_kind(id,{17,22,24,28,30,44,50,70,81,82,96})||
                 (page_kind(id,{82})&&(!s.facility_catalog_pages_initialized.count(id)||n==std::numeric_limits<int>::max())))
                 return fail("page: 独立计数非法");
         for (const auto &[id, n] : s.page_phases)
@@ -1048,6 +1048,9 @@ struct Validation {
         if (!valid_startup_world_runtime_task_tracking_scene(s))
             return fail("task scene: 追踪名单/选择/目标载荷非法");
         for (const auto &p : s.scripts.pages) {
+            if (p.kind == ref::WorldScriptPageKind::raw_page &&
+                p.legacy_page == 17 && !valid_startup_world_clear_page(s,p))
+                return fail("clear page: 初始化/阶段钟/独立主钟或关闭待退休载荷非法");
             if (p.kind == ref::WorldScriptPageKind::raw_page &&
                 p.legacy_page == 13 && !valid_startup_world_manual_page(s,p.id))
                 return fail("manual page: 来源/页码/装饰名单/父栈或载荷非法");

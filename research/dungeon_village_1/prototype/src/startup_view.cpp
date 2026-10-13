@@ -14,6 +14,7 @@
 #include "dungeon_village_prototype/steam_task_roster_skin.hpp"
 #include "dungeon_village_prototype/steam_task_result_skin.hpp"
 #include "dungeon_village_prototype/steam_task_deadline_skin.hpp"
+#include "dungeon_village_prototype/steam_clear_score_skin.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 #include "dungeon_village_prototype/startup_world_persistence.hpp"
@@ -1410,6 +1411,32 @@ std::optional<SteamHumanOverviewPlan> window_mastery_plan(
     const auto &job=s.rules->jobs[h->profession];
     return steam_human_mastery_skin(s,id,mastery_options(font,job.mastery_attribute,job.mastery_value));
 }
+SteamClearScoreOptions clear_score_options(const SteamClearScoreInput &in,const ChineseFont &font) {
+    SteamClearScoreOptions options;options.view_y=23;
+    const int title=int(font.measure("通关点数发表"));options.title_widths=std::array<int,2>{title,title};
+    if(in.stage==3&&in.stage_counter>=15&&in.rows&&in.row>=0&&in.row<6) {
+        const auto number=steam_clear_score_number((*in.rows)[in.row].score);
+        if(number)options.score_widths={int(font.measure(*number)),int(font.measure(*number))};
+    }
+    return options;
+}
+std::optional<SteamClearScorePlan> clear_score_example(const std::string &name,const ChineseFont &font) {
+    StartupSession initial;StartupWorldRuntimeSession session(initial.state(),ref::WorldRandomStream::from_java_seed(1));
+    const auto rows=startup_world_clear_score(session.state());if(!rows.candidate)return {};
+    // 用原新局真实六类统计展示计分皮肤；仅阶段是条件，不将世界日期推到通关。
+    SteamClearScoreInput in;in.rows=*rows.candidate;in.row=2;in.main_counter=31;
+    if(name=="clear-count") {in.stage=1;in.stage_counter=45;}
+    else if(name=="clear-score") {in.stage=3;in.stage_counter=45;}
+    else {in.stage=name=="clear-record"?4:6;in.stage_counter=in.stage==4?1:65;in.row=6;}
+    const int accounted=name=="clear-count"?2:name=="clear-score"?3:6;
+    for(int row=0;row<accounted;++row)in.sum+=(*in.rows)[row].score;
+    return steam_clear_score_skin(in,clear_score_options(in,font));
+}
+std::optional<SteamClearScorePlan> window_clear_score_plan(
+    const StartupApplication &app,std::uint64_t id,const ChineseFont &font) {
+    const auto input=steam_clear_score_input(app,id);
+    return input?steam_clear_score_skin(*input,clear_score_options(*input,font)):std::nullopt;
+}
 std::optional<SteamHumanOverviewPlan> mastery_example(const std::string &name,const ChineseFont &font) {
     StartupSession initial;StartupWorldRuntimeSession session(initial.state(),ref::WorldRandomStream::from_java_seed(1));
     const auto &s=session.state();const auto h=startup_world_human_details(s,4);if(!h)return {};
@@ -1832,6 +1859,7 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
     const bool award_fixture=inspect_page=="award-contribution"||inspect_page=="award-income"||inspect_page=="award-residents";
     const bool effort_fixture=inspect_page=="effort-result";
     const bool mastery_fixture=inspect_page=="mastery-announcement"||inspect_page=="mastery-bonus"||inspect_page=="mastery-choice";
+    const bool clear_fixture=inspect_page=="clear-count"||inspect_page=="clear-score"||inspect_page=="clear-record"||inspect_page=="clear-closing";
     const bool gift_claim_fixture=inspect_page=="gift-facility"||inspect_page=="gift-profession"||inspect_page=="gift-equipment"||inspect_page=="gift-item";
     const bool award_result_fixture=inspect_page=="award-giving"||inspect_page=="award-lift"||inspect_page=="award-celebration"||inspect_page=="award-reward";
     const bool task_fixture=info_fixture||result_fixture||victory_fixture||deadline_fixture||roster_fixture||inspect_page=="task-selection"||inspect_page=="task-offer"||inspect_page=="task-recruitment";
@@ -1870,10 +1898,14 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
         for(const auto &d:startup_world_rules().items)reputation_glyphs+=d.name;
         for(const auto &d:startup_world_rules().equipment)reputation_glyphs+=d.name;
     }
+    if(clear_fixture)reputation_glyphs+="通关点数发表那么赶紧开始计算吧任务完成数设施发现数冒险者全员合计自宅努力度总和追加排行榜更新接下来就是这样当前最高分研究绘制夹具无自然触发认证…！";
     ChineseFont font(font_path,reputation_glyphs);
-    if(magic_fixture||task_fixture||residence_fixture||award_fixture||effort_fixture||award_result_fixture||mastery_fixture||gift_claim_fixture) {
+    if(magic_fixture||task_fixture||residence_fixture||award_fixture||effort_fixture||award_result_fixture||mastery_fixture||gift_claim_fixture||clear_fixture) {
         std::variant<SteamMagicPotPlan,SteamTaskSelectionPlan,SteamTaskRosterPlan,SteamTaskResultPlan,SteamTaskVictoryPlan,SteamTaskDeadlinePlan,SteamHumanOverviewPlan,SteamTownProgressPlan> plan;
-        if(gift_claim_fixture) {
+        if(clear_fixture) {
+            const auto value=clear_score_example(inspect_page,font);
+            if(!value)throw std::runtime_error("Clear score example rejected");plan=*value;
+        } else if(gift_claim_fixture) {
             const auto value=gift_claim_example(inspect_page,font);
             if(!value)throw std::runtime_error("Gift claim example rejected");plan=*value;
         } else if(mastery_fixture) {
@@ -2349,6 +2381,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
               "研究适配页签设施列表持有物品装备一览村情报";
     glyphs += "村办季度剩余次数村子点开展活动完成等待尚未接入获得奖励金币配置更替确认领取设备一般";
     glyphs += "保存中保存完成保存失败本窗口仅预览保存页消息了解";
+    glyphs += "通关点数发表那么赶紧开始计算吧追加排行榜更新接下来就是这样当前最高分…！";
     glyphs += "体力力量灵活结实魔力运气努力奖励基础能力→";
     glyphs += "周围设施的奖励没有";
     glyphs += "传说中的商店冒险者们中间的话题传了开来街道人气上升";
@@ -4058,10 +4091,15 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 }
             } else if (raw==17 && session.application_mode()) {
                 // 应用确认本身推进计分；只在下面获准的Update里消费，避免绘制帧双推进。
-                if(IsKeyPressed(KEY_ENTER) || hit({176,265,58,24})) {
-                    clear_confirm_pending=page->id;
-                    ++confirmation_inputs;
-                }
+                const auto plan=window_clear_score_plan(*session.application(),page->id,font);
+                if(plan) {
+                    bool confirm=IsKeyPressed(KEY_ENTER);
+                    for(const auto &touch:management_touches(*plan,sprites))
+                        if(touch.component==2&&!touch.rectangle&&!pointer_consumed&&
+                           IsMouseButtonReleased(MOUSE_BUTTON_LEFT)&&
+                           CheckCollisionPointRec(mouse,{0,0,float(width),float(height)}))confirm=true;
+                    if(confirm){clear_confirm_pending=page->id;++confirmation_inputs;}
+                } else if(page->lifecycle!=0)throw std::runtime_error("Clear score input source rejected");
             } else if (raw==96||raw==67||raw==88) {
                 const auto plan=raw==88?steam_human_award_result_skin(session.state(),page->id,
                     award_result_options(font,steam_human_shared_character_frame(session.state()))):
@@ -4628,26 +4666,9 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 if(view->stage==1 && !session.application_mode())font.text("本窗口仅预览保存页",12,270,ink,11);
             }
         } else if (const auto page = top_page(); page && page->legacy_page==17 && session.application_mode()) {
-            // 应用已冻结的六行及累计值只读展示；完整原计分动画/字体不由此适配认证。
-            DrawRectangle(5,42,230,247,paper);
-            font.text("通关计分 / 研究适配",12,48,ink,11);
-            const auto *app=session.application();
-            if(app->clear_page() && app->clear_rows()) {
-                const auto &score=*app->clear_page();
-                constexpr const char *labels[]{"街道人气","任务完成数","设施发现数",
-                                               "冒险者全员LV合计","自宅数","努力度总和"};
-                for(std::size_t row=0;row<app->clear_rows()->size();++row) {
-                    const auto &value=app->clear_rows()->at(row);
-                    if(int(row)==score.row)DrawRectangle(9,71+int(row)*23,222,22,{219,232,204,255});
-                    font.text(labels[row],12,74+float(row)*23,ink,9);
-                    const auto numbers=std::to_string(value.count)+" / "+std::to_string(value.score);
-                    font.text(numbers,227-font.measure(numbers,9),74+float(row)*23,ink,9);
-                }
-                font.text("累计 "+std::to_string(score.sum),12,217,ink,11);
-                font.text("原最高 "+std::to_string(score.captured_high_score),12,238,ink,10);
-                font.text("阶段 "+std::to_string(score.stage)+" / "+std::to_string(score.counter),12,269,ink,9);
-            } else font.text("计分初始化中",12,80,ink,11);
-            font.text("确定 Enter",172,269,ink,9);
+            const auto plan=window_clear_score_plan(*session.application(),page->id,font);
+            if(plan)draw_human_overview(*plan,sprites,font);
+            else if(page->lifecycle!=0)throw std::runtime_error("Clear score drawing source rejected");
         } else if (const auto page = top_page(); page && page->legacy_page>=34 && page->legacy_page<=40) {
             // 仅研究短适配：显示Owner真实行/页签，完整Steam详情字体与图元后端另批接入。
             DrawRectangle(5,42,230,247,paper);

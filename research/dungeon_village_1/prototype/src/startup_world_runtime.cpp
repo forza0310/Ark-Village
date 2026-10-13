@@ -1112,6 +1112,9 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
         return {StartupWorldRuntimeError::invalid_initial_state, {}, {}, {}, {}};
     // 原30/67/88/96载荷在producer已完整安装；退休前拒绝损坏，不以清理掩盖半载荷。
     for(const auto &page:s.scripts.pages) {
+        if(page.kind==ref::WorldScriptPageKind::raw_page&&page.legacy_page==17&&
+           !valid_startup_world_clear_page(s,page))
+            return {StartupWorldRuntimeError::missing_source,{},ref::WorldSceneError::missing_consumer,{}, {}};
         if(page.kind==ref::WorldScriptPageKind::raw_page&&
            ((page.legacy_page==70&&!valid_startup_world_human_mastery_page(s,page))||
             (page.legacy_page==94&&!valid_startup_world_gift_notice_page(s,page))))
@@ -1138,6 +1141,9 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
            !valid_startup_world_runtime_award_result_page(s,page))
             return {StartupWorldRuntimeError::missing_source,{},ref::WorldSceneError::missing_consumer,{}, {}};
     }
+    const auto active=std::find_if(s.scripts.pages.rbegin(),s.scripts.pages.rend(),[](const auto &p){return p.lifecycle!=4;});
+    if(active!=s.scripts.pages.rend()&&active->kind==ref::WorldScriptPageKind::raw_page&&active->legacy_page==17)
+        return {StartupWorldRuntimeError::missing_source,{},ref::WorldSceneError::missing_consumer,{}, {}};
     auto admitted = s;
     for (const auto &page : admitted.scripts.pages)
         if (page.lifecycle == 4) {

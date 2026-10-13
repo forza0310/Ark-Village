@@ -40,4 +40,22 @@ std::optional<SteamPlatformButtonPlan> steam_platform_button_skin(const SteamPla
     plan.body=body;
     return plan;
 }
+std::optional<SteamControllerButtonFallbackPlan> steam_controller_button_fallback(
+    const SteamControllerButtonFallbackInput &in) {
+    if(in.frame<0||in.frame>=44)return {};
+    int frame=in.frame;
+    if(in.auto_key_reverse&&(frame==0||frame==1)) {
+        const auto &mapped=frame==0?in.okay_frame:in.cancel_frame;
+        if(!mapped||*mapped<0||*mapped>=44)return {};
+        frame=*mapped;
+    }
+    if(in.layer==1&&frame>=16&&frame<=19)frame+=16;
+    SteamControllerButtonResource resource{"steam-platform/buttons_switch.png",
+        "steam-platform/buttons_switch.seb",15,13};
+    if(in.input_type==5||in.input_type==13)
+        resource={"steam-platform/buttons_ps4.png","steam-platform/buttons_ps4.seb",22,19};
+    else if(in.input_type==1||in.input_type==2||in.input_type==3)
+        resource={"steam-platform/buttons_xbox.png","steam-platform/buttons_xbox.seb",33,29};
+    return SteamControllerButtonFallbackPlan{resource,frame,0};
+}
 } // namespace dungeon_village_prototype

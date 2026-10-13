@@ -1350,6 +1350,86 @@ void steam_platform_skin_checks(Checks &check,const std::filesystem::path &sourc
               in.anchor==std::array<int,2>{20,20}&&in.scale_ratio==100.F&&in.component==2,
               "Steam重复只读平台计划保持一个本体/一个glyph固定规模，不写输入或累积平台任务");
     }
+    // 控制器SEB后备与平台入口按钮是不同资源；以下oracle来自managed原目录和SEB记录。
+    struct ControllerOracle {int input_type,image,sprite;const char *stem;bool swapped;};
+    constexpr std::array<ControllerOracle,3> controllers{{
+        {0,15,13,"buttons_switch",false},{5,22,19,"buttons_ps4",false},{2,33,29,"buttons_xbox",true}}};
+    const auto controller_root=source_root.parent_path()/"steam-platform";
+    for(const auto &expected:controllers) {
+        CpuImage image(LoadImage((controller_root/(std::string(expected.stem)+".png")).string().c_str()));
+        const auto seb=tools::parse_legacy_seb(read_bytes(controller_root/(std::string(expected.stem)+".seb")));
+        check(image.image.data&&image.image.width==512&&image.image.height==512&&seb.frame_count==44&&
+                  seb.layers.size()==1&&seb.layers[0].parts.size()==44,
+              "三套控制器PNG真实解码512方图，SEB仅layer0含44个独立关键帧");
+        std::array<bool,44> seen{};
+        for(const auto &part:seb.layers[0].parts) {
+            check(part.frame>=0&&part.frame<44&&!seen[static_cast<std::size_t>(part.frame)]&&
+                      part.image_index==expected.image&&part.width==64&&part.height==64&&
+                      part.offset_x==-32&&part.offset_y==-32&&part.flip_x==0&&part.flip_y==0&&
+                      part.source_x>=0&&part.source_y>=0&&part.source_x+64<=512&&part.source_y+64<=512,
+                  "三套全部44帧保留真实图片槽、64裁片、居中偏移和无翻转，不按图列补帧");
+            seen[static_cast<std::size_t>(part.frame)]=true;
+            if(part.frame==0||part.frame==1)
+                check(part.source_x==64*(expected.swapped?1-part.frame:part.frame)&&part.source_y==0,
+                      "Xbox原frame0/1源裁片顺序交换，不借Switch或PS4图替代");
+            if(part.frame>=32&&part.frame<=35)
+                check(part.source_x==256+64*(part.frame-32)&&part.source_y==192,
+                      "layer1方向提示重映射目标32..35有独立原裁片oracle");
+            const auto plan=steam_controller_button_fallback({expected.input_type,part.frame,0,false,{},{}});
+            check(plan&&plan->frame==part.frame&&plan->layer==0&&plan->resource.image==expected.image&&
+                      plan->resource.sprite==expected.sprite&&
+                      std::string(plan->resource.image_path)=="steam-platform/"+std::string(expected.stem)+".png"&&
+                      std::string(plan->resource.sprite_path)=="steam-platform/"+std::string(expected.stem)+".seb",
+                  "控制器后备全部44帧消费现出版资源及原目录槽，不生成动态图或账号设备事实");
+        }
+        check(std::all_of(seen.begin(),seen.end(),[](bool value){return value;}),
+              "每套控制器44个实际帧均有主责资源消费，不以重复frame0冒充全集");
+    }
+    for(const auto [type,expected_image,expected_sprite]:std::array<std::array<int,3>,11>{{
+            {1,33,29},{2,33,29},{3,33,29},{5,22,19},{13,22,19},{0,15,13},{4,15,13},{6,15,13},
+            {-1,15,13},{std::numeric_limits<int>::min(),15,13},{std::numeric_limits<int>::max(),15,13}}}) {
+        const auto plan=steam_controller_button_fallback({type,8,0,false,{},{}});
+        check(plan&&plan->resource.image==expected_image&&plan->resource.sprite==expected_sprite&&plan->frame==8,
+              "原InputType只识别1/2/3和5/13，其余任意有符号值走Switch后备");
+    }
+    // 源分支的具名映射表作为oracle，不在测试中重写被测范围／加16算法。
+    constexpr std::array<std::array<int,2>,10> layer_frames{{
+        {0,0},{1,1},{7,7},{8,8},{16,32},{17,33},{18,34},{19,35},{20,20},{43,43}}};
+    for(const int layer:{std::numeric_limits<int>::min(),-1,0,1,2,std::numeric_limits<int>::max()})
+        for(const auto [frame,layer_one_frame]:layer_frames) {
+            const int expected_frame=layer==1?layer_one_frame:frame;
+            const auto plan=steam_controller_button_fallback({0,frame,layer,false,-1,44});
+            check(plan&&plan->frame==expected_frame&&plan->layer==0,
+                  "原任意非零layer最终归0，仅原layer1的16..19重映射；未消费映射不校验");
+        }
+    // 原0/1反转互斥且先于layer转换：OK返回1不再触发Cancel，返回16才继续映射32。
+    for(const auto &sample:std::array<std::array<int,4>,4>{{{0,1,1,1},{0,16,1,32},{1,17,1,33},{0,16,2,16}}}) {
+        SteamControllerButtonFallbackInput input{0,sample[0],sample[2],true,{},{}};
+        if(sample[0]==0){input.okay_frame=sample[1];input.cancel_frame=std::numeric_limits<int>::max();}
+        else {input.cancel_frame=sample[1];input.okay_frame=std::numeric_limits<int>::min();}
+        const auto result=steam_controller_button_fallback(input);
+        check(result&&result->frame==sample[3]&&result->layer==0,
+              "确认/取消仅消费原分支且在layer映射之前，OK变1不二次进入取消");
+    }
+    check(steam_controller_button_fallback({0,8,1,true,-1,44}).has_value(),
+          "autoKeyReverse对非0/1不消费optional映射，即使未消费值超维护预算仍合法");
+    for(int fault=0;fault<8;++fault) {
+        SteamControllerButtonFallbackInput bad{0,0,1,true,0,1};
+        if(fault==0)bad.frame=-1;if(fault==1)bad.frame=44;
+        if(fault==2)bad.frame=std::numeric_limits<int>::max();
+        if(fault==3)bad.okay_frame.reset();if(fault==4)bad.okay_frame=-1;if(fault==5)bad.okay_frame=44;
+        if(fault==6){bad.frame=1;bad.cancel_frame.reset();}
+        if(fault==7){bad.frame=1;bad.cancel_frame=44;}
+        check(!steam_controller_button_fallback(bad),
+              "后备frame与真正消费的反转值明确拒绝0..43维护预算之外或缺值，不静默夹到首帧");
+    }
+    const SteamControllerButtonFallbackInput stable{13,0,1,true,16,{}};
+    for(int repeat=0;repeat<3;++repeat) {
+        const auto plan=steam_controller_button_fallback(stable);
+        check(plan&&plan->frame==32&&plan->layer==0&&plan->resource.image==22&&plan->resource.sprite==19&&
+                  stable.frame==0&&stable.layer==1&&stable.okay_frame==16&&!stable.cancel_frame,
+              "重复控制器后备只读输出保持固定一个请求，不改输入或累积资源设备任务");
+    }
 }
 struct SpriteOracle {
     int sprite, image, frames;

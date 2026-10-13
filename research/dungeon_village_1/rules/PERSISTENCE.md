@@ -698,6 +698,8 @@ SaveAll已证true→false→system的顺序保留，完整生命周期上游仍�
 
 `FormManagerBase._execute`先取得`KairoBase.GetInstance`，成功尾段VA `0x107EA7D7`调用辅助`0x107E0210`。
 2026-10-13补核同方法异常续体：107EA81B暂存异常指针，107EA826给出续体地址107EA82C；后者在107EA836也调用同辅助，随后107EA83B检查暂存异常，非空则107EA843重新抛出。因此预留分派不只位于成功更新尾段；未穷尽全部EH展开，不能外推为任何异常都保存，也不能将日历即时保存异常当作自动产生了reserveSave=2。
+2026-10-14沿已命名调用者续核：`Main.OnUpdate`在`0x102ADD19`调用`FormManagerBase.Execute`（RVA7E6BB0），后者在`0x107E6BE3`先调用`_execute`，返回false则重入，返回true后才在`0x107E6C04–107E6C0B`重写`endUpdateForm_`。已核Deactivate只是清该管理器引用；`_execute`内`0x107EA31D／107EA3B1`比较它以选择帧率／重复轮计算，不将引用为空作为预留保存禁入门。因此**清endUpdateForm不等于停止下一轮预留消费**，但它也不主动触发消费。
+`_execute`还在`0x107E99F1–107E99F6`取得并保留本轮KairoBase接收者；已进入该方法时，`0x107E9B5B–107E9B62`若读到应用实例`IApplication.termination_ +0x0C`为真，会跳到`0x107EA7A1`调用StopAsyncThread，正常返回并完成该分支后仍到`0x107EA7D7`的预留分派。这里的应用termination与KairoBase同偏移的reserveSaveEnable是不同对象，不能按偏移混读。这证明终止分支**仍有既存请求消费机会**，不证明停止更新以后另有一次保存。
 辅助要求对象非null、`reserveSaveEnable`为真、`reserveSave`非零；先复制预留值并清原值，再分派：
 值1→槽17 `Save`，值2→槽18 `SaveAll`；其它非零值在本处清除但不执行这两种保存。
 虚分派帮助器的实际指针公式为类偏移`0xBC+slot*8`，槽18对应`0x14C`；不是由方法名称猜调用。
@@ -726,7 +728,9 @@ SaveAll已证true→false→system的顺序保留，完整生命周期上游仍�
 
 退出并非零文件写：除已核PlayerPrefs显示配置外，`0x10788721`检查`ActionReplay.mode_==1`后于`0x10788781`调用动作回放Save（RVA `0x7443F0`）并导出记录；随后`0x1078887D`调用Restore（RVA `0x744180`），该方法在`0x10744240..0x10744245`要求`backupExist_`为真才删除／回写动作回放所留文件备份。这些明确的回放记录／备份I/O不调用业务Save／SaveAll或SetReserveSave，不能据文件变化认定退出提交了最新游戏状态，也不把调试回放存取纳入普通玩家自动存档。
 
-在**固定DLL、已登记Main／游戏表单／MyNotify接收者、普通暂停true与退出托管回调**这一静态范围内，上游已闭合为不提出新的业务预留保存请求；非编辑器焦点链同样如此。这里没有待命名的游戏暂停／退出delegate可据猜测补成SaveAll；既有Billing／其它服务请求可能已在进入回调前预留，不由本结论否定。当前可实施的是已有显式请求的条件分派，不能自行给失焦／关闭增加SaveAll。真正剩余的是OS实际回调顺序及平台／SDK事件输入、使能运行期赋值、已预留请求在停止更新前是否获准消费的动态证据；整个库的间接／内联调用穷尽、恢复false的账号协程和强制终止保证不属于这条已闭合的普通暂停true／退出链。五处Billing setter记录仍不是全程序入口清单或玩家动态认证。
+在**固定DLL、已登记Main／游戏表单／MyNotify接收者、普通暂停true与退出托管回调**这一静态范围内，上游已闭合为不提出新的业务预留保存请求；非编辑器焦点链同样如此。这里没有待命名的游戏暂停／退出delegate可据猜测补成SaveAll；既有Billing／其它服务请求可能已在进入回调前预留，不由本结论否定。当前可实施的是已有显式请求的条件分派，不能自行给失焦／关闭增加SaveAll。上述本轮消费者资格已经静态收窄；整个库的间接／内联调用穷尽、恢复false的账号协程和强制终止保证不属于这条已闭合的普通暂停true／退出链。五处Billing setter记录仍不是全程序入口清单或玩家动态认证。
+
+后续最小动态条件是：自然请求产生后，核对**同一KairoBase接收者**的reserveSave／reserveSaveEnable，以及失焦／退出前是否实际进入`Main.OnUpdate→Execute→_execute`并到达上述尾段；同时区别请求清零、业务保存调用与文件写入结果。外层`IApplication.Update`在`0x1078F550`先调用TerminateCheck，true分支`0x1078F55A`跳离稍后的槽11 OnUpdate（`0x1078FA9E`）；TerminateCheck的原条件不检查预留保存是否仍待消费。因此不能仅凭“退出回调发生／窗口最后一帧”保证还有一次尾段，也不应再用无自然预留请求的重复失焦实验认证SaveAll。构造后的reserveSaveEnable实际改写仍缺有接收者身份的具体配置入口或运行证据；共享setter地址不补成已闭合链，本轮未重扫全程序调用点。
 
 ## 当前C++边界与持续存取
 

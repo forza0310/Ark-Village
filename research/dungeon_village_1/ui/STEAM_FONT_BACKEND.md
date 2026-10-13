@@ -16,7 +16,17 @@
 
 GameSkin的script引用也是file0/path12001。MonoBehaviour公共前缀、对齐名称、两个本地引用、随后box样式名称及`GUISkin`的`[SerializeField] m_Font/m_box`声明共同约束字段位置；不是搜索到Arial字样便认为所有窗口都用它。容器／三对象哈希、相对偏移和读取范围见DATA.json（本地核对材料，不随仓库交付）。未解析GameSkin全部样式或Font剩余字段，不把这段前缀视为完整Unity序列化格式。
 
-**现在可以说默认资源包的GameSkin引用Arial对象，仍不能说中文字形来自Arial。** 还缺引擎实际选用该皮肤的运行状态、null-font处理、中文缺字回退的字体身份与尺寸。Arial的286字节对象也不是本批可导出的完整TTF；此前没有中文/default资源路径的结论保持不变。
+**现在可以说默认资源包的GameSkin引用Arial对象，仍不能说中文字形来自Arial。** 引擎实际选用的皮肤对象、中文缺字回退身份与尺寸仍未取得；null-font的托管交接已补核如下。Arial的286字节对象也不是本批可导出的完整TTF；此前没有中文/default资源路径的结论保持不变。
+
+### 空font并不在托管层自动换成包内Arial
+
+2026-10-14从具名Unity入口顺序补核，不运行窗口或读进程。`GUIUtility.BeginGUI` RVA`C30AE0`先把调用者skinMode写入静态字段（VA`10C30B1D–20`），随后以null调用GUI.set_skin（`10C30B5C`）。实际setter RVA`C39A40`及同逻辑DoSetSkin RVA`C348F0`按Unity对象有效性判断输入；输入无效才把**当次skinMode**交原生`Internal_GetDefaultSkin`，并检查所返对象确为GUISkin。然后安装GUI.s_Skin／GUISkin.current，把该皮肤`m_Font +0x0C`交`GUIStyle.SetDefaultFont`。这证明每次GUI入口的默认皮肤选择有实际消费者，不能把磁盘GameSkin路径直接等同当次原生返回对象。
+
+`GUISkin.MakeCurrent` RVA`C2DA60`也将自身m_Font交同一默认字体入口。`GUISkin.set_font` RVA`C2DD50`先原样写m_Font；只有自身与GUISkin.current相等时，才将新值交SetDefaultFont，随后调用Apply重建样式。因此游戏DrawString把当前skin.font设null时，**null也会被提交给原生默认字体入口**，不能解释成此setter先重新加载Arial、M+或某个中文Font。GUIStyle的get_font／set_font（`C30060`／`C306E0`）本身同样只跨原生对象边界，不在已核包装里指定字体family。
+
+原调用目标通过实际字符串与调用点闭合：默认皮肤包装RVA`C31770`解析`UnityEngine.GUIUtility::Internal_GetDefaultSkin(System.Int32)`；默认Font包装`C2FB90`解析`UnityEngine.GUIStyle::SetDefaultFont(UnityEngine.Font)`；GUIStyle两访问器解析相应get_font／set_font入口。它们缓存的是原生函数指针，**不是中文字体资源注册表**。本批闭合到这组原生消费者／对象供给边界；尚未解析UnityPlayer中的实现及字体fallback注册来源，不因入口名、默认资源包存在Arial或当前Font为空便指定“微软雅黑”“Arial中文”或M+。
+
+最小后续观测应在同一中文文字实际绘制处关联：真实语言码及skinMode、Internal_GetDefaultSkin返回的GUISkin与其Font对象、游戏GUIStyle.font及提交的默认Font；若这些为null或缺字，还须记录引擎为一段固定中文串实际请求的字体family／字形供给。对象名和窗口截图只能分别证明对象／最终外观，不能单独证明中文glyph来自哪个字体文件。本批没有动态对象，保留该缺口，不为其新增字体副本或猜测fallback表。
 
 ## OnGUI与DrawString的字体交接
 
@@ -85,4 +95,4 @@ Image构造7A1CF0在+A0建立零长任务数组，+A4计数采用零初值。Add
 
 产品可按上述契约区分字体对象、后端开关、临时GUIStyle与外层GUISkin恢复，避免SetFont误改后端或认为一次DrawString已恢复所有外部状态。默认资源的Arial引用可用于后续取证，不能直接作为中文字体交付或以另选系统字体冒充原样。
 
-仍缺：真实当前GUI.skin及中文glyph fallback、DefaultUseFontTexture完整上游、FontTexture资源退休，以及完整游戏窗框的全部页面使用资格。TextLayout的14项标签局部生产／消费、普通断行及空串字段分工已有[字体合同](STEAM_FONT_CONSUMER.md)，全部语言禁则、运行注册绑定和实际字形仍未认证。普通位置变换见[文字绘制](STEAM_FONT_DRAW.md)，GUI组／clip见[窗框](STEAM_WINDOW_FRAME.md)，GLText最终消费者／保留对象见[生命周期](STEAM_GLTEXT_LIFECYCLE.md)，不再重复列为完全未知。窗口观察可补最终画面尺寸和字形表现，但单张截图仍不能证明font对象身份。后续继续静态缩小这些边界，必要动态由既有外部提示词分支取得。
+仍缺：真实当前GUI.skin、原生默认皮肤返回对象及中文glyph fallback提供者、DefaultUseFontTexture完整上游、FontTexture资源退休，以及完整游戏窗框的全部页面使用资格。托管空font到原生默认字体的交接已核，不再列为完全未知。TextLayout的14项标签局部生产／消费、普通断行及空串字段分工已有[字体合同](STEAM_FONT_CONSUMER.md)，全部语言禁则、运行注册绑定和实际字形仍未认证。普通位置变换见[文字绘制](STEAM_FONT_DRAW.md)，GUI组／clip见[窗框](STEAM_WINDOW_FRAME.md)，GLText最终消费者／保留对象见[生命周期](STEAM_GLTEXT_LIFECYCLE.md)。窗口观察可补最终画面尺寸和字形表现，但单张截图仍不能证明font对象身份。后续继续静态缩小这些边界，必要动态由既有外部提示词分支取得。

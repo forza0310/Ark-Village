@@ -4,6 +4,8 @@
 
 设置12主体及平台键盘参考已交（`2d8745a`／`b230c2c`），真实设置输出／跨局持久仍独立；字体新增bo／ff／btn／pic局部消费者，以[字体合同](../ui/STEAM_FONT_CONSUMER.md)明确边界，不据静态合同宣称现产品parser已支持。剩余玩家页面的当前状态统一查[覆盖表](../ui/STEAM_UI_COVERAGE.md)，下方记录保留其各自提交时范围，不把历史“未开放”重复列为当前缺口。
 
+控制器后备已补三套原PNG／SEB与[纯选择接口](../prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)：按实际input_type分流，先互斥消费原frame0／1的OK／Cancel映射，再仅对layer1的16–19改32–35，所有层最终归0。它不调用Steam、发现设备或执行完整btn排版，动态glyph仍优先；无控制器的frame7取独立鼠标图，不能直接用RB后备代替。建设21纯游标／皮肤已由`964e701`／`7ef95d1`交付，完整Owner／快照仍待设计确认；字体已追至Unity原生默认皮肤／Font交接，未认证实际中文字形提供者，不能据Arial资源引用改产品字体。
+
 ## 历史回应与交付入口
 
 主菜单新增[raw3合同](../ui/PAGES.md#steam主菜单缓存输入与局部皮肤)与[正式只读皮肤](../prototype/include/dungeon_village_prototype/steam_main_menu_skin.hpp)：五／六项原图标、缩源展开、NEW／GET优先级、壶期间及ID8基矩形，并提供raw4／7／9／10按父存储行定位。`startup_magic_pot_menu_information`返回当前可显示期间和n1分母，与真正process满容量补1独立；pages／visuals短测通过，参考[四面板图](../ui/examples/steam-main-menu.png)。后继已接任务j、建设aY/P原时点缓存和真实raw3 Owner，操作经同一聚合事务；本段早期未接状态不再作为当前缺口，现能力以[覆盖表](../ui/STEAM_UI_COVERAGE.md)为准。平台Review由系统i9而非i16条件进入，完整光标／物理输入／字体分别待证；本批不改产品或快照格式。

@@ -1,5 +1,13 @@
 # 当前研究验证与历史索引
 
+## 控制器后备资源、字体与预留保存边界 2026-10-14
+
+接`7ef95d1`，出版managed kairolib三套原按钮PNG／SEB，共6文件103028字节，复用全量索引身份；扩现[平台按钮模块](prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)交付后备资源选择、原frame0／1互斥反转及层重映射。源码补核所有layer最终归0，特殊frame7无控制器时取独立鼠标图并按75缩放，与60及SEB后备分开。现visuals覆盖三套132实际帧、裁片／索引／设备族、反转次序、坏输入及固定输出规模；单Release动态构建、最终 **1/1通过1.55秒**。未改Owner／codec／CMake或新增target，未编他人住宅在途测试、不跑长测。
+
+[原裁片拼图](ui/examples/steam-controller-buttons.png)680×352／44354字节已查看，明确不是原窗口、当前控制器或按键绑定；本批没有运行原游戏或设备SDK。并行闭合托管GUI默认Skin／null Font→原生入口，具体中文glyph供给仍待证；预留保存已核Deactivate不禁后续消费、已进入的终止分支仍到尾段，但外层TerminateCheck可跳过该轮，不能保证退出补存。结论合入现[字体后端](ui/STEAM_FONT_BACKEND.md)、[字体消费者](ui/STEAM_FONT_CONSUMER.md)与[原保存合同](rules/PERSISTENCE.md)，不改玩家存档政策。
+
+素材入口合并旧R2演示／缓存／验收重复说明，保留原格式和历史链接；无新audit、指纹清单、过程报告或持久化字段。无新增Owner引用／一次性业务输出，测试图像按作用域释放，合法历史不称永久有界。本轮无临时取证文件或原窗口进程，构建／测试及三个子任务已结束；Release1375文件／144446362字节，assets856文件／9472687字节。差异／链接通过后仅提交research，不推送，保留他人改动。
+
 ## 建设21原序皮肤与共享自动动画 2026-10-14
 
 接`964e701`，新增[建设目录纯皮肤](prototype/include/dungeon_village_prototype/steam_build_menu_skin.hpp)，复用原资源、普通Mapchip分片、住宅数字及surface箭头；按原序交付五行、颜色继承、SetClip／ClearClip、NEW／入住、软标签及触区。补核滚动原异常裁短、null仍保留轨道／12／25、长表触摸扩区和float网格，未夹首行凑通用列表。单Release动态编译及现visuals **1/1通过1.63秒**（总1.64秒），覆盖身份／测宽拒绝、有序裁剪、边界与资源；无Owner／codec／协议或target变更，不编他人三份住宅持久化测试、不跑长测。

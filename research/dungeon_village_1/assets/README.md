@@ -8,6 +8,8 @@
 
 ## 当前交付
 
+- [Steam控制器后备图集](steam-platform)：`buttons_switch`／`buttons_ps4`／`buttons_xbox`各含原PNG及SEB，共6文件103028字节；3张图均512×512，SEB各1层44帧，按[全量索引](IMAGE_COVERAGE.json)中的managed kairolib身份校验。源槽分别为SEB13／image15、SEB19／image22、SEB29／image33；[正式后备接口](../prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)保留设备类型分流、实际OK／Cancel反转与层重映射。[裁片参考](../ui/examples/steam-controller-buttons.png)不是当前设备绑定或原窗口；动态图像优先、无控制器frame7鼠标图及外层字体矩阵仍按[字体合同](../ui/STEAM_FONT_CONSUMER.md#内嵌按钮提示)分开。
+
 - [Steam平台键盘／绑定按钮](steam-platform)：`button_keyboard.png/.seb`（1681／28字节，64×42，平台img29／SEB25）与`button_gamepad.png/.seb`（4225／28字节，64×60，img27／SEB23），共4原文件5962字节。原容器为`DungeonVillageEXE/KairoGames_Data/il2cpp_data/Resources/KairoLibrary.dll-resources.dat`中的`KairoLibrary.resource.kairolib.bytes`，沿[全量索引](IMAGE_COVERAGE.json)同名四条记录校验原字节／PNG像素，不新增指纹清单。不是Unity同名kairolib对象，也不属游戏common；两SEB均一层一帧一裁片，键盘绘制用25但热区仍取23。供[正式纯计划](../prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)消费，运行只需复制该子集；高亮生成shader、控制器附加glyph和平台动作的资格见[交互合同](../ui/STEAM_INTERACTIONS.md#平台键盘与控制器按钮的素材和局部绘制)。
 
 - 说明页箭头新增[Steam buttoneffect.png](steam-common/buttoneffect.png)：128×128、14563字节，原样来自固定`resources.assets`的system对象pathID1136、`drawable-mdpi/buttoneffect.png`，身份沿[全量索引](IMAGE_COVERAGE.json)的`EXE:resources.assets:1136:system:drawable-mdpi/buttoneffect.png`。同对象另有hdpi／ldpi，当前显式选择mdpi，不声称原窗口运行密度已核；与APK同名图不同像素，不覆写原包。GameView AddTouch使用arrow02的SEB bounds，再消费此独立纹理的普通／选中箭头裁片；逻辑0.75缩放和图片密度比各自处理，合同见[说明页](../ui/PAGES.md#说明13固定正文输入消费与装饰随机)。实查`steam-common`当前共8张PNG＋1个SEB、20101字节；保留来源入口，不新增指纹清单。
@@ -72,6 +74,8 @@ PNG 的实际像素解码由原型素材测试验证。
 
 ## 七个逻辑键
 
+本节仅属早期R2七键换图适配；当前完整世界和Steam页面按各自资源合同消费，不受此七键范围限制。
+
 清单的 `frame` 是源图上的 `x,y,width,height`，`anchor` 是相对帧左上角的 `x,y`。
 原型按“屏幕锚点减 anchor”放置图片。
 
@@ -101,67 +105,14 @@ R2-C 已纠正旅店绑定：定义 28 是单格普通旅店，通过地图显�
 
 ## 构建与操作
 
-从仓库根目录按[单Release动态构建约定](../README.md#构建缓存管理)使用研究聚合入口，工具链及运行命令见[原型说明](../prototype/README.md#构建与运行)，实际验证环境见[验证记录](../VERIFICATION.md)。Debug只在定位问题时临时使用，不为素材说明另建常驻Debug树。
+当前使用项目内单Release动态构建树，具体命令见[原型入口](../prototype/README.md)；新增素材按受影响消费者做短检查，不恢复历史Debug／Release双缓存矩阵。资源示例、原窗口观察和产品验收分别见[图例](../ui/examples/README.md)、[参考归档](../references/README.md)及[验证入口](../VERIFICATION.md)。
 
-构建会在程序旁边打包必要规范化图片、清单与设施表，资源变化也会触发更新。
-可直接在 CLion 中单独打开 [研究 CMake](../prototype/CMakeLists.txt)，不要用产品主 target 代替研究原型。
-
-工具栏前三个图标选择旅店、双格旅店或咖啡厅；移动工具依次选择建筑和目标格，垃圾桶撤除建筑；
-旋转工具点击建筑切换两朝向，选择旋转工具也切换下一次建设朝向；Esc 取消移动选择。
-最后的暂停/继续图标控制模拟时间。人物自行选择设施、行走、使用，不提供手动指挥移动。
-R2-A 旧版的 `Visit` 调试工具已由 R2-B 移除，证据和规则差异见 [自主行动报告](../rules/CHARACTERS.md)。
-预览绿色表示可放置、红色表示拒绝；右键拖动查看边缘地块。
-悬停显示工具名称，窗口标题显示当前工具/建设朝向/命令结果；按窗口关闭按钮结束进程。
-余额、当前夹具月份、上期经营净额在工具栏下显示；初始资金 10000，三座初始设施扣款后余额 7300。
-
-自动演示会创建三类建筑、拒绝多格重叠、移动/旋转并撤除临时建筑，再由自主模拟选择并预约设施、
-行走至真实占用格、进入 `in_use`、到达收入入账、完成后再次决策，并跨越一次夹具月界。
-截图包含使用状态与上期报表；演示通过后自动退出，15 秒超时或提前关闭返回失败。
-
-```sh
-research/dungeon_village_1/work/prototype-debug-llvm/dungeon_village_prototype \
-  --demo --screenshot research/dungeon_village_1/work/r2-assets/demo.png
-```
-
-画布是 `240x240`，窗口/framebuffer 是 `720x720`，最近邻 3 倍缩放；不启用 Retina 双倍 framebuffer。
-示例地图为 7×7，边缘允许裁切并可拖动；地图/资金/人物种子、角色速度和使用时长是演示夹具。
-每 600 个 100ms tick 为一个夹具月份，不代表原作日历。原型没有存档，退出不保存。
-寻路使用真实占用格绑定、准入和四邻接道路/空地离开成本；道路不是必经条件。
-道路图像仍只显示固定首帧，不执行原作邻接掩码或道路建设规则。单格/双格与两朝向消费维护几何，
-不再使用四个外侧接近点。所有模拟状态由标准 C++ 模块拥有，raylib 只插值和绘制。
-建设价格为 1000/1000/700，移动或旋转扣款 300，撤除零退款；消费价格和维护费使用表端点、邻接与
-经营推导。人物选择使用已有候选/两级权重，但仅开放类别 1/2，排除已预约者、重置访问计数和完成后
-回到接近格都是有限原型策略，不声称完整原作 AI。完成仅记录次数，不执行未知退出效果或共享升级。
-人物当前移动但只显示一个站姿帧。
-
-收敛版 Debug/Release/ASan+UBSan 构建与回归已通过，实际 OpenGL 两朝向场景和换图已验收。
-启动需要登录可用桌面和唤醒显示器；有界测试可临时使用 caffeinate，不改永久设置。
-鼠标验证已由用户免验，用户试玩未运行，状态与边界见 [收敛记录](../stages/history/R2-prototype.md#convergence)。
-原版页面、地图及触摸基线独立进入 [R3-V](../stages/R3-original-visual-baseline.md)，
-素材与消费者的首批索引见 [视觉基线](../ui/README.md)，不把上述原型截图当原版运行画面。
+早期7×7演示、固定数值／首帧、无存档和macOS窗口结果均仅属[R2历史原型](../stages/history/R2-prototype.md)，不是当前完整世界能力或Steam动态结论。已退休缓存路径和重复演示命令不在本资源入口继续维护。
 
 ## 替换自有素材
 
-为另一套素材准备同格式 `MANIFEST.tsv` 与图片，保留七个逻辑键；修改规范化路径、帧与锚点即可。
-新图片的帧必须在 PNG 内，不应修改 `original/`。清单的源哈希始终指向固定 APK 的来源文件，
-不应伪造为自有图片哈希；自有素材另外记录来源与转换。
-
-原型只读取有逻辑键的清单行，不要求替换根包含全部原始素材。用 `--asset-root` 切换，无须改 C++。
-测试程序可生成隔离的变色旅店/人物夹具（目标目录必须不存在）：
-
-```sh
-research/dungeon_village_1/work/prototype-debug-llvm/dungeon_village_asset_tests \
-  research/dungeon_village_1/assets research/dungeon_village_1/work/r2-assets/my-replacement
-research/dungeon_village_1/work/prototype-debug-llvm/dungeon_village_prototype \
-  --asset-root research/dungeon_village_1/work/r2-assets/my-replacement --demo \
-  --screenshot research/dungeon_village_1/work/r2-assets/my-replacement.png
-```
-
-变色夹具只是替换契约测试，不是修改原始美术或拟定正式美术方案。
+早期七键换图夹具仍按`MANIFEST.tsv`的逻辑键、规范化路径、帧与锚点解释；只在新的隔离目录生成替换图，不改`original/`或把自有图片标成原游戏字节。来源哈希指向固定输入，自有素材另记来源／转换。完整页面使用对应版本的原资源索引与消费者，不靠修改原表或扩大旧七键清单消除差异；工具用法见[素材工具](../tools/README.md)。
 
 ## 当前待验收
 
-代码与自动验收已闭环；用户已明确不做鼠标验证，记为免验而非通过，用户试玩仍未运行。
-不再重试 computer use、不修改权限，不用直接领域命令冒充真实输入。
-[试玩清单](../stages/PLAYTEST.md)保留人工参考；整个 R2 保留试玩未运行边界，不阻塞新研究。
-原版动态基线不属于该免验范围，仍需实际 Android 运行证据。
+当前完成范围与剩余字体／动态图像／平台输入均以[阶段矩阵](../stages/README.md)和各主责合同为准。R2曾免验的鼠标操作及未运行的用户试玩仅保留历史资格，不等于后继Steam窗口或物理输入免验；既有试玩参考见[PLAYTEST](../stages/PLAYTEST.md)。

@@ -38,6 +38,8 @@ assets/SOURCES.json
 
 主责仍是冻结pages/skin套件的入口、共享成长/收益、无死亡守卫、随机/回滚/恢复与资源；产品只补现管理运输的generation/观测身份/重复关闭拒绝、actors UI只读/最小窗口和现像素拾取的怪物/透明遮挡场景。不新增target或第二Owner。原字体、公共副钟与原Camera动态另验，条件图不代表自然解锁/击杀；先完成待批20的集中验收，再接此后继。
 
+只读素材核对：PNG28×18/401字节，SEB48字节/两帧；实际frame1绑定common2 image1、裁(14,0,14,18)、offset(−7,−18)，锚(147,189)落到(140,171)，不改尺寸或帧。后续964e701仅新增21纯游标及既有building断言，完整目录Owner/恢复仍待确认，暂不改现PC控制器；公共UI调度的共享SEB门槛/相位继续另待维护上下文，详见[最小缺口](reference/RESEARCH_REQUESTS.md#startup-owner-font-gaps)。
+
 <a id="research-048b282-facility-details"></a>
 ## 普通定义预览与装备店、植物、募集详情（沿持续goal）
 

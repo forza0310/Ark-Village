@@ -66,12 +66,24 @@ OnGUI的多条正常／异常收尾调用`0x1077BDF0`。该116字节helper从当
 | --- | --- | --- |
 | useFontTexture=false、glRender=false | 更新GUI组后调用UnityEngine.GUI.Label(Rect,text,GUIStyle) | 最终字体栅格化／缺字回退由引擎消费，未认证 |
 | useFontTexture=false、glRender=true | 准备Graphics.GLText、传入位置／文字／GUIStyle／clip并增加glTextCount | [队列最终消费／退休](STEAM_GLTEXT_LIFECYCLE.md)已核至GUI.Label；实际字形仍待证 |
-| useFontTexture=true | 取得FontTexture后调用DrawScaledImage，透明度不足时配对RenderMode | 纹理生成器、缓存完整生命周期与最终采样仍待闭合 |
+| useFontTexture=true | 取得FontTexture后调用DrawScaledImage，透明度不足时配对RenderMode | 缓存年龄退休及事件入口见下节；纹理生成器、底层释放与最终采样仍待闭合 |
 | 目标Image的另一分支 | 复制Font，建立Image.TextRenderTask并AddTextRenderTask | 不是即时GUI.Label；实际重放／引用保留见下节 |
 
 `KairoPlugin.GetFontTextureSize(text,size)`（`0x8749A0`）构造闭包并以wait=true交IApplication.RunOnUiThread，要求取得可解箱SizeF的非空结果。闭包（`0x8870A0`）检查的是Config.UNITY_EDITOR（元数据静态字段+0x28）：false直接返回null；true才反射`WinLib`程序集的`kairo.windows.plugin.Utility.GetFontTextureSize`，把返回字节读成两个float。
 
 因此不能把这个名字含native的入口无条件叫作“Steam当前Windows字体测宽”。本DLL的这条实现包含明确Editor资格；强行把普通运行的纹理开关打开不保证得到有效SizeF，wrapper对null有异常路径，并不会自动返回0或退回GUIStyle.CalcSize。本批不运行Editor、插件或反射调用。
+
+## FontTexture缓存的实际退休消费者
+
+2026-10-14补具名静态链。`Graphics.fontTextureList_`是静态列表，与GLText峰值池及Image文字任务不同。`FontTexture`保存Text、Image、Color、Size、LastFrame和Bold；构造RVA`77CE50`将LastFrame设为当时`IApplication`单例的`totalFrames_`。该钟不是世界tick、Draw次数或墙钟秒数。
+
+普通`GetFontTexture` RVA`76D6E0`只匹配非Bold、文字相同、有效字号相同且RGB三分量相同的项；此匹配段不比较alpha。命中在VA`1076D921–1076D97F`刷新LastFrame，必要时从原位置移除再插到列表首，不Dispose命中图像。未命中时，只有**Count>100且尾项年龄>5**才在`1076D9B4–1076DA46`退掉一项，然后尝试生成新图并插到首位。故100是触发检查的阈值，不能写成硬容量上限；近期大量不同文字仍可能使列表继续增长。本段不认证Bold生成路径或纹理插件可用性。
+
+完整倒序清理入口`RemoveExpiredFontTextures` RVA`772BC0`读取当前应用单例的totalFrames，遍历Count−1至0；`10772CC9–10772CD1`以有符号差值比较，**年龄恰40保留，严格大于40才先Dispose、后RemoveAt**（`10772CD6`／`10772D09`）。共享泛型使用槽已独立解析：`110FC3DC`为同一实例上下文的List.get_Item，`110FC384`为RemoveAt，`110FC358`为Insert，不能把模糊反汇编别名当缓存语义。
+
+该消费者已有真实上游：`Graphics.cctor` RVA`775990`尾部通过方法槽`110E97E8`（metadata方法7796）取得RemoveExpiredFontTextures，构造实际`System.EventHandler`并调用当前应用的`add_Updated`（`10776686–1077669F`）。`IApplication.Update` RVA`78E3F0`在已核正常段`1078F96A`增加totalFrames，随后于`1078FABD–1078FAF5`取得并调用Updated；这里仅认证该执行路径，不把Unity的每次Update、失焦或提前返回都说成一次世界更新／缓存清理。
+
+`FontTexture.Dispose` RVA`77CE20`在Image非空时调用`Image.Dispose` RVA`79B2A0`，正常返回后将自身Image引用设null（`1077CE27–1077CE44`）；它不清Text或其它值字段，也不是调用Image.Release。缓存随后移除该FontTexture项，不能由此保证外部持有的Image／FontTexture或底层Unity纹理立即销毁。图像Dispose及任务引用边界见下节；异常时该原链没有联合回滚保证。**已闭合缓存年龄退休、事件入口和Image引用断开，剩余是底层纹理实际释放、其它间接持有者及全局容量保证。** 未运行原游戏、导出字体或新增缓存产物。
 
 ## Image.TextRenderTask是可重复重放的图像文字
 
@@ -95,4 +107,4 @@ Image构造7A1CF0在+A0建立零长任务数组，+A4计数采用零初值。Add
 
 产品可按上述契约区分字体对象、后端开关、临时GUIStyle与外层GUISkin恢复，避免SetFont误改后端或认为一次DrawString已恢复所有外部状态。默认资源的Arial引用可用于后续取证，不能直接作为中文字体交付或以另选系统字体冒充原样。
 
-仍缺：真实当前GUI.skin、原生默认皮肤返回对象及中文glyph fallback提供者、DefaultUseFontTexture完整上游、FontTexture资源退休，以及完整游戏窗框的全部页面使用资格。托管空font到原生默认字体的交接已核，不再列为完全未知。TextLayout的14项标签局部生产／消费、普通断行及空串字段分工已有[字体合同](STEAM_FONT_CONSUMER.md)，全部语言禁则、运行注册绑定和实际字形仍未认证。普通位置变换见[文字绘制](STEAM_FONT_DRAW.md)，GUI组／clip见[窗框](STEAM_WINDOW_FRAME.md)，GLText最终消费者／保留对象见[生命周期](STEAM_GLTEXT_LIFECYCLE.md)。窗口观察可补最终画面尺寸和字形表现，但单张截图仍不能证明font对象身份。后续继续静态缩小这些边界，必要动态由既有外部提示词分支取得。
+仍缺：真实当前GUI.skin、原生默认皮肤返回对象及中文glyph fallback提供者、DefaultUseFontTexture完整上游、FontTexture底层纹理释放与全局持有者，以及完整游戏窗框的全部页面使用资格。缓存年龄退休及Updated事件入口已核，不能继续将它们整体列为未知；同样不能宣称缓存永久有界。托管空font到原生默认字体的交接已核，不再列为完全未知。TextLayout的14项标签局部生产／消费、普通断行及空串字段分工已有[字体合同](STEAM_FONT_CONSUMER.md)，全部语言禁则、运行注册绑定和实际字形仍未认证。普通位置变换见[文字绘制](STEAM_FONT_DRAW.md)，GUI组／clip见[窗框](STEAM_WINDOW_FRAME.md)，GLText最终消费者／保留对象见[生命周期](STEAM_GLTEXT_LIFECYCLE.md)。窗口观察可补最终画面尺寸和字形表现，但单张截图仍不能证明font对象身份。后续继续静态缩小这些边界，必要动态由既有外部提示词分支取得。

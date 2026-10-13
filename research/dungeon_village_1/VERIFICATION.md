@@ -1,5 +1,13 @@
 # 当前研究验证与历史索引
 
+## 平台点击意图、纪录返回与字体退休 2026-10-14
+
+接`fc8170d`，在现[平台模块](prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)新增已分发void回调的纯动作计划：控制器CLICK资格／64位零handle、键盘原语言Concat、DEBUG共同长按时钟及Push后重新取钟。独立机器码复核纠正极端时间值的sbb flags分支，保留已有断言并补借位／溢出oracle。单Release动态构建通过，现visuals **1/1通过1.57秒**（总1.58秒）；不执行外链／SDK／奖杯页或修改平台时钟，无Owner／格式／target变化。本批没有绘制变更，不重复窗口检查或长跑，不编他人住宅测试。
+
+并行闭合[纪录Pop返回](ui/STEAM_TITLE_ACTORS.md)不重Title.Init及Rank局部五字段writer；[FontTexture](ui/STEAM_FONT_BACKEND.md)按应用帧龄严格>40退休、Updated入口及Image引用断开，100不是缓存硬上限。UI总览将重复历史增量合成主题索引，缩减约2300字符；未知的字体供给、全部共享写者及实际平台执行仍保留，不新增过程报告／audit／指纹或素材。
+
+动作按值返回、最多2项，不持回调／Owner引用，外部宿主须按原序消费；字体合法持有／历史增长不宣称永久有界。Release1376文件／145945157字节、assets863文件／9488214字节，本批无新增临时取证产物；构建／测试和三子任务均结束。差异／引用检查后仅提交已验research，保留他人改动、不推送。
+
 ## 标题平台／语言组合与人物初始资格 2026-10-14
 
 接`b906e7b`，扩现[平台按钮模块](prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)的标题调用者接口，语言在75门槛前，平台尾部依次绑定／键盘，并独立检查APPLI_TYPE、Platform、顶页及Xbox；隐藏不消费无关载荷，失败不返回部分计划。现visuals **1/1通过1.55秒**（总1.56秒），单Release动态构建通过。两个平台条件窗口、受影响设置高亮及旧标题各8帧／0世界更新正常退出；[两态参考](ui/examples/steam-title-platform.png)已查看，旧标题与已归档首格像素一致。

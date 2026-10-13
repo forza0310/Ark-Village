@@ -1,7 +1,10 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 #include <optional>
+#include <string>
+#include <variant>
 #include <vector>
 
 namespace dungeon_village_prototype {
@@ -136,4 +139,27 @@ struct SteamTitlePlatformPlan {
 // 不登记平台状态、替换callback、推进NEW或执行外链；调用者逐序消费显式请求。
 // frame/state总是校验；其它字段仅在来源分支实际消费时验证，不为隐藏项补默认值。
 std::optional<SteamTitlePlatformPlan> steam_title_platform_skin(const SteamTitlePlatformInput &input);
+
+// 已由原TouchComponent分发到void回调；不是组件命中器，不另造propagate返回。
+struct SteamPlatformButtonEventInput {
+    SteamPlatformButtonKind kind{};
+    int event_type{};
+    bool debug{}, use_steam{}, initialized{};
+    std::optional<std::uint64_t> controller_handle; // 实际消费时必填；已取得的0仍合法。
+    bool language_code_resolved{}; // 区分尚未取值与原GetLanguageCode确实返回null。
+    std::optional<std::string> language_code;
+    // 只在DEBUG/ON13消费；两按钮共用同一downButtonTime，不是各自按住时长。
+    std::optional<std::int64_t> now_millis, shared_down_millis;
+};
+struct SteamBindingPanelRequest { std::uint64_t controller_handle{}; };
+struct SteamControlMapRequest { std::string url; };
+struct SteamDebugTrophyRequest {};
+// 必须在此动作执行时重新读钟并写共同字段，不复用事件判定时的now。
+struct SteamCaptureSharedButtonTimeRequest {};
+using SteamPlatformButtonAction=std::variant<SteamBindingPanelRequest,SteamControlMapRequest,
+    SteamDebugTrophyRequest,SteamCaptureSharedButtonTimeRequest>;
+struct SteamPlatformButtonEventPlan { std::vector<SteamPlatformButtonAction> actions; };
+// 纯候选最多2动作；不调用SDK/浏览器/时钟或修改平台与Owner。
+// 语言串至多4096字节为维护预算，按原Concat保留内容；只校验实际消费的输入。
+std::optional<SteamPlatformButtonEventPlan> steam_platform_button_event(const SteamPlatformButtonEventInput &input);
 } // namespace dungeon_village_prototype

@@ -80,6 +80,24 @@ raw12同身份静态子批进一步核定以下生命周期；字段含义及四
 
 `DrawWindow2 102000E4–102000FC`在顶层仍推进独立arwFrame；raw12只有BOX标志，所核局部不读取它绘箭头。维护纯查询不推进它，不能反称原Draw无副作用。设置主体及平台键盘的研究窗口见示例；原字体／平台语言、OS输入、真实设置保存仍分别验收，独立皮肤通过不等于完整设置消费者已完成。
 
+### 平台按钮事件与显式动作
+
+`<DrawButton>b__16_0` RVA7B9320与`<DrawKeyboardButton>b__18_0` RVA7B9580都是`void(TouchEvent)`，不返回是否传播；`SurfaceBase.DoEnd`在1088D88B–1088D914发现opt.onTouchEvent后调用该delegate并绕过普通hook／OnTouchEvent支。传给DrawButton的外层AddTouchDelegate是绘制时注册器：设好margin及事件delegate后恰调用一次（107B6BAE／107B70FB），事件回调不再调用它。不能套语言页bool handler或重复注册。
+
+| 已分发事件 | 正常路径及实参 |
+| --- | --- |
+| 控制器CLICK5 | 107B94BC–107B9565按顺序检查USE_STEAM、initialized，再把共同64位controllerHandle原样交ShowBindingPanel；没有非零／HasController检查，API返回bool未消费 |
+| 键盘CLICK5 | 107B9744–107B9796取GetLanguageCode，三串Concat为`https://kairosoft.net/steam/?_lh=`＋原码＋`#controlmap`，再OpenBrowser；不读USE_STEAM／initialized／handle，返回bool未消费 |
+| 其它正常事件 | 不产生上述动作；回调不负责component／value再次匹配或传播判定 |
+
+两callback的DEBUG旁支先于CLICK分支：ENTER2读取CurrentTimeMillis写**共同**downButtonTime；ON13重新取时，与旧值按原双字减法及分支比较；正常未溢出的时间差严格大于3000毫秒才new TrophyManagementForm→FormManager.Push→再读一次时间写共同字段（107B9394–107B94BA／107B961C–107B9742）。Push正常返回false仍到读钟；异常不据此假称完整提交。同一事件类型不可能同时为ON与CLICK。两按钮不能各存一个长按钟，3000不是逻辑tick或绘制帧数。
+
+极端long边界保留固定x86的实际flags：controller在107B9400低位sub、9403高位sbb、9409 js拒绝、940F jg接受，否则9411低位cmp3000／9417 jbe拒绝；keyboard对应107B9688–107B969F。jg仍读sbb的OF／ZF，不是重新test高字。例如now位型8000000200000000、down7FFFFFFF00000000，相减高3／低0但OF1，源转低位比较而不触发；now0000000300000000／down0虽同样高3低0，OF0则触发。维护按无符号双字算术显式保留这些分支，不将C++有符号溢出或简化64位差当作来源。
+
+URL两个literal分别由metadata槽110F417C／110FEACC核得，原调用没有编码、trim或大小写归一。String.Concat三串重载RVA8E5DF0在108E5E0E–108E5EE1把中段null／空串转为prefix＋suffix；实际返回null合法，尚未读取语言码却不是null证据。
+
+[平台模块](../prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)的`steam_platform_button_event`接已分发事件，返回最多两个按序的具名动作，不执行SDK／浏览器／时钟或修改Owner。已消费handle缺值拒绝但0合法；`language_code_resolved`区别未取值与源null，语言串4096字节为维护预算。DEBUG重记钟输出“执行到此再取钟”请求，不能用判断ON时的旧now替代。调用宿主须沿单一平台时钟状态按序消费，并另行处理外部调用失败；原bool未消费不等于平台调用成功。此处不新增世界持久字段、不认证OS投递、实际控制器或外链已打开。
+
 ### 平台键盘与控制器按钮的素材和局部绘制
 
 图标来自平台`KairoLibrary.resource.kairolib.bytes`，不是游戏common包。原物理容器为`KairoGames_Data/il2cpp_data/Resources/KairoLibrary.dll-resources.dat`；`IApplication.Awake 1078293B–10782A0F`创建ResourceManager，以IApplication所属Assembly载入字面`kairolib`，给图片设置`SetExpiration(true,40)`，随后将该对象安装到`R.Library.Kairolib.resource`。实际赋值helper在`1077BEF0–1077BF43`，`IApplication.GetResource 10785DC0–10785E31`读取同一字段。资源命名、加载链和原归档目录三者独立交叉，不能只由PNG外观认定身份。

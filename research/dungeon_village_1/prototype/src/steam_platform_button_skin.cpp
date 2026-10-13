@@ -137,4 +137,37 @@ std::optional<SteamTitlePlatformPlan> steam_title_platform_skin(const SteamTitle
     }
     return plan;
 }
+std::optional<SteamPlatformButtonEventPlan> steam_platform_button_event(const SteamPlatformButtonEventInput &in) {
+    if(in.kind!=SteamPlatformButtonKind::controller_binding&&in.kind!=SteamPlatformButtonKind::keyboard_guide)return {};
+    SteamPlatformButtonEventPlan plan;
+    if(in.debug&&in.event_type==2) {
+        plan.actions.emplace_back(SteamCaptureSharedButtonTimeRequest{});
+    } else if(in.debug&&in.event_type==13) {
+        if(!in.now_millis||!in.shared_down_millis)return {};
+        // 固定x86依次sub低/sbb高、js、jg、低位cmp/jbe；jg仍读取sbb的OF/ZF。
+        // 极端跨符号值不能简化成回卷后的int64比较，以下保留原flags且无C++有符号溢出。
+        const auto now=static_cast<std::uint64_t>(*in.now_millis),down=static_cast<std::uint64_t>(*in.shared_down_millis);
+        const auto now_low=static_cast<std::uint32_t>(now),down_low=static_cast<std::uint32_t>(down);
+        const auto now_high=static_cast<std::uint32_t>(now>>32),down_high=static_cast<std::uint32_t>(down>>32);
+        const std::uint32_t low=now_low-down_low,high=now_high-down_high-std::uint32_t(now_low<down_low);
+        const bool overflow=((now_high^down_high)&(now_high^high)&0x80000000U)!=0;
+        if((high&0x80000000U)==0&&((high!=0&&!overflow)||low>3000)) {
+            plan.actions.emplace_back(SteamDebugTrophyRequest{});
+            // 原Push正常返回false也继续读钟；异常流程不由此纯候选执行或吞掉。
+            plan.actions.emplace_back(SteamCaptureSharedButtonTimeRequest{});
+        }
+    }
+    if(in.event_type!=5)return plan;
+    if(in.kind==SteamPlatformButtonKind::controller_binding) {
+        if(!in.use_steam||!in.initialized)return plan;
+        if(!in.controller_handle)return {};
+        plan.actions.emplace_back(SteamBindingPanelRequest{*in.controller_handle});
+    } else {
+        if(!in.language_code_resolved||(in.language_code&&in.language_code->size()>4096))return {};
+        // 原三串Concat将null视为空；不擅自编码/裁剪/改写语言码，也不实际打开外链。
+        plan.actions.emplace_back(SteamControlMapRequest{
+            "https://kairosoft.net/steam/?_lh="+in.language_code.value_or("")+"#controlmap"});
+    }
+    return plan;
+}
 } // namespace dungeon_village_prototype

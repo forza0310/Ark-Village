@@ -1,66 +1,27 @@
 # 原版页面、地图与视觉交互基线
 
-当前页面状态统一查[Steam覆盖表](STEAM_UI_COVERAGE.md)，产品参考查[示例索引](examples/README.md)；本页下方日期条目保留当批来源，不作为新的“下一步”。[魔法壶41–47](STEAM_MAGIC_POT.md)集中目录、投入／报告、配方确认、原序资源与Owner接线；业务仍由[壶规则](../rules/MAGIC_POT.md)负责，不再另拆皮肤过程报告。
+当前状态以[Steam覆盖表](STEAM_UI_COVERAGE.md)为准，产品取用查[示例索引](examples/README.md)，实际检查查[验证入口](../VERIFICATION.md)。固定APK1.0.8规则、Steam2.56静态／原窗口、维护消费者和条件例图分别登记；不要把旧批次的“尚未实现”当作当前缺口，或把有界窗口当作原程序动态。
 
-2026-10-10[Steam普通文字绘制](STEAM_FONT_DRAW.md)补9方法8,064字节、68锚、4个float常量及16字段的静态交叉，明确默认anchor0x11、GUI对齐／坐标变换、字号及阴影调用。GUI矩形不是实际字形基线；当前中文字体及插件分支继续保留。当前UI批收口后，优先推进世界新要素解锁。
+| 主题 | 主责合同与素材 | 消费边界 |
+| --- | --- | --- |
+| 公共窗框／文字 | [窗框与裁剪](STEAM_WINDOW_FRAME.md)、[字体消费](STEAM_FONT_CONSUMER.md)、[坐标与阴影](STEAM_FONT_DRAW.md)、[字体后端](STEAM_FONT_BACKEND.md)、[GLText生命周期](STEAM_GLTEXT_LIFECYCLE.md) | 有序窗框／测宽与后端交接已核；当前中文glyph供给和原GPU像素仍未认证 |
+| 标题／选档／保存 | [标题背景](STEAM_TITLE_DRAW.md)、[菜单／选档](STEAM_TITLE_MENU.md)、[raw20／询问／保存](STEAM_SAVE_MENU.md)、[维护接口](../prototype/STEAM_STARTUP_SKIN.md) | 已有六态及平台组合参考；真实文件／Owner与只读绘制分开，平台动作和完整原动态另验 |
+| 标题人物／启动资源 | [Steam调度与scratch](STEAM_TITLE_ACTORS.md)、[APK标题调度](TITLE_PRESENTATION.md)、[两版启动皮肤](STARTUP_SKIN.md)、[原资源／嵌入字体](STEAM_STARTUP_RESOURCES.md) | Steam出生／退休／PRNG与APK不同；初次Init、返回残留、条件演员和自然调度不能混写 |
+| 语言／平台输入 | [语言包安装](STEAM_LANGUAGE_INSTALL.md)、[交互合同](STEAM_INTERACTIONS.md)、[显式表现请求](INPUT_RENDER_REQUESTS.md) | SC包码zh-CN、TC为zh；资源文件名不证明当前语言／字体。语言UP、平台CLICK、普通列表marker分别消费 |
+| 人物详情／表现 | [人物60](STEAM_HUMAN_DETAIL.md)、[翻页与触摸](STEAM_HUMAN_INPUT.md)、[人物表现](STEAM_HUMAN_PRESENTATION.md)、[危险偏移](STEAM_HUMAN_PINCH.md)、[差异素材](../assets/steam-human-common/README.md) | 页面、正常基础裁片和部分源副作用已核；完整动作／共享历史／OS投递沿各合同限制 |
+| 设施详情／升级 | [详情74](STEAM_FACILITY_DETAIL.md)、[升级81](STEAM_FACILITY_UPGRADE.md)、[软标签](STEAM_FACILITY_LABELS.md)、[共用helper](STEAM_FACILITY_DRAW_HELPERS.md)、[维护模块](../prototype/STEAM_FACILITY_SKIN.md)、[差异素材](../assets/steam-facility-common/README.md) | 定义预览／实例入口、升级提示／真正升级分开；[六阶段例图](examples/STEAM_FACILITY_UPGRADE.md)是维护条件展示 |
+| 设施加成／图标 | [逐来源行](FACILITY_BONUS_ROWS.md)、[类别与属性](FACILITY_BONUS_ICONS.md)、[人物增长头标](ATTRIBUTE_GAIN_RENDER.md)、[普通道具图标](ITEM_ICON_RENDER.md) | 同定义序号、零图标与原加号保留；研究绘制与原动态分别验收，产品缺口查[需求回应](../verification/PRODUCT_REQUESTS.md) |
+| 建设／地图图块 | [目录布局](STEAM_BUILD_LIST.md)、[业务／输入](STEAM_BUILD_LIST_BUSINESS.md)、[图块全集](STEAM_MAPCHIP_PATTERNS.md)、[资源安装／旋转](STEAM_BUILD_RESOURCE_INSTALL.md)、[差异素材](../assets/steam-build-common/README.md) | 五行空选及预览已有局部交付，完整21 Owner设计待确认；Steam98／103不能用APK图替代，目录确认不等于落地付款 |
+| 魔法壶 | [41–47皮肤](STEAM_MAGIC_POT.md)、[业务规则](../rules/MAGIC_POT.md) | 维护目录／处理／发现链已短验，外部反馈无原窗口，五项原动态未覆盖 |
+| 任务／探索／战斗 | [页面总表](PAGES.md)、[任务与周期报告](TASK_REPORT_RENDER.md)、[探索](DUNGEON_RENDER.md)、[战斗](COMBAT_RENDER.md)、[金币Steam交叉](STEAM_COIN_RENDER.md) | 页面、攻略／结算、计数／领取和场景层序分别登记；纯日期推进不证明任务自然完成 |
+| 信息／音频 | [信息菜单](INFORMATION_MENU.md)、[声音请求](AUDIO_REQUESTS.md) | 只读统计与菜单动作分开，BGM替换／jingle／SE请求不合并成一个播放动作 |
+| 全素材反查 | [容器覆盖](../assets/IMAGE_COVERAGE.md)、[代码反查](../assets/RESOURCE_CODE_INDEX.md) | 全量发现／字节身份不等于每个消费者或当前运行条件均已认证 |
 
-2026-10-10[人物危险图标偏移](STEAM_HUMAN_PINCH.md)补原直接常量表两行(-14,-28)/(5,-28)、方向分支及raw60锚点y93；28个指令锚、两资源与APK局部Java交叉通过。未改旧证据，也未把像素或人物动画树一并追认为已验。
+原窗口已有[启动反馈](../verification/startup-ui-analysis/ANALYSIS.md)及[后继皮肤反馈](../verification/skin-observation-analysis/ANALYSIS.md)，它们只证明实际取得的页面／操作。短姓名→切性别→取消重进已按用户决定不再强制补测；维护保名／保草稿属于明确策略。外部任务仍可使用[标题／字体提示](../verification/window-restore-observation/NEXT_SKIN_OBSERVATION_PROMPT.md)、[选档提示](../verification/window-restore-observation/NEXT_SAVE_MENU_SKIN_PROMPT.md)和[建设预览提示](../verification/window-restore-observation/NEXT_BUILD_LIST_INPUT_PROMPT.md)，执行前须重新核前提，既有提示文件不代表任务已完成。
 
-2026-10-10[Steam人物表现](STEAM_HUMAN_PRESENTATION.md)补100槽肖像原表、空实例分支、PB_NOW血条／PB_AFTER危险提示、奖章及气泡；四方法36锚／7资源静态审计通过。危险偏移表、完整人物武器树和原窗口像素仍待后继。[升级81例图](examples/STEAM_FACILITY_UPGRADE.md)已由正式C++计划和原资源生成六阶段图并实际查看，文字仅锚点适配，未声称完整字体。
+以下保留早期截图范围与APK源码定位，作为历史证据入口；当前完成度仍以上方覆盖表及各主责合同为准。
 
-2026-10-10[Steam人物60四页](STEAM_HUMAN_DETAIL.md)补概览／六属性／四装备／魔法的局部绘制、装备槽内导航、确认子页、初始软标签和共享表现副作用；[image88素材](../assets/steam-human-common/README.md)独立发布。[更新与触摸补证](STEAM_HUMAN_INPUT.md)核普通翻页链不按页重配label11，列表先选择再按UP／marker确认；完整人物调度、字体和平台热区仍待核。
-
-2026-10-10[设施数字请求](../VERIFICATION.md#steam设施数字请求展开2026-10-10)已沿Steam原helper展开普通数字／金额／加号，visuals通过0.58秒；负帧仅保留请求，不推断最终像素。Mapchip2、字体与实际窗口接线继续独立补齐。
-
-2026-10-10[Steam81只读皮肤桥](../prototype/STEAM_FACILITY_SKIN.md)已交付有序布局、裁剪、文本位置和角色／数值演出计划，visuals通过0.60秒；数字与Mapchip2仍是具名helper请求，未接原窗口、字体或OS输入，不宣称完整像素皮肤已完成。
-
-2026-10-10[设施页共用绘制helper](STEAM_FACILITY_DRAW_HELPERS.md)补底部提示的扩大触摸区、仅注册输入组件的滚动helper，以及普通／逗号数字的不同步宽、anchor和金额dx−9。74／81接线须保留这些实际请求，不按函数名猜滑块或用字体数字替原SEB。
-
-2026-10-10[Steam升级81](STEAM_FACILITY_UPGRADE.md)补初始化真正升级、40／55确认门槛、50起提示、独立frame2角色与两软键空；复用17项已出版素材，非日文四次测宽和特殊数字动画单独展开。只核局部静态合同，原窗口与维护逐帧皮肤另验。
-
-2026-10-10[Steam设施详情74](STEAM_FACILITY_DETAIL.md)区分建设定义预览与场景实例入口，补两页绘制／邻接来源、住宅人物60与升级81分流；[左右软标签](STEAM_FACILITY_LABELS.md)已证左空／右返回，确认走独立脉冲。[详情差异素材](../assets/steam-facility-common/README.md)新增Steam图片37／105共2,438字节，SEB15复用同字节引用；此后继发布不重签此前“未出版”静态证据。完整字体、父栈退休、OS投递及原窗口逐像素对照仍独立验收。
-
-2026-10-10[金币X4图块](../VERIFICATION.md#金币x4局部表现2026-10-10)已完成固定APK运动／循环帧／原X索引只读查询及既有visuals验收，复用626字节资源，无Owner／随机变化。[Steam局部交叉](STEAM_COIN_RENDER.md)另核运动、相机锚点、资源和退休；死亡调用wait值与完整场景层序另验，维护窗口没有借本批调整未经核实的深度。
-
-原窗口后继任务：[建设列表／空行／选择／详情／旋转预览](../verification/window-restore-observation/NEXT_BUILD_LIST_INPUT_PROMPT.md)，只做目录和未落地预览，不执行建设／移动／撤除。已输出提示词，尚无本次窗口反馈，不将静态合同当作动态结果。
-
-2026-10-10[Steam建设目录业务](STEAM_BUILD_LIST_BUSINESS.md)补Init／Update、空行／滚动、标记确认、资金预检及BUILD交接。目录确认不扣钱；撤除／移动只切模式，不在该分支重写建筑ID／朝向。原绘制先于frame3输入门槛，最终OS投递与完整父栈退休仍未认证。
-
-2026-10-10[Steam建设差异素材](../assets/steam-build-common/README.md)独立发布图片98／103，新增1,213字节、两份SEB引用既有同字节副本。[资源安装／旋转准入](STEAM_BUILD_RESOURCE_INSTALL.md)已追`resMapChip→image`、Dispose／Load／清引用及flags32软标签；46项同时具建设与旋转标志的定义两向裁片有效，不等于它们都已解锁。
-
-[Steam设施图块全集](STEAM_MAPCHIP_PATTERNS.md)已核两套pattern及85定义到图块／SEB／图片对应，保留源帧范围／裁片异常；建设列表固定朝向0全部有效。图片98／103确有Steam像素差异，不能以同SEB替换为APK图片；完整旋转准入与动态资源安装仍独立待研。
-
-最新静态增量：[Steam窗框与裁剪](STEAM_WINDOW_FRAME.md)独立核木纹／双线／白角、标题两次测宽、文字显式颜色及clip交接；[建设21](STEAM_BUILD_LIST.md#steam后继完整raw21局部绘制分支)补五行图块、marker16、类目和滚动注册。Steam图98／103与APK不同，不能同图alias；原建设绘制会推进frame计数。此批不包含维护接入或新的窗口观察。
-
-最新维护增量：[Steam标题／选档／raw20／raw1局部计划](../prototype/STEAM_STARTUP_SKIN.md)已过既有visuals与application两项检查，只读资源、遮挡、测宽及触摸注册不修改Owner。[文字后端](STEAM_FONT_BACKEND.md)核默认皮肤／字体对象及后端交接，[GLText消费与退休](STEAM_GLTEXT_LIFECYCLE.md)追至GUI.Label和复用池；中文实际字形仍未知。新增[选档小窗窗口任务](../verification/window-restore-observation/NEXT_SAVE_MENU_SKIN_PROMPT.md)待外部执行，不记为已观察。
-
-最新静态交叉：[Steam手动档菜单／确认](STEAM_SAVE_MENU.md)区分正常继续与默认“否”的覆盖／删除询问；[Steam语言包安装](STEAM_LANGUAGE_INSTALL.md)核包码、资源目录和翻译分流。SC包码zh-CN、TC为zh，不能从文件名猜语言码或当前字体。两者均为具名静态合同，不是新窗口观察。
-
-2026-10-09新增[Steam标题菜单与选档](STEAM_TITLE_MENU.md)：补正常标题两项、手动／中断行、图标裁片与ENTER／UP实际分流；选档不套设施75的首次标记规则。后继[手动档raw20与确认](STEAM_SAVE_MENU.md)补三项原序、默认“否”、返回结果、菜单SEB与询问布局；实际语言选择、平台按钮和窗口皮肤验收仍独立。
-
-2026-10-09新增[收支情报](INFORMATION_MENU.md)的原入口／双页／返回合同和纯统计查询；[音频请求](AUDIO_REQUESTS.md)区分真实26项音频表与播放、替换BGM、jingle三种操作。[Steam标题人物](STEAM_TITLE_ACTORS.md)补基础动作数组和98项资源独立交叉。上述不等于可操作信息菜单、完整音频后端或全部人物动作已完成。
-
-本轮继续补[Steam启动资源／嵌入字体](STEAM_STARTUP_RESOURCES.md)、[原标题调度／随机交接](TITLE_PRESENTATION.md)及[公共窗框图元](../verification/startup-frame-font-research/README.md)。窗口框只读计划已接既有皮肤桥；字体选择、Steam实际Draw及原窗口计分另验。外部补证使用[新提示词](../verification/window-restore-observation/NEXT_SKIN_OBSERVATION_PROMPT.md)。
-
-2026-10-09后继[启动皮肤图块桥](../prototype/STARTUP_SKIN.md)将APK标题五图、页面背景与计分角色／提示接为只读计划。自定义姓名→切性别→取消重进已由用户取消强制补测，维护沿用保名／保草稿逻辑；Steam动态未知项仍保留。
-
-2026-10-09已接收[Steam启动窗口反馈](../verification/startup-ui-analysis/ANALYSIS.md)：纪录两页／右向循环／返回选择、空栏进入配置及默认性别联动有原图支持。25图完整性核验通过；输入测试名未出现、配置取消未完成、通关17未观察，不能标成完整启动皮肤已验。原图仍留本地实验目录，正式[皮肤合同](STARTUP_SKIN.md)已按版本补证。
-
-接续`9ec4c1a`新增[标题／纪录／91／17原皮肤合同](STARTUP_SKIN.md)及[原尺寸素材对照页](examples/startup-sources.html)：资源包序、木框／裁片／字形来源、页面坐标与阶段分别登记。原标题背景人物的共同随机链与纪录装饰名单不同，尚不能宣称完整标题已维护；本轮native pipe失败及历史S038观察见[窗口复核](../verification/startup-window-observation/RESULT.md)。
-
-2026-10-08产品需求跟进：[人物六属性头标](ATTRIBUTE_GAIN_RENDER.md)与[普通道具图标](ITEM_ICON_RENDER.md)补齐APK来源和只读绘制接口；
-18项受影响测试通过，研究窗口接线与原EXE动态分开验收。逐项接收边界见[需求回应](../verification/PRODUCT_REQUESTS.md)。
-
-后继已补Steam两具体绘制消费者，保留属性数字加号定位的版本差异；普通道具自然购买→赠礼目录的研究窗口已观测。
-[建设目录21](STEAM_BUILD_LIST.md)已补Steam局部绘制／行注册；Init／Update、pattern数组全值及最终OS热区仍未闭合，不能把APK空行政策直接套到Steam。
-
-最新[设施74逐来源加成行](FACILITY_BONUS_ROWS.md)及[类别／属性图标](FACILITY_BONUS_ICONS.md)已交付原字段、只读接口、五行窗口与集中验收。名称后缀是同定义实例序号，图标0有效；道路不伪造来源行，原+号／重复项保留。
-
-2026-10-08最新目标：按EXE版本还原UI与操作。[Steam覆盖清单](STEAM_UI_COVERAGE.md)列全部101类型／26组件及逐项证据等级；
-[产品小窗示例](examples/README.md)提供建筑、人物四页、菜单、道具与信息窗，原图、APK合同示意及待验适配分开。
-图像全量与代码反查见[容器覆盖](../assets/IMAGE_COVERAGE.md)、[资源反查](../assets/RESOURCE_CODE_INDEX.md)；下文既有截图与APK合同继续保留其来源。
-
-更新：2026-10-07；此前八批37张图片，加Steam 2.56三批精选31张，共68张；固定APK运行与连续动作录像尚未采集。
+2026-10-07历史范围：此前八批37张图片，加Steam 2.56三批精选31张，共68张；固定APK运行与连续动作录像尚未采集。
 阶段与优先级见 [R3-V](../stages/R3-original-visual-baseline.md)，输入限制见 [证据索引](../EVIDENCE.md)。
 以下生成源码位置相对于只读 `work/decompiled/sources/`；不提交反编译实现。
 [截图与渲染映射](PAGES.md)保留S001–S032的定位状态、设施字段/素材链与缺图页面静态结构。

@@ -1462,6 +1462,67 @@ void steam_platform_skin_checks(Checks &check,const std::filesystem::path &sourc
                   stable.frame==0&&stable.layer==1&&stable.okay_frame==16&&!stable.cancel_frame,
               "重复控制器后备只读输出保持固定一个请求，不改输入或累积资源设备任务");
     }
+    SteamPlatformButtonEventInput event;
+    for(int type:{0,1,2,13,99}) {
+        event.event_type=type;
+        const auto p=steam_platform_button_event(event);
+        check(p&&p->actions.empty(),"非DEBUG的非CLICK回调不消费平台/语言字段，也不派传播结果");
+    }
+    event.event_type=5;
+    for(int gates=0;gates<4;++gates) {
+        event.use_steam=(gates&1)!=0;event.initialized=(gates&2)!=0;
+        const auto p=steam_platform_button_event(event);
+        check(gates==3?!p:bool(p)&&p->actions.empty(),
+              "绑定CLICK先看USE_STEAM与初始化，实际调用才要求已取得handle");
+    }
+    event.debug=true;
+    for(const auto handle:std::array<std::uint64_t,2>{0,0xFEDCBA9876543210ULL}) {
+        event.controller_handle=handle;
+        const auto p=steam_platform_button_event(event);
+        check(p&&p->actions.size()==1&&std::holds_alternative<SteamBindingPanelRequest>(p->actions[0])&&
+              std::get<SteamBindingPanelRequest>(p->actions[0]).controller_handle==handle,
+              "DEBUG下CLICK也不读长按钟；绑定原样传64位handle包括零，不以HasController拦截");
+    }
+    event={};event.kind=SteamPlatformButtonKind::keyboard_guide;event.event_type=5;
+    check(!steam_platform_button_event(event),"未取语言码与源null不同，不能静默补空外链");
+    event.language_code_resolved=true;
+    for(const auto &code:std::array<std::optional<std::string>,4>{{{},"","zh-CN","ZH-cn A"}}) {
+        event.language_code=code;
+        const auto p=steam_platform_button_event(event);
+        check(p&&p->actions.size()==1&&std::holds_alternative<SteamControlMapRequest>(p->actions[0])&&
+              std::get<SteamControlMapRequest>(p->actions[0]).url==
+                "https://kairosoft.net/steam/?_lh="+code.value_or("")+"#controlmap",
+              "键盘CLICK不依赖SDK；null/空合法，语言串按原Concat不编码/trim或改大小写");
+    }
+    event.language_code=std::string(4097,'x');check(!steam_platform_button_event(event),"已消费语言码超过维护预算明确拒绝");
+    event.event_type=2;event.debug=true;
+    const auto enter=steam_platform_button_event(event);
+    check(enter&&enter->actions.size()==1&&std::holds_alternative<SteamCaptureSharedButtonTimeRequest>(enter->actions[0]),
+          "DEBUG ENTER只请求取当前钟写共同字段，不消费无关语言/SDK或猜旧时刻");
+    event.event_type=13;
+    check(!steam_platform_button_event(event),"DEBUG ON缺实际当前钟或共同旧钟必须拒绝");
+    using Limit=std::numeric_limits<std::int64_t>;
+    struct ClockCase {std::int64_t now,down;bool open;};
+    for(const auto c:std::array<ClockCase,11>{{{3000,0,false},{3001,0,true},{0,1,false},
+        {Limit::min()+1000,Limit::max()-3000,true},{Limit::max(),-1,false},
+        {Limit::min()+0x200000000LL,Limit::max()-0xffffffffLL,false},
+        {Limit::min()+0x200000000LL+4001,Limit::max()-0xffffffffLL,true},
+        {Limit::max()-0xffffffffLL,Limit::min()+0x2ffffffffLL,false},
+        {0x100000000LL,0xfffff447LL,true},{0x100000000LL,0xfffff448LL,false},
+        {0x300000000LL,0,true}}}) {
+        event.now_millis=c.now;event.shared_down_millis=c.down;
+        for(const auto kind:{SteamPlatformButtonKind::controller_binding,SteamPlatformButtonKind::keyboard_guide}) {
+            event.kind=kind;
+            const auto p=steam_platform_button_event(event);
+            check(p&&p->actions.size()==(c.open?2U:0U),"两按钮共用长按钟；3000边界及原x86溢出flags转低位比较保留");
+            if(c.open)check(std::holds_alternative<SteamDebugTrophyRequest>(p->actions[0])&&
+                std::holds_alternative<SteamCaptureSharedButtonTimeRequest>(p->actions[1])&&
+                event.shared_down_millis==c.down,
+                "先请求奖杯页，再重新取钟；纯候选不把判定now偷写回或执行平台动作");
+        }
+    }
+    event.kind=static_cast<SteamPlatformButtonKind>(99);
+    check(!steam_platform_button_event(event),"未知按钮身份不按键盘分支蒙混通过");
 }
 void steam_language_checks(Checks &check,const std::filesystem::path &root) {
     const auto directory=root.parent_path()/"steam-platform";

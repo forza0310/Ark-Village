@@ -144,7 +144,9 @@ Steam标题Update另有诊断下载分支把当前手动日期写300，不属于
 
 Steam同一路径的调用资格已静态收窄：`GameForm._update`仅一处`ProgressTime`调用（VA10305BA2），前置普通事件（10305181）或到期续体（103052BE）返回时不到此处。世界Update（103052E0）之后仍先处理通知与底栏；若软标签4命中，Push菜单后返回（10305B64–10305BDE），否则须state仍为0（10305B70）才传FRAME_TIME1和当前frameCount。`GameForm.Update`在103017A3–103017C3循环调用内部方法，普通路径按P13取1／2轮（值1为2），非主场景改1，内部返回true则提前停止；配置／调试还可覆盖，不能把单一调用点写成每个外层最多调用一次。
 
-跨界的即时`SaveGame(true)`在`ProgressTime`的102FD319／102FD31C传参／调用；正常返回后102FD34F才恢复试加time，102FD360才增加monthCnt。该方法没有本地异常恢复路径；保存异常向上传播时，后续线性恢复与日历步骤不会执行。原行为不是维护Owner式事务回滚，此路径也不等于下文预留SaveAll；FRAME_TIME1的全部运行期赋值、异常展开及实际平台时序仍另验。
+跨界的即时`SaveGame(true)`在`ProgressTime`的102FD319／102FD31C传参／调用；正常返回后102FD34F才恢复试加time，102FD360才增加monthCnt。该方法没有本地异常恢复路径；保存异常向上传播时，后续线性恢复与日历步骤不会执行。原行为不是维护Owner式事务回滚，此路径也不等于下文预留SaveAll；异常展开及实际平台时序仍另验。
+
+FRAME_TIME1的初始赋值已具名核到`AppData.cctor RVA266A60`：`VA10268FE8`先写静态DAY_SECOND1（`+0x78`）为80，`10268FF7–10269008`再按有符号整数除法计算`43200/(80*20)=27`，写同一AppData静态区的FRAME_TIME1（`+0x7C`，既有TypeInfo槽`110F1FFC`）。这是类初始化的正向写者，不是按桌面FPS或墙钟推导；也不证明启动后每个外层轮始终推进27。已核`AppData.Init→Config.Init`、MyConfig构造及静态构造的有限直接正文未识别到后继FRAME_TIME1改写；反射、间接／内联写者与实际运行值仍未穷尽，不能把初值升级为全运行期常量。
 
 已见 Android 生命周期 [IApplication.java](../work/decompiled/sources/kairo/android/ui/IApplication.java)
 的 `onPause`／`onStop`／`onDestroy` 没有调用游戏保存，最后一项直接结束进程。
@@ -431,7 +433,7 @@ APK来源是`a/e.java:440–484,610–713,774–781`、`a/h`读写及重置、`d
 
 Steam校验表对低位为0走多项式分支，32位状态初值／末异或均为`0xFFFFFFFF`，与APK游戏校验结构相符；
 不能从“CRC64”类名判断算法宽度。System.Random已核对为56项减法反馈，Xorshift为11／19／8移位；
-Random2018创建System.Random并反射改字段，字段语义尚未闭合。
+Random2018的反射目标及三后端后继已核，见[共同随机来源](../ui/STEAM_TITLE_ACTORS.md#共同随机来源)：找到`_inextp`才设置31，未找到则跳过；实际运行模式仍未动态观测，不能将这条构造分支当作已取得的原随机流。
 `IApplication.Awake`在ActionReplay／PlayerPrefs条件下设置fix种子标记（VA `0x1078218A`），构造／SetSeed对应强制0；
 这是内置回放线索，未启用它，也没有证明原游戏提供可供维护测试直接使用的快照接口。
 

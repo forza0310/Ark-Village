@@ -54,9 +54,17 @@ OnGUI的多条正常／异常收尾调用`0x1077BDF0`。该116字节helper从当
 - `PushFontTexture(use)`把当前font_的布尔值写进栈的当前索引，必要时扩容，然后增加计数并安装use。
 - `PopFontTexture()`仅在计数>0时取上一项，减计数并恢复当前font_；空栈不改变flag。
 - `Font._copy`和`_set`本身会复制来源Font的flag。但是`Graphics.SetFont(f)`先保存自己当前flag，执行Copy后又把旧flag写回，再调整字号。**切换Font不等于切换文字后端。**
-- 静态DefaultUseFontTexture getter读取字段+0x3C，setter写它；Graphics.cctor没有给该字段显式写true。本批未完成所有内联／间接设置入口，因此不把默认零初始化升级为当前运行值必为false。
+- 静态DefaultUseFontTexture getter读取字段+0x3C，private setter原样写入调用参数；Graphics.cctor没有给该字段显式赋值。具名初始化／配置安装链已补核如下；仍不把默认零初始化升级为当前运行值必为false。
 
 这里的栈是原表现层状态，不占用维护世界共同随机流，也不是产品应新增的第二个业务Owner。维护实现尚未接整套Steam文字后端；本批只交付原消费者规则。
+
+### 默认开关的正常初始化上游与写者边界
+
+2026-10-14从具名入口顺序补核。getter RVA`77BD60`在VA`1077BD96–1077BD99`读取Graphics静态区+0x3C；setter RVA`77BDA0`的两个正常分支在`1077BDE0`／`1077BDEB`写同一字节。类型槽`110F707C`已沿MetadataRegistration.types独立解析为`kairo.unity.ui.Graphics`（类型904），不是因其它类也有+0x3C便认成同一开关。setter没有平台、语言或Config条件，它只是写调用参数。固定DLL可执行段中未找到指向这两个访问器入口的直接call／jmp候选；这是直接调用检索结果，**不证明没有内联、反射或原生写者**。
+
+三个Graphics构造的正常路径均进入`Init`：无参构造RVA`776740`于`10776FDB`，Image／Camera构造RVA`777000`于`10777899`，Offscreen构造RVA`7778C0`的两条分支汇入`1077819A`。`Init`于`1076FE38–1076FE46`内联读取上述静态字节、写当前Font+0x28并将useFontTextureCount清零；构造／已读Init没有在此前按平台另写默认开关。Graphics静态构造RVA`775990`初始化其它图形值和缓存、注册Updated清理，但未赋值+0x3C。因此在**没有额外写者的这条正常初始化路径**，当前Font会取得静态零初值false；再次Init会重新安装当次静态值，不保留之前PushFontTexture的临时选择。不能将这个有条件结论写成当前Steam窗口必走GUI.Label。
+
+配置反射也已缩小范围。`Config.Create(Type)` RVA`83B420`先从来源配置类取字段，再在`1083B59A–1083B5AA`取得实际`kairo.common.cfg.Config`的Type，在`1083B683`按名字找其FieldInfo，于`1083B6D3`用SetValue安装值。槽`110FE58C`／`110F404C`分别独立解析为Config的类型句柄／类型信息（类型551）；目的不是Graphics Type，也不是对任意同名属性调用setter。Config字段目录不含DefaultUseFontTexture；已读Config.Create、Init（RVA`83BB30`）和静态构造（`83D7B0`）未提供该开关的实际writer。它们安装语言、平台、Editor等Config字段，不能把`Config.UNITY_EDITOR`在纹理插件消费者处的读取反推成“Config安装时打开纹理字体”。本节认证有限正常初始化链，保留其它间接调用、反射／原生修改与真实运行开关值；不穷举整个引擎来宣称全局不可写。
 
 ## 四类落点及插件边界
 
@@ -117,4 +125,4 @@ Image构造7A1CF0在+A0建立零长任务数组，+A4计数采用零初值。Add
 
 产品可按上述契约区分字体对象、后端开关、临时GUIStyle与外层GUISkin恢复，避免SetFont误改后端或认为一次DrawString已恢复所有外部状态。默认资源的Arial引用可用于后续取证，不能直接作为中文字体交付或以另选系统字体冒充原样。
 
-仍缺：真实当前GUI.skin、原生默认皮肤返回对象及中文glyph fallback提供者、DefaultUseFontTexture完整上游、纹理实际回收时刻与全局持有者，以及完整游戏窗框的全部页面使用资格。缓存年龄退休、Updated事件入口、UI任务消费及Unity销毁请求已核，不能继续将它们整体列为未知；同样不能宣称缓存永久有界。托管空font到原生默认字体的交接已核，不再列为完全未知。TextLayout的14项标签局部生产／消费、普通断行及空串字段分工已有[字体合同](STEAM_FONT_CONSUMER.md)，全部语言禁则、运行注册绑定和实际字形仍未认证。普通位置变换见[文字绘制](STEAM_FONT_DRAW.md)，GUI组／clip见[窗框](STEAM_WINDOW_FRAME.md)，GLText最终消费者／保留对象见[生命周期](STEAM_GLTEXT_LIFECYCLE.md)。窗口观察可补最终画面尺寸和字形表现，但单张截图仍不能证明font对象身份。后续继续静态缩小这些边界，必要动态由既有外部提示词分支取得。
+仍缺：真实当前GUI.skin、原生默认皮肤返回对象及中文glyph fallback提供者、DefaultUseFontTexture其它间接／反射／原生写者及真实运行值、纹理实际回收时刻与全局持有者，以及完整游戏窗框的全部页面使用资格。默认开关的具名正常初始化及Config反射目的、缓存年龄退休、Updated事件入口、UI任务消费及Unity销毁请求已核，不能继续将它们整体列为未知；同样不能宣称缓存永久有界。托管空font到原生默认字体的交接已核，不再列为完全未知。TextLayout的14项标签局部生产／消费、普通断行及空串字段分工已有[字体合同](STEAM_FONT_CONSUMER.md)，全部语言禁则、运行注册绑定和实际字形仍未认证。普通位置变换见[文字绘制](STEAM_FONT_DRAW.md)，GUI组／clip见[窗框](STEAM_WINDOW_FRAME.md)，GLText最终消费者／保留对象见[生命周期](STEAM_GLTEXT_LIFECYCLE.md)。窗口观察可补最终画面尺寸和字形表现，但单张截图仍不能证明font对象身份。后续继续静态缩小这些边界，必要动态由既有外部提示词分支取得。

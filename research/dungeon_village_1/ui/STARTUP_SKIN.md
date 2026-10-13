@@ -121,7 +121,10 @@ Draw读自身`view_ +0x58`宽高，设原点`(trunc((W−240)/2),trunc((H−240)
 不是本页主动创建TextLayout；下层本地化／字体布局仍沿[Steam字体后端](STEAM_FONT_BACKEND.md)，
 不能把上述字面源当作当前中文运行时译文。Draw不额外恢复Font／颜色。
 数值getter`GetHighScore RVA2579B0/GetMoneyHighScore RVA257EE0`直接读同一systemData的long数组`+0x14`索引0／2；
-此前分别调用联网最高分getter，但其返回值未替代本页数值。Draw没有按零值补“没有记录”的分支，
+此前分别调用`GetNetHighScore RVA2585A0/GettMoneyNetHighScore RVA258860`，但其返回值未替代本页数值。
+两方法各48字节已完整核验：只读同一systemData的long数组索引1／3，只有null／长度异常分支；
+不请求网络、不更新缓存或其它字段，不能根据Net命名增加网络操作。纯显示可不消费这两个未用返回值，
+但不据此声明原坏数组不会抛异常。Draw没有按零值补“没有记录”的分支，
 村名文本须按系统供给展示，不由维护皮肤自行推导占位。
 
 已窄核本页数值格式：`UNI` RVA2015F0对`P`在日文分支用Comma后接ASCII P，非日文不含“万”的分支只返回Comma，所以0／1234分别为非日文`0`／`1,234`、日文`0P`／`1,234P`。`YEN` RVA2019F0命中全角Ｇ（metadata槽110FB6B8）后直接Unit(value,true)再接该单位，两语言都是`0Ｇ`／`1,234Ｇ`。true表示按三位加ASCII逗号，不是正号或单位开关；其它币种／万／k以及负MIN不从本页专支外推。维护系统纪录非负域可按这两专支完整格式化，不能直接拼`StartupRecordView.unit`。
@@ -135,12 +138,25 @@ Draw读自身`view_ +0x58`宽高，设原点`(trunc((W−240)/2),trunc((H−240)
 Draw实际循环整个名单，`min(count,5)`只参与居中：`x_i=120−trunc((26*min(count,5)−26)/2)+26*i`。
 名单冻结的是定义身份，不冻结绘制时职业／性别／武器；共享显示scratch沿[标题演员合同](STEAM_TITLE_ACTORS.md)。
 `Init`直接置state0并装软标签；未见其重写frame／page，新对象零初值与复用重置不能混称。
-`cctor RVA2034D0`实建`[0,2]`。`Update RVA203420`先`frame=(frame+1)%INT_MAX`，
-Left或Right任一有效仅使`page=(page+1)%2`一次，否则才检查软2并Pop；翻页不清独立frame。
+`cctor RVA2034D0`实建`[0,2]`。`Update RVA203420`全176字节没有base.Update：
+先`frame=(frame+1)%INT_MAX`并写回（`1020342C–1020343A`），再检查state0；非0只返回true，不查询输入。
+正常state0严格短路：先`CheckKeyRepeat(0x10000)`左（`1020344E`），仅左false再
+`CheckKeyRepeat(0x40000)`右（`10203469`）。任一true在`102034A5`使`page=(page+1)%2`恰一次，
+不查询后续键；仅两者false才`IsPushSoftLabel(2)`（`10203481`），为真则尾调`FormManager.Pop()`并返回其bool。
+其余正常分支返回true，翻页／返回都已经推进主钟，翻页不清独立frame。纯更新候选只可输出Pop请求，
+不能在未执行框架Pop时宣称关闭成功或吞掉其失败结果。
+
+`IsPushSoftLabel(2)`的单参数包装RVA259B10传默认key0到RVA259910；它按当前左右软标签文本与
+系统softlabel[2]比较后查询`CheckKeyPulse`的左右软键mask `0x200000/0x400000`，另保留默认key参数查询。
+所以纯输入中的soft2应是此具名逻辑查询结果，不等于任意Esc、Right、Confirm或OS鼠标返回动作。
+一次已准入state0更新的检查轨迹可分别记为`[左]`、`[左,右]`、`[左,右,软2]`，
+不得先查询并消费全部键再伪装成源短路顺序。
 维护应用尚无正式纪录页主钟，本批纯绘制必须显式接收条件frame，不能拿标题Logo钟代替；
 本次未运行原窗口、未修改Owner或持久格式，原截图与维护展示验收分别登记。
 
 维护[纪录独立模块](../prototype/include/dungeon_village_prototype/steam_record_skin.hpp)将正常state0主体组织为原序只读请求：两窗保留各自标题，普通文字保留整数／float实际测宽，冻结名单只限制来源定义身份而不截5，箭头复用已核buttoneffect助手。`steam_record_value_text`只实现本页P／全角Ｇ专支；`steam_record_skin`不从零值推村名占位、不抽人物或读取世界钱包。原点来自view尺寸并在末尾清0；原Draw深层字体／scratch仍沿各自合同。尺寸65536、目录与文字／测宽4096是维护预算，不是原版硬上限。当前应用有页号／冻结名单／系统纪录，但没有独立纪录动画钟；本批显式frame不代表新快照字段或精确恢复已接。
+
+同模块`steam_record_update`提供一次已准入更新的纯候选：先推进独立frame，再按state0资格及Left Repeat→Right Repeat→soft2顺序短路，返回下一页／钟、实际检查项及Pop请求。两方向同时命中只翻一次；方向与返回同轮时不查soft2，翻页不重置钟；非state0仍加钟但不查键。页0／1与钟0…INT_MAX−1为维护合法域，缺完整应用时钟不能调用绘制次数来补。该接口没有执行管理器Pop或安装候选，也没有新增Owner／codec字段，不能将请求结果当作父页已恢复。
 
 ## 新局91：四项、原图与按钮
 

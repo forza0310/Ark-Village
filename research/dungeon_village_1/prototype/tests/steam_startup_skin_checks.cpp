@@ -156,6 +156,30 @@ void record_page(Checks &check) {
         check(!steam_record_skin(bad),"坏纪录页/钟/测宽/目录及重复引用整体拒绝，不返回部分画面");
     }
 }
+void record_update(Checks &check) {
+    struct Case {bool left,right,back;int page;std::array<bool,3> checked;bool pop;};
+    for(const auto c:std::array<Case,6>{{
+        {false,false,false,0,{true,true,true},false},
+        {true,false,false,1,{true,false,false},false},
+        {false,true,false,1,{true,true,false},false},
+        {true,true,true,1,{true,false,false},false},
+        {false,true,true,1,{true,true,false},false},
+        {false,false,true,0,{true,true,true},true}}}) {
+        const SteamRecordUpdateInput in{0,19,true,c.left,c.right,c.back};
+        const auto out=steam_record_update(in);
+        check(out&&out->page==c.page&&out->frame==20&&out->checked_keys==c.checked&&out->request_pop==c.pop&&
+              in.page==0&&in.frame==19,"Rank先钟后Left/Right短路，翻页压过返回且只翻一次；候选不写输入");
+    }
+    const auto wrap=steam_record_update({1,std::numeric_limits<int>::max()-1,true,false,true,true});
+    check(wrap&&wrap->page==0&&wrap->frame==0&&!wrap->request_pop,
+          "独立页钟到INT_MAX回0、第二页方向回第一页；不在翻页另清钟或同时请求Pop");
+    const auto inactive=steam_record_update({1,7,false,true,true,true});
+    check(inactive&&inactive->page==1&&inactive->frame==8&&!inactive->request_pop&&
+          inactive->checked_keys==std::array<bool,3>{false,false,false},
+          "非state0仍先加纪录钟，但不检查方向/soft2；不是由绘制推进");
+    for(const auto bad:std::array<SteamRecordUpdateInput,4>{{{-1,0},{2,0},{0,-1},{0,std::numeric_limits<int>::max()}}})
+        check(!steam_record_update(bad),"非法页或不可达独立钟拒绝，不补0或借标题钟");
+}
 void manual_page(Checks &check,const std::filesystem::path &root) {
     SteamManualSkinInput input;
     input.width=240;input.height=320;input.body_pages=29;input.page=0;input.frame=19;
@@ -934,5 +958,6 @@ int check_steam_startup_skin(const std::filesystem::path &root) {
     save_page(check);
     manual_page(check,root);
     record_page(check);
+    record_update(check);
     return check.count;
 }

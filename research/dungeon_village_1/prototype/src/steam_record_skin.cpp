@@ -52,4 +52,16 @@ std::optional<SteamRecordSkinPlan> steam_record_skin(const SteamRecordSkinInput 
     plan.draws.emplace_back(SteamRecordText{*value,{float((in.japanese?186:198)-*in.value_width),186.F},{200,100,60}});
     return plan;
 }
+std::optional<SteamRecordUpdatePlan> steam_record_update(const SteamRecordUpdateInput &in) {
+    if(in.page<0||in.page>1||in.frame<0||in.frame==std::numeric_limits<int>::max())return {};
+    SteamRecordUpdatePlan plan;
+    plan.page=in.page;plan.frame=in.frame==std::numeric_limits<int>::max()-1?0:in.frame+1;
+    if(!in.state_zero)return plan;
+    plan.checked_keys[0]=true;
+    if(in.left_repeat) {plan.page=1-in.page;return plan;}
+    plan.checked_keys[1]=true;
+    if(in.right_repeat) {plan.page=1-in.page;return plan;}
+    plan.checked_keys[2]=true;plan.request_pop=in.back_soft_label;
+    return plan;
+}
 } // namespace dungeon_village_prototype

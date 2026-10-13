@@ -9,7 +9,7 @@
 - [x] 用户指定的小窗preview.mjs及所引设施/道具/菜单/提示/人物示例已纳入本goal，复用各自正式合同及套件，对照入口见[清单](docs/reference/REFERENCE_CHECKLIST.md#ui-small-window-goal)。预览服务、CSS和夹具数值不进入游戏。
 - [x] 6a0f8e2／395fa0b职业预览、转职演出和赠礼结果计划已消费，真实转职/赠礼窗口通过；共享奖励人物帧已由755fdf2的entry_updates只读桥提供；手形仍静态0，原OS动态单列。
 - [x] 正式755fdf2商品72/79、强化75–77、口碑82双计数/联合恢复及共享人物帧已接；461来源/73适配、720素材，整帧FIFO、玩家冷清及两Debug/Release受影响检查通过，见[B1](docs/stages/B1-playable-prototype.md#research-755fdf2-facility-pages)。158条件图与两次真实新局图不认证OS输入或原字体。
-- [ ] 接续正式fd69d44村办51–54、晋级48–50及解锁/领取59/95/96/97皮肤与恢复修正，1372a06为文档收敛；先核维护增量与现套件，沿同一Owner/玩家政策，不接研究窗口宿主。
+- [ ] 接续正式fd69d44村办51–54、晋级48–50及七类领取95皮肤与恢复修正，1372a06为文档收敛；先核维护增量与现套件，沿同一Owner/玩家政策，不接研究窗口宿主。
 - [x] 获批steam-month分段月96→97→98→99及三次独立冷载通过；每段6分钟/10000轮，原季度入口保持，失败观察档不作输入，见[B1](docs/stages/B1-playable-prototype.md#research-e22ed0a-human-ui)。
 
 - [x] 正式bb61d5f普通设施两页维护计划：获批四目标已导入，455来源/70适配保留，新增资源映射现有Steam属性图标；后续c6b1a5b无闭包增量，见[方案](docs/MILESTONES.md#research-bb61d5f-detail-plan)。

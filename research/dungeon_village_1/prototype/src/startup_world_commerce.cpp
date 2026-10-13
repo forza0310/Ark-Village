@@ -218,6 +218,10 @@ Error facility_action(State &s, std::uint64_t id, Action action) {
 }
 } // namespace
 
+bool valid_startup_world_commerce_page(const State &s,const Page &p) {
+    return p.kind==ref::WorldScriptPageKind::raw_page&&payload(s,p)&&
+        (p.legacy_page!=93||valid_startup_world_commerce_claim_page(s,p));
+}
 bool valid_startup_world_commerce_claim_page(const State &s,const Page &p) {
     if(!s.rules||p.kind!=ref::WorldScriptPageKind::raw_page||p.legacy_page!=93||p.lifecycle<0||p.lifecycle>4||
        p.legacy_r!=3||!facility_state(s,p.legacy_s)||s.page_phases.count(p.id)||

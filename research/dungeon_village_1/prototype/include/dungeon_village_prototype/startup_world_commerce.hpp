@@ -45,6 +45,8 @@ StartupWorldRuntimeError input_startup_world_commerce_facility(
     StartupWorldRuntimeState &state,std::uint64_t page,const StartupCommerceFacilityInput &input);
 StartupWorldRuntimeError open_startup_world_commerce(StartupWorldRuntimeState &state);
 bool initialize_startup_world_commerce_pages(StartupWorldRuntimeState &state);
+// 已初始化商会载荷的只读校验；允许挂起的父页，不要求栈顶，也不补字段或初始化。
+bool valid_startup_world_commerce_page(const StartupWorldRuntimeState &state,const ref::WorldScriptPage &page);
 // raw93领取前后沿同一交易载荷；关闭待退休不能通过删除字段伪装未初始化。
 bool valid_startup_world_commerce_claim_page(const StartupWorldRuntimeState &state,const ref::WorldScriptPage &page);
 std::optional<StartupCommerceView>

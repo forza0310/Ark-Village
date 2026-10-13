@@ -83,6 +83,75 @@ void new_world_inheritance() {
     check(!install_startup_world_inheritance(running, sections) && startup_world_state_digest(running) == digest,
           "inherited system bytes cannot overwrite running world");
 }
+// 定义预览的Owner来源接线；底层各职业分组/经济公式矩阵仍由example经济套件主责。
+void definition_values() {
+    auto s=test_support::world_fixture();
+    constexpr int id=34; // 原未开放冷饮店，初始地图无实例；查询不要求可购买/可建设。
+    check(std::none_of(s.scene.world.world.facilities.begin(),s.scene.world.world.facilities.end(),
+                      [](const auto &entry){return entry.second.placement.definition_id==id;}),
+          "definition34 has no initial map instance");
+    const auto &source=s.rules->facilities.at(id).economy;
+    const auto before=startup_world_state_digest(s);
+    const auto initial=startup_world_facility_definition_values(s,id);
+    check(initial&&initial->definition_attributes==initial->instance_attributes&&
+          initial->definition_attributes[1]==source.attributes[1].first&&
+          initial->upgrade_uses==source.upgrade_uses.first&&
+          initial->construction_cost==source.construction_cost&&startup_world_state_digest(s)==before,
+          "unbuilt definition derives current shared values with zero instance modifiers and no Owner writes");
+    check(source.upgrade_uses.first>0&&source.upgrade_uses.fifth>0&&source.attributes[1].fifth>0,
+          "original cold drink definition has an upgrade and quality source");
+    s.scene.world.world.facility_uses.at(id).completed_uses=source.upgrade_uses.first;
+    const auto ready=startup_world_facility_definition_values(s,id);
+    check(ready&&ready->upgrade_ready&&s.scene.world.world.facility_uses.at(id).level==1,
+          "definition preview reads actual completed uses without applying an upgrade");
+    s.scene.world.world.facility_uses.at(id).level=5;
+    s.scripts.facilities.at(id).level=5;
+    s.scripts.facilities.at(id).improvements[1]=1;
+    const auto improved=startup_world_facility_definition_values(s,id);
+    check(improved&&improved->definition_attributes[1]==source.attributes[1].fifth+1&&
+          improved->definition_attributes==improved->instance_attributes&&!improved->upgrade_ready,
+          "definition preview reads shared level and improvements without inventing neighbours or a sixth level");
+
+    // 仅准备职业人数条件；改当前定义职业不回写缓存，也不宣称自然转职已完成。
+    for(auto &entry:s.human_presence)entry.second=0;
+    s.human_presence.at(1)=2; // 原人数规则p非零，包含已到访p2。
+    const auto farmer=std::find_if(s.rules->jobs.begin(),s.rules->jobs.end(),[](const auto &job){return job.type==0;});
+    const auto carpenter=std::find_if(s.rules->jobs.begin(),s.rules->jobs.end(),[](const auto &job){return job.type==9;});
+    check(farmer!=s.rules->jobs.end()&&carpenter!=s.rules->jobs.end(),"original jobs supply ordinary and construction groups");
+    s.scene.world.world.ai.growth.at(1).definition.current_profession=static_cast<int>(farmer-s.rules->jobs.begin());
+    const auto ordinary=startup_world_facility_definition_values(s,id);
+    s.scene.world.world.ai.growth.at(1).definition.current_profession=static_cast<int>(carpenter-s.rules->jobs.begin());
+    const auto current=startup_world_state_digest(s);
+    const auto accelerated=startup_world_facility_definition_values(s,id);
+    check(ordinary&&accelerated&&accelerated->construction_ticks<ordinary->construction_ticks&&
+          startup_world_state_digest(s)==current,
+          "definition preview counts current active job type9 and remains read-only instead of using stale counts");
+    auto neighbour_only=s;
+    for(auto &entry:neighbour_only.neighbourhood)entry.second={999,999,999};
+    const auto independent=startup_world_facility_definition_values(neighbour_only,id);
+    check(independent&&independent->definition_attributes==accelerated->definition_attributes&&
+          independent->instance_attributes==accelerated->instance_attributes,
+          "definition preview ignores even unrelated existing instance neighbourhoods");
+
+    for(int fault=0;fault<10;++fault) {
+        auto broken=s;auto rules=*s.rules;broken.rules=&rules;
+        int requested=id;
+        if(fault==0)broken.rules=nullptr;
+        if(fault==1)requested=-1;
+        if(fault==2)broken.scene.world.world.facility_uses.erase(id);
+        if(fault==3)broken.scripts.facilities.erase(id);
+        if(fault==4)broken.human_presence.erase(1);
+        if(fault==5)broken.scene.world.world.ai.growth.erase(1);
+        if(fault==6)broken.scene.world.world.ai.growth.at(1).definition.current_profession=-1;
+        if(fault==7)rules.jobs[static_cast<std::size_t>(carpenter-s.rules->jobs.begin())].type=10;
+        if(fault==8)broken.scene.world.world.facility_uses.at(id).completed_uses=-1;
+        if(fault==9)broken.scene.world.world.facility_uses.at(id).level=6;
+        const auto digest=startup_world_state_digest(broken);
+        check(!startup_world_facility_definition_values(broken,requested)&&
+              startup_world_state_digest(broken)==digest,
+              "definition query rejects missing rules/fields/growth and invalid job/use/level without throws or writes");
+    }
+}
 ref::Position empty_anchor(const StartupWorldRuntimeState &s, int definition,
                            ref::FacilityOrientation orientation = ref::FacilityOrientation::first) {
     const auto &d = s.rules->facilities.at(definition);
@@ -1962,6 +2031,7 @@ int main() {
         normal_construction();
         progression_building_unlocks();
         new_world_inheritance();
+        definition_values();
         multi_tile_and_rollback();
         new_shop_projection();
         details();

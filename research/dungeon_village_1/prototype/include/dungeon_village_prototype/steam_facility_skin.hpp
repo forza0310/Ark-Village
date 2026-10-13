@@ -172,14 +172,15 @@ struct SteamFacilityDetailSkinInput {
     int definition{}, mapchip{}, icon{}, level{1}, page{}, frame{}, view_y{};
     std::string name;
     bool japanese{}, english{};
-    std::array<int,4> values{}; // 实例价格/品质/魅力/维护费，只读Owner计算结果。
-    std::array<int,3> limits{};
+    std::array<int,4> values{}; // 实例四属性；definition_preview时为不加邻接的共享定义值。
+    std::array<int,3> limits{}; // 仅实例作MAX判断；预览不消费这些限值。
     int remaining{}, finger_frame{}; // SEB当前帧由表现消费者提供，不按页面frame猜帧。
     std::vector<std::array<int,2>> effects; // 原z/A的[属性,加号数]原序。
     std::vector<SteamFacilityDetailBonus> bonuses; // 初始化Y原序，包括隐藏行。
     SteamFacilityBonusCursor cursor;
     std::optional<std::array<int,2>> title_widths;
     std::optional<int> bottom_width; // 原Font.StringWidth的结果；不按汉字数估宽。
+    bool definition_preview{}; // 只支持普通布局3单页；无实例Y、箭头/MAX提示或互动底钮。
 };
 std::optional<SteamFacilityDetailSkinPlan> steam_facility_detail_skin(
     const SteamFacilityDetailSkinInput &input);
@@ -193,5 +194,11 @@ struct SteamFacilityDetailSkinOptions {
 // 原页面/实例/定义/完整Y核验后才出图。不初始化、不写页面选择、不消费输出。
 std::optional<SteamFacilityDetailSkinPlan> steam_facility_detail_skin(
     const StartupWorldRuntimeState &state, std::uint64_t page,
+    const SteamFacilityDetailSkinOptions &options);
+// 商会85→raw74定义预览的严格桥；真实parent/冻结定义/单页及退休沿现Owner契约。
+// 只支持普通布局，特殊模板拒绝；不伪造实例/邻接，不新增页面字段或重做交易。
+// preview不需要bottom_width，也不绘手形；标题两次真实测宽仍必填。
+std::optional<SteamFacilityDetailSkinPlan> steam_facility_definition_skin(
+    const StartupWorldRuntimeState &state,std::uint64_t page,
     const SteamFacilityDetailSkinOptions &options);
 } // namespace dungeon_village_prototype

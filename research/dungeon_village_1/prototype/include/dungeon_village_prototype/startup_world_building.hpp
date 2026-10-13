@@ -75,6 +75,10 @@ bool valid_startup_world_runtime_residence_result_page(const StartupWorldRuntime
 // 详情只读当前共享成长/职业及实例邻接；不刷新提示、不扣款、不升级。
 std::optional<ref::FacilityEconomyValues>
 startup_world_facility_values(const StartupWorldRuntimeState &state, std::uint64_t facility);
+// raw74定义预览：读共享等级、使用次数、改善与当前在籍职业，不要求地图实例或邻接。
+// 缺共享字段或职业来源显式拒绝；查询不刷新共享缓存或任何实例。
+std::optional<ref::FacilityEconomyValues>
+startup_world_facility_definition_values(const StartupWorldRuntimeState &state, int definition);
 // raw74第二页读初始化Y的原序，不重新扫描邻接或从累计s分摊贡献。
 // 显示标签按原来源kind固定，value按原y位置取；不按规则attribute_slot重排。
 struct StartupFacilityBonusValue {

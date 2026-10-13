@@ -1,10 +1,12 @@
 # Steam设施页只读皮肤计划
 
-`steam_facility_skin.hpp/.cpp`属于现有应用库，使用标准C++17，不依赖raylib、字体对象或可写世界。入口覆盖raw81升级页和raw74普通实例两页；住宅、定义预览与装备店特殊皮肤另批。来源是[Steam74](../ui/STEAM_FACILITY_DETAIL.md)、[Steam81](../ui/STEAM_FACILITY_UPGRADE.md)及[共用helper](../ui/STEAM_FACILITY_DRAW_HELPERS.md)，不把APK同号图片当作Steam资源。
+`steam_facility_skin.hpp/.cpp`属于现有应用库，使用标准C++17，不依赖raylib、字体对象或可写世界。入口覆盖raw81升级页、raw74普通实例两页及85→74普通定义预览；预览已通过本批短验收，住宅／装备／入住／植物特殊皮肤仍另列。来源是[Steam74](../ui/STEAM_FACILITY_DETAIL.md)、[Steam81](../ui/STEAM_FACILITY_UPGRADE.md)及[共用helper](../ui/STEAM_FACILITY_DRAW_HELPERS.md)，不把APK同号图片当作Steam资源。
 
 2026-10-12普通74批按用户确认的现有研究证据收口。HTML实际浏览器视觉、原长列表拖动及物理输入动态列为后续补证，保留未验；已交付静态合同／纯计划／Owner桥、研究窗口与短功能检查，不宣称原OS、完整字体或产品已接入。
 
 ## 普通设施详情74
+
+`steam_facility_definition_skin(state,page,options)`已提供85→74普通布局的独立Owner只读桥，核真实父85、当前绑定定义及单页载荷；共享定义属性不加实例邻接，不伪造实例／Y列表。纯计划用无页码标题，保留Mapchip2、定义属性、使用效果及成长信息；不画实例属性MAX、翻页箭头、手形或“使用道具”底钮，末尾保留原无矩形Touch2／option2。标题两次真实测宽仍必填，不要求底部按钮测宽；不新增持久字段或支付／领取消费者。特殊模板显式拒绝，建设21入口不由此扩大认证。本批共享查询、坏父载荷、纯计划及真实85→74接线经现building／pages／visuals短测通过；有界图例见[示例](../ui/examples/steam-commerce-building-preview.png)，不认证原窗口动态。
 
 `steam_facility_detail_skin(state,page,options)`验证当前存活raw74、两页资格、实例/定义绑定、全部初始化Y及经济依赖后出图，缺字段显式返回空。第一页名称只读定义名；编号只拼到第二页来源名。实例四经营值、共享等级与到下级剩余人数读现有Owner，来源值读原y序，含隐藏行，不重算加成或使用道具。调用者提供语言、VIEW_Y、真实标题两次测宽、底部一次测宽、共享手形当前帧及局部选择/滚动；它们不新增Owner字段或wire格式。
 

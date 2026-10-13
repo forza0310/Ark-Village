@@ -1,4 +1,5 @@
 #include "dungeon_village_prototype/startup_world_building.hpp"
+#include "dungeon_village_prototype/startup_world_commerce.hpp"
 #include "dungeon_village_prototype/startup_world_facility_items.hpp"
 #include "dungeon_village_prototype/startup_world_facility_catalog.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
@@ -713,6 +714,34 @@ std::optional<ref::FacilityEconomyValues> startup_world_facility_values(const St
     std::copy(n->second.begin(), n->second.end(), in.instance_modifiers.begin());
     return ref::derive_facility_economy(d->economy, in).values;
 }
+std::optional<ref::FacilityEconomyValues> startup_world_facility_definition_values(const State &s,
+                                                                                   int id) {
+    const auto *d = definition(s, id);
+    const auto use = s.scene.world.world.facility_uses.find(id);
+    if (!d || use == s.scene.world.world.facility_uses.end() || use->second.completed_uses < 0 ||
+        !s.scripts.facilities.count(id) ||
+        s.rules->humans.size() > static_cast<std::size_t>(std::numeric_limits<int>::max()))
+        return {};
+    // input的at只在已证所有必需键和索引后执行。原h.d统计所有p非零定义，不收紧为p1。
+    const auto job_types = ref::FacilityEconomyInput{}.legacy_job_counts.size();
+    for (const auto &human : s.rules->humans) {
+        const auto presence = s.human_presence.find(human.identity);
+        if (presence == s.human_presence.end())
+            return {};
+        if (presence->second == 0)
+            continue;
+        const auto growth = s.scene.world.world.ai.growth.find(human.identity);
+        if (growth == s.scene.world.world.ai.growth.end())
+            return {};
+        const int job = growth->second.definition.current_profession;
+        if (job < 0 || static_cast<std::size_t>(job) >= s.rules->jobs.size())
+            return {};
+        const int type = s.rules->jobs[static_cast<std::size_t>(job)].type;
+        if (type < 0 || static_cast<std::size_t>(type) >= job_types)
+            return {};
+    }
+    return ref::derive_facility_economy(d->economy, input(s, id)).values;
+}
 bool valid_startup_world_facility_page(const State &s, const ref::WorldScriptPage &p) {
     const auto counter = s.page_counters.find(p.id);
     const auto phase = s.page_phases.find(p.id);
@@ -737,7 +766,7 @@ bool valid_startup_world_facility_page(const State &s, const ref::WorldScriptPag
                 parent = &page;
         }
         if (!parent || parent->kind != ref::WorldScriptPageKind::raw_page ||
-            parent->legacy_page != 85 || !s.commerce_pages_initialized.count(parent->id))
+            parent->legacy_page != 85 || !valid_startup_world_commerce_page(s, *parent))
             return false;
         const auto list = s.commerce_page_lists.find(parent->id);
         const auto data = s.commerce_page_data.find(parent->id);

@@ -50,6 +50,7 @@
 #include "dungeon_village_tools/table.hpp"
 
 #include <raylib.h>
+#include <rlgl.h>
 
 #include <algorithm>
 #include <type_traits>
@@ -265,6 +266,53 @@ class SourceSprites {
     std::array<int,2> image_size(const std::filesystem::path &relative, bool published = false) {
         const auto &texture=whole_image_texture(relative,published);
         return {texture.width,texture.height};
+    }
+    // 仅标题/选档已出版图元；当前指针帧由调用方显式提供，不从FPS或世界钟猜。
+    void startup_image(const SteamStartupImage &request,Vector2 origin,int finger_frame) {
+        const auto resource=steam_startup_resource(request.asset);
+        if(!resource||request.scale<0)throw std::runtime_error("启动图片资源或缩放拒绝");
+        const auto png=request.asset==SteamStartupAsset::save_icon?
+            std::filesystem::path("steam-startup/original/common/zh-CN/saveload.png"):
+            std::filesystem::path("original")/resource->package/resource->image_name;
+        const auto &texture=whole_image_texture(png,true);
+        if(request.asset==SteamStartupAsset::save_icon&&(texture.width!=64||texture.height!=64))
+            throw std::runtime_error("Steam中文存档图尺寸不匹配");
+        const float factor=float(request.scale)/1000.F;
+        const Vector2 anchor{origin.x+request.position[0],origin.y+request.position[1]};
+        const auto paint=[&](std::array<int,4> source,std::array<int,2> offset,std::array<int,2> flip) {
+            if(source[0]<0||source[1]<0||source[2]<=0||source[3]<=0||
+               source[0]+source[2]>texture.width||source[1]+source[3]>texture.height||
+               flip[0]<0||flip[0]>1||flip[1]<0||flip[1]>1)
+                throw std::runtime_error("启动图片裁片或翻转拒绝");
+            if(request.scale==0)return; // 原零缩放请求保留，但不产生像素。
+            DrawTexturePro(texture,{float(source[0]),float(source[1]),
+                float(flip[0]?-source[2]:source[2]),float(flip[1]?-source[3]:source[3])},
+                {anchor.x+offset[0]*factor,anchor.y+offset[1]*factor,source[2]*factor,source[3]*factor},
+                {0,0},0,WHITE);
+        };
+        if(request.crop) {paint(*request.crop,{0,0},{0,0});return;}
+        if(!resource->sprite_name) {
+            if(request.frame!=0)throw std::runtime_error("启动整图不能消费SEB帧");
+            paint({0,0,texture.width,texture.height},{0,0},{0,0});return;
+        }
+        const auto key=(std::filesystem::path("original")/resource->package/resource->sprite_name).generic_string();
+        auto found=sprites_.find(key);
+        if(found==sprites_.end())found=sprites_.emplace(key,dungeon_village_tools::parse_legacy_seb(
+            read_bytes(root_.parent_path()/key))).first;
+        const bool finger=request.asset==SteamStartupAsset::finger_left||request.asset==SteamStartupAsset::finger_right;
+        if(request.frame<0&&(!finger||request.frame!=-1))throw std::runtime_error("启动图片未定义当前帧来源");
+        const int frame=request.frame==-1?finger_frame:request.frame;
+        if(frame<0||frame>=found->second.frame_count||found->second.layers.size()!=1)
+            throw std::runtime_error("启动图片SEB帧或层拒绝");
+        const dungeon_village_tools::SpritePart *part{};
+        for(const auto &value:found->second.layers[0].parts)if(value.frame==frame) {
+            if(part)throw std::runtime_error("启动图片SEB出现未适配复合部件");
+            part=&value;
+        }
+        // 当前例图明确消费关键帧0；未维护的中间帧不能静默不画或用邻帧替代。
+        if(!part||part->image_index!=resource->image)throw std::runtime_error("启动图片SEB裁片或图片索引缺失");
+        paint({part->source_x,part->source_y,part->width,part->height},
+              {part->offset_x,part->offset_y},{part->flip_x,part->flip_y});
     }
     void menu_number(const SteamFacilityNumber &number, Vector2 origin) {
         const auto resource = steam_facility_resource(number.asset);
@@ -632,10 +680,30 @@ std::optional<SteamStartupSkinPlan> window_save_plan(const StartupWorldSavePageV
     if(view.stage==2)input.measured_button_width=font.measure("了解");
     return steam_save_page_skin(input);
 }
-// 执行正式raw14图元；12号Noto字体及中文译文是研究窗口适配，不认证Unity字体。
+// 已核普通mode1/src+dst=255的颜色混合；本例图入口和收尾均为默认绘制模式。
+// raylib默认alpha通道混合不同，明确设置RGB/alpha分别混合，不由截图猜透明度。
+void draw_startup_fill(const SteamStartupFill &fill,Vector2 origin) {
+    if(fill.source_ratio<0||fill.source_ratio>256)throw std::runtime_error("启动填色混合比例拒绝");
+    const auto &r=fill.rectangle;
+    const Color color{static_cast<unsigned char>(fill.rgb[0]),static_cast<unsigned char>(fill.rgb[1]),
+        static_cast<unsigned char>(fill.rgb[2]),static_cast<unsigned char>(fill.source_ratio==256?255:fill.source_ratio)};
+    const auto paint=[&] {DrawRectangleRec({origin.x+float(r[0]),origin.y+float(r[1]),float(r[2]),float(r[3])},color);};
+    if(fill.source_ratio==256) {paint();return;}
+    struct SourceBlendScope {
+        SourceBlendScope() {
+            rlSetBlendFactorsSeparate(RL_SRC_ALPHA,RL_ONE_MINUS_SRC_ALPHA,RL_ONE,RL_ONE_MINUS_SRC_ALPHA,
+                                      RL_FUNC_ADD,RL_FUNC_ADD);
+            BeginBlendMode(BLEND_CUSTOM_SEPARATE);
+        }
+        ~SourceBlendScope() {EndBlendMode();}
+    } blend;
+    paint();
+}
+// 执行正式raw14及标题图元；12号Noto字体及中文译文是研究窗口适配，不认证Unity字体。
 // 普通同字号正文按原TextLayout中心对齐；标签、混合字号及fallback仍由后续后端接入。
-void draw_save_plan(const SteamStartupSkinPlan &plan,const StartupWorldSavePageView &view,
-                    SourceSprites &sprites,const ChineseFont &font) {
+void draw_startup_plan(const SteamStartupSkinPlan &plan,
+                      const std::function<std::string(const SteamStartupText &)> &resolve,
+                      SourceSprites &sprites,const ChineseFont &font,int finger_frame=0) {
     const Vector2 origin{float(plan.origin[0]),float(plan.origin[1])};
     // GameForm..cctor的已核静态初值；只由Window/Box使用，正文和按钮不再加此偏移。
     constexpr int initial_view_y=23;
@@ -644,9 +712,9 @@ void draw_save_plan(const SteamStartupSkinPlan &plan,const StartupWorldSavePageV
                      static_cast<unsigned char>(rgb[2]),255};
     };
     const auto label=[&](const SteamStartupText &part) {
-        if(!part.rgb)throw std::runtime_error("保存页文字缺来源颜色");
-        const std::string value=part.role==SteamStartupTextRole::message_title ? "消息"
-            : part.role==SteamStartupTextRole::message_body ? view.text : "了解";
+        if(!part.rgb)throw std::runtime_error("启动页文字缺来源颜色");
+        std::string value=resolve(part);
+        for(std::size_t at=0;(at=value.find("<br>",at))!=std::string::npos;)value.replace(at,4,"\n");
         const auto &r=part.rectangle;
         const float size=part.font_size?float(part.font_size):12.F;
         if(part.placement==SteamStartupTextPlacement::layout) {
@@ -671,7 +739,9 @@ void draw_save_plan(const SteamStartupSkinPlan &plan,const StartupWorldSavePageV
                 y+=size+part.line_space;
             }
         } else {
-            const float x=origin.x+float(r[0])-(part.anchor==2?font.measure(value,size)/2:0.F);
+            const bool centered=part.placement==SteamStartupTextPlacement::centered||part.anchor==2;
+            const bool right=part.placement==SteamStartupTextPlacement::right||part.anchor==4;
+            const float x=origin.x+float(r[0])-(right?font.measure(value,size):centered?font.measure(value,size)/2:0.F);
             font.text(value,x,origin.y+float(r[1]),color(*part.rgb),size);
         }
     };
@@ -693,16 +763,29 @@ void draw_save_plan(const SteamStartupSkinPlan &plan,const StartupWorldSavePageV
         }
     };
     for(const auto &part:plan.draws) {
-        if(const auto *window=std::get_if<SteamStartupWindow>(&part))
+        if(const auto *window=std::get_if<SteamStartupWindow>(&part)) {
+            SteamStartupText title{};title.role=window->title;title.row=window->title_value;
+            const auto value=resolve(title);
             frame(steam_startup_window_skin(*window,initial_view_y,std::array<int,2>{
-                int(font.measure("消息")),int(font.measure("消息"))}));
+                int(font.measure(value)),int(font.measure(value))}));
+        }
         else if(const auto *box=std::get_if<SteamStartupBox>(&part))frame(steam_startup_box_skin(*box,initial_view_y));
         else if(const auto *fill=std::get_if<SteamStartupFill>(&part)) {
-            const auto &r=fill->rectangle;
-            DrawRectangleRec({origin.x+float(r[0]),origin.y+float(r[1]),float(r[2]),float(r[3])},color(fill->rgb));
+            draw_startup_fill(*fill,origin);
         } else if(const auto *text=std::get_if<SteamStartupText>(&part))label(*text);
+        else if(const auto *image=std::get_if<SteamStartupImage>(&part))sprites.startup_image(*image,origin,finger_frame);
         else throw std::runtime_error("保存页出现未接图元");
     }
+}
+// raw14仍用原正文/消息/了解适配；通用执行器不扩大原保存业务或输入范围。
+void draw_save_plan(const SteamStartupSkinPlan &plan,const StartupWorldSavePageView &view,
+                    SourceSprites &sprites,const ChineseFont &font) {
+    draw_startup_plan(plan,[&](const SteamStartupText &part) {
+        if(part.role==SteamStartupTextRole::message_title)return std::string("消息");
+        if(part.role==SteamStartupTextRole::message_body)return view.text;
+        if(part.role==SteamStartupTextRole::answer)return std::string("了解");
+        throw std::runtime_error("保存页出现未知文字角色");
+    },sprites,font);
 }
 std::optional<SteamManualSkinPlan> window_manual_plan(const StartupWorldRuntimeState &state,
                                                      const StartupManualPageView &view) {
@@ -2344,8 +2427,13 @@ struct Canvas {
     }
     ~Canvas() { UnloadRenderTexture(value); }
 };
-// 仅执行已核标题前段；演员显示条件为空，确认注册只计请求，不接物理输入。
-int draw_title_backdrop_example(const SteamTitleBackdropPlan &plan,SourceSprites &sprites) {
+struct TitleBackdropExampleActor {
+    std::array<int,2> anchor{};
+    StartupTitleActorSkin skin;
+};
+// 仅执行已核标题前段与明确的普通演员显示条件；确认注册只计请求，不接物理输入。
+int draw_title_backdrop_example(const SteamTitleBackdropPlan &plan,SourceSprites &sprites,
+                               const std::vector<TitleBackdropExampleActor> &actors={}) {
     Vector2 origin{}; // 本研究画布入口原点为0，首Fill继承它。
     int confirmations{};
     for(const auto &operation:plan.operations) {
@@ -2361,7 +2449,12 @@ int draw_title_backdrop_example(const SteamTitleBackdropPlan &plan,SourceSprites
             sprites.image(image->published_image,
                 {origin.x+image->position[0],origin.y+image->position[1]},true);
         } else if(std::holds_alternative<SteamTitleActors>(operation)) {
-            // 不将APK标题槽/age或世界人物注入Steam演员调度。
+            for(const auto &actor:actors) {
+                const Vector2 anchor{origin.x+actor.anchor[0],origin.y+actor.anchor[1]};
+                if(actor.skin.shadow)sprites.visual(*actor.skin.shadow,anchor);
+                if(actor.skin.weapon)sprites.visual(*actor.skin.weapon,anchor);
+                sprites.actor(false,actor.skin.body.sprite,actor.skin.body.image,actor.skin.body.frame,anchor);
+            }
         } else if(const auto *registration=std::get_if<SteamTitleConfirmRegistration>(&operation)) {
             if(registration->component!=2||registration->flags!=2)
                 throw std::runtime_error("标题确认注册载荷非法");
@@ -2415,7 +2508,10 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
     SourceSprites sprites(assets / "original");
     const bool title_backdrop_fixture=inspect_page=="title-backdrop-early"||inspect_page=="title-backdrop-entry"||
         inspect_page=="title-backdrop-original"||inspect_page=="title-backdrop-english";
-    if(title_backdrop_fixture) {
+    const bool title_composite_fixture=inspect_page=="title-menu-start"||inspect_page=="title-menu-records"||
+        inspect_page=="title-slots-empty"||inspect_page=="title-slots-filled"||
+        inspect_page=="title-slots-menu"||inspect_page=="title-slots-confirm";
+    if(title_backdrop_fixture||title_composite_fixture) {
         SteamTitleBackdropInput input;
         input.width=input.view_width=width;input.height=input.view_height=height;
         input.background_size=sprites.image_size("steam-startup/original/title/title00.png",true);
@@ -2426,10 +2522,90 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
             SteamTitleLogoVariant::english:SteamTitleLogoVariant::original;
         const auto plan=steam_title_backdrop_skin(input);
         if(!plan)throw std::runtime_error("Steam标题背景条件计划拒绝");
-        int count{},confirmations{};
+        std::unique_ptr<ChineseFont> title_font;
+        std::vector<SteamStartupSkinPlan> overlays;
+        std::vector<TitleBackdropExampleActor> actors;
+        std::function<std::string(const SteamStartupText &)> resolve;
+        if(title_composite_fixture) {
+            // 两目录非空只作显示条件；日期/资金/村名来自真实维护新局投影，不造历史存档。
+            StartupSession initial;
+            StartupWorldRuntimeSession fresh(initial.state(),ref::WorldRandomStream::from_java_seed(1));
+            fresh.take_audio_requests();
+            const auto &state=fresh.state();const auto &calendar=state.scene.calendar;
+            // 出生/移动/age仅为局部显示输入；不修改真实新局或冒称Steam自然演员调度。
+            std::array<StartupTitleSlot,20> slots{};
+            slots[0]={1,0,60,212,1,4};slots[1]={1,1,170,213,0,7};
+            const auto projection=steam_title_actor_projection(slots,height);
+            if(!projection||projection->people.size()!=2)throw std::runtime_error("标题演员显示条件投影拒绝");
+            for(const auto &placement:projection->people) {
+                if(placement.edge_mode)throw std::runtime_error("中央演员例图不接受未验GPU淡出");
+                const auto &person=placement.person;
+                const auto human=startup_world_human_details(state,person.definition);
+                if(!human)throw std::runtime_error("标题演员真实新局定义投影缺失");
+                const auto skin=startup_title_actor_skin(human->profession,human->sex,
+                    human->equipment[0].value_or(-1),person.step,person.facing,true);
+                if(!skin)throw std::runtime_error("标题普通演员皮肤拒绝");
+                actors.push_back({person.anchor,*skin});
+            }
+            const std::string village=state.scripts.village_name;
+            const std::string date=std::to_string(calendar.year+1)+"年"+
+                std::to_string(calendar.month+1)+"月"+std::to_string(calendar.subperiod+1)+"周";
+            const std::string cash=std::to_string(state.scene.world.world.ai.accounting.funds())+"Ｇ";
+            title_font=std::make_unique<ChineseFont>(font_path,
+                village+date+cash+"开始游戏纪录存档栏从中断手动继续无档案空请选择数据重新删除消息是否当前将被覆盖");
+            resolve=[village,date,cash](const SteamStartupText &part)->std::string {
+                using Role=SteamStartupTextRole;
+                switch(part.role) {
+                case Role::title_menu:return part.row==0?"开始游戏":"纪录";
+                case Role::slot_title:return "存档栏 "+std::to_string(part.row)+"/2";
+                case Role::slot_type:return part.row==0?"从中断档案继续":"从手动存档继续";
+                case Role::slot_name:return village;
+                case Role::slot_date:return date;
+                case Role::slot_cash:return cash;
+                case Role::empty_slot:return part.row==0?"无中断档案":"空存档栏";
+                case Role::choose_data:return "请选择数据";
+                case Role::save_menu:return part.row==0?"继续游戏":part.row==1?"重新开始":"删除档案";
+                case Role::message_title:return "消息";
+                case Role::message_body:return "当前存档将被<br>覆盖";
+                case Role::answer:return part.row==0?"是":"否";
+                }
+                throw std::runtime_error("标题示例未知文字角色");
+            };
+            const auto append=[&](const std::optional<SteamStartupSkinPlan> &layer) {
+                if(!layer)throw std::runtime_error("标题组合条件计划拒绝");
+                overlays.push_back(*layer);
+            };
+            if(inspect_page=="title-menu-start"||inspect_page=="title-menu-records")
+                append(steam_title_menu_skin(width,height,100,inspect_page=="title-menu-start"?0:1));
+            else {
+                const bool menu=inspect_page=="title-slots-menu",dialog=inspect_page=="title-slots-confirm";
+                SteamSaveSelectorSkinInput selector;
+                selector.width=width;selector.height=height;selector.frame=0;selector.title_frame=100;
+                selector.slot=0;selector.row=1;selector.present={inspect_page!="title-slots-empty",inspect_page!="title-slots-empty"};
+                selector.title_on_top=!menu&&!dialog;selector.covered_by_dialog=dialog;
+                append(steam_save_selector_skin(selector));
+                if(menu||dialog) {
+                    SteamSaveMenuSkinInput submenu;
+                    submenu.width=width;submenu.height=height;submenu.frame=3;
+                    submenu.selection=dialog?1:0; // 覆盖问答来自重新开始项，默认否由raw1显示条件提供。
+                    submenu.covered_by_dialog=dialog;
+                    submenu.measured_text_widths={int(title_font->measure("继续游戏")),
+                        int(title_font->measure("重新开始")),int(title_font->measure("删除档案"))};
+                    append(steam_save_menu_skin(submenu));
+                }
+                if(dialog)append(steam_save_confirmation_skin(width,height,1,
+                    {title_font->measure("是"),title_font->measure("否")}));
+            }
+        }
+        int count{},confirmations{};std::size_t touches{};
         while(!WindowShouldClose()&&count<frames) {
             BeginTextureMode(canvas.value);ClearBackground(BLACK);
-            confirmations=draw_title_backdrop_example(*plan,sprites);
+            confirmations=draw_title_backdrop_example(*plan,sprites,actors);
+            touches=0;
+            for(const auto &overlay:overlays) {
+                draw_startup_plan(overlay,resolve,sprites,*title_font,0); // 例图指针明确消费当前关键帧0。
+                touches+=overlay.touches.size(); // 只记录注册请求，不连接研究窗口物理点击。
+            }
             EndTextureMode();BeginDrawing();ClearBackground(BLACK);
             DrawTexturePro(canvas.value.texture,{0,0,width,-height},{0,0,width*scale,height*scale},{0,0},0,WHITE);
             EndDrawing();++count;
@@ -2440,9 +2616,12 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
                 if(!saved)throw std::runtime_error("标题示例截图保存失败");
             }
         }
-        std::cout<<"Steam背景/Logo条件示例关闭：page="<<inspect_page<<" frames="<<count
+        std::cout<<"Steam标题局部条件示例关闭：page="<<inspect_page<<" frames="<<count
                  <<" title_frame="<<input.title_frame<<" confirm_requests_per_draw="<<confirmations
-                 <<" world_updates=0；演员显示条件为空，未覆盖演员调度/菜单/物理输入\n";
+                 <<" touch_requests_per_draw="<<touches
+                 <<" actors="<<actors.size()
+                 <<" world_updates=0；空/非空目录及普通演员仅显示条件、中文/Noto为维护适配；"
+                 <<"非Steam调度/scratch全树，未覆盖GPU演员淡出/平台glyph/物理输入，尚非完整标题\n";
         return 0;
     }
     const bool magic_fixture=inspect_page.rfind("magic-pot-",0)==0;

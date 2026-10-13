@@ -75,7 +75,7 @@ state1 且标题栈顶时绘制；栈顶是 id4、且 `SubForm.IsMenu()` 时保�
 | 中断非空行 | `ContinueGame()` |
 | 手动非空行 | 推 raw20 菜单，x136、y=`97+47*type`，载荷槽号写入子页 `+0xB8` |
 
-软标签2返回标题 state0，保留选择值。已有 dialog 的结果0→ContinueGame、1→NewGame、2→把对应日期置 -1 再 SaveSystem，最后清 dialog 引用。这只是静态结果分支，未认证 raw20 的完整可见选项顺序或真实删除授权。
+软标签2返回标题 state0，保留选择值。已有 dialog 的结果0→ContinueGame、1→NewGame、2→把对应日期置 -1 再 SaveSystem，最后清 dialog 引用。初批只核静态结果分支；后继[raw20合同](STEAM_SAVE_MENU.md)已补完整选项顺序和确认／取消链，代码中的删除分支不等于当前真实存档删除授权。
 
 ContinueGame 二次检查日期存在，清软标签，然后 `LoadGame(slot,auto=(type==0))` 并切 GameForm；异常分支清世界数据指针并提示。**原加载非事务，不能把原函数的失败行为当作维护 Owner 的安装契约。** `ProcessBackKey` 属于应用退出资格／系统标志路径，与软标签2的选档返回不同。
 
@@ -86,8 +86,10 @@ ContinueGame 二次检查日期存在，清软标签，然后 `LoadGame(slot,aut
 - GameView.Set 将值分成高16位类型与低16位有符号选择值，写入栈顶 TouchValueAccessor；TitleForm.SetTouchValue 消费0x20000/0x30000。原 setter 未见越界保护，维护实现仍须拒绝非法行号与父页，不能仿照越界写。
 - 此处描述组件 ENTER／UP语义。窗口单击是否产生哪个事件、焦点、裁剪及平台事件转发继续遵守[Steam输入合同](STEAM_INTERACTIONS.md)，不能将任意鼠标 MOVE直接写成 ENTER。原 `_addTouch` 还叠加绘制原点、margin、比例与裁剪；本表矩形是调用者基矩形。
 
-## 维护建议与未闭合项
+## 维护交付与未闭合项
 
-建议正式标题表现层按两个状态、两个槽、两个行定义只读输出；把菜单选择、选档行选择与确认分别映射为 Owner 请求。标题／选档无需复用普通列表两次UP规则。世界恢复仍经过已批准的完整应用快照／Owner事务路径，原存档目录不得被表现示例修改。
+现[启动皮肤接口](../prototype/include/dungeon_village_prototype/steam_startup_skin.hpp)按两个状态、两个槽、两个行定义只读输出；菜单选择、选档行选择与确认由应用／Owner处理，标题／选档不套用普通列表两次UP规则。世界恢复仍经过已批准的完整应用快照／Owner事务路径，原存档目录不由表现示例修改。
 
-本批未实现原型皮肤，未新增窗口观察；后继[raw20菜单与确认合同](STEAM_SAVE_MENU.md)已补原序、默认“否”的两类询问、原result返回与取消、组件9输入、菜单SEB帧及raw1布局。实际显示译文、平台设置与键盘helper、真实窗口缩放最终坐标、语言资源运行选择、通关计分自然路线仍分开待验。上述静态菜单完整度不等于完整原版皮肤已验收。标题人物调度、随机交接、字体窗口框沿用各自合同，不能把本批静态方法覆盖数当全游戏分析完成率。
+本批六个标题／选档条件入口已构建并各以8帧有界研究窗口通过，见[组合参考图](examples/steam-title-menu-slots.png)。示例包含两个中央普通演员，以及空目录／两行非空的显示条件；不代表读取原档或自然取得目录。Noto、中文文本、静态手形帧0及VIEW_Y23为研究适配，未认证原Steam窗口动态、物理输入或完整平台标题。图中人物使用[Steam只读投影](STEAM_TITLE_ACTORS.md)与正常基础裁片，不切换既有APK标题更新／随机或认证共享scratch全树。
+
+[raw20菜单与确认合同](STEAM_SAVE_MENU.md)已补原序、默认“否”的两类询问、原result返回与取消、组件9输入、菜单SEB帧及raw1布局。平台按钮具名helper与纯计划见[交互合同](STEAM_INTERACTIONS.md)，不能因本示例未组合它们又将已核helper整体列为未知。实际显示译文、字体对象、真实窗口缩放最终坐标、语言资源运行选择、平台组合及通关自然路线仍分开待验；上述局部交付不等于完整原版皮肤验收。

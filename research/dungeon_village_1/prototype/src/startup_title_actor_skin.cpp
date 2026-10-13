@@ -1,5 +1,7 @@
 #include "dungeon_village_prototype/startup_title_actor_skin.hpp"
 #include <algorithm>
+#include <limits>
+#include <numeric>
 
 namespace dungeon_village_prototype {
 std::optional<StartupTitleActorSkin> startup_title_actor_skin(
@@ -35,5 +37,30 @@ std::optional<StartupTitleActorSkin> startup_title_actor_skin(
             found->render_style * 4 + facing, found->render_image, 0, 0, {}, offset, {}};
     }
     return result;
+}
+std::optional<SteamTitleActorProjection> steam_title_actor_projection(
+    const std::array<StartupTitleSlot,20> &slots,int view_height) {
+    if(view_height<=0||view_height>65536)return {};
+    for(const auto &s:slots)
+        if((s.active!=0&&s.active!=1)||s.definition<0||s.definition>10||s.direction<0||s.direction>1||
+           s.age<0||s.age>std::numeric_limits<int>::max()-1||s.x<-19||s.x>255||
+           (s.active&&(s.x<-18||s.x>254))||((s.y<210||s.y>217)&&(s.active||s.y!=0)))return {};
+    std::array<int,20> order{};std::iota(order.begin(),order.end(),0);
+    for(int i=0;i<19;++i)for(int j=19;j>i;--j)
+        if(slots[order[i]].y>slots[order[j]].y)std::swap(order[i],order[j]);
+    SteamTitleActorProjection plan;
+    for(int index:order) {
+        const auto &s=slots[index];if(!s.active)continue;
+        SteamTitleActorPlacement actor;
+        actor.person={index,s.definition,s.age,(s.age%20)/5,s.direction?1:2,
+                      {s.x,s.y+view_height-240},
+                      {StartupTitlePersonLayer::shadow,StartupTitlePersonLayer::body}};
+        if(s.x<-14||s.x>250) {
+            const int source=s.x<-14?(s.x+18)*64:(254-s.x)*64;
+            actor.edge_mode=std::array<int,3>{1,source,255-source};
+        }
+        plan.people.push_back(actor);
+    }
+    return plan;
 }
 } // namespace dungeon_village_prototype

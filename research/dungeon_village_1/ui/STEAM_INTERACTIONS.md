@@ -101,6 +101,12 @@ raw12同身份静态子批进一步核定以下生命周期；字段含义及四
 
 当前研究执行器用上述公式的独立GLSL适配，校验专用uniform存在，拒绝编译失败后的默认shader回落；只在首次高亮加载、窗口结束释放。原MaterialManager会优先查找现成shader，找不到才生成；本批没有认证运行时具体compiled shader、GPU色域、DPI或原窗口像素。四态参考中的键盘高亮因此仍是具名研究适配，不升级为Steam动态认证。
 
+**普通mode1透明合成与srcRatio。** 2026-10-14窄核标题空中断行黑罩／人物边缘所需的普通链，不运行原GPU。`SetRenderMode` RVA7749D0原样保存op／src／dst，只有op1且和为256才将dst减1；两参数774A80提供dst=255−src。`FillRect` RVA76A990在1076AAC1–AAD0将当前颜色交GetRenderPass，随后BeginShape的输出实际交GL.Color或MeshBuilder.AddVertex。GetRenderPass RVA76E2D0在无自定义Material、普通非clip资格且op1／src+dst=255时，1076E743–E7CA建立单pass：colorRatio255、alphaRatio=src；`RenderPass.BeginShape` RVA791300的10791505–152C按float32使顶点alpha乘src／255，RGB不因该比例变暗。纹理普通Begin路径同样消费pass的alphaRatio，不能把dst当作颜色alpha。
+
+ShaderBuilder.Init／GetNameId（73DD30／73D730）对该模式选择位0x2040；GetCode RVA73CCC0在1073D06A–D092取实际字符串槽110F3E14，独立metadata解码为`Blend SrcAlpha OneMinusSrcAlpha, One OneMinusSrcAlpha`。普通有图、无附加BlendMode且非全不透明优化时，1073D01A–D029取110F603C的`SetTexture [_MainTex] { combine texture * primary }`；原shader模板还以BindChannels绑定vertex／texcoord／color。因此设T为纹理RGBA、P为原颜色／顶点RGBA、s=src／255、D为目的像素，普通源alpha为`A=T.a×P.a×s`，源RGB为`C=T.rgb×P.rgb`；生成shader式推导`out.rgb=C×A+D.rgb×(1−A)`、`out.a=A+D.a×(1−A)`。纯Fill去掉T，采用其原颜色；不透明黑色src128则`A=128／255`，目的RGB保留127／255，**不是alpha=255−src，也不是精确0.5**。
+
+研究raylib普通适配可把不透明颜色的8位alpha设为src，对纹理保持原纹理alpha再乘该tint；需要保留透明RenderTexture输出时还应维持上述独立RGB／alpha混合因子，而不凭默认名称假定两者相同。原src0／64／128／192分别为0／64／128／192除255的源权重。已核生成链支持此局部适配，不认证当前预编译Material、GPU色域或像素一致性；特殊Image.alphaType3的分pass、自定义Material、clip／offscreen和额外BlendMode不由此方程通用覆盖，人物深层效果也可能另改模式。保持具名原请求与研究适配分层，不用这次结论宣称整套标题人物GPU已验。
+
 **控制器附加按键图标的登记与消费。** `Canvas.SetJoystickButtonDraw RVA751DC0`写入`joystickButtonDraw_`的七整数记录`{button,registerID,disp,x,y,life,scale}`，不是即时绘制或另一个Touch组件。以`(button,registerID)`查重；首次8/24登记为`{8,24,1,x,y,4,100}`，再次只更新disp和位置，保留life与scale（`10752049–10752105`）。存储不存在时直接返回；`InitJoystick 1074CCF3–1074CD5A`仅在主机或摇杆仿真资格下建表，否则置空。Steam无控制器时button8也直接拒登记；`HasController RVA7B7D10`检查64位controllerHandle非零，不把“图标可见”当成已有控制器。`steamOffsetEnable_`为真时另给坐标加`trunc((Screen尺寸−IApplication尺寸)/2)`，不能只用窗口外框替代这些输入。
 
 `FormManagerBase.OnDraw`在BeginPaint成功后先于`107E7669`调用Reset，将旧记录disp全清0；页面绘制及触摸登记重新标活，屏幕指针之后才在`107E77AB`调用DrawJoystickButtons，随后画触摸效果。Reset不删记录，没再登记的旧项当轮隐藏；此固定8/24键反复出现复用同一记录，不逐帧新增对象。`RaiseJoystickButtonDraw`只把全部life重置4；所核输入回调`10754EBC–10755016`在对应按钮GetJoystickUp且disp非零时将life减1并夹0，普通重绘不减life。它是使用次数相关的显隐量，不是四帧倒计时；Canvas重新初始化可重建／清空登记表，不能把合法保留条目称作泄漏或迁进世界存档。

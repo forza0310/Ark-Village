@@ -132,6 +132,9 @@ Options parse_options(int argc, char **argv) {
          (options.inspect_page != "roads" && options.inspect_page != "shops" &&
           options.inspect_page != "title-backdrop-early" && options.inspect_page != "title-backdrop-entry" &&
           options.inspect_page != "title-backdrop-original" && options.inspect_page != "title-backdrop-english" &&
+          options.inspect_page != "title-menu-start" && options.inspect_page != "title-menu-records" &&
+          options.inspect_page != "title-slots-empty" && options.inspect_page != "title-slots-filled" &&
+          options.inspect_page != "title-slots-menu" && options.inspect_page != "title-slots-confirm" &&
           options.inspect_page != "food" && options.inspect_page != "arrival" &&
           options.inspect_page != "visitor" && options.inspect_page != "facility-reputation" && options.inspect_page != "facility-reputation-result" &&
           options.inspect_page != "task-map-info" && options.inspect_page != "task-info" &&

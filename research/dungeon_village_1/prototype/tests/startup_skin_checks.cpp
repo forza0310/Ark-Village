@@ -1853,6 +1853,49 @@ void frame_pixels(const AssetTables &assets,Checks &check,Image *contact_sheet) 
     }
 }
 // 标题/纪录基础人物的资源展开；不复制世界人物动作机或把实际PNG列数当动画顺序。
+void steam_title_actor_projection_checks(Checks &check) {
+    std::array<StartupTitleSlot,20> slots{};
+    for(auto &s:slots)s.y=217;
+    slots[0]={1,4,12,212,1,19};slots[1]={1,5,14,212,0,20};slots[2]={0,0,0,210,0,0};
+    const auto plan=steam_title_actor_projection(slots,277);
+    check(plan&&plan->people.size()==2&&plan->people[0].person.slot==1&&plan->people[1].person.slot==0,
+          "Steam完整20槽先非稳定交换再过滤，inactive低y使相等深度的两活跃人反序");
+    const auto &left=plan->people[0],&right=plan->people[1];
+    check(left.person.definition==5&&left.person.step==0&&left.person.facing==2&&
+          right.person.definition==4&&right.person.step==3&&right.person.facing==1&&
+          right.person.anchor==std::array<int,2>{12,249}&&!left.edge_mode&&!right.edge_mode&&
+          right.person.layers==std::array<StartupTitlePersonLayer,2>{StartupTitlePersonLayer::shadow,StartupTitlePersonLayer::body},
+          "来源人物实参使用view高度，中央不设也不重置混合，保持阴影→人物助手");
+    slots={};
+    for(const auto [x,source]:std::array<std::array<int,2>,10>{{
+        {-18,0},{-17,64},{-16,128},{-15,192},{-14,-1},{250,-1},{251,192},{252,128},{253,64},{254,0}}}) {
+        slots[0]={1,0,x,210,1,0};
+        const auto p=steam_title_actor_projection(slots,320);
+        check(p&&p->people.size()==1&&p->people[0].person.anchor==std::array<int,2>{x,290}&&
+              bool(p->people[0].edge_mode)==(source>=0),
+              "Steam活跃边界独立为-18..254，不能套APK的-10..250校验或提前退休");
+        if(source>=0)check(*p->people[0].edge_mode==std::array<int,3>{1,source,255-source},
+              "Steam边缘四级src/dst按独立oracle，绘后才重置默认模式");
+    }
+    slots[0]={0,7,255,216,1,2147483646};slots[1]={0,3,-19,215,0,8};
+    const auto retired=steam_title_actor_projection(slots,320);
+    check(retired&&retired->people.empty()&&slots[0].age==2147483646&&slots[1].x==-19,
+          "退休端点和age/y合法保留但不输出图元，投影不清历史或复用槽");
+    for(auto &s:slots)s={1,10,1,217,0,2147483646};
+    const auto full=steam_title_actor_projection(slots,65536);
+    check(full&&full->people.size()==20&&full->people[0].person.step==1&&
+          full->people[0].person.anchor==std::array<int,2>{1,65513}&&
+          steam_title_actor_projection(slots,65536)->people.size()==20,
+          "最大合法计数与维护高度可投影，输出最多20且重复查询无累积");
+    for(int fault=0;fault<9;++fault) {
+        auto bad=slots;int height=320;
+        if(fault==0)bad[0].active=2;if(fault==1)bad[0].definition=11;if(fault==2)bad[0].direction=2;
+        if(fault==3)bad[0].age=std::numeric_limits<int>::max();if(fault==4)bad[0].x=255;
+        if(fault==5){bad[0].active=0;bad[0].x=256;}if(fault==6)bad[0].y=209;
+        if(fault==7)height=0;if(fault==8)height=65537;
+        check(!steam_title_actor_projection(bad,height),"坏Steam人物槽/投影尺寸明确拒绝，不过滤坏载荷凑正常画面");
+    }
+}
 void title_actor_pixels(const std::filesystem::path &root,Checks &check,Image *contact_sheet) {
     const auto humans=image_table(root,"human",check),weapons=image_table(root,"weapon",check);
     check(humans.count(32)==0 && humans.size()==37,"human32缺资源，不能补透明图蒙混通过");
@@ -3379,6 +3422,7 @@ int check_startup_skin(const std::filesystem::path &source_root,
     steam_commerce_result_skin_checks(check);
     steam_commerce_facility_skin_checks(check,source_root);
     steam_platform_skin_checks(check,source_root);
+    steam_title_actor_projection_checks(check);
     steam_language_checks(check,source_root);
     steam_cursor_checks(check,source_root);
     frame_geometry(check);

@@ -23,6 +23,12 @@
 
 资源和输出规模固定：7种资源引用；单份标题／选档／raw20／raw1计划最多分别5／17／7／6条绘制和2／4／4／2条触摸请求。计划按值返回、由调用者本轮消费并释放，不保留跨轮队列或文件缓存；没有新增PNG、声音、SEB或资源副本。真实Owner、文件目录、快照、B0／初始化G和平台按钮不属于本次增量。
 
+## 研究窗口消费
+
+`startup_view.cpp`共用有序执行器消费标题／选档／raw20／raw1及原raw14包装：实际标题两次测宽、正文布局／右对齐、原图裁片／缩放／翻转及明确SEB关键帧。`frame=-1`由调用方给当前帧，六态例图明确固定0；未支持的中间帧拒绝，不擅取相邻帧。中文存档图显式用Steam zh-CN，菜单及手形使用已核同字节公共资源。普通mode1黑罩使用[已核独立RGB／alpha混合](../ui/STEAM_INTERACTIONS.md)，128代表源alpha128／255；该执行器入口／收尾默认模式，不外推任意嵌套混合栈。
+
+[六态例图](../ui/examples/steam-title-menu-slots.png)仅展示条件组合，触区逐轮计数而不派输入，无文件存取；目录空／非空和两名中央普通演员位置／age为显示条件。真实维护新局投影只取日期、资金及初装，不修改Owner或保留其引用。中文／Noto及VIEW_Y23为适配，平台按钮、语言资格、完整演员scratch、原字体与物理输入尚未认证。raw14保留原正文包装，复验真实菜单进入的“保存中”窗口，未冒称应用宿主已落盘。
+
 ## 检查归属
 
 2026-10-10补Steam独立窗框展开：`steam_startup_window_skin`、`steam_startup_box_skin`、`steam_startup_window2_skin`、`steam_startup_window3_skin`返回有序`SteamStartupFramePlan`。复用已有图元载体，不调用APK算法冒充Steam实现；独立来源是[完整窗框合同](../ui/STEAM_WINDOW_FRAME.md)。矩形为变换前半开逻辑几何，outline是一逻辑单位内边环，平台缩放／DPI仍由后端处理。

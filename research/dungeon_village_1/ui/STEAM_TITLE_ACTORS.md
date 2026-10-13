@@ -15,7 +15,7 @@
 
 最后一行是由出生、速度、严格越界比较推导的次数，不是墙钟时长，也不是新执行的原窗口长跑。Steam差异会改变活跃槽寿命、槽满概率与其后随机消耗；不能只在绘制器改坐标而仍把APK自然轨迹称为Steam轨迹。当前维护模式与已认证快照没有在本批切源。
 
-Steam边缘参数：x<-14时`srcRatio=abs(-18-x)*64`；x>250时`srcRatio=(254-x)*64`。正常活跃范围内，边界−18/254为0，−17/253为64，−16/252为128，−15/251为192；中央区不主动设置边缘模式。外层先`SetRenderMode(1,srcRatio)`，再画该人物的阴影与人物助手，末尾调用无参`SetRenderMode()`。
+Steam边缘参数：x<-14时`srcRatio=abs(-18-x)*64`；x>250时`srcRatio=(254-x)*64`。正常活跃范围内，边界−18/254为0，−17/253为64，−16/252为128，−15/251为192；对应dst为255／191／127／63。**只有边缘演员**先`SetRenderMode(1,srcRatio)`，再画阴影与人物助手，末尾调用无参`SetRenderMode()`。中央区`−14≤x≤250`既不设置也不重置模式，继承进入该演员时的环境模式：VA `1020AAFB`先设局部哨兵−1，`1020ACFB–1020AD07`仅哨兵被边缘计算替换时才执行尾部reset。不能为统一渲染流程对每个中央演员补reset。
 
 两参数重载令`dstRatio=255-srcRatio`；三参数重载写`renderOperator_/renderSrcRatio_/renderDstRatio_`并刷新绘制缓存。无参重载恢复`(0,255,0,replace=true)`，**不是恢复调用前的模式栈**。这认证了源端混合参数，尚未将底层渲染器、任意残留人物特效及最终屏幕透明度全部认证为一条无条件等式。
 
@@ -42,6 +42,8 @@ Steam边缘参数：x<-14时`srcRatio=abs(-18-x)*64`；x>250时`srcRatio=(254-x)
 
 `Draw_titleAnime`（RVA`0x20A710`，完整1600字节）先把全部20槽的`(slot,y)`写入临时排序表，包含inactive槽；外层i递增、内层从末尾向i+1递减，仅前y>后y时交换。排序后才跳过inactive。它是非稳定交换排序，不能替换为`stable_sort`再宣称同深度等价。
 
+这里交换的是当前i／j两项，不是相邻冒泡。独立顺序样例：slot0／1均活跃y212、slot2不活跃y210、其余不活跃y217，最终可见顺序为slot1→slot0；先过滤inactive再排序会改变结果。
+
 逐活跃槽的调用链如下；背景画完后草边才画，见标题Draw合同。
 
 | 项目 | Steam已核源端请求 |
@@ -54,6 +56,8 @@ Steam边缘参数：x<-14时`srcRatio=abs(-18-x)*64`；x>250时`srcRatio=(254-x)
 | 身体图片 | `jobs[character.jobId_].imgId_[character.gender_]` |
 | scratch setter | `SetDispPlayerData(0,bodyImg,step,facing,age)`；VA`0x1020AC98` |
 | 主武器 | `character.equipDataId_[0]`传入`DrawDispPlayer`；VA`0x1020ACF3` |
+
+演员高度来自`TitleForm.view_`（VA `1020A9CB–1020A9EF`），不是外层标题取到的`GameView.H`；因此应将view高度与继承原点分别传递。外层先设`half(GameView.W−240)`横向原点，演员局部锚仅加`view_H−240`纵向位移；身体／武器SEB偏移后续各加一次，不重复居中或把两种高度强行合并。
 
 `DrawDispPlayer`先调用`SetDrawParam`，当共享显示人物`objType_==0`且weaponId!=-1时画武器，最后画身体。因此主路径图层为**阴影→有条件武器→身体**。没有读取防具或饰品另叠衣服；这不代表其它人物效果没有额外层。
 
@@ -105,7 +109,9 @@ human图片索引没有32，现有37图均核实际像素／尺寸及所需身�
 
 身体绘制仍包含相机选中、体力条、携物、倒地、调试、伤害和效果分支；`haveObj_`残留还会把行走SEB改用`HUMAN_ANIME_SEB[8]`。已读完整`Draw_human`不直接调SetRenderMode或Random，但它继续调用`DrawEffDamage/DrawEffect`等，本批未闭合其所有子树与共享状态初始化。所以不能宣称整个标题绘制无随机、任何历史进入标题都只有三层，或淡出必然不被深层效果覆盖。
 
-本次交付可用于Steam模式的后续设计与差分断言，尚未增加C++切源策略、Owner字段或快照schema，也未修改已认证APK标题模式。正常人物数组和所需SEB／PNG身份现已独立核实；后续追共同显示人物初始化／残留资格、框架更新准入及JRandom交接，再在独立Steam表现模式验边缘与随机差异。窗口观测可交叉人物淡入／淡出与遮挡，但截图不能单独证明内部槽、抽数或逻辑tick。
+维护[标题人物接口](../prototype/include/dungeon_village_prototype/startup_title_actor_skin.hpp)新增`steam_title_actor_projection`：借既有六整数槽DTO，独立校验Steam活跃x范围−18..254与退休保留端点−19／255，全部20槽按源顺序排序后输出人物助手实参及可选边缘模式；输出最多20人，view高度1..65536为维护预算。现visuals已短验非稳定次序、边缘四级模式、退休保留及拒绝边界，[标题组合示例](examples/steam-title-menu-slots.png)仅消费两名中央普通演员。中央无模式请求，边缘请求要求消费方在阴影／人物助手之后清默认模式；投影不展开深层scratch，不调用APK更新／校验器，不新增Owner或快照模式，也不把已认证APK自然轨迹切换成Steam。
+
+同模块`startup_title_actor_skin`仍读取固定APK维护定义，只提供正常基础阴影／武器／身体图层；其正常action0数组和裁片已有本页独立Steam交叉，但不能据此声称Steam每条定义配对、任意scratch历史或完整人物子树已维护。后续继续查共同显示人物初始化／残留资格、框架准入及JRandom交接；窗口观测可交叉淡入／淡出与遮挡，截图不能单独证明内部槽、抽数或逻辑tick。
 
 ## 共同随机来源
 
@@ -127,4 +133,4 @@ human图片索引没有32，现有37图均核实际像素／尺寸及所需身�
 
 ## 静态来源范围
 
-本批21个窗口中20个覆盖完整登记范围，TitleForm.Update仅核2048字节入口前缀。TITLE_GUEST经cctor槽0x110F2100的fieldRef→私有数据字段→默认44字节blob独立得出0…10，不用APK代替；原PRNG、完整框架准入及scratch历史资格未因此闭合。
+本批21个窗口中20个覆盖完整登记范围，TitleForm.Update仅核2048字节入口前缀。TITLE_GUEST经cctor槽0x110F2100的fieldRef→私有数据字段→默认44字节blob独立得出0…10，不用APK代替；共同随机后端算法见上节，实际模式／流交接、完整框架准入及scratch历史资格仍未闭合。来源身份与数组证据沿本页既有入口维护，不另存重复指纹。

@@ -1,5 +1,7 @@
 # 产品侧小窗 UI 示例
 
+[Steam标题／选档六态](steam-title-menu-slots.png)（1440×1280／349062字节）：按行从左到右为开始、纪录、空目录、双非空目录、手动栏子菜单及默认“否”的覆盖询问。六个480×640原尺寸研究窗口各8帧、0世界更新；入口依次为`title-menu-start`、`title-menu-records`、`title-slots-empty`、`title-slots-filled`、`title-slots-menu`、`title-slots-confirm`，不加`--world`。非空资格以及两演员位置／age是显示条件，日期、5000G和定义0／1的初装来自真实维护新局只读投影；新局村名为空就保持空，不冒称真实原档。菜单覆盖时保留选档但不画父手形，询问隐藏选档／菜单；图元／资源与中央演员投影已接。中文译文、Noto、VIEW_Y23与手形关键帧0为显式适配；未接平台图标、语言按钮、完整Steam人物调度／共享scratch及物理输入。见[模块交接](../../prototype/STEAM_STARTUP_SKIN.md)与[人物边界](../STEAM_TITLE_ACTORS.md)。
+
 [Steam标题背景与两Logo](steam-title-backdrop.png)（1440×640／207204字节）：从左到右为frame9无Logo、frame100原目录Logo、frame100英语变体。三个480×640研究窗口原尺寸拼接；另验frame10，其Logo完全位于本例可视区上方，像素与frame9一致，不重复归档。`title-backdrop-early`／`title-backdrop-entry`／`title-backdrop-original`／`title-backdrop-english`各8帧、0世界更新，不加`--world`。消费Steam600×380背景、upper／草边及两原Logo，逻辑尺寸240×320；入口原点0、空演员是明确显示条件，未接演员调度、菜单／语言按钮、字体或物理输入，不代表完整标题或当前中文会话实际选中的Logo。源层序与不同W/Wv坐标见[标题合同](../STEAM_TITLE_DRAW.md)。
 
 [Steam控制器后备裁片](steam-controller-buttons.png)（680×352／44354字节）：从Switch、PS4／PS5、Xbox三套原PNG／SEB取frame0、1、7、32–35，64×64裁片不缩放，仅加研究表头。不是窗口截图、当前设备识别或实际确定／取消绑定；frame0／1先受Canvas映射影响，layer1的16–19再变32–35，所有源layer最终归0。供[后备资源接口](../../prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)和[字体消费者](../STEAM_FONT_CONSUMER.md#内嵌按钮提示)交叉，不代替Steam动态图像或无控制器frame7的鼠标图。

@@ -182,6 +182,75 @@ void title_owner_transactions(Checks &check,Work &work) {
     const auto lm=metadata(logic,0,0);const auto lb=digest(logic,lm);
     check(!logic.advance_title_background(title_update(true)).error.empty() && digest(logic,lm)==lb,
           "logic模式显式拒绝标题背景更新，保持旧世界黄金随机资格");
+    check(!logic.input_title_frame(logic.title_page_id(),{}).error.empty() && digest(logic,lm)==lb,
+          "logic模式同样拒绝背景与菜单的联合入口");
+
+    // 原根Update的整段门槛与后半段失败，主责在Owner；不重复低层四抽边界组合。
+    StartupApplication gate(work.paths("title-frame-gate"),ref::WorldRandomStream::from_java_seed(42),
+                            StartupApplicationMode::title_presentation);
+    gate.take_audio_requests();
+    for(int i=0;i<98;++i)check.good(gate.advance_title_background(title_update()).error);
+    const auto gate_meta=metadata(gate,98,98);const auto gate_before=digest(gate,gate_meta);
+    StartupTitleFrameInput up;up.keys.up=true;
+    auto early=gate,late=gate;
+    const auto wait=late.input_title_frame(late.title_page_id(),up);
+    check.good(wait.error);
+    check(late.title_presentation().l==99 && late.title_menu().selection==0 && wait.random_draws==0,
+          "98上键无确认只到99，整段菜单都未执行，不提前改选择");
+    up.keys.confirm=true;
+    const auto skipped=early.input_title_frame(early.title_page_id(),up);
+    check.good(skipped.error);
+    check(early.title_presentation().l==100 && early.title_menu().selection==1 &&
+          early.page()==StartupApplicationPage::title && !early.title_menu().external &&
+          skipped.confirm_consumed && !skipped.menu_confirm_ready && skipped.random_draws==4,
+          "98上加确认先快进和出生再改选择，仅确认被吞，不屏蔽方向或打开纪录");
+    std::size_t record_pool{};
+    for(const auto &h:startup_world_rules().humans)if(h.status==1)++record_pool;
+    check(record_pool>0,"固定定义提供非空原纪录池");
+    const auto entered=late.input_title_frame(late.title_page_id(),up);
+    check.good(entered.error);
+    check(late.title_presentation().l==100 && late.page()==StartupApplicationPage::records &&
+          late.title_menu().selection==1 && late.capture_title_replay()->requests==1 &&
+          !entered.confirm_consumed && entered.menu_confirm_ready && entered.random_draws==4+record_pool &&
+          late.capture_title_replay()->random.cursor==4+record_pool,
+          "99上加确认按背景四抽→选择→纪录N抽共同提交，回执含完整本轮抽数");
+    for(int fault=0;fault<2;++fault) {
+        auto input=up;auto id=gate.title_page_id();
+        if(fault==0)++id;else input.admission=static_cast<StartupTitleAdmission>(-1);
+        const auto rejected=gate.input_title_frame(id,input);
+        check(!rejected.error.empty() && !rejected.confirm_consumed && !rejected.menu_confirm_ready &&
+              rejected.random_draws==0 && digest(gate,gate_meta)==gate_before,
+              "过期根ID或错误准入不改变背景、菜单、完整随机或输出");
+    }
+    // 背景恰好成功，随后纪录第一抽耗尽；不能保留四抽、刚出生人物或新子页ID。
+    StartupApplication record_fail(work.paths("title-frame-record-fail"),
+        ref::WorldRandomStream::from_raw({99,10,1,99}),StartupApplicationMode::title_presentation);
+    record_fail.take_audio_requests();
+    for(int i=0;i<99;++i)check.good(record_fail.advance_title_background(title_update()).error);
+    const auto fail_meta=metadata(record_fail,99,99);const auto fail_before=digest(record_fail,fail_meta);
+    for(int retry=0;retry<2;++retry) {
+        const auto failed_record=record_fail.input_title_frame(record_fail.title_page_id(),up);
+        check(failed_record.error=="标题随机耗尽" && failed_record.random_draws==0 &&
+              !failed_record.confirm_consumed && !failed_record.menu_confirm_ready &&
+              digest(record_fail,fail_meta)==fail_before && !record_fail.has_pending_audio_requests(),
+              "纪录抽样失败与重试均回滚已成功背景、随机、选项、子页、请求数，不发布输出");
+    }
+    const auto blocked_child=[&] {
+        const auto m=metadata(late,100,100);const auto saved=digest(late,m);
+        check(!late.input_title_frame(late.title_menu().root_id,up).error.empty() && digest(late,m)==saved,
+              "活动或已返回待消费的纪录子页均阻挡根联合请求，不暗推进背景");
+    };
+    blocked_child();
+    StartupTitleMenuRequest returned;returned.kind=StartupTitleMenuRequestKind::return_external;
+    check.good(late.apply_title_request(late.title_page_id(),returned));blocked_child();
+    returned.kind=StartupTitleMenuRequestKind::consume_return;
+    check.good(late.apply_title_request(late.title_page_id(),returned));
+    check(!late.title_menu().external && late.decorations().empty(),"纪录父答案消费后退休引用及装饰名单");
+    StartupTitleFrameInput both;both.keys.up=true;both.keys.down=true;
+    const auto resumed=late.input_title_frame(late.title_page_id(),both);
+    check.good(resumed.error);
+    check(late.title_menu().selection==1 && late.title_presentation().l==101 && resumed.random_draws==0,
+          "恢复后联合输入保留上后下的两个独立if，背景只推进一次");
 
     const auto paths=work.paths("title-owner-source");
     check.good(save_startup_system_file((paths.root/"system.avr"),{}));
@@ -241,6 +310,41 @@ void title_owner_transactions(Checks &check,Work &work) {
     for(int i=0;i<100;++i)check.good(app.advance_title_background(title_update()).error);
     check(startup_world_session_digest(*app.world())==world_before && app.handoff_random()->cursor==handoff.cursor,
           "保留world时标题新抽4次不推进旧world或改历史handoff");
+
+    // 研究条件目录：使用真实新局完整normal载荷发布中断栏，不伪称原自动保存时点。
+    const auto disk=load_startup_application_storage(paths.root);
+    check(disk.snapshot.has_value(),disk.error);
+    const auto saved=save_startup_application_slot(paths.root,*disk.snapshot,app.records(),0,
+                                                   StartupSaveKind::interrupt,*app.world());
+    check(saved.snapshot.has_value(),saved.error);
+    check.good(app.refresh_title_storage());
+    // 让下一次合格更新恰逢出生；等待不超过当前原间隔，不改计数或随机。
+    while(app.title_presentation().t+1<app.title_presentation().s)
+        check.good(app.advance_title_background(title_update()).error);
+    const auto load_meta=metadata(app,200,200);const auto load_before=digest(app,load_meta);
+    const auto system_before=read(paths.root/"system.avr");
+    check(app.draft().slot==1 && app.records().save_directory[0][0].packed_date!=-1,
+          "条件中断档在栏0，当前保留栏1，必须先用真实左键换栏");
+    StartupTitleFrameInput load;load.keys.left=true;load.keys.up=true;load.keys.confirm=true;load.keys.back=true;
+#ifdef _WIN32
+    const auto load_lock=CreateFileW((paths.root/"system.avr").c_str(),GENERIC_READ,FILE_SHARE_READ,nullptr,
+                                    OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr);
+    check(load_lock!=INVALID_HANDLE_VALUE,"联合标题读档系统替换失败夹具");
+    const auto load_failed=app.input_title_frame(app.title_page_id(),load);
+    check(CloseHandle(load_lock)!=0,"释放联合读档夹具文件锁");
+    check(!load_failed.error.empty() && load_failed.random_draws==0 && !load_failed.menu_confirm_ready &&
+          digest(app,load_meta)==load_before && read(paths.root/"system.avr")==system_before,
+          "已出生后真正读档的系统提交失败，旧世界、背景、随机、目录选择和文件全部保留");
+#else
+    (void)load_meta;(void)load_before;(void)system_before;
+#endif
+    const auto loaded=app.input_title_frame(app.title_page_id(),load);
+    check.good(loaded.error);
+    check(loaded.random_draws==4 && loaded.menu_confirm_ready && !loaded.confirm_consumed &&
+          app.page()==StartupApplicationPage::world && app.title_menu().row==0 &&
+          app.take_audio_requests()==std::vector<StartupAudioRequest>{{StartupAudioOperation::replace_bgm,1}} &&
+          app.take_audio_requests().empty(),
+          "同一输入重试只推进一次背景四抽，确认优先返回激活中断档，G输出只消费一次");
 }
 
 void title_natural_dual_restore(Checks &check,Work &work) {
@@ -294,11 +398,18 @@ void title_natural_dual_restore(Checks &check,Work &work) {
         else if(request==6) {check.good(a.request_new_game(0));check.good(b.request_new_game(0));}
         else if(request==7) {check.good(a.cancel_configuration());check.good(b.cancel_configuration());}
         else {
-            const auto x=a.advance_title_background(title_update(request==12));
-            const auto y=b.advance_title_background(title_update(request==12));
+            StartupTitleFrameInput input;
+            // request6把根留在slots；12返回menu仍选纪录，13上+确认重新进入选档。
+            input.keys.back=request==12;input.keys.up=request==13;input.keys.confirm=request==13;
+            const auto x=a.input_title_frame(a.title_page_id(),input);
+            const auto y=b.input_title_frame(b.title_page_id(),input);
             check.good(x.error);check.good(y.error);
             check(x.confirm_consumed==y.confirm_consumed && x.menu_confirm_ready==y.menu_confirm_ready &&
                   x.random_draws==y.random_draws,"双恢复逐请求确认资格及实际抽数相同");
+            if(request==12 || request==13)
+                check(a.title_menu().mode==(request==12?StartupTitleRootMode::menu:StartupTitleRootMode::slots) &&
+                      a.page()==StartupApplicationPage::title,
+                      "恢复尾段在同轮背景之后真实返回根菜单及重开选档，不只比较两份相同实现");
             advanced=true;
         }
         if(advanced)++frame;

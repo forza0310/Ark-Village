@@ -1,5 +1,13 @@
 # 当前研究验证与历史索引
 
+## 标题根页背景与按键联合事务 2026-10-14
+
+接`5839103`，现[应用Owner](prototype/src/startup_application_title.cpp)新增`input_title_frame`：活动根标题背景→100门槛→规范keys／菜单意图在一个应用候选提交，菜单执行器复用私有候选，避免组合时再次复制整个应用。旧API保持独立，touch／子页返回及Steam演员寿命未纳入；背景仍沿APK，不增加持久字段／schema／target。
+
+单Release动态构建，现application／replay套件 **1/1通过12.53秒**。98／99与方向组合、错ID／准入、纪录随机耗尽及重试、出生后读档系统提交失败的全域回滚、成功四抽及G一次消费、96请求双恢复／退休复用均覆盖。首次读档夹具误在栏1确认，已按真实目录补左键切栏0后重验；未修改规则或删除断言。套件提示symlink场景因现权限未覆盖，本次不冒称已验。未编他人住宅在途文件、不运行世界长测或原窗口。
+
+合并[标题合同](ui/TITLE_PRESENTATION.md)过期菜单缺口、旧版本与重复指纹，当前版本统一引向持久化入口；无新报告／核对脚本／素材副本。联合命令无持久引用，子页退休／装饰清理及声音消费已核；合法历史仍可增长。Release1375文件／145294371字节，assets857文件／9476740字节；测试隔离目录按现RAII清理，无新增取证缓存。构建、测试与子任务均结束，差异／链接检查后仅研究白名单本地提交，不推送。
+
 ## Steam按钮Image布局与右键原图 2026-10-14
 
 接`c79459f`，扩现[平台按钮模块](prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)，交付有效Image的60／75最大边、float32长宽、无矩阵偏移截断及独立矩阵平移请求；两支绘后重查矩阵再决定Pop。只增加实际消费的[right_click.png](assets/steam-platform/right_click.png)，128×128／3548字节，沿既有全量索引核源并查看；没有新增SEB、target、持久字段或临时核对脚本。

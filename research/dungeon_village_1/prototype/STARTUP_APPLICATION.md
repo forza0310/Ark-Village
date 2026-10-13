@@ -14,6 +14,8 @@
 
 `apply_title_request(expected_page_id, request)`在候选应用中处理一次具名方向／确认／返回／ENTER／UP／返回消费／菜单frame请求，再执行必要存储意图并共同安装。纯控制器不读写磁盘、不给世界setter，也不发声音。实际加载或新局成功后退休标题子页；world→title再建立新根ID，不重用旧页身份。
 
+`input_title_frame(expected_page_id, {admission, keys})`提供活动根标题的背景→规范按键联合事务，复用菜单私有候选执行器，避免再复制一次整应用。100门槛前跳过全部菜单；快进仅吞确认，达到门槛后方向仍处理；开纪录随机或读档失败整体回滚。旧两个独立API仍独立，touch及子页返回不经此入口；背景沿APK，Steam寿命差异未切源。完整合同见[标题调度](../ui/TITLE_PRESENTATION.md#根标题同轮输入)。
+
 `request_new_game`、`answer_overwrite`、`cancel_configuration`、`start_game`等便利接口沿同一控制器路径。重新开始“是”仅进配置，不提前覆盖档案；真正start在私有候选安装定义0资料与继承，仍不创建定义0实例、不改定义1首访。系统last_slot成功提交后才安装新世界；start本身不写world blob。
 
 村名／姓名采用合法UTF-8、无控制字符、4096字节维护预算；原14／12参数和全角7／6限制尚未全部闭合。用户已授权维护草稿策略：custom_name后切性别保名，取消配置保留draft，重新进入继续编辑，实际start才安装。Steam“短姓名→切性别→取消重进”动态链仍未闭合，不能把维护决策补成原窗口事实。

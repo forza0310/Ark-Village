@@ -2,6 +2,8 @@
 
 048b282普通定义预览、装备店/植物/募集已接并验收，80的纯入住资格查询不等于完整候选输入Owner；维护保存生命周期不改变玩家两栏政策。正式8e37f2d/613f45c的税收90完整计划/四键Init/整帧输入及89介绍生命周期已在build准备，尚未导入；d6b546c又交付正常89皮肤，计划合并接入。公共副钟/SEB、完整原字体、80/87动态Owner及84反馈金额map仍待正式交付。当前结果见[B1](../stages/B1-playable-prototype.md#research-048b282-facility-details)。
 
+正式7fe54fa已交怪物92完整入口/生命周期/当前共享成长与统计皮肤；产品只读审阅完成，后继14维护及common2两资源/素材清单待准备。92不再列研究缺口；当前实例稳定ID、名单重验与像素遮挡沿产品既定PC政策接线，原Camera、字体及公共副钟动态仍另待。方案见[产品计划](../MILESTONES.md#research-7fe54fa-monster-detail)。
+
 <a id="startup-owner-font-gaps"></a>
 ## 80d8b8d接续边界
 

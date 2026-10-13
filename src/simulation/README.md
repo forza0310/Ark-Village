@@ -1,6 +1,6 @@
 # 世界规则与运行时
 
-当前冻结正式研究 `776508c` 的450项维护来源。核心仅标准C++17，不依赖raylib、窗口或屏幕坐标；运行不读取research、APK或研究work文件。各批来源与验证历史集中在[B1](../../docs/stages/B1-playable-prototype.md)，当前产品边界见[架构](../../docs/ARCHITECTURE.md)。
+当前冻结来源、模块映射及产品适配以[SOURCES](../../assets/simulation/SOURCES.json)为准。核心仅标准C++17，不依赖raylib、窗口或屏幕坐标；运行不读取research、APK或研究work文件。各批来源与验证历史集中在[B1](../../docs/stages/B1-playable-prototype.md)，当前产品边界见[架构](../../docs/ARCHITECTURE.md)。
 
 代码按游戏大模块组织，公开头在 `include/ark/simulation` 下对应目录。模块内 `rules/` 保留纯规则层，其余实现负责唯一Owner的查询、消费者与事务。目录归类不改变命名空间或DLL依赖，也不建立额外世界。
 

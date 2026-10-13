@@ -119,4 +119,21 @@ struct SteamLanguageTouchResult { bool propagate{}, open_language{}; };
 SteamLanguageTouchResult steam_language_button_touch(int component,int value,int event_type);
 inline constexpr const char *steam_language_new_image_path="steam-platform/new.png";
 inline constexpr const char *steam_language_new_sprite_path="steam-platform/new.seb";
+
+// TitleForm._draw的调用资格；APPLI_TYPE与Platform独立，不能用是否连接控制器代替。
+struct SteamTitlePlatformInput {
+    int width{}, height{}, title_frame{}, state{}, application_type{};
+    bool on_top{}, desktop{}, xbox{};
+    bool controller_touched{}, keyboard_touched{}, language_touched{}, language_switch_enabled{};
+    std::optional<float> scale_ratio;
+    int new_state{};
+    std::optional<int> new_frame;
+};
+struct SteamTitlePlatformPlan {
+    SteamLanguageButtonPlan language; // Logo/确认注册之后、菜单75门槛之前。
+    std::vector<SteamPlatformButtonBody> after_menu; // 菜单之后，绑定→键盘；最多2项。
+};
+// 不登记平台状态、替换callback、推进NEW或执行外链；调用者逐序消费显式请求。
+// frame/state总是校验；其它字段仅在来源分支实际消费时验证，不为隐藏项补默认值。
+std::optional<SteamTitlePlatformPlan> steam_title_platform_skin(const SteamTitlePlatformInput &input);
 } // namespace dungeon_village_prototype

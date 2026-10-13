@@ -1541,6 +1541,61 @@ void steam_language_checks(Checks &check,const std::filesystem::path &root) {
               !wrong_component.open_language&&wrong_value.propagate&&!wrong_value.open_language,
               "只在匹配UP1请求入语言页，匹配其它事件截断分发，不匹配继续原链");
     }
+    // TitleForm调用者资格另验；下层按钮资源/高亮/触区组合由上面的主责检查覆盖。
+    SteamTitlePlatformInput title;
+    title.width=241;title.height=321;title.title_frame=74;title.state=0;title.application_type=4;
+    title.on_top=true;title.desktop=true;title.language_switch_enabled=true;title.scale_ratio=100.F;
+    title.new_state=2;title.new_frame=7;
+    for(int frame:{0,9,10,74}) {
+        title.title_frame=frame;
+        const auto p=steam_title_platform_skin(title);
+        check(p&&p->language.body&&p->language.new_text&&p->after_menu.empty()&&
+              p->language.body->destination==std::array<float,4>{206.F,5.F,30.F,30.F}&&
+              p->language.new_text->next_frame==8&&title.new_frame==7,
+              "语言在Logo之后但75菜单门槛之前，早期标题仍给语言请求，不实际推进NEW");
+    }
+    title.title_frame=75;
+    const auto visible=steam_title_platform_skin(title);
+    check(visible&&visible->language.body&&visible->after_menu.size()==2,
+          "第75帧起菜单后另给两平台按钮，语言保持在菜单前独立层");
+    const auto &binding=visible->after_menu[0],&keyboard=visible->after_menu[1];
+    check(binding.resource.sprite==23&&binding.component==2&&binding.destination==std::array<float,4>{4.F,5.F,32.F,30.F}&&
+          binding.joystick&&binding.joystick->button==8&&binding.joystick->registration==24&&
+          keyboard.resource.sprite==25&&keyboard.component==2&&!keyboard.joystick&&
+          keyboard.destination==std::array<float,4>{5.F,40.5F,32.F,21.F},
+          "菜单后绑定20/20先于键盘21/51，图元和手柄登记请求不能混为同一序列");
+    for(int branch=0;branch<5;++branch) {
+        auto hidden=title;
+        if(branch==0)hidden.on_top=false;
+        if(branch==1)hidden.state=1;
+        if(branch==2)hidden.application_type=3;
+        if(branch==3)hidden.desktop=false;
+        if(branch==4)hidden.xbox=true;
+        const auto p=steam_title_platform_skin(hidden);
+        check(p&&bool(p->language.body)==(branch>=2)&&p->after_menu.size()==(branch==4?1U:0U),
+              "顶页/选档隐藏全部；APPLI_TYPE和Platform各自挡平台但不挡语言；Xbox只挡键盘");
+    }
+    title.controller_touched=true;title.keyboard_touched=true;title.language_touched=true;
+    title.title_frame=std::numeric_limits<int>::max()-1;
+    const auto lit=steam_title_platform_skin(title);
+    check(lit&&lit->language.body->blend&&lit->after_menu.size()==2&&
+          lit->after_menu[0].blend&&lit->after_menu[1].blend&&title.new_frame==7,
+          "三路独立CheckTouch传递且最大标题钟不溢出，不从鼠标悬停或逻辑钟猜高亮/NEW");
+    title.language_switch_enabled=false;title.new_frame.reset();title.width=0;
+    const auto no_language=steam_title_platform_skin(title);
+    check(no_language&&!no_language->language.body&&no_language->after_menu.size()==2,
+          "语言禁用不消费NEW或画布字段，也不屏蔽平台两按钮");
+    title.scale_ratio.reset();
+    check(!steam_title_platform_skin(title),"可见绑定按钮缺比例时整份候选拒绝，不返回部分按钮");
+    title.title_frame=74;
+    const auto none=steam_title_platform_skin(title);
+    check(none&&!none->language.body&&none->after_menu.empty(),"门槛前隐藏平台不要求其未消费比例");
+    for(int fault=0;fault<4;++fault) {
+        auto bad=title;bad.on_top=false;
+        if(fault==0)bad.title_frame=-1;if(fault==1)bad.title_frame=std::numeric_limits<int>::max();
+        if(fault==2)bad.state=-1;if(fault==3)bad.state=2;
+        check(!steam_title_platform_skin(bad),"坏标题身份/计数即使被覆盖也明确拒绝");
+    }
 }
 void steam_cursor_checks(Checks &check,const std::filesystem::path &root) {
     const auto assets=root.parent_path();

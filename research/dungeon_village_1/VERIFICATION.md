@@ -1,5 +1,13 @@
 # 当前研究验证与历史索引
 
+## 标题平台／语言组合与人物初始资格 2026-10-14
+
+接`b906e7b`，扩现[平台按钮模块](prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)的标题调用者接口，语言在75门槛前，平台尾部依次绑定／键盘，并独立检查APPLI_TYPE、Platform、顶页及Xbox；隐藏不消费无关载荷，失败不返回部分计划。现visuals **1/1通过1.55秒**（总1.56秒），单Release动态构建通过。两个平台条件窗口、受影响设置高亮及旧标题各8帧／0世界更新正常退出；[两态参考](ui/examples/steam-title-platform.png)已查看，旧标题与已归档首格像素一致。
+
+原按钮／NEW资源复用，图元／原点／高亮逐序消费；callback、NEW下一帧、触区及手柄登记只记意图，显式无登记表，不伪造SDK图片／真实平台操作。静态并行闭合TitleForm.Init→UserData.Setting→新Character2的objType0／haveObj−1／空效果来源，合入[人物合同](ui/STEAM_TITLE_ACTORS.md)；不重Init的返回／别名及完整附效仍未知。未改Owner／持久格式或新建target，不编他人住宅测试、不跑长测。
+
+无新素材副本、报告、audit或指纹；窗口图像按作用域释放、每Draw意图固定清收，不持有外部callback。清理本轮8份临时图／日志538451字节；Release1376文件／145847612字节、assets863文件／9488214字节，合法历史仍可增长。本轮构建／测试／窗口及子任务结束；只提交已验research白名单，保留他人改动、不推送。
+
 ## Steam标题演员投影与菜单组合 2026-10-14
 
 接`6d395d4`，扩现[人物皮肤模块](prototype/include/dungeon_village_prototype/startup_title_actor_skin.hpp)：独立Steam只读投影保留全部20槽非稳定排序、view高度、活跃／退休端点及边缘模式请求；不切换APK调度／随机或持久来源。普通mode1合成已核到顶点及shader，黑罩128按源alpha128／255与独立RGB／alpha因子消费；深层演员scratch、特殊材质和原GPU动态仍分开。

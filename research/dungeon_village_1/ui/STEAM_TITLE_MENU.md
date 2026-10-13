@@ -30,7 +30,7 @@ state0 的逻辑布局如下；行号 r 为 0、1，`Y=H-60+22*r`。
 
 原字符串正式版为 `スタート`／`ハイスコア`，试玩第二项为 `正式版へ`；实际语言经过翻译调用，本批不把日文 literal 写成 Steam 中文显示事实。Steam 使用矩形文字布局，不能套 APK 的文字中心点调用。
 
-在 Steam 平台类型4、标题位于栈顶且 state0 时，尾部依次请求 `SteamInputManager.DrawButton(g,20,20,2,callback)` 与 `DrawKeyboardButton(g,21,51,2,callback)`。这里仅认证 helper 实参，不认证最终 OS 坐标／弹出平台界面。
+`titleFrame≥75`后，尾部在`102108DF`独立检查`Config.APPLI_TYPE==4`，再检查标题位于栈顶且state0（`102108F7–10210907`），依次请求`SteamInputManager.DrawButton(g,20,20,2,callback)`与`DrawKeyboardButton(g,21,51,2,callback)`（`1021095A／1021098D`）。两helper内部还分别检查`Platform.x86==4`，键盘另排除Xbox；应用类型与平台不能合并成一个布尔量，也不能用是否连接手柄代替。语言按钮在75门槛前独立请求。这认证调用顺序和实参，不认证最终OS坐标／弹出平台界面。
 
 普通 `_draw` 路径末尾没有恢复入参原点。debug 信息分支先保存当前原点、设零、再恢复它；末尾共用地址 `0x101C9750` 的真实字节是 `C2 00 00`（`ret 0`），不改变原点。自动符号输出的 Steamworks 名字属于 IL2CPP 共用地址别名，不能当作实际平台业务调用。本批普通菜单分支未发现新增直接随机请求，不能据此宣称整个深层绘制调用树没有随机。
 
@@ -87,6 +87,8 @@ ContinueGame 二次检查日期存在，清软标签，然后 `LoadGame(slot,aut
 - 此处描述组件 ENTER／UP语义。窗口单击是否产生哪个事件、焦点、裁剪及平台事件转发继续遵守[Steam输入合同](STEAM_INTERACTIONS.md)，不能将任意鼠标 MOVE直接写成 ENTER。原 `_addTouch` 还叠加绘制原点、margin、比例与裁剪；本表矩形是调用者基矩形。
 
 ## 维护交付与未闭合项
+
+[平台模块](../prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)的`steam_title_platform_skin`将调用者资格集中为只读候选：`language`在菜单前，`after_menu`最多两项按绑定→键盘排列。隐藏项不消费其尺寸／比例／NEW；坏frame／state或实际消费的缺载荷拒绝，不返回部分计划。它不写callback、推进NEW、调用SDK或打开外链，登记和状态安装仍由平台宿主明确消费。
 
 现[启动皮肤接口](../prototype/include/dungeon_village_prototype/steam_startup_skin.hpp)按两个状态、两个槽、两个行定义只读输出；菜单选择、选档行选择与确认由应用／Owner处理，标题／选档不套用普通列表两次UP规则。世界恢复仍经过已批准的完整应用快照／Owner事务路径，原存档目录不由表现示例修改。
 

@@ -73,7 +73,7 @@
 
 触区默认值来源独立核至`GameView..cctor`：VA `10240317`以使用槽`110F5D00`初始化六整数，`1024034C`写入`TOUCHPARAMS[3]`；使用槽经FieldRef到私有字段25442的默认值为`(16,16,8,8,1,1)`。`_addTouch` RVA `23E010`在无opt覆盖时取该行，后两值分别控制碰撞和屏幕约束。这里保留基矩形及margin请求，不把扩大后的矩形冒充经过其它组件避让后的最终命中范围。
 
-维护交付：[平台按钮模块](../prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)的`steam_language_button_skin`接显式Switch资格、原anchor、窗口逻辑尺寸、比例、触摸与NEW状态，返回原序steps及图元／注册参数；callback替换、NEW下一帧是显式请求，不在查询中写静态状态。`body`各部分必须按steps分别消费，绘按钮时不能提前注册触摸／手柄；两层原点由steps管理，body.reset_origin=false，不能额外叠第三层。`steam_language_button_touch`仅分类传播或UP入页意图，不实际切语言。按钮与NEW四原文件已出版，复用现资源身份；尺寸1..65536、比例(0,10000]及NEW帧0..15是维护预算，合法隐藏不消费其它字段。尚未维护语言页内部选择、设置保存、callback最终消费或完整平台恢复；实际会话资格仍由调用方提供。尾部开发警告提示支路不计入普通按钮合同。
+维护交付：[平台按钮模块](../prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)的`steam_language_button_skin`接显式Switch资格、原anchor、窗口逻辑尺寸、比例、触摸与NEW状态，返回原序steps及图元／注册参数；callback替换、NEW下一帧是显式请求，不在查询中写静态状态。`body`各部分必须按steps分别消费，绘按钮时不能提前注册触摸／手柄；两层原点由steps管理，body.reset_origin=false，不能额外叠第三层。`steam_language_button_touch`仅分类传播或UP入页意图，不实际切语言。按钮与NEW四原文件已出版，复用现资源身份；尺寸1..65536、比例(0,10000]及NEW帧0..15是维护预算，合法隐藏不消费其它字段。标题[组合接口](../prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)已按原调用者资格分开菜单前语言／菜单后平台图元；研究窗口消费按钮与NEW的独立缩放／高亮，逐序记录callback、帧更新及登记意图，不实际写静态状态。尚未维护语言页内部选择、设置保存、callback最终消费或完整平台恢复；实际会话资格仍由调用方提供。尾部开发警告提示支路不计入普通按钮合同。
 
 ## Logo资源选择链与中文资格
 

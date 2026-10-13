@@ -344,7 +344,25 @@ class SourceSprites {
                          request.position,request.frame,request.crop,origin);
     }
     void platform_button(const SteamPlatformButtonBody &button) {
+        // raw12仍要求调用方已接齐全部附加消费者；不能因标题有空登记表而放宽这里。
         if(!button.reset_origin||button.joystick)throw std::runtime_error("平台按钮附加请求尚未完整消费");
+        platform_button_image(button);
+    }
+    // 仅按钮图像作用域；origin/callback/触区/手柄意图由具名外层执行器按原序消费。
+    void platform_button_image(const SteamPlatformButtonBody &button) {
+        if(!button.resource.image_path||!button.resource.sprite_path)
+            throw std::runtime_error("平台按钮缺原资源路径");
+        const auto key=std::string(button.resource.sprite_path);
+        auto found=sprites_.find(key);
+        if(found==sprites_.end())found=sprites_.emplace(key,dungeon_village_tools::parse_legacy_seb(
+            read_bytes(root_.parent_path()/key))).first;
+        if(found->second.layers.size()!=1||found->second.frame_count!=1||found->second.layers[0].parts.size()!=1)
+            throw std::runtime_error("平台按钮SEB结构拒绝");
+        const auto &part=found->second.layers[0].parts[0];
+        if(part.frame!=0||part.image_index!=button.resource.image||part.flip_x||part.flip_y||
+           std::array<int,4>{part.source_x,part.source_y,part.width,part.height}!=button.resource.crop||
+           std::array<int,2>{part.offset_x,part.offset_y}!=button.resource.offset)
+            throw std::runtime_error("平台按钮SEB裁片或图片引用拒绝");
         const auto paint=[&] {
             const auto &c=button.resource.crop;const auto &d=button.destination;
             crop(button.resource.image_path,{float(c[0]),float(c[1]),float(c[2]),float(c[3])},
@@ -381,6 +399,31 @@ void main() {
         BeginShaderMode(*platform_blend_);
         try {paint();} catch(...) {EndShaderMode();throw;}
         EndShaderMode();
+    }
+    // NEW是独立图像矩阵请求；不继承语言按钮的高亮混色/0.5缩放，也不写newFrame。
+    void language_new_text(const SteamLanguageNewText &request) {
+        if(request.frame!=8||request.layer!=-1||request.scale!=0.75F||request.next_frame<0||request.next_frame>=16||
+           !std::isfinite(request.anchor[0])||!std::isfinite(request.anchor[1]))
+            throw std::runtime_error("标题语言NEW显示请求拒绝");
+        const auto key=std::string(steam_language_new_sprite_path);
+        auto found=sprites_.find(key);
+        if(found==sprites_.end())found=sprites_.emplace(key,dungeon_village_tools::parse_legacy_seb(
+            read_bytes(root_.parent_path()/key))).first;
+        if(found->second.layers.size()!=1||found->second.frame_count!=16)
+            throw std::runtime_error("标题语言NEW层或帧数拒绝");
+        const dungeon_village_tools::SpritePart *part{};
+        for(const auto &value:found->second.layers[0].parts)if(value.frame==request.frame) {
+            if(part)throw std::runtime_error("标题语言NEW重复裁片拒绝");
+            part=&value;
+        }
+        if(!part||part->image_index!=24||part->source_x!=0||part->source_y!=11||part->width!=28||
+           part->height!=11||part->offset_x!=-14||part->offset_y!=-5||part->flip_x||part->flip_y)
+            throw std::runtime_error("标题语言NEW原裁片或图片引用缺失");
+        if(image_size(steam_language_new_image_path,true)!=std::array<int,2>{28,22})
+            throw std::runtime_error("标题语言NEW原图尺寸拒绝");
+        crop(steam_language_new_image_path,{float(part->source_x),float(part->source_y),float(part->width),float(part->height)},
+             {request.anchor[0]+part->offset_x*request.scale,request.anchor[1]+part->offset_y*request.scale},
+             true,Vector2{part->width*request.scale,part->height*request.scale});
     }
     void published_sprite(int image_id,const char *png,const char *seb,std::array<int,2> anchor,
                           int frame,std::optional<std::array<int,4>> rectangle,Vector2 origin) {
@@ -2431,6 +2474,69 @@ struct TitleBackdropExampleActor {
     std::array<int,2> anchor{};
     StartupTitleActorSkin skin;
 };
+struct TitlePlatformExampleRequests {
+    int callbacks{},new_frames{},touches{},joystick_intents{},next_new_frame{-1};
+    std::vector<const char *> order; // 每次Draw独立收齐，不能积成外部登记表或NEW历史。
+};
+// 此有界示例的手柄登记表明确不存在；与HasController或Steam初始化资格无关。
+// 仅消费/记录登记意图，不创造SDK图像、后备glyph或实际触摸组件。
+void draw_title_language_example(const SteamLanguageButtonPlan &plan,SourceSprites &sprites,
+    std::array<int,2> entry_origin,TitlePlatformExampleRequests &requests) {
+    if(!plan.body) {
+        if(!plan.steps.empty()||plan.new_text)throw std::runtime_error("隐藏语言按钮仍有未消费载荷");
+        return;
+    }
+    if(plan.body->reset_origin)throw std::runtime_error("语言按钮图像不得新增第三层原点");
+    std::array<std::array<int,2>,2> saved{};auto origin=entry_origin;std::size_t depth{};
+    for(const auto step:plan.steps) {
+        using Step=SteamLanguageButtonStep;
+        switch(step) {
+        case Step::push_origin_zero:
+            if(depth>=saved.size())throw std::runtime_error("语言按钮原点栈越界");
+            saved[depth++]=origin;origin={0,0};requests.order.push_back("language.push-origin");break;
+        case Step::replace_callback:
+            if(depth!=1)throw std::runtime_error("语言callback替换次序拒绝");
+            ++requests.callbacks;requests.order.push_back("language.callback-intent");break;
+        case Step::draw_button:
+            if(depth!=2||origin!=std::array<int,2>{0,0})throw std::runtime_error("语言绘制原点拒绝");
+            sprites.platform_button_image(*plan.body);requests.order.push_back("language.image");break;
+        case Step::draw_new:
+            if(depth!=2||!plan.new_text)throw std::runtime_error("语言NEW缺独立绘制请求");
+            ++requests.new_frames;requests.next_new_frame=plan.new_text->next_frame;
+            requests.order.push_back("language.new-next-frame-intent");
+            sprites.language_new_text(*plan.new_text);requests.order.push_back("language.new-image");break;
+        case Step::register_touch:
+            if(depth!=2||plan.collision_mode!=1||plan.screen_mode!=1)
+                throw std::runtime_error("语言触区登记作用域拒绝");
+            ++requests.touches;requests.order.push_back("language.touch-intent");break;
+        case Step::register_joystick:
+            if(depth!=2||!plan.body->joystick)throw std::runtime_error("语言手柄登记缺载荷");
+            ++requests.joystick_intents;requests.order.push_back("language.joystick-intent/table-absent");break;
+        case Step::pop_origin:
+            if(depth==0)throw std::runtime_error("语言原点栈下溢");
+            origin=saved[--depth];requests.order.push_back("language.pop-origin");break;
+        }
+    }
+    if(depth||origin!=entry_origin)throw std::runtime_error("语言按钮原点未恢复");
+}
+void draw_title_platform_tail_example(const std::vector<SteamPlatformButtonBody> &buttons,
+    SourceSprites &sprites,TitlePlatformExampleRequests &requests) {
+    if(buttons.size()>2)throw std::runtime_error("标题平台尾部超出两按钮预算");
+    for(const auto &button:buttons) {
+        if(!button.reset_origin)throw std::runtime_error("标题平台按钮缺原点作用域");
+        const bool keyboard=button.value==0x13489A9;
+        if(!keyboard&&button.value!=0x13465BA)throw std::runtime_error("标题平台入口类型未知");
+        // body.destination已经是PushOrigin(0,0,false)内坐标；仅图像消费者不再reset。
+        requests.order.push_back(keyboard?"keyboard.push-origin":"controller.push-origin");
+        sprites.platform_button_image(button);requests.order.push_back(keyboard?"keyboard.image":"controller.image");
+        ++requests.touches;requests.order.push_back(keyboard?"keyboard.touch-intent/callback":"controller.touch-intent/callback");
+        if(button.joystick) {
+            ++requests.joystick_intents;requests.order.push_back(keyboard?
+                "keyboard.joystick-intent/table-absent":"controller.joystick-intent/table-absent");
+        }
+        requests.order.push_back(keyboard?"keyboard.pop-origin":"controller.pop-origin");
+    }
+}
 // 仅执行已核标题前段与明确的普通演员显示条件；确认注册只计请求，不接物理输入。
 int draw_title_backdrop_example(const SteamTitleBackdropPlan &plan,SourceSprites &sprites,
                                const std::vector<TitleBackdropExampleActor> &actors={}) {
@@ -2508,9 +2614,10 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
     SourceSprites sprites(assets / "original");
     const bool title_backdrop_fixture=inspect_page=="title-backdrop-early"||inspect_page=="title-backdrop-entry"||
         inspect_page=="title-backdrop-original"||inspect_page=="title-backdrop-english";
+    const bool title_platform_fixture=inspect_page=="title-platform"||inspect_page=="title-platform-touched";
     const bool title_composite_fixture=inspect_page=="title-menu-start"||inspect_page=="title-menu-records"||
         inspect_page=="title-slots-empty"||inspect_page=="title-slots-filled"||
-        inspect_page=="title-slots-menu"||inspect_page=="title-slots-confirm";
+        inspect_page=="title-slots-menu"||inspect_page=="title-slots-confirm"||title_platform_fixture;
     if(title_backdrop_fixture||title_composite_fixture) {
         SteamTitleBackdropInput input;
         input.width=input.view_width=width;input.height=input.view_height=height;
@@ -2525,6 +2632,7 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
         std::unique_ptr<ChineseFont> title_font;
         std::vector<SteamStartupSkinPlan> overlays;
         std::vector<TitleBackdropExampleActor> actors;
+        std::optional<SteamTitlePlatformPlan> platform;
         std::function<std::string(const SteamStartupText &)> resolve;
         if(title_composite_fixture) {
             // 两目录非空只作显示条件；日期/资金/村名来自真实维护新局投影，不造历史存档。
@@ -2575,8 +2683,8 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
                 if(!layer)throw std::runtime_error("标题组合条件计划拒绝");
                 overlays.push_back(*layer);
             };
-            if(inspect_page=="title-menu-start"||inspect_page=="title-menu-records")
-                append(steam_title_menu_skin(width,height,100,inspect_page=="title-menu-start"?0:1));
+            if(inspect_page=="title-menu-start"||inspect_page=="title-menu-records"||title_platform_fixture)
+                append(steam_title_menu_skin(width,height,100,inspect_page=="title-menu-records"?1:0));
             else {
                 const bool menu=inspect_page=="title-slots-menu",dialog=inspect_page=="title-slots-confirm";
                 SteamSaveSelectorSkinInput selector;
@@ -2596,15 +2704,37 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
                 if(dialog)append(steam_save_confirmation_skin(width,height,1,
                     {title_font->measure("是"),title_font->measure("否")}));
             }
+            if(title_platform_fixture) {
+                SteamTitlePlatformInput request;
+                request.width=width;request.height=height;request.title_frame=100;request.state=0;
+                request.application_type=4;request.on_top=true;
+                // APPLI_TYPE4与Platform.x86各自明确提供；不推断用户当前设备或SDK连接。
+                request.desktop=true;request.xbox=false;request.scale_ratio=100.F;
+                request.controller_touched=request.keyboard_touched=request.language_touched=
+                    inspect_page=="title-platform-touched";
+                request.language_switch_enabled=true;request.new_state=2;request.new_frame=7;
+                platform=steam_title_platform_skin(request);
+                if(!platform||!platform->language.body||platform->after_menu.size()!=2)
+                    throw std::runtime_error("标题平台显示条件计划拒绝");
+            }
         }
-        int count{},confirmations{};std::size_t touches{};
+        int count{},confirmations{};std::size_t touches{};TitlePlatformExampleRequests platform_requests;
         while(!WindowShouldClose()&&count<frames) {
             BeginTextureMode(canvas.value);ClearBackground(BLACK);
             confirmations=draw_title_backdrop_example(*plan,sprites,actors);
+            platform_requests={};
+            if(platform)draw_title_language_example(platform->language,sprites,plan->final_origin,platform_requests);
             touches=0;
             for(const auto &overlay:overlays) {
+                if(platform)platform_requests.order.push_back("title.menu");
                 draw_startup_plan(overlay,resolve,sprites,*title_font,0); // 例图指针明确消费当前关键帧0。
                 touches+=overlay.touches.size(); // 只记录注册请求，不连接研究窗口物理点击。
+            }
+            if(platform) {
+                draw_title_platform_tail_example(platform->after_menu,sprites,platform_requests);
+                if(platform_requests.callbacks!=1||platform_requests.new_frames!=1||platform_requests.touches!=3||
+                   platform_requests.joystick_intents!=2||platform_requests.next_new_frame!=8)
+                    throw std::runtime_error("标题平台例图存在未收齐或重复消费请求");
             }
             EndTextureMode();BeginDrawing();ClearBackground(BLACK);
             DrawTexturePro(canvas.value.texture,{0,0,width,-height},{0,0,width*scale,height*scale},{0,0},0,WHITE);
@@ -2622,6 +2752,15 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
                  <<" actors="<<actors.size()
                  <<" world_updates=0；空/非空目录及普通演员仅显示条件、中文/Noto为维护适配；"
                  <<"非Steam调度/scratch全树，未覆盖GPU演员淡出/平台glyph/物理输入，尚非完整标题\n";
+        if(platform) {
+            std::cout<<"平台/语言显示条件：callback_intents="<<platform_requests.callbacks
+                     <<" new_frame_intents="<<platform_requests.new_frames<<" new_frame_input=7 next_frame_intent="
+                     <<platform_requests.next_new_frame<<" touch_intents="<<platform_requests.touches
+                     <<" joystick_intents="<<platform_requests.joystick_intents
+                     <<" joystick_table_present=false glyph_draws=0 external_state_writes=0 order=";
+            for(const auto step:platform_requests.order)std::cout<<step<<'|';
+            std::cout<<"\n两原平台入口与语言按钮仅条件展示，不认证绑定面板/外链或当前SDK图像。\n";
+        }
         return 0;
     }
     const bool magic_fixture=inspect_page.rfind("magic-pot-",0)==0;

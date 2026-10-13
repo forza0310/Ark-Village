@@ -107,11 +107,15 @@ human图片索引没有32，现有37图均核实际像素／尺寸及所需身�
 
 `SetDispPlayerData`只改共享显示人物的`seb_/bodyImg_/animeIndex_/direct_/sebCnt_`五项。`SetDrawParam`还写共享临时字段和`draw_param[5…10]`；`Draw_human`结尾写旧画面坐标。它们不是严格纯函数。
 
-身体绘制仍包含相机选中、体力条、携物、倒地、调试、伤害和效果分支；`haveObj_`残留还会把行走SEB改用`HUMAN_ANIME_SEB[8]`。已读完整`Draw_human`不直接调SetRenderMode或Random，但它继续调用`DrawEffDamage/DrawEffect`等，本批未闭合其所有子树与共享状态初始化。所以不能宣称整个标题绘制无随机、任何历史进入标题都只有三层，或淡出必然不被深层效果覆盖。
+2026-10-14已闭合**重新执行标题Init时的scratch构造来源**：TitleForm.Init（RVA20ADF0，完整1936字节）的正常完成路径在`1020B322`实际调用UserData.Setting（2E89D0），不是仅由方法名推定。Setting在`102EA205–102EA2A8`新建Character2、调用其构造29D2E0，把新引用写入`UserData.dispHuman_ static+14`，再执行Init(0,0,0)、uid=−1、jobId=3；接着独立建立dispMonster_，两者不是同一对象，也不是标题20个槽各有一个scratch。此处每次重新构造替换旧static引用，不是清空／复用旧Character2；旧引用的全部别名及GC退休未由该赋值证明。
+
+Character2.Init（284080）的`10284193–1028421D`显式写objType=0、动画／朝向／seb=0、flag／state／相关计数清0、**haveObj=−1**，并绑定共同AppData／Canvas／UserData；Init本身没有把所有历史字段清零。上述新构造另外分配draw_param／old_screen_pos／effect_pos、两空效果列表和6槽powerBar；effD_hitTime／effD_miss及未显式赋值的新标量、数组槽按语言分配语义为零。因此“成功完成新标题Init并尚未被其它使用者改写”已有明确objType0／haveObj−1／空效果的正常来源，能支持本页正常action0数组／裁片前提；不能再笼统说其初始化完全未知。五字段setter仍不恢复这些槽，覆盖标题后返回父页若不重做Init，也没有此处重新构造保证。
+
+身体绘制仍包含相机选中、体力条、携物、倒地、调试、伤害和效果分支；其它使用者若改写haveObj，仍会把行走SEB改用`HUMAN_ANIME_SEB[8]`。已读完整`Draw_human`不直接调SetRenderMode或Random，但它继续调用`DrawEffDamage/DrawEffect`等；本批闭合正常重新初始化，未穷尽共享对象全部别名／历史写者、附效子树及所有父页恢复路径。所以不能宣称整个标题绘制无随机、任意历史进入标题都只有三层，或淡出必然不被深层效果覆盖。
 
 维护[标题人物接口](../prototype/include/dungeon_village_prototype/startup_title_actor_skin.hpp)新增`steam_title_actor_projection`：借既有六整数槽DTO，独立校验Steam活跃x范围−18..254与退休保留端点−19／255，全部20槽按源顺序排序后输出人物助手实参及可选边缘模式；输出最多20人，view高度1..65536为维护预算。现visuals已短验非稳定次序、边缘四级模式、退休保留及拒绝边界，[标题组合示例](examples/steam-title-menu-slots.png)仅消费两名中央普通演员。中央无模式请求，边缘请求要求消费方在阴影／人物助手之后清默认模式；投影不展开深层scratch，不调用APK更新／校验器，不新增Owner或快照模式，也不把已认证APK自然轨迹切换成Steam。
 
-同模块`startup_title_actor_skin`仍读取固定APK维护定义，只提供正常基础阴影／武器／身体图层；其正常action0数组和裁片已有本页独立Steam交叉，但不能据此声称Steam每条定义配对、任意scratch历史或完整人物子树已维护。后续继续查共同显示人物初始化／残留资格、框架准入及JRandom交接；窗口观测可交叉淡入／淡出与遮挡，截图不能单独证明内部槽、抽数或逻辑tick。
+同模块`startup_title_actor_skin`仍读取固定APK维护定义，只提供正常基础阴影／武器／身体图层；其正常action0数组和裁片已有本页独立Steam交叉，但不能据此声称Steam每条定义配对、任意scratch历史或完整人物子树已维护。后续继续查不重Init的共同显示残留／别名资格、框架准入及JRandom交接；窗口观测可交叉淡入／淡出与遮挡，截图不能单独证明内部槽、抽数或逻辑tick。
 
 ## 共同随机来源
 

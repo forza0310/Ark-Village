@@ -95,7 +95,7 @@ raw12同身份静态子批进一步核定以下生命周期；字段含义及四
 
 资格分层保留：`DrawButton`只检查Platform.x86=4；`DrawKeyboardButton`还执行Xbox排除查询，本固定DLL的相关共享小方法返回false。helper均不自行判断顶页，标题顶页且state0、raw12顶页且APPLI_TYPE4是各调用者先做的检查。`USE_STEAM`和输入初始化只约束控制器CLICK后的平台动作，不约束图标绘制。控制器另外在`107B6BD8–107B6C2D`请求`Canvas.SetJoystickButtonDraw(button8, trunc((x−14)*scaleRatio/100), trunc((y−14)*scaleRatio/100), registerID24, scale100)`；键盘没有这项后继，尚未消费该glyph后端时须显式保留缺口。纯DTO应分别表达按钮kind、锚、component、平台资格、CheckTouch状态、原图／SEB身份、颜色混合、原点恢复及独立gamepad命中源；输入动作只产生具名平台意图，不由皮肤打开浏览器或绑定面板。以上为静态与素材认证，本批没有执行真实平台动作。
 
-正式[平台按钮纯计划](../prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)保留合法隐藏／非法输入的区别；控制器必须显式提供有限正值的GetScaleRatio(false)，键盘不读取它。坐标、component与比例上界是维护预算，不是原规则。研究设置窗口只消费无附加手柄glyph的键盘计划；返回的图元、命中和原点契约供产品接入，网页与绑定面板动作没有由研究窗口执行。
+正式[平台按钮纯计划](../prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)保留合法隐藏／非法输入的区别；控制器必须显式提供有限正值的GetScaleRatio(false)，键盘不读取它。坐标、component与比例上界是维护预算，不是原规则。研究设置窗口消费无附加手柄glyph的键盘计划；标题另有语言／平台组合接口和[条件参考](examples/README.md)。入口按钮图像与独立登记请求分开消费，标题示例显式采用登记表不存在的条件，不伪造当前控制器glyph。网页与绑定面板动作没有由研究窗口执行。
 
 **高亮混色的生成源码与适配边界。** `Graphics.SetBlendMode`在`107738B5–10773922`按常量255归一RGBA；`ShaderBuilder.Init`的`1073DDA9–1073DDBC`只在非clipRegion且blendMode1时启用blendColor，`GetNameId`加0x20（有图像再加0x10），`GetCode`于`1073D002–1073D018`同时匹配这两位后取原shader槽`110FC810`。该字符串先`constant * texture alpha`，再`previous lerp(constant) texture`（constant alpha为_BlendAlpha），最后`previous * primary`。`MaterialManager`的`10730065–107300EF`上传_BlendAlpha及RGB、强制_BlendColor.alpha=1。设原纹理T、顶点色P、归一混色alpha=a，按固定函数组合推导：`RGB=(T.rgb*(1-a)+Blend.rgb*T.a*a)*P.rgb`，`A=T.a*P.a`；本按钮Blend.rgb为白、a=128/255。只有不透明纹理像素才等于通常的对白色插值，不能用alpha tint替代。
 
@@ -115,7 +115,7 @@ ShaderBuilder.Init／GetNameId（73DD30／73D730）对该模式选择位0x2040�
 
 `Kairolib._drawButtons RVA805D60`会再次拒绝Steam无控制器的button8。`USE_STEAM`有效时于`1080602A–1080604D`读取`Buttons.TriggerL.GetImage()`；有有效尺寸的动态图片以最大边60等比居中绘制，不同时叠底版。`Buttons..cctor 107A696F–107A69AA`独立核其对象为`DigialButton`、action名`TriggerL`；其`GetImage RVA7A6D70`依据当前action set／controller／digital action查询`GetDigitalActionOrigins`，取首个origin交`GetGlyphForActionOrigin_Legacy`路径；路径变化时退役旧Image，再读文件并加载新图，不能冻结为游戏内固定PNG。正常返回但没有有效动态图时走Kairolib原包后备SEB：InputType5／13取`buttons_ps4`（SEB19／图片22），1／2／3取`buttons_xbox`（SEB29／图片33），其余取`buttons_switch`（SEB13／图片15），均frame8／layer0；文件读取异常不能擅自改写成正常后备结果。后备身份与`IMAGE_COVERAGE.json`已有原包条目交叉；本批未取得实际Steam返回路径、设备按键映射或动态图文件，不将后备图冒充当前设备图。
 
-可实施边界是独立的平台登记器与只读图标计划：显式输入表是否可用、控制器资格、8/24旧记录、运行时比例及Screen／Application尺寸差、光标显示计数、动态图有效尺寸或后备InputType；输出当轮可见图元和更新后的该条记录。每轮Reset→页面重新登记→统一绘制的次序、按钮释放降低life、初次和重复登记的差异须保留。动态Steam图标provider及跨设备缓存仍是平台资源职责；当前研究窗口只消费键盘按钮，控制器附加请求尚未伪造为已完成动态后端。
+可实施边界是独立的平台登记器与只读图标计划：显式输入表是否可用、控制器资格、8/24旧记录、运行时比例及Screen／Application尺寸差、光标显示计数、动态图有效尺寸或后备InputType；输出当轮可见图元和更新后的该条记录。每轮Reset→页面重新登记→统一绘制的次序、按钮释放降低life、初次和重复登记的差异须保留。动态Steam图标provider及跨设备缓存仍是平台资源职责；标题组合窗口已画绑定按钮、键盘、语言及NEW，但只记录附加登记意图，在显式无登记表条件下不画glyph，仍未接完整动态后端。
 
 ## 后续业务重载观察
 

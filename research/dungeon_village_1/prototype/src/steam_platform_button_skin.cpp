@@ -1,6 +1,7 @@
 // SteamInputManager.DrawButton/DrawKeyboardButton；来源合同见ui/STEAM_INTERACTIONS.md。
 #include "dungeon_village_prototype/steam_platform_button_skin.hpp"
 #include <cmath>
+#include <limits>
 
 namespace dungeon_village_prototype {
 std::optional<SteamPlatformButtonResource> steam_platform_button_resource(SteamPlatformButtonKind kind) {
@@ -115,5 +116,25 @@ std::optional<SteamLanguageButtonPlan> steam_language_button_skin(const SteamLan
 SteamLanguageTouchResult steam_language_button_touch(int component,int value,int event_type) {
     if(component!=3||value!=0x133A066)return {true,false};
     return {false,event_type==1};
+}
+std::optional<SteamTitlePlatformPlan> steam_title_platform_skin(const SteamTitlePlatformInput &in) {
+    if(in.title_frame<0||in.title_frame>std::numeric_limits<int>::max()-1||in.state<0||in.state>1)return {};
+    SteamTitlePlatformPlan plan;
+    if(!in.on_top||in.state!=0)return plan;
+    const auto language=steam_language_button_skin({in.language_switch_enabled,in.language_touched,
+        in.width,in.height,20,in.scale_ratio,in.new_state,in.new_frame});
+    if(!language)return {};
+    plan.language=*language;
+    // 原75门槛位于语言按钮之后；APPLI_TYPE是调用者资格，Platform在helper里另查。
+    if(in.title_frame<75||in.application_type!=4)return plan;
+    for(const auto kind:{SteamPlatformButtonKind::controller_binding,SteamPlatformButtonKind::keyboard_guide}) {
+        const bool keyboard=kind==SteamPlatformButtonKind::keyboard_guide;
+        const auto button=steam_platform_button_skin({kind,keyboard?std::array<int,2>{21,51}:
+            std::array<int,2>{20,20},2,in.desktop,in.xbox,
+            keyboard?in.keyboard_touched:in.controller_touched,in.scale_ratio});
+        if(!button)return {};
+        if(button->body)plan.after_menu.push_back(*button->body);
+    }
+    return plan;
 }
 } // namespace dungeon_village_prototype

@@ -285,6 +285,48 @@ void world_tasks() {
                   owner.previous_camera == before.previous_camera &&
                   owner.scene.random.draws() == before.scene.random.draws(),
               "Scene5 input/query cannot start recruitment or move the source camera");
+        const auto site = *owner.tasks.at(tracking->tasks.front()).site;
+        owner.camera = {float((site.x + site.y) * 30 + 30), float((site.y - site.x) * 15 + 10)};
+        const auto arrived = sim::update_startup_world_runtime_task_tracking_scene(owner);
+        check(arrived && arrived->scene.scene_state == 4, "Source camera arrival enters scene4");
+        auto live = *ui::world_task_tracking_view(*arrived);
+        const auto info_layout = ui::world_task_tracking_layout({240, 256});
+        ui::WorldTaskTrackingPaintedControls drawn;
+        drawn.geometry.page = live.scene;
+        drawn.geometry.raw = live.raw;
+        drawn.geometry.selection = live.selected;
+        drawn.geometry.extent = {240, 256};
+        drawn.geometry.confirm = {85, 170, 70, 56};
+        drawn.tasks = live.tasks;
+        drawn.available_count = live.available_count;
+        click = {};
+        click.click = middle(drawn.geometry.confirm);
+        check(ui::world_task_tracking_input(live, info_layout, click, false, drawn)->confirm,
+              "Source information touch confirms from last-painted geometry");
+        for (int invalidation = 0; invalidation < 4; ++invalidation) {
+            auto stale = drawn;
+            if (invalidation == 0)
+                ++stale.geometry.page;
+            if (invalidation == 1)
+                ++stale.geometry.selection;
+            if (invalidation == 2)
+                ++stale.tasks.front();
+            if (invalidation == 3)
+                ++stale.geometry.extent.width;
+            check(!ui::world_task_tracking_input(live, info_layout, click, false, stale),
+                  "Information rejects stale page, cursor, task binding or viewport");
+        }
+        check(!ui::world_task_tracking_input(live, info_layout, click, true, drawn),
+              "Pending input rejects a valid painted information touch");
+        auto changed_directory = drawn;
+        ++changed_directory.available_count;
+        check(!ui::world_task_tracking_input(live, info_layout, click, false, changed_directory),
+              "Information arrow availability follows the actual current task directory");
+        live.raw = 29;
+        click = {};
+        click.left = click.right = click.track = true;
+        check(!ui::world_task_tracking_input(live, info_layout, click, false),
+              "Raw29 does not borrow tracking arrows or create an unproved entrance");
     }
     const auto draws = state.scene.random.draws();
     const auto cash = state.scene.world.world.ai.accounting.funds();

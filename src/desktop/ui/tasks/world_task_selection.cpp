@@ -77,30 +77,11 @@ world_task_selection_input(const WorldTaskView &v, const WorldTaskLayout &l,
                                                   : simulation::StartupWorldTaskAction::confirm,
                            f.selection.value_or(v.selected), f};
 }
-std::optional<WorldTaskPaintedControls> draw_world_task_selection(const WorldTaskView &v,
-                                                                  const WorldTaskLayout &l,
-                                                                  const Skin &skin, bool enabled,
-                                                                  const std::string &feedback) {
-    if (!v.initialized) {
-        skin.window(l.panel, v.title);
-        return {};
-    }
-    if (!v.skin)
-        throw std::invalid_argument("Task rendering requires measured source plan");
-    const auto origin = world_list_skin_origin(l.panel);
-    SteamPlanDraw draw(origin, skin, v.skin->title);
-    WorldTaskPaintedControls out;
-    auto &c = out.geometry;
-    c.page = v.page;
-    c.raw = v.raw;
-    c.selection = v.selected;
-    c.first = v.first;
-    c.count = int(v.rows.size());
-    c.extent = l.viewport;
-    for (const auto &row : v.rows)
-        if (row.task)
-            out.tasks.push_back(*row.task);
-    for (const auto &op : v.skin->operations)
+WorldFacilityPaintedControls draw_world_task_plan(const simulation::SteamTaskSelectionPlan &plan,
+                                                  Vector2 origin, const Skin &skin) {
+    SteamPlanDraw draw(origin, skin, plan.title);
+    WorldFacilityPaintedControls c;
+    for (const auto &op : plan.operations)
         std::visit(
             [&](const auto &p) {
                 using T = std::decay_t<decltype(p)>;
@@ -151,6 +132,24 @@ std::optional<WorldTaskPaintedControls> draw_world_task_selection(const WorldTas
                     c.scroll = Rectangle{origin.x + r[0] - 3, origin.y + r[1], float(r[2] + 3),
                                          float(r[3])};
                     c.scroll_visible = 5;
+                } else if constexpr (std::is_same_v<T, simulation::SteamFacilityArrowTouch>) {
+                    const auto arrow = steam_plan_arrow(p, skin);
+                    const auto &crop = arrow.crop;
+                    const auto &destination = arrow.destination;
+                    skin.sprites.image(
+                        "buttoneffect.png",
+                        {float(crop[0]), float(crop[1]), float(crop[2]), float(crop[3])},
+                        {origin.x + destination[0], origin.y + destination[1], destination[2],
+                         destination[3]},
+                        Sprites::Binding::steam_common);
+                    const auto &r = arrow.touch_rectangle;
+                    const Rectangle hit{origin.x + r[0], origin.y + r[1], float(r[2]), float(r[3])};
+                    if (p.value == 16)
+                        c.previous = hit;
+                    else if (p.value == 18)
+                        c.next = hit;
+                    else
+                        throw std::invalid_argument("Unsupported task arrow intent");
                 } else if constexpr (std::is_same_v<T, simulation::SteamStartupTouch>) {
                     if (p.rectangle) {
                         const auto &r = *p.rectangle;
@@ -166,6 +165,30 @@ std::optional<WorldTaskPaintedControls> draw_world_task_selection(const WorldTas
             },
             op);
     draw.finish();
+    return c;
+}
+std::optional<WorldTaskPaintedControls> draw_world_task_selection(const WorldTaskView &v,
+                                                                  const WorldTaskLayout &l,
+                                                                  const Skin &skin, bool enabled,
+                                                                  const std::string &feedback) {
+    if (!v.initialized) {
+        skin.window(l.panel, v.title);
+        return {};
+    }
+    if (!v.skin)
+        throw std::invalid_argument("Task rendering requires measured source plan");
+    WorldTaskPaintedControls out;
+    out.geometry = draw_world_task_plan(*v.skin, world_list_skin_origin(l.panel), skin);
+    auto &c = out.geometry;
+    c.page = v.page;
+    c.raw = v.raw;
+    c.selection = v.selected;
+    c.first = v.first;
+    c.count = int(v.rows.size());
+    c.extent = l.viewport;
+    for (const auto &row : v.rows)
+        if (row.task)
+            out.tasks.push_back(*row.task);
     if (v.raw != 24) {
         c.cancel = l.cancel;
         skin.choice(l.cancel, "返回", enabled);

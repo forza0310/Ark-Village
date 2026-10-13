@@ -1,7 +1,7 @@
 {
   "scope": "maintained_complete_world_rules_and_single_runtime_owner",
   "layout_adaptation": "Domain module paths maintained by scripts/simulation/module_paths.mjs; upstream identity, namespaces, wire fields and assertions preserved.",
-  "snapshot_sha256": "414622f0ea597296e44077a9d8e26e6f2d37a6775b0e270e0ba9fbdba6909555",
+  "snapshot_sha256": "2fdbd1e634ae731abcac711159dfa6b98268ace027f27188d8f5896e059da5bf",
   "files": [
     {
       "file": "assets/simulation/tenantData.txt",
@@ -4119,18 +4119,18 @@
     {
       "file": "include/ark/simulation/presentation/steam_task_selection_skin.hpp",
       "source": "research/dungeon_village_1/prototype/include/dungeon_village_prototype/steam_task_selection_skin.hpp",
-      "source_sha256": "fe8f312796cca621257aca3a12c710af0926e097161beadc5c3adf12c3f61c72",
-      "source_bytes": 2654,
-      "sha256": "a27db3f750586706e31bdb3954ae69b360ce22445838ee8fa32f230d9548c3ec",
-      "bytes": 2636
+      "source_sha256": "6a3d1eed55de3a065465aebb9793770fab02841eaeae4b8af97e3b1e2ac68679",
+      "source_bytes": 4132,
+      "sha256": "4f7d2babdcd771e5884a1a14f49ec8da743ab897d845a4952379d4835caef5a9",
+      "bytes": 4114
     },
     {
       "file": "src/simulation/presentation/steam_task_selection_skin.cpp",
       "source": "research/dungeon_village_1/prototype/src/steam_task_selection_skin.cpp",
-      "source_sha256": "d29609cc7c9113f920895b65fb428d9d67e706b97f0def0489868ea66018933c",
-      "source_bytes": 14893,
-      "sha256": "2817951acf61c9a7586a460c164a1b5c20f28eb3d7a212fe8c89ba4b3ae9eb3d",
-      "bytes": 14866
+      "source_sha256": "768bacd5c19cd6b60163e07de42e14a759e1a740cb1d2bf1c3aa57dfbdb7f8a7",
+      "source_bytes": 21386,
+      "sha256": "4bd174da524bda695fa9decabdb49306e86352c0b457e66230230f547f221be7",
+      "bytes": 21359
     },
     {
       "file": "include/ark/simulation/presentation/steam_task_roster_skin.hpp",
@@ -4151,15 +4151,31 @@
     {
       "file": "tests/simulation/steam_task_selection_skin_checks.cpp",
       "source": "research/dungeon_village_1/prototype/tests/steam_task_selection_skin_checks.cpp",
-      "source_sha256": "e889ccee1e3c4c0c53fb6c06a5357a3671463afb07e94256ff421e019d41c732",
-      "source_bytes": 33393,
-      "sha256": "53d05fae2c41076cae85805cd9330dbe1fb73fec2b2f643f9b990a7d100df6ed",
-      "bytes": 33707,
+      "source_sha256": "842d9e23f75588948435fcafd2857722eda5420dc5d8461865b6ced5f194b838",
+      "source_bytes": 51240,
+      "sha256": "7f3d070af53686ca7d72a1ca97b15d9139f7a5e50d06bb63e10e06eed2218dc2",
+      "bytes": 51783,
       "test_fixture_patch": {
-        "imported_sha256": "4dab4f75382e298e043d6e77db986758201bfc947d3f65cb5db541a09d602d81",
-        "reason": "Resolve original/common and original/event published paths against existing product assets; retain all assertions and frame checks."
+        "imported_sha256": "3072ec446e4226f2e3310f9e287a3559f53a83533f053d50b94e75b0aa17b52a",
+        "reason": "Resolve original/common and original/event paths against product assets; the published Steam number05 and menuRT01 PNGs use existing assets/steam_common copies, while their SEBs retain original/common mapping. All assertions and frame checks remain unchanged."
       }
+    },
+    {
+      "file": "include/ark/simulation/presentation/steam_task_result_skin.hpp",
+      "source": "research/dungeon_village_1/prototype/include/dungeon_village_prototype/steam_task_result_skin.hpp",
+      "source_sha256": "1284e5e711036e401fca95bb0aae5cb1660e23dc4f6713cd1cd22e82bd922313",
+      "source_bytes": 2214,
+      "sha256": "ee0e224eef75ce31628d431d983764c5d74e6ff7559a4f44a8218f97825a2e1a",
+      "bytes": 2198
+    },
+    {
+      "file": "src/simulation/presentation/steam_task_result_skin.cpp",
+      "source": "research/dungeon_village_1/prototype/src/steam_task_result_skin.cpp",
+      "source_sha256": "d84e79f5d538781c8b322cf1993d7eb23f04ca3c5bc8a3aa741ca64266b41af7",
+      "source_bytes": 7843,
+      "sha256": "3185e00deb61758c222a6ded6c6d293331c0fd858a0064f0c19bbd425b913071",
+      "bytes": 7825
     }
   ],
-  "research_commit": "48574b5"
+  "research_commit": "2112dd7"
 }

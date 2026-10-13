@@ -2,10 +2,12 @@
 #include "../../src/desktop/scene/projection.hpp"
 #include "../../src/desktop/scene/world_canvas.hpp"
 #include "../../src/desktop/ui/common/skin.hpp"
+#include "../../src/desktop/ui/tasks/world_task_tracking.hpp"
 #include "../../src/desktop/ui/tasks/world_tasks.hpp"
 #include "../support/world_fixture.hpp"
 #include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
 #include <algorithm>
+#include <cstdlib>
 #include <filesystem>
 #include <iostream>
 #include <stdexcept>
@@ -54,6 +56,33 @@ void world_task_render_fixture() {
     ready(recruitment);
     std::vector<std::pair<std::string, State>> samples{
         {"task22", listing}, {"task23", offer}, {"task24-empty", recruitment}};
+    auto tracking = listing;
+    input = {};
+    input.track = true;
+    require(sim::input_startup_world_runtime_task_page(tracking, top(tracking).id, input).error ==
+                    sim::StartupWorldRuntimeError::none &&
+                tracking.scene.scene_state == 5,
+            "Renderer source tracking rejected");
+    samples.emplace_back("task-info-moving", tracking);
+    const auto scene_id = top(tracking).id;
+    const auto selected_task = tracking.task_page_lists.at(scene_id).front();
+    const auto site = *tracking.tasks.at(selected_task).site;
+    tracking.camera = {float((site.x + site.y) * 30 + 30), float((site.y - site.x) * 15 + 10)};
+    const auto arrived = sim::update_startup_world_runtime_task_tracking_scene(tracking);
+    require(arrived && arrived->scene.scene_state == 4, "Renderer source camera arrival rejected");
+    tracking = *arrived;
+    samples.emplace_back("task-info-single", tracking);
+    tracking.task_order.push_back(selected_task);
+    tracking.scene.frame_counter = 8;
+    samples.emplace_back("task-info-arrows", tracking);
+    tracking.scene.framework_paused = true;
+    samples.emplace_back("task-info-paused", tracking);
+    auto information = listing;
+    auto &info = information.scripts.pages.back();
+    info.legacy_page = 29;
+    info.task_identity = selected_task;
+    info.task_definition = information.tasks.at(selected_task).definition;
+    samples.emplace_back("task-info-raw29", std::move(information));
     auto long_list = listing;
     auto &ids = long_list.task_page_lists.at(top(long_list).id);
     const auto first = ids.front();
@@ -78,7 +107,7 @@ void world_task_render_fixture() {
     } scope;
     Sprites sprites(ARK_TEST_ASSETS);
     std::string glyphs = "任务选择寻求！冒险者姓名费用请选择任务募集冒险者返回选择追踪加速合计人交"
-                         "给我!多指教来了!我会加油的!我要参加!好期待";
+                         "给我!多指教来了!我会加油的!我要参加!好期待攻略了解";
     for (const auto &t : listing.rules->tasks)
         glyphs += t.name;
     for (const auto &p : listing.rules->humans)
@@ -86,7 +115,9 @@ void world_task_render_fixture() {
     Text text(ARK_TEST_FONT, glyphs);
     ui::Skin skin(sprites, text);
     WorldCanvas canvas;
-    const auto output = std::filesystem::path(ARK_TEST_OUTPUT) / "tasks";
+    const auto *isolated_output = std::getenv("ARK_TEST_OUTPUT_DIR");
+    const auto output =
+        std::filesystem::path(isolated_output ? isolated_output : ARK_TEST_OUTPUT) / "tasks";
     std::filesystem::create_directories(output);
     for (const auto extent : {Extent{240, 256}, Extent{720, 600}})
         for (const auto &[name, s] : samples) {
@@ -100,10 +131,32 @@ void world_task_render_fixture() {
                 BeginTextureMode(canvas.texture);
                 ClearBackground({145, 211, 247, 255});
                 BeginMode2D(raster);
-                auto v = ui::world_task_view(s, top(s));
-                require(v.initialized, "Task conditional view unavailable");
-                ui::prepare_world_task(v, s, skin);
-                ui::draw_world_task_selection(v, ui::world_task_layout(extent, v.raw), skin, true);
+                if (s.scene.scene_state == 4 || s.scene.scene_state == 5 ||
+                    top(s).legacy_page == 29) {
+                    auto v = top(s).legacy_page == 29 ? ui::world_task_information_view(s, top(s))
+                                                      : *ui::world_task_tracking_view(s);
+                    ui::prepare_world_task_tracking(v, s, skin);
+                    const auto controls = ui::draw_world_task_tracking(
+                        v, ui::world_task_tracking_layout(extent), skin, true);
+                    require(bool(controls) == v.initialized,
+                            "Information draws only at its source lifecycle");
+                    if (controls) {
+                        require(controls->geometry.confirm.width > 0 && controls->tasks == v.tasks,
+                                "Information must bind actual painted button and tasks");
+                        ui::WorldTaskInput click;
+                        const auto r = controls->geometry.confirm;
+                        click.click = Vector2{r.x + r.width / 2, r.y + r.height / 2};
+                        const auto intent = ui::world_task_tracking_input(
+                            v, ui::world_task_tracking_layout(extent), click, false, controls);
+                        require(bool(intent) == v.ready, "Painted information input lifecycle");
+                    }
+                } else {
+                    auto v = ui::world_task_view(s, top(s));
+                    require(v.initialized, "Task conditional view unavailable");
+                    ui::prepare_world_task(v, s, skin);
+                    ui::draw_world_task_selection(v, ui::world_task_layout(extent, v.raw), skin,
+                                                  true);
+                }
                 EndMode2D();
                 text.flush(raster.zoom, raster.offset);
                 EndTextureMode();

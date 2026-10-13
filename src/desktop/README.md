@@ -1,5 +1,7 @@
 # desktop
 
+`ui/tasks/world_task_selection`共用有序图元末端；`world_task_tracking`准备scene4/raw29信息计划并记录实际按钮/箭头热区，scene5只移动镜头。热区绑定冻结任务目录、当前目录规模、选择与窗口尺寸，换代/过期/pending拒绝命中；确认仍通过Session交唯一Owner。2112dd7的31/32纯计划已冻结，完整冻结f/g与游标桥另待，不能从实时队伍补造。文字队列每帧flush清理是本产品生命周期；未实现原Image文字缓存及重复重放，不把它混成GLText退休。
+
 `ui/actors/world_human`按只读投影、输入、布局和源计划执行分文件。61五行/两统计页、64四行/五分类及68/69冻结结果复用同一执行器；测宽来自实际字体，列表游标与输入次序由模拟Owner保持。`world_human_input`只保留带语义标签的已画热区、普通道具标记和短寿命拖条捕获，通过Session一次提交整帧输入；pending、换代、键盘及过期几何清理/拒绝相应手势。初始化载荷早于可绘生命周期时等待真实框架更新，不由绘制补初始化或推进时钟。共享人物帧由755fdf2的entry_updates桥提供；手形静态0与原OS动态分别记，阶段证据见[B1](../../docs/stages/B1-playable-prototype.md#research-4c7a490-human-catalogues)。
 
 `ui/facilities/world_facility_detail`从同一不可变Owner与实际字体测宽准备普通raw74两页计划，在已批准224×172面板中按源顺序执行窗框、图文、数字、Mapchip2裁剪和滚动条。键盘/滚轮/行选择复用正式光标消费者；OS滚动条拖动与原Surface映射、全局手形动画另待接，不用绘制帧推进。特殊设施和定义预览沿各自既有模板。

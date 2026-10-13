@@ -85,6 +85,9 @@ std::optional<WorldTaskPaintedControls> draw_world_task_selection(const WorldTas
                                                                   const Skin &skin, bool enabled,
                                                                   const std::string &feedback = {});
 Rectangle world_task_menu_button(Extent extent);
+// Shared ordered GPU execution; returns only the geometry actually painted this frame.
+WorldFacilityPaintedControls draw_world_task_plan(const simulation::SteamTaskSelectionPlan &,
+                                                  Vector2 origin, const Skin &);
 int world_task_visible_rows(const WorldTaskLayout &layout);
 std::optional<WorldTaskIntent>
 world_task_input(const WorldTaskView &view, const WorldTaskLayout &layout,

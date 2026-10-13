@@ -13,11 +13,11 @@
 
 namespace ark::desktop::ui {
 bool world_hud_buttons_visible(const simulation::rules::WorldScriptPage *page) {
-    return !page || (page->legacy_page != 21 && page->legacy_page != 74 &&
-                     (page->legacy_page < 22 || page->legacy_page > 24) &&
-                     !world_source_menu_page(*page) && page->legacy_page != 9 &&
-                     page->legacy_page != 13 && page->legacy_page != 14 &&
-                     (page->legacy_page < 34 || page->legacy_page > 40));
+    return !page ||
+           (page->legacy_page != 21 && page->legacy_page != 74 && page->legacy_page != 29 &&
+            (page->legacy_page < 22 || page->legacy_page > 24) && !world_source_menu_page(*page) &&
+            page->legacy_page != 9 && page->legacy_page != 13 && page->legacy_page != 14 &&
+            (page->legacy_page < 34 || page->legacy_page > 40));
 }
 std::string world_page_body(const simulation::StartupWorldRuntimeState &s,
                             const simulation::rules::WorldScriptPage &page, int paragraph) {
@@ -60,7 +60,7 @@ void draw_world_hud(const simulation::StartupWorldRuntimeState &s, const Layout 
          page->legacy_page != 14 && (page->legacy_page < 34 || page->legacy_page > 40)))
         draw_world_popularity(s.popularity, layout, skin);
     // Catalogue/details own the footer; the same predicate rejects their hidden mouse buttons.
-    if (!world_hud_buttons_visible(page))
+    if (!world_hud_buttons_visible(page) || s.scene.scene_state == 4 || s.scene.scene_state == 5)
         return;
     skin.button(layout.left_button, s.scene.framework_paused ? "继续" : "暂停", !failed);
     skin.button(world_menu_button(layout.extent), "菜单",

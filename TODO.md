@@ -12,7 +12,8 @@
 - [x] 正式fd69d44村办51–54、晋级48–50和七类95领取计划、严格恢复及整帧FIFO已接，467来源/76适配、722素材；窗口和检查见[B1](docs/stages/B1-playable-prototype.md#research-fd69d44-village-progress)。
 - [x] 正式e4dc38a魔法壶41–47目录/演出、同轮FIFO、副钟与严格恢复已接；472来源/77适配，玩家政策保持，见[B1](docs/stages/B1-playable-prototype.md#research-e4dc38a-magic-pot)。
 - [x] 正式57a31cb/48574b5任务选择22、费用23、完整募集24与地图追踪已接同轮FIFO/有序计划；477来源/78适配、723素材，见[B1](docs/stages/B1-playable-prototype.md#research-48574b5-task-pages)。
-- [ ] 接续2112dd7的信息/成果只读计划与文字重放合同；25–33冻结Owner/游标/副钟后继按正式交付再接，不用实时参与名单替代X，原字体/OS动态分别保留。
+- [x] 2112dd7信息桥/成果纯计划已冻结，scene4/raw29已接实际按钮/箭头与FIFO；文字重放生命周期分别登记，见[B1](docs/stages/B1-playable-prototype.md#research-2112dd7-task-information)。
+- [ ] 接续正式d05fe81的任务胜利30双钟/恢复/只读桥与期限纯皮肤；25–28及31–33游标/冻结Owner后继按正式交付再接，不用实时参与名单替代X，原字体/OS动态分别保留。
 - [x] 获批steam-month分段月96→97→98→99及三次独立冷载通过；每段6分钟/10000轮，原季度入口保持，失败观察档不作输入，见[B1](docs/stages/B1-playable-prototype.md#research-e22ed0a-human-ui)。
 
 - [x] 正式bb61d5f普通设施两页维护计划：获批四目标已导入，455来源/70适配保留，新增资源映射现有Steam属性图标；后续c6b1a5b无闭包增量，见[方案](docs/MILESTONES.md#research-bb61d5f-detail-plan)。

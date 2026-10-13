@@ -16,6 +16,8 @@ world_task_tracking_view(const simulation::StartupWorldRuntimeState &s) {
     v.scene = p->id;
     v.selected = s.page_phases.at(p->id);
     const auto &list = s.task_page_lists.at(p->id);
+    v.tasks = list;
+    v.available_count = int(s.task_order.size());
     v.count = int(list.size());
     const auto &t = s.tasks.at(list.at(v.selected));
     const auto d = std::find_if(s.rules->tasks.begin(), s.rules->tasks.end(),
@@ -26,44 +28,88 @@ world_task_tracking_view(const simulation::StartupWorldRuntimeState &s) {
     v.fee = d->recruitment_fee;
     v.affordable = s.scene.world.world.ai.accounting.funds() >= v.fee;
     v.ready = s.scene.scene_state == 4 && !s.scene.framework_paused;
+    v.initialized = s.scene.scene_state == 4;
     return v;
+}
+WorldTaskTrackingView world_task_information_view(const simulation::StartupWorldRuntimeState &s,
+                                                  const simulation::rules::WorldScriptPage &p) {
+    if (!s.rules || p.kind != simulation::rules::WorldScriptPageKind::raw_page ||
+        p.legacy_page != 29 || !p.task_identity || !p.task_definition)
+        throw std::invalid_argument("Information requires the source raw29 task binding");
+    WorldTaskTrackingView v;
+    v.scene = p.id;
+    v.raw = 29;
+    v.tasks = {*p.task_identity};
+    v.ready = p.lifecycle == 2 && !s.scene.framework_paused;
+    v.initialized = p.lifecycle == 2;
+    return v;
+}
+void prepare_world_task_tracking(WorldTaskTrackingView &v,
+                                 const simulation::StartupWorldRuntimeState &s, const Skin &skin) {
+    v.skin.reset();
+    if (!v.initialized)
+        return;
+    simulation::SteamTaskInfoOptions o;
+    o.view_y = 23;
+    o.bottom_width = int(skin.text.width(v.raw == 29 ? "了解" : "攻略"));
+    // Source layout remains 240 logical units; the desktop translates it once when drawing.
+    o.view_layout = std::array<int, 4>{0, 23, 240, 217};
+    v.skin = v.raw == 29 ? simulation::steam_task_information_skin(s, v.scene, o)
+                         : simulation::steam_task_information_scene_skin(s, o);
+    if (!v.skin)
+        throw std::invalid_argument("Invalid bound task information plan");
 }
 WorldTaskTrackingLayout world_task_tracking_layout(Extent e) {
     if (e.width < 240 || e.height < 256)
         throw std::invalid_argument("Unsupported task tracking viewport");
-    return {{8, e.height - 95.F, e.width - 16.F, 60},
-            {8, e.height - 56.F, 25, 18},
-            {38, e.height - 56.F, 25, 18},
-            {e.width - 124.F, e.height - 56.F, 55, 18},
-            {e.width - 64.F, e.height - 56.F, 55, 18}};
+    return {e,
+            {(e.width - 240.F) / 2, (e.height - 256.F) / 2},
+            {e.width - 64.F, e.height - 30.F, 55, 18}};
 }
 std::optional<simulation::StartupTaskPageInput>
 world_task_tracking_input(const WorldTaskTrackingView &v, const WorldTaskTrackingLayout &l,
-                          const WorldTaskInput &i, bool blocked) {
+                          const WorldTaskInput &i, bool blocked,
+                          const std::optional<WorldTaskTrackingPaintedControls> &painted) {
     if (blocked || !v.ready)
         return {};
     simulation::StartupTaskPageInput f;
-    f.left = i.left || world_facility_hit(i.click, l.previous);
-    f.right = i.right || world_facility_hit(i.click, l.next);
-    f.confirm = i.enter || world_facility_hit(i.click, l.confirm);
-    f.cancel = i.escape || world_facility_hit(i.click, l.cancel);
-    f.track = i.track;
+    const auto *p = painted ? &painted->geometry : nullptr;
+    const bool fresh = p && p->page == v.scene && p->raw == v.raw && p->selection == v.selected &&
+                       painted->tasks == v.tasks && painted->available_count == v.available_count &&
+                       p->extent.width == l.viewport.width && p->extent.height == l.viewport.height;
+    f.left = v.raw != 29 && i.left;
+    f.right = v.raw != 29 && i.right;
+    f.confirm = i.enter;
+    f.cancel = i.escape;
+    f.track = v.raw != 29 && i.track;
+    if (fresh) {
+        f.left |= v.raw != 29 && world_facility_hit(i.click, p->previous);
+        f.right |= v.raw != 29 && world_facility_hit(i.click, p->next);
+        f.confirm |= world_facility_hit(i.click, p->confirm);
+        f.cancel |= world_facility_hit(i.click, p->cancel);
+    }
     if (!f.left && !f.right && !f.confirm && !f.cancel && !f.track)
         return {};
     return f;
 }
-void draw_world_task_tracking(const WorldTaskTrackingView &v, const WorldTaskTrackingLayout &l,
-                              const Skin &skin, bool enabled) {
-    skin.content(l.strip);
-    const float size =
-        12.F * std::min(1.F, (l.strip.width - 10) / std::max(1.F, skin.text.width(v.name)));
-    skin.text.draw(v.name, l.strip.x + 5, l.strip.y + 4, ink, size);
-    skin.right(std::to_string(v.fee) + "G", l.strip.x + l.strip.width - 5, l.strip.y + 20,
-               v.affordable ? blue : MAROON, 10);
-    const bool active = enabled && v.ready;
-    skin.choice(l.previous, "←", active);
-    skin.choice(l.next, "→", active);
-    skin.choice(l.confirm, "募集", active);
-    skin.choice(l.cancel, "返回", active);
+std::optional<WorldTaskTrackingPaintedControls>
+draw_world_task_tracking(const WorldTaskTrackingView &v, const WorldTaskTrackingLayout &l,
+                         const Skin &skin, bool enabled) {
+    if (!v.initialized)
+        return {}; // Scene5 camera movement has no dungeon-information helper.
+    if (!v.skin)
+        throw std::invalid_argument("Task information rendering requires measured source plan");
+    WorldTaskTrackingPaintedControls out;
+    out.geometry = draw_world_task_plan(*v.skin, l.origin, skin);
+    auto &c = out.geometry;
+    c.page = v.scene;
+    c.raw = v.raw;
+    c.selection = v.selected;
+    c.extent = l.viewport;
+    c.cancel = l.cancel;
+    out.tasks = v.tasks;
+    out.available_count = v.available_count;
+    skin.choice(l.cancel, "返回", enabled);
+    return out;
 }
 } // namespace ark::desktop::ui

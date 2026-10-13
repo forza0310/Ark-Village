@@ -169,6 +169,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
     }
     ui::WorldTaskSelection task_selection;
     std::optional<ui::WorldTaskPaintedControls> task_controls;
+    std::optional<ui::WorldTaskTrackingPaintedControls> task_info_controls;
     std::string task_feedback;
     bool desired_pause = publication->state->scene.framework_paused;
     const auto started = GetTime();
@@ -205,6 +206,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
             save_menu = {};
             task_selection = {};
             task_controls.reset();
+            task_info_controls.reset();
             menu_feedback.clear();
             task_feedback.clear();
             view = {current.camera, current.reference_viewport};
@@ -328,7 +330,9 @@ static void run_world_game_capture(const app::LaunchOptions &options,
             retry.kind = app::WorldCommandKind::retry_system_write;
             session.submit(retry);
         }
-        const bool hud_mouse_buttons = ui::world_hud_buttons_visible(input_page);
+        const bool hud_mouse_buttons = ui::world_hud_buttons_visible(input_page) &&
+                                       current.scene.scene_state != 4 &&
+                                       current.scene.scene_state != 5;
         if (!failed && !publication->save_menu_open && !save_menu.pending() &&
             ((hud_mouse_buttons && hit(layout.left_button)) ||
              (IsKeyPressed(KEY_SPACE) &&
@@ -408,6 +412,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                 paragraph = scroll = 0;
                 task_selection = {};
                 task_controls.reset();
+                task_info_controls.reset();
                 task_feedback.clear();
             }
             if (page->legacy_page == 17) {
@@ -421,6 +426,18 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                            current, *page, extent, mouse, click, back, keyboard_event,
                            desired_pause || failed || pending_task || pending_ack, session)) {
                 // Management controller owns only selection and forwards explicit FIFO intents.
+            } else if (page->kind == rules::WorldScriptPageKind::raw_page &&
+                       page->legacy_page == 29) {
+                const auto info = ui::world_task_information_view(current, *page);
+                ui::WorldTaskInput input;
+                input.click = click ? mouse : std::nullopt;
+                input.enter = IsKeyPressed(KEY_ENTER);
+                input.escape = back;
+                const auto intent = ui::world_task_tracking_input(
+                    info, ui::world_task_tracking_layout(extent), input,
+                    desired_pause || failed || pending_task || pending_ack, task_info_controls);
+                if (intent && (intent->confirm || intent->cancel))
+                    pending_ack = session.ack_page(page->id);
             } else if (ui::world_task_page(current, *page)) {
                 const auto task = ui::world_task_view(current, *page);
                 const auto task_layout = ui::world_task_layout(extent, task.raw);
@@ -523,7 +540,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                 in.track = IsKeyPressed(KEY_F);
                 if (const auto logical = ui::world_task_tracking_input(
                         *tracked, ui::world_task_tracking_layout(extent), in,
-                        desired_pause || failed || pending_task || pending_ack))
+                        desired_pause || failed || pending_task || pending_ack, task_info_controls))
                     pending_task = session.input_task_tracking(tracked->scene, *logical);
             }
         }
@@ -586,6 +603,13 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                                             !desired_pause && !failed && !pending_ack &&
                                                 !pending_task)) {
                 // Source-bound management pages are drawn by their own small UI modules.
+            } else if (page->kind == rules::WorldScriptPageKind::raw_page &&
+                       page->legacy_page == 29) {
+                auto info = ui::world_task_information_view(current, *page);
+                ui::prepare_world_task_tracking(info, current, skin);
+                task_info_controls = ui::draw_world_task_tracking(
+                    info, ui::world_task_tracking_layout(extent), skin,
+                    !desired_pause && !failed && !pending_ack && !pending_task);
             } else if (ui::world_task_page(current, *page)) {
                 auto task = ui::world_task_view(current, *page);
                 ui::prepare_world_task(task, current, skin, task_selection.gesture.scrolling);
@@ -643,10 +667,12 @@ static void run_world_game_capture(const app::LaunchOptions &options,
             }
         }
         if (!active_page(current) && task_tracking)
-            if (const auto tracked = ui::world_task_tracking_view(current))
-                ui::draw_world_task_tracking(*tracked, ui::world_task_tracking_layout(extent), skin,
-                                             !desired_pause && !failed && !pending_task &&
-                                                 !menu_blocked);
+            if (auto tracked = ui::world_task_tracking_view(current)) {
+                ui::prepare_world_task_tracking(*tracked, current, skin);
+                task_info_controls = ui::draw_world_task_tracking(
+                    *tracked, ui::world_task_tracking_layout(extent), skin,
+                    !desired_pause && !failed && !pending_task && !menu_blocked);
+            }
         if (!publication->system_error.empty()) {
             skin.content({8, extent.height - 92.F, extent.width - 16.F, 68});
             skin.centered("系统纪录写入失败，进度已保留",

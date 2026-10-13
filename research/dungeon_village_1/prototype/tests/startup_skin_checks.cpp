@@ -5,6 +5,7 @@
 #include "dungeon_village_prototype/steam_commerce_skin.hpp"
 #include "dungeon_village_prototype/startup_world_commerce.hpp"
 #include "dungeon_village_prototype/steam_platform_button_skin.hpp"
+#include "dungeon_village_prototype/steam_cursor_skin.hpp"
 #include "dungeon_village_prototype/startup_information.hpp"
 #include "dungeon_village_prototype/steam_information_skin.hpp"
 #include "dungeon_village_prototype/steam_monster_skin.hpp"
@@ -1461,6 +1462,81 @@ void steam_platform_skin_checks(Checks &check,const std::filesystem::path &sourc
                   stable.frame==0&&stable.layer==1&&stable.okay_frame==16&&!stable.cancel_frame,
               "重复控制器后备只读输出保持固定一个请求，不改输入或累积资源设备任务");
     }
+}
+void steam_cursor_checks(Checks &check,const std::filesystem::path &root) {
+    const auto assets=root.parent_path();
+    CpuImage image(LoadImage((assets/steam_cursor_image_path).string().c_str()));
+    const auto seb=tools::parse_legacy_seb(read_bytes(assets/steam_cursor_sprite_path));
+    check(image.image.width==311&&image.image.height==236&&seb.frame_count==2&&seb.layers.size()==4&&
+          seb.layers[1].parts.size()==2,"虚拟光标原PNG与SEB，主责消费layer1两帧而不冒称全层消费者");
+    for(int frame=0;frame<2;++frame) {
+        const auto &part=seb.layers[1].parts[frame];
+        check(part.frame==frame&&part.image_index==12&&part.source_x==frame*64&&part.source_y==0&&
+              part.width==64&&part.height==64&&part.offset_x==(frame?-16:-9)&&part.offset_y==(frame?-8:-11)&&
+              part.flip_x==0&&part.flip_y==0,"光标两帧分别使用真实裁片和不同热点，不画整PNG或共用偏移");
+        CpuImage crop(ImageFromImage(image.image,{float(part.source_x),0,64,64}));
+        check(crop.image.data!=nullptr,"实际消费两帧原裁片且作用域释放");
+    }
+    // 独立具名组合：反转不二次读取A，Y键的GUI限制不传播到Steam Y。
+    for(const auto &sample:std::array<std::pair<SteamCursorPressInput,bool>,8>{{
+        {{271,8,271,0,false,true,false,false,false},true},
+        {{13,8,271,0,false,true,false,false,false},false},
+        {{271,8,271,0,true,true,false,false,false},false},
+        {{271,8,271,0,true,false,true,false,false},true},
+        {{271,8,271,1,false,false,false,true,false},false},
+        {{271,8,271,1,false,false,false,false,true},true},
+        {{271,8,13,0,false,false,false,true,true},false},
+        {{-1,-1,271,0,false,false,false,true,false},true}}})
+        check(steam_cursor_pressed(sample.first)==sample.second,"按下图仅按实际顶页映射、反转与Y资格选择");
+    SteamCursorSkinInput in;in.draw_frame=191;in.position=std::array<float,2>{17.9F,22.9F};
+    in.application_type=4;in.screen_size={1001,701};in.canvas_size={801,600};
+    const auto plain=steam_cursor_skin(in);
+    check(plain&&plain->next_draw_frame==0&&plain->operations.size()==1&&
+          std::get<SteamCursorDraw>(plain->operations[0]).anchor==std::array<int,2>{117,72},
+          "drawFrame先回卷；浮点位置先向零截断、再加奇数尺寸差的一半，不重复缩放");
+    struct RecoveryOracle {int count;float scale;int alpha;};
+    for(const auto &expected:std::array<RecoveryOracle,5>{{
+            {1,1.19168162346F,2},{3,1.76930403709F,11},{6,3.69887304306F,39},
+            {11,10.3583488464F,136},{12,12.F,160}}}) {
+        in.recover=expected.count;in.pressed=true;
+        const auto p=steam_cursor_skin(in);
+        check(p&&p->operations.size()==6&&p->next_draw_frame==0,"恢复仅产生固定六条原序请求，不自行递减N");
+        const auto &base=std::get<SteamCursorDraw>(p->operations[0]);
+        const auto &scale=std::get<SteamCursorPushScale>(p->operations[1]);
+        const auto &blend=std::get<SteamCursorRenderMode>(p->operations[2]);
+        const auto &overlay=std::get<SteamCursorDraw>(p->operations[3]);
+        const auto &reset=std::get<SteamCursorRenderMode>(p->operations[4]);
+        check(base.anchor==std::array<int,2>{117,72}&&base.frame==1&&base.layer==1&&
+              overlay.anchor==base.anchor&&overlay.frame==1&&overlay.layer==1&&
+              scale.x==expected.scale&&scale.y==expected.scale&&scale.pivot==std::array<int,2>{0,0}&&
+              blend.operation==1&&blend.source==expected.alpha&&blend.destination==255-expected.alpha&&
+              reset.operation==0&&reset.source==255&&reset.destination==0&&
+              std::holds_alternative<SteamCursorPopMatrix>(p->operations[5]),
+              "独立Easing数值及有序PushScale/混合/同锚Draw/默认重置/Pop，不能预缩锚或恢复旧混合");
+        const auto repeated=steam_cursor_skin(in);
+        check(repeated&&repeated->operations.size()==6&&in.recover==expected.count&&in.draw_frame==191,
+              "重复计划查询不推进输入计数或累积图元/事件");
+    }
+    in.recover=0;in.application_type=0;in.position=std::array<float,2>{-17.9F,-22.9F};
+    in.screen_size={0,0};in.canvas_size={0,0};
+    const auto signed_anchor=steam_cursor_skin(in);
+    check(signed_anchor&&std::get<SteamCursorDraw>(signed_anchor->operations[0]).anchor==std::array<int,2>{-17,-22},
+          "Draw局部负值按向零截断；非type4不消费尺寸，此夹具不冒称SetScreenCursor合法路径");
+    for(int fault=0;fault<6;++fault) {
+        auto bad=in;
+        if(fault==0)bad.draw_frame=192;if(fault==1)bad.draw_frame=-1;
+        if(fault==2)bad.recover=13;if(fault==3)(*bad.position)[0]=std::numeric_limits<float>::quiet_NaN();
+        if(fault==4)(*bad.position)[1]=65537.F;if(fault==5)bad.application_type=4;
+        check(!steam_cursor_skin(bad),"非法计数/已消费坐标/平台尺寸明确拒绝，不夹值凑绘制");
+    }
+    in.joystick=true;in.recover=-1;in.application_type=4;
+    (*in.position)[0]=std::numeric_limits<float>::infinity();
+    auto hidden=steam_cursor_skin(in);
+    check(hidden&&hidden->next_draw_frame==0&&hidden->operations.empty(),
+          "Joystick隐藏仍推进drawFrame，不提前消费坐标/恢复值/尺寸");
+    in.joystick=false;in.position.reset();hidden=steam_cursor_skin(in);
+    check(hidden&&hidden->next_draw_frame==0&&hidden->operations.empty(),
+          "无位置数组同样合法隐藏，不猜造鼠标坐标");
 }
 struct SpriteOracle {
     int sprite, image, frames;
@@ -3224,6 +3300,7 @@ int check_startup_skin(const std::filesystem::path &source_root,
     steam_commerce_result_skin_checks(check);
     steam_commerce_facility_skin_checks(check,source_root);
     steam_platform_skin_checks(check,source_root);
+    steam_cursor_checks(check,source_root);
     frame_geometry(check);
     income_information(check);
     income_skin(check,source_root);

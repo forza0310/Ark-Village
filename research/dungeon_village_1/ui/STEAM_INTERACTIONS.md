@@ -183,13 +183,21 @@ Canvas.cctor在`10757754–10757796`建立真实`CONTROLLER_TABLE=[0,2]`，含Jo
 | InitScreenCursor `74CD80`及Init内联 `1074DA96–1074DBBA` | 独立建立screenPointer／screenCursor／previous三个两元素float数组，click=−1、移动／停顿／恢复／绘制计数清0。Init把Screen整数中心先装入pointer，再交SetScreenCursor；不是以物理鼠标当前位置初始化 |
 | SetScreenCursor `752200`／JumpScreenCursor `74EA30` | 保存float位置，限制到横向`[8,KairoPlugin.GetWidth()−8]`、纵向`[8,Canvas.GetHeight()−8]`；原比较／赋值没有按格吸附。Jump随后将恢复计数置12，不自行发送点击。宽高不足、非有限值不由此认证为安全输入 |
 | lambda移动 `10754497–10754866` | 仅ScreenCursor模式移动；无平台GUI对话且某轴为0时才可用左右/A/D或上下/W/S以−0.5／+0.5补该轴。读取Steam StickL分量并除220，按模长与joystickPointerAsobi比较；低于阈值时用方向按钮，连续计数≤2／>2分别选构造中的速度4／8，乘Screen.height/240后截断；模拟轴路径以`trunc(16×Screen.height/240)`乘原轴分量。两路都更新已有位置并交SetScreenCursor，不以秒数计算距离 |
-| lambda合成事件 `10754869–10754BEB` | 非Joystick模式且guiMode=0才进入；当前顶页A/B映射及反转选出的候选按钮、符合顶页映射的Y、Return或RightControl可维持点击。click=−1首次按住发原MotionEvent action0；已按住且两轴位移各向零截断后的平方和>0才发action2；松开已有点击发action1并清click。每次以pointerID0、当前float坐标、null delta和`isMousePointer=true`构造MotionEvent，交Canvas.OnTouchEvent；这些action不是GameView的TouchEvent TYPE值 |
+| lambda合成事件 `10754869–10754BEB` | 非Joystick模式且guiMode=0才进入；当前顶页A/B映射及反转选出的候选按钮、符合顶页映射的Y、Return或KeypadEnter（Unity值271，不是RightControl）可维持点击。click=−1首次按住发原MotionEvent action0；已按住且两轴位移各向零截断后的平方和>0才发action2；松开已有点击发action1并清click。每次以pointerID0、当前float坐标、null delta和`isMousePointer=true`构造MotionEvent，交Canvas.OnTouchEvent；这些action不是GameView的TouchEvent TYPE值 |
 
 APPLI_TYPE4的合成坐标再各加`trunc((Screen尺寸−Canvas尺寸)/2)`，与光标绘制的客户区域补偿保持分层。`OnTouchEvent` RVA`751000`倒序把事件交现有surface的虚方法；此入口本身不直接KeyClick确认。最终组件命中、guard、marker及世界／菜单消费仍走原surface链，不因虚拟事件存在就视为全页输入认证。
 
-显示入口为FormManagerBase.OnDraw的`107E77A0`，在页面绘制后、附加控制器图标和Touch效果前调用`DrawScreenCursor` RVA`7497B0`。该方法先令独立drawFrame加1，达到192归0，即使Joystick模式随后跳过图像也已推进；非Joystick且位置数组存在才取平台Kairolib.ScreenCursor（getter`807370`实际为resource.seb[10]，正式索引`screen_cursor.seb`／图片12），以显式frame0或按当前点击映射取得frame1、layer1绘制。恢复计数>0另以原Easing缩放／alpha重复绘制同一光标；Jump与输入后继驱动12次恢复计数，不能改成墙钟秒或世界tick。lambda的stop计数在无活动时增到101，活动时清0、达到100后再活动置恢复12；**已核DrawScreenCursor并不读取stop计数隐藏基础光标**，不能只凭常量名SCREENCURSOR_HIDE_COUNT推导“100帧后消失”。原图尚未在本批新增出版或原窗口认证。
+显示入口为FormManagerBase.OnDraw的`107E77A0`，在页面绘制后、附加控制器图标和Touch效果前调用`DrawScreenCursor` RVA`7497B0`。该方法先令独立drawFrame加1，达到192归0，即使Joystick模式随后跳过图像也已推进；非Joystick且位置数组存在才画图。位置两轴**先各向零截断为int**，APPLI_TYPE4再加`trunc((Screen尺寸−Canvas尺寸)/2)`，Canvas.GetWidth `74CB90`已核直调native GetWidth；之后把整数锚升float传Seb.Draw。该方法本身无PushOrigin或首层Translate，不预缩屏幕目的矩形。平台Kairolib.ScreenCursor getter`807370`实际取resource.seb[10]／图片12，原图与SEB已出版到[平台素材目录](../assets/steam-platform/)；显式frame0／1、layer1基础Draw继承调用前的矩阵与混合状态。
 
-维护接线应把模式、原应用输入回调、float位置／previous／click及恢复状态放在共同平台表现上下文；冻结计划重复展示不能再推进drawFrame或合成Touch。现研究窗口没有接这套原虚拟光标调度；完整设备映射、原OS投递、全部guard及框架回调次数仍待证。本批只合静态结论，无C++、存档、素材副本或过程文件新增。
+按下图选择与合成Touch不同：顶页AKey=KeypadEnter271才允许候选button0；BKey=Backspace8才允许候选button1。reverse=false取A候选、true取B候选，该候选存在且`GetJoystickButton(candidate,false)`为true即按下；否则`[(guiMode=0且键盘Y按住)或Steam.Buttons.Y为true]且顶页YKey=271`才按下。按下用frame1，其余frame0；这里不把Return／KeypadEnter直接添为按下图条件，也不猜布尔查询背后的物理设备映射。
+
+恢复N>0的正常调用严格为：基础Draw→`PushMatrix(ScaleTemporary(s,s,0,0))`→`SetRenderMode(1,a)`→**同一原锚、frame、layer1**再次Draw→无参SetRenderMode→PopMatrix（`10749B4E–10749C80`）。`s=Graph.Easing(1.f,12.f,12.f,float(N),−80.f)`，`a=Graph.Easing(0,160,12,N,−80)`；N不由Draw递减。mode1包装`774A80`传`(op1,src=a,dst=255−a)`，无参`774980`清为`(op0,src255,dst0)`并置dirty，**不是恢复旧ambient模式**。Pop只弹本次scale，原异常路径未证明总能配对完成；维护RAII和拒绝属于另行安全策略。
+
+Easing浮点／整数入口分别`8A4B20`／`8A4A40`：frame<0返回v0，frame≥length返回v1；中段令F为逐步float32舍入，`t=F(frame/length)`、`angle=F(F(F(t×πf)×180f)/πf)`，πf为40490FDB；FastMath.Sin `870E50`把angle升double，经ToRadians `7F7E20`**先乘doubleπ、再除double180**，调用与System.Math.Sin `A09410`相同的原生Sin目标，再降F。不能先把π/180合成常量或把整式改成double。令`u=F(F(Sin(angle)×F(−80f/314.1592712402344f))+t)`，scale为`clamp(F(F(u×11f)+1f),1,12)`；alpha为`clamp(trunc(F(u×160f)),0,160)`，其原整数端点／差值仍按int32运算。这里的Sin／x87到double交接不保证跨编译器或平台逐位像素等价。
+
+可独立计算的源公式短测oracle：N=1／3／6／11时scale约为1.19168162346／1.76930403709／3.69887304306／10.3583488464，alpha为2／11／39／136；N=12直接scale12、alpha160；N=0不输出叠加请求。合法位置(17.9,22.9)、Screen(1001,701)、Canvas(801,600)在type4的锚为(117,72)，非4为(17,22)；旧drawFrame191下一值0，隐藏也推进。数值由已核公式单独计算，未执行原DLL或取得原窗口像素。lambda的stop计数无活动时增到101，活动时清0、达到100后再活动置恢复12；**Draw不读取stop计数隐藏基础光标**，不能由SCREENCURSOR_HIDE_COUNT名字推“100帧后消失”。
+
+维护[纯计划接口](../prototype/include/dungeon_village_prototype/steam_cursor_skin.hpp)／[实现](../prototype/src/steam_cursor_skin.cpp)分开显式按下资格与几何输入，返回有序Draw／矩阵／模式请求及next_draw_frame；坐标±65536、消费尺寸1..65536和恢复0..12是维护预算，隐藏未消费字段不校验，不称原规则夹限。它不合成Touch、修改Owner或新增持久字段，也不发现原设备。真实准入后才提交next值，冻结计划重复展示不能再推进drawFrame；完整模式切换、float位置／previous／click及恢复调度仍属共同平台上下文，现研究窗口没有接整套原虚拟输入。原OS投递、设备映射、全部guard及框架次数仍待证，纯计划／素材交付不升级为原窗口已验。
 
 ## 设施初始化与动画原表
 

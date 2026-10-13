@@ -36,12 +36,33 @@
 
 - `T(H)=H`（H≤240）；否则`T(H)=240+half(H-240)`。
 - 纵向基项`B=H-182-T(H)`。
-- 入场位移`R=GameUtil.RateConvert(frame,A0,A1-1,0,181,true)`。这里只核调用实参，不以APK同名helper替代Steam内部算术认证。
+- 入场位移`R=GameUtil.RateConvert(frame,A0,A1-1,0,181,true)`；Steam整数helper已在[信息菜单](INFORMATION_MENU.md)独立核验：先截限，区间内整数乘除向零截断，不使用浮点插值。
 - `r=(frame-A2)%44`采用有符号余数；r<6时p=r，6≤r<12时p=12-r，其余p=0。仅p>0计算弹跳。
 - 弹跳请求分别调用`SetVStop(-6000.0f,6)`和`SetAStop(-6000.0f,6)`，返回值先向零截断为整数，再组成`V*p + half(A*(p+1)*p)`，结果向零除1000。
 - 最终局部位置为`(2, B+R+弹跳)`。
 
+`SetVStop/SetAStop`的Steam float32算术已由[金币绘制](STEAM_COIN_RENDER.md)独立核验；代入本页实参得到`V=-2400、A=400`。这是具名机器码与实参的推导，不是窗口测得的弹跳轨迹。
+
 这段Logo调用前未见APK的英语`-8`偏移。稍后的**广告**分支另读取Logo高度、`Language.English()`并减8，不能把广告修正移到Logo本体。`_draw`本身只拿当前`img[2]`，Logo语言选择发生在下面的资源加载链。
+
+## 右上语言按钮
+
+正常标题栈顶且非选档状态时，在Logo后、菜单动画门槛前调用`LanguageForm.DrawButton(g,callback,20)`。本节独立顺序核对anchor重载RVA `1EB190`、坐标重载`1EACA0`、`IsLanguageSwitch` `812470`、`OnTouchEvent` `1EB400`及`DrawNewLanguage` `80D5C0`；不由窗口按钮外观推断输入事件。
+
+两层DrawButton均先检查`Language.IsLanguageSwitch()`，其资格来自`langConfig_.GetLanguageSettings(GetLanguageCode()).Check(LanguageConfig.Flag.Switch=1)`；不能简化为非日文或Steam平台恒真。anchor位2优先水平居中、否则位4右对齐；位32优先垂直居中、否则位64下对齐；缺相应位时距左／上20。标题实参20（`RIGHT4|TOP16`）因此得到**`(W−20,20)`**。两层各自`PushOrigin(0,0,false)`并在正常尾配对恢复，不叠加标题`half(W−240)`原点。
+
+| 项目 | 已核请求与边界 |
+| --- | --- |
+| 素材 | `IApplication.GetResource()`的managed `KairoLibrary.resource.kairolib.bytes`，`seb.inf`槽0=`button_language.seb`、`img.inf`槽0=`button_language.png,bin`。PNG为60×60；SEB一层一帧，image0、源矩形`(0,0,60,60)`、偏移`(−30,−30)`、末两字段0。身份沿[图像索引](../assets/IMAGE_COVERAGE.json)，不混用Unity同名载荷。 |
+| 常态绘制 | `DrawSeb(g,x,y,0)`外套临时0.5矩阵，视觉为锚点中心30×30。 |
+| 触摸高亮 | `CheckTouch(component3,value0x133A066)`为真时，外加`PushBlendMode(1,255,255,255,128)`与1.1矩阵，再套0.5矩阵；按相反顺序恢复。高亮不扩大触区。 |
+| 触区 | `GetSprite(frame0,line0)`取尺寸／偏移，各向零除2；`AddTouch`注册component3、value`0x133A066`，矩形`(x−15,y−15,30,30)`；标题即`(W−35,5,30,30)`。 |
+| 手柄提示请求 | `SetJoystickButtonDraw(button9, X,Y, registerID2, scale100)`；`X=trunc(float32((x+14)×ratio/100))`、`Y=trunc(float32((y−14)×ratio/100))`，ratio来自`GetScaleRatio(false)`。不是平台控制器按钮的button8／register24。 |
+| 输入 | `OnTouchEvent`匹配同一component／value后，仅`event.type==1（UP）`构造`LanguageForm`并`FormManager.Push`；匹配的其它事件也返回false，阻止通用分发。不匹配才返回true。不是CLICK5，也不在此直接切换语言或调用callback。 |
+
+该Draw并非完全只读：坐标重载先把callback写入`LanguageForm.callback_`。图像矩阵恢复后另调用`Language.DrawNewLanguage(g,x,y,−1,8)`；只有`newState_==2`时绘制，先将`newFrame_=(newFrame_+1)%16`写回，再发`Kairolib.DrawNewText(g,float(x)−0.5,float(y−trunc(newFrame_/8)+16),frame8,scale0.75)`。NEW标记不随按钮0.5／1.1矩阵缩放，且每次合格Draw都会推进其静态帧，不能借标题逻辑钟替代。此处闭合到具名DrawNewText请求，尚未在本节认证该helper内部字形展开。
+
+维护边界：当前尚未发布语言按钮PNG／SEB，也没有语言页内部选择、设置保存和callback最终消费的完整合同；实际会话的Switch资格仍需显式提供已取得值。纯皮肤计划可以接收资格／NEW状态并输出绘制与触区请求，不能声称已维护换语言、上述静态副作用或原应用恢复。尾部开发警告提示支路不计入普通按钮合同。
 
 ## Logo资源选择链与中文资格
 

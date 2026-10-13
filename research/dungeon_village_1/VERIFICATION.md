@@ -1,5 +1,13 @@
 # 当前研究验证与历史索引
 
+## Steam虚拟光标原序绘制与语言按钮来源 2026-10-14
+
+接`2ca7ebc`，新增[虚拟光标模块](prototype/include/dungeon_village_prototype/steam_cursor_skin.hpp)，在现application目标登记；交付按下图资格、独立绘制计数下一值、平台坐标补偿、Easing恢复及原序矩阵／混合请求。原managed PNG／SEB两文件5085字节已核并查看，真实消费layer1两帧；不重复出版裁片或复制无关资源。单Release动态构建，现visuals **1/1通过1.55秒**，覆盖独立数值、原裁片／热点、隐藏时钟、未消费字段、拒绝、固定输出规模及恢复栈顺序；无Owner／codec／持久格式变更，未编他人住宅在途测试、不跑长测。
+
+并行在[交互合同](ui/STEAM_INTERACTIONS.md#虚拟屏幕光标模式位置与合成touch)纠正KeypadEnter键名并闭合逐阶段浮点／混合复位，在[标题绘制](ui/STEAM_TITLE_DRAW.md#右上语言按钮)补语言按钮资格、素材、触区、UP入页及Draw写callback／NEW帧的实际副作用，撤下Logo算术过期缺口。纯调用计划不接OS设备、合成Touch或GPU像素；语言按钮尚未出版／维护，完整平台调度与恢复另列。
+
+源码／文档按实际模块合入，无新audit／指纹／过程报告。资源在现CPU测试作用域释放，查询不持Owner／输入引用，恢复计数不由纯绘制递减；合法历史仍可增长。Release1376文件／145326884字节，assets859文件／9482317字节；无新增临时取证产物，构建、测试与子任务已结束。差异／链接检查后仅提交研究白名单，不推送。
+
 ## 标题根页背景与按键联合事务 2026-10-14
 
 接`5839103`，现[应用Owner](prototype/src/startup_application_title.cpp)新增`input_title_frame`：活动根标题背景→100门槛→规范keys／菜单意图在一个应用候选提交，菜单执行器复用私有候选，避免组合时再次复制整个应用。旧API保持独立，touch／子页返回及Steam演员寿命未纳入；背景仍沿APK，不增加持久字段／schema／target。

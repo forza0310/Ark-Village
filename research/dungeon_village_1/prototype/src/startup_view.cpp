@@ -21,6 +21,8 @@
 #include "dungeon_village_prototype/steam_build_menu_skin.hpp"
 #include "dungeon_village_prototype/steam_platform_button_skin.hpp"
 #include "dungeon_village_prototype/steam_startup_skin.hpp"
+#include "dungeon_village_prototype/steam_record_skin.hpp"
+#include "dungeon_village_prototype/startup_system_records.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 #include "dungeon_village_prototype/startup_world_persistence.hpp"
@@ -2571,6 +2573,47 @@ int draw_title_backdrop_example(const SteamTitleBackdropPlan &plan,SourceSprites
         throw std::runtime_error("标题前段未保留最终原点");
     return confirmations;
 }
+// 独立RankForm主体：人物皮肤预先从真实新局只读投影，循环只消费计划，不推进世界。
+// 两次窗框保留原序和各自标题测宽；触区/softLabels只登记意图，不接物理输入。
+std::size_t draw_record_example(const SteamRecordSkinPlan &plan,
+    const std::map<int,StartupTitleActorSkin> &actors,SourceSprites &sprites,const ChineseFont &font) {
+    Vector2 origin{float(plan.origin[0]),float(plan.origin[1])};
+    std::size_t touches{};
+    for(const auto &draw:plan.draws) {
+        if(const auto *window=std::get_if<SteamRecordWindow>(&draw)) {
+            SteamStartupSkinPlan frame;frame.origin=plan.origin;frame.draws.emplace_back(window->source);
+            draw_startup_plan(frame,[&](const SteamStartupText &) {return window->title;},sprites,font);
+        } else if(const auto *text=std::get_if<SteamRecordText>(&draw)) {
+            font.text(text->value,origin.x+text->position[0],origin.y+text->position[1],
+                {static_cast<unsigned char>(text->rgb[0]),static_cast<unsigned char>(text->rgb[1]),
+                 static_cast<unsigned char>(text->rgb[2]),255});
+        } else if(const auto *image=std::get_if<StartupSkinDraw>(&draw)) {
+            if(image->package!=StartupSkinPackage::event||image->image!=9||image->sprite!=-1)
+                throw std::runtime_error("纪录图像资源映射拒绝");
+            const auto &r=image->crop;
+            sprites.crop("event/event_backGlad.png",{float(r[0]),float(r[1]),float(r[2]),float(r[3])},
+                {origin.x+image->offset[0],origin.y+image->offset[1]});
+        } else if(const auto *request=std::get_if<SteamManualArrowRequest>(&draw)) {
+            const auto arrow=steam_manual_arrow_skin(*request,sprites.manual_arrow_bounds(request->bounds_frame),128);
+            if(!arrow)throw std::runtime_error("纪录箭头效果计划拒绝");
+            const auto &s=arrow->crop;const auto &d=arrow->destination;
+            sprites.crop("steam-common/buttoneffect.png",{float(s[0]),float(s[1]),float(s[2]),float(s[3])},
+                {origin.x+d[0],origin.y+d[1]},true,Vector2{d[2],d[3]});
+        } else if(const auto *request=std::get_if<SteamManualActorRequest>(&draw)) {
+            const auto found=actors.find(request->definition);
+            if(found==actors.end()||found->second.shadow)throw std::runtime_error("纪录基础人物载荷缺失或出现阴影");
+            const Vector2 position{origin.x+request->position[0],origin.y+request->position[1]};
+            const auto &actor=found->second;
+            if(actor.weapon)sprites.visual(*actor.weapon,position);
+            sprites.actor(false,actor.body.sprite,actor.body.image,actor.body.frame,position);
+        } else if(std::holds_alternative<SteamStartupTouch>(draw))++touches;
+        else throw std::runtime_error("纪录出现未消费图元");
+    }
+    origin={0,0}; // 原Rank绘制正常收尾绝对清0，不恢复标题留下的旧原点。
+    if(origin.x!=plan.final_origin[0]||origin.y!=plan.final_origin[1])
+        throw std::runtime_error("纪录正常收尾原点拒绝");
+    return touches;
+}
 const char *error_text(StartupError error) {
     switch (error) {
     case StartupError::none:
@@ -2618,7 +2661,8 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
     const bool title_composite_fixture=inspect_page=="title-menu-start"||inspect_page=="title-menu-records"||
         inspect_page=="title-slots-empty"||inspect_page=="title-slots-filled"||
         inspect_page=="title-slots-menu"||inspect_page=="title-slots-confirm"||title_platform_fixture;
-    if(title_backdrop_fixture||title_composite_fixture) {
+    const bool record_fixture=inspect_page=="record-score"||inspect_page=="record-cash";
+    if(title_backdrop_fixture||title_composite_fixture||record_fixture) {
         SteamTitleBackdropInput input;
         input.width=input.view_width=width;input.height=input.view_height=height;
         input.background_size=sprites.image_size("steam-startup/original/title/title00.png",true);
@@ -2633,6 +2677,8 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
         std::vector<SteamStartupSkinPlan> overlays;
         std::vector<TitleBackdropExampleActor> actors;
         std::optional<SteamTitlePlatformPlan> platform;
+        std::optional<SteamRecordSkinPlan> record;
+        std::map<int,StartupTitleActorSkin> record_actors;
         std::function<std::string(const SteamStartupText &)> resolve;
         if(title_composite_fixture) {
             // 两目录非空只作显示条件；日期/资金/村名来自真实维护新局投影，不造历史存档。
@@ -2718,6 +2764,41 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
                     throw std::runtime_error("标题平台显示条件计划拒绝");
             }
         }
+        if(record_fixture) {
+            // 默认系统纪录独立于世界5000G和村名；不创建应用/存档，不凭夹具造通关历史。
+            const StartupSystemRecords records;
+            SteamRecordSkinInput request;
+            request.view_width=width;request.view_height=height;request.frame=19;
+            request.page=inspect_page=="record-score"?0:1;
+            request.value=request.page==0?records.high_score:records.cash_peak;
+            request.village=request.page==0?records.score_village:records.cash_village;
+            request.labels={"High Score","纪录",request.page==0?"最高通关点数":"16年为止的最高资金","纪录"};
+            const auto value_text=steam_record_value_text(request.page,request.value,request.japanese);
+            if(!value_text)throw std::runtime_error("纪录数值文字拒绝");
+            title_font=std::make_unique<ChineseFont>(font_path,
+                "ハイスコア"+request.village+request.labels.translated_title+request.labels.topic+
+                request.labels.bottom+*value_text+"Ｇ");
+            request.topic_width=int(title_font->measure(request.labels.topic));
+            request.value_width=int(title_font->measure(*value_text));
+            request.village_width=title_font->measure(request.village);
+            StartupSession initial;
+            StartupWorldRuntimeSession fresh(initial.state(),ref::WorldRandomStream::from_java_seed(1));
+            fresh.take_audio_requests();
+            const auto &state=fresh.state();
+            if(!state.rules)throw std::runtime_error("纪录真实新局规则目录缺失");
+            request.definition_count=static_cast<int>(state.rules->humans.size());
+            request.frozen_definitions={0,1}; // 明确的显示条件，未执行原Rank.Init抽选。
+            record=steam_record_skin(request);
+            if(!record)throw std::runtime_error("Steam纪录条件计划拒绝");
+            for(const auto &draw:record->draws)if(const auto *person=std::get_if<SteamManualActorRequest>(&draw)) {
+                const auto human=startup_world_human_details(state,person->definition);
+                if(!human)throw std::runtime_error("纪录人物真实新局定义投影缺失");
+                const auto skin=startup_title_actor_skin(human->profession,human->sex,
+                    human->equipment[0].value_or(-1),person->anime_index,person->direction,false);
+                if(!skin||skin->shadow||!record_actors.emplace(person->definition,*skin).second)
+                    throw std::runtime_error("纪录基础人物皮肤拒绝");
+            }
+        }
         int count{},confirmations{};std::size_t touches{};TitlePlatformExampleRequests platform_requests;
         while(!WindowShouldClose()&&count<frames) {
             BeginTextureMode(canvas.value);ClearBackground(BLACK);
@@ -2730,6 +2811,7 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
                 draw_startup_plan(overlay,resolve,sprites,*title_font,0); // 例图指针明确消费当前关键帧0。
                 touches+=overlay.touches.size(); // 只记录注册请求，不连接研究窗口物理点击。
             }
+            if(record)touches+=draw_record_example(*record,record_actors,sprites,*title_font);
             if(platform) {
                 draw_title_platform_tail_example(platform->after_menu,sprites,platform_requests);
                 if(platform_requests.callbacks!=1||platform_requests.new_frames!=1||platform_requests.touches!=3||
@@ -2761,6 +2843,9 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
             for(const auto step:platform_requests.order)std::cout<<step<<'|';
             std::cout<<"\n两原平台入口与语言按钮仅条件展示，不认证绑定面板/外链或当前SDK图像。\n";
         }
+        if(record)std::cout<<"独立纪录两窗/箭头/背景/人物/文字按原序消费：record_frame=19 frozen_definitions=0,1"
+            <<" record_actors="<<record_actors.size()<<" system_values=0 system_village=没有记录"
+            <<" soft_labels=0,2 final_origin=0,0；名单仅显示条件，非原Rank.Init抽选/动画恢复或Steam字体后端。\n";
         return 0;
     }
     const bool magic_fixture=inspect_page.rfind("magic-pot-",0)==0;

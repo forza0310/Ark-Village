@@ -1,11 +1,8 @@
 # 标题、纪录、新局91与通关17原皮肤合同
 
-2026-10-08。本批只审核已有固定APK1.0.8资源与具名绘制窗口，不修改产品／C++。
-Steam2.56是当前UI目标，但这里只有既有S038标题截图与既有小方法合同；
-APK布局、中文译名、Android字体不得自动冒充Steam精确皮肤。
-根本轮窗口通道仍报native pipe不可用，未操作原游戏；静态来源与离线素材交付继续完成。
+固定APK1.0.8与Steam2.56分别列来源；APK布局、中文译名和Android字体不冒充Steam精确皮肤。初批为2026-10-08，后继已补Steam纪录、91及17局部合同，各节注明维护接口与仍缺内容。
 
-2026-10-09后继接收外部Steam2.56原窗口反馈，主会话复核关键截图；本页末新增动态范围，详细证据与时序校正见[接收分析](../verification/startup-ui-analysis/ANALYSIS.md)。前述通道状态是10月8日主会话记录，不代表外部会话本次失败。
+原窗口已有[启动反馈](../verification/startup-ui-analysis/ANALYSIS.md)和[后继皮肤反馈](../verification/skin-observation-analysis/ANALYSIS.md)，只认证实际取得的画面／操作；初批窗口通道失败保留在[历史复核](../verification/startup-window-observation/RESULT.md)，不再作为当前通道状态。
 
 可直接打开[原尺寸素材对照页](examples/startup-sources.html)，查看五张原标题素材、91／17背景、
 角色原图及完整S038。它只呈现已有图像，不填演示业务数值、不拼成假称已认证的完整运行窗口。
@@ -100,6 +97,50 @@ x按方向加1／减1，x越出−10…250退休，身体步帧=(age%20)/5。
 h.a()为真时底标签x58、数值右端186；另一分支标签x46、数值右端198。
 返回消费软键2、左右循环两页；不写纪录、加载世界或直接控制人物。
 人物插画具体职业／性别层的所有裁片与标题框架实际推进顺序仍需独立认证，不能据frame0…3裸裁一张人物PNG。
+
+### Steam纪录的独立绘制交叉
+
+固定Steam2.56的`RankForm.Draw RVA202CC0`与`_draw RVA203660`已从具名入口顺序核对。
+Draw读自身`view_ +0x58`宽高，设原点`(trunc((W−240)/2),trunc((H−240)/2)+13)`；
+正常和已见异常退出路径均`SetOrigin(0,0)`，不是保存／恢复调用前原点。
+下列为`state_ +0x8C==0`的主体顺序；Font先取`Graphics.GetFont(null)`，不临时换字号。
+
+| 原序内容 | Steam实参与消费者 |
+| --- | --- |
+| 第一遍木框 | `DrawWindow(g,200,170,0,title,−12)`；English假时直拼`ハイスコア `＋页码＋`/2`，真时`LT(ハイスコア)`＋空格＋页码＋`/2` |
+| 第二遍木框 | 准备主题后再调用相同窗几何；所有语言均`TranslateText(ハイスコア,true)`＋空格＋页码＋`/2`。两次真实调用分别在`10203A2E/10203C63`，不能去重或认为标题在所有语言相同 |
+| 左／右箭头 | `GameView.AddTouch RVA239950`的SEB重载，component1，common SEB3，frame3／0，value16／18，`TouchOption=null`；锚`(44−k,42)/(193+k,42)`，`k=trunc((frame%20)/5)` |
+| 蓝色主题 | RGB60/100/200，当前Font整数`StringWidth`，`x=120−trunc(width/2)`、y59；页0字面`最高クリアポイント`，页1`LT(<0>年までの最高資金,16L)` |
+| 背景 | event图片9整图`(30,78)`，180×80；[资源身份](STEAM_STARTUP_RESOURCES.md#图块身份)认证其与APK字节及RGBA相同，当前DLL读`res_event.img[9]`独立确认调用 |
+| 人物 | 依冻结名单顺序逐项读当前职业／性别对应身体、当前武器；`SetDispPlayerData(action0,body,step,dir1,frame)`后`DrawDispPlayer(g,x,153,weapon.id,step)`，`step=trunc((frame%16)/4)`；没有标题阴影请求 |
+| 深蓝村名 | RGB0/0/60，`systemData_ +0x40`下string数组`+0x18`的`[page]`；浮点`StringWidthF`，`x=float32(120−float32(width*0.5))`、y166 |
+| 蓝色底标签 | 非日文`TranslateText(ハイスコア,true)`在`(46,186)`；日文直接半角`ﾊｲｽｺｱ`在`(58,186)`，颜色同主题 |
+| 橙色数值 | RGB200/100/60，页0`UNI(P,value,true)`、页1`YEN(Ｇ,value,true)`；当前Font整数测宽，x为非日文198／日文186减width，y186 |
+
+主题、村名、底标签和数值均直接交`Graphics.DrawString(string,float,float) RVA766290`，
+不是本页主动创建TextLayout；下层本地化／字体布局仍沿[Steam字体后端](STEAM_FONT_BACKEND.md)，
+不能把上述字面源当作当前中文运行时译文。Draw不额外恢复Font／颜色。
+数值getter`GetHighScore RVA2579B0/GetMoneyHighScore RVA257EE0`直接读同一systemData的long数组`+0x14`索引0／2；
+此前分别调用联网最高分getter，但其返回值未替代本页数值。Draw没有按零值补“没有记录”的分支，
+村名文本须按系统供给展示，不由维护皮肤自行推导占位。
+
+已窄核本页数值格式：`UNI` RVA2015F0对`P`在日文分支用Comma后接ASCII P，非日文不含“万”的分支只返回Comma，所以0／1234分别为非日文`0`／`1,234`、日文`0P`／`1,234P`。`YEN` RVA2019F0命中全角Ｇ（metadata槽110FB6B8）后直接Unit(value,true)再接该单位，两语言都是`0Ｇ`／`1,234Ｇ`。true表示按三位加ASCII逗号，不是正号或单位开关；其它币种／万／k以及负MIN不从本页专支外推。维护系统纪录非负域可按这两专支完整格式化，不能直接拼`StartupRecordView.unit`。
+
+箭头helper继续到`RVA2399B0`：g非空、component1时绘`buttoneffect`，
+左普通／CheckTouch态效果帧0／2，右1／3；原SEB用于bounds及登记paintFrame，不能改成裸画arrow02。
+本页component1不走component18额外扩框，注册后paint坐标包括Graphics原点；物理输入仍由共同Touch后端处理。
+
+`RankForm.Init RVA202E60`先清旧名单，从定义数组筛`state_==1`，按全池每个索引抽一次`Random(pool.Count)`，
+不等当前位置时交换，再复制最多5项。**只有此池为空时**，顺序追加全部`BitUtil.Check(flag_,1)`定义，没有5人截断；
+Draw实际循环整个名单，`min(count,5)`只参与居中：`x_i=120−trunc((26*min(count,5)−26)/2)+26*i`。
+名单冻结的是定义身份，不冻结绘制时职业／性别／武器；共享显示scratch沿[标题演员合同](STEAM_TITLE_ACTORS.md)。
+`Init`直接置state0并装软标签；未见其重写frame／page，新对象零初值与复用重置不能混称。
+`cctor RVA2034D0`实建`[0,2]`。`Update RVA203420`先`frame=(frame+1)%INT_MAX`，
+Left或Right任一有效仅使`page=(page+1)%2`一次，否则才检查软2并Pop；翻页不清独立frame。
+维护应用尚无正式纪录页主钟，本批纯绘制必须显式接收条件frame，不能拿标题Logo钟代替；
+本次未运行原窗口、未修改Owner或持久格式，原截图与维护展示验收分别登记。
+
+维护[纪录独立模块](../prototype/include/dungeon_village_prototype/steam_record_skin.hpp)将正常state0主体组织为原序只读请求：两窗保留各自标题，普通文字保留整数／float实际测宽，冻结名单只限制来源定义身份而不截5，箭头复用已核buttoneffect助手。`steam_record_value_text`只实现本页P／全角Ｇ专支；`steam_record_skin`不从零值推村名占位、不抽人物或读取世界钱包。原点来自view尺寸并在末尾清0；原Draw深层字体／scratch仍沿各自合同。尺寸65536、目录与文字／测宽4096是维护预算，不是原版硬上限。当前应用有页号／冻结名单／系统纪录，但没有独立纪录动画钟；本批显式frame不代表新快照字段或精确恢复已接。
 
 ## 新局91：四项、原图与按钮
 
@@ -275,7 +316,7 @@ Steam字面槽独立对应：标题`110FBCCC`为`ｸﾘｱﾎﾟｲﾝﾄ発表`
 根本轮仅查看完整[S038](../references/screenshots/2026-10-07-steam-restore/menu/S038-title.jpg)：
 英文Dungeon Village Logo、中文“开始游戏／纪录”，左右上设置／键盘／语言组件。
 它证明该Steam标题画面的存在及文本，不证明这些组件的热区、行为或APK title图字节可直接复用。
-原91／纪录／17Steam绘制没有本批新机器码解码或连续窗口，不能以APK页号相同标已验。
+这是10月8日静态批的历史边界；后继91／纪录／17的Steam具名绘制交叉见上文，不能以此替代各页连续原窗口认证。
 
 下一认证分别补：Steam实际Draw资源／布局、Font字形与测宽；原文本输入／桌面按键资格；
 标题装饰推进／随机与开始交接；17连续阶段及退休／音频。现有业务消费者、原素材离线展示、

@@ -1,5 +1,7 @@
 # 产品侧小窗 UI 示例
 
+[Steam纪录两页](steam-record-pages.png)（960×640／118885字节）：`record-score`／`record-cash`两个480×640研究窗口各8帧、0世界更新，不加`--world`。按Steam原序消费两次木框、buttoneffect箭头、event9背景、当前初装人物及文字；非日文分数只显示0，资金显示0Ｇ。两个0及“没有记录”来自维护默认系统纪录，未借世界5000G或造通关分数；frame19、冻结定义0／1、空父背景演员是显示条件，不代表原Init抽选／自然纪录。中文/Noto、VIEW_Y23及mdpi按钮图为适配；底部软标签0／2和触区仅记录请求，未接物理返回／翻页、完整字体、联网getter或独立动画钟恢复。见[Steam局部合同与模块](../STARTUP_SKIN.md#steam纪录的独立绘制交叉)。
+
 [标题平台／语言常态与高亮](steam-title-platform.png)（960×640／146874字节）：两张480×640原尺寸窗口，各8帧、0世界更新，入口`title-platform`／`title-platform-touched`，不加`--world`。复用标题开始菜单及两中央演员；显式APPLI_TYPE4、Platform.x86、非Xbox、语言Switch开、NEW状态2／旧帧7，右图三路CheckTouch同时为真是显示条件，不是鼠标实测。语言→菜单→控制器绑定→键盘按原序；NEW用真实SEB21帧8独立0.75缩放，不继承按钮高亮。手柄登记表明确不存在，两个登记意图不产生glyph；callback替换、NEW下一值8及触区只记录，不改状态、调用SDK或打开外链。Noto／中文／普通演员等边界同下方六态例图，[调用资格](../STEAM_TITLE_MENU.md)与[平台合同](../STEAM_INTERACTIONS.md)供产品接入。
 
 [Steam标题／选档六态](steam-title-menu-slots.png)（1440×1280／349062字节）：按行从左到右为开始、纪录、空目录、双非空目录、手动栏子菜单及默认“否”的覆盖询问。六个480×640原尺寸研究窗口各8帧、0世界更新；入口依次为`title-menu-start`、`title-menu-records`、`title-slots-empty`、`title-slots-filled`、`title-slots-menu`、`title-slots-confirm`，不加`--world`。非空资格以及两演员位置／age是显示条件，日期、5000G和定义0／1的初装来自真实维护新局只读投影；新局村名为空就保持空，不冒称真实原档。菜单覆盖时保留选档但不画父手形，询问隐藏选档／菜单；图元／资源与中央演员投影已接。中文译文、Noto、VIEW_Y23与手形关键帧0为显式适配；未接平台图标、语言按钮、完整Steam人物调度／共享scratch及物理输入。见[模块交接](../../prototype/STEAM_STARTUP_SKIN.md)与[人物边界](../STEAM_TITLE_ACTORS.md)。

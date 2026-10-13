@@ -1,5 +1,13 @@
 # 当前研究验证与历史索引
 
+## Steam纪录两页与图像释放链 2026-10-14
+
+接`90c6267`，新增实际RankForm职责的[纪录皮肤模块](prototype/include/dungeon_village_prototype/steam_record_skin.hpp)，显式加入现application目标，无新CTest。Steam完整正常state0调用独立核出：双窗与不同翻译、效果箭头、int／float测宽、全冻结名单及P／Ｇ格式；非日文分数无P，fallback不裁5。现startup皮肤套件扩原序、六人／空列表、语言／最大非负long、时钟、拒绝及输出预算oracle。单Release动态构建，visuals **1/1通过1.54秒**（总1.55秒）。
+
+两页各8帧、0世界更新并正常退出，[两页图例](ui/examples/steam-record-pages.png)960×640／118885字节已查看。真实默认系统纪录0／没有记录与维护初装，frame19／名单0,1仅显示条件；原字体、联网getter、物理输入及独立纪录钟Owner／恢复未完成，不新增持久字段或假称自然取得。并行将FontTexture→Image同步UI任务→共享图集区域退休／Unity释放销毁请求合入[字体合同](ui/STEAM_FONT_BACKEND.md)，原GPU回收时刻仍未知；合并启动页过期引言，不新建过程文档／audit／指纹。
+
+图元逐项消费，触区／软标签只记意图；只读人物按值预备后释放临时Session，不保留Owner引用，计划最多定义预算4096＋11项。清理4份本轮临时图／日志278247字节；Release1377文件／146164019字节、assets863文件／9488214字节，合法历史仍可增长。构建／测试／窗口及三个子任务均结束，不编他人住宅测试、不跑长测；仅研究白名单本地checkpoint，不推送。
+
 ## 平台点击意图、纪录返回与字体退休 2026-10-14
 
 接`fc8170d`，在现[平台模块](prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)新增已分发void回调的纯动作计划：控制器CLICK资格／64位零handle、键盘原语言Concat、DEBUG共同长按时钟及Push后重新取钟。独立机器码复核纠正极端时间值的sbb flags分支，保留已有断言并补借位／溢出oracle。单Release动态构建通过，现visuals **1/1通过1.57秒**（总1.58秒）；不执行外链／SDK／奖杯页或修改平台时钟，无Owner／格式／target变化。本批没有绘制变更，不重复窗口检查或长跑，不编他人住宅测试。

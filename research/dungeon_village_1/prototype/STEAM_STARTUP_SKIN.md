@@ -29,6 +29,8 @@
 
 [六态例图](../ui/examples/steam-title-menu-slots.png)仅展示条件组合，触区逐轮计数而不派输入，无文件存取；目录空／非空和两名中央普通演员位置／age为显示条件。真实维护新局投影只取日期、资金及初装，不修改Owner或保留其引用。中文／Noto及VIEW_Y23为适配，平台按钮、语言资格、完整演员scratch、原字体与物理输入尚未认证。raw14保留原正文包装，复验真实菜单进入的“保存中”窗口，未冒称应用宿主已落盘。
 
+独立RankForm由[steam_record_skin.hpp](include/dungeon_village_prototype/steam_record_skin.hpp)维护正常state0主体；复用此处窗框及说明页箭头助手，不并入TitleForm状态或伪造raw页号。两次不同翻译标题、int／float测宽、系统数字专支、完整冻结名单及view原点收尾见[纪录合同](../ui/STARTUP_SKIN.md#steam纪录的独立绘制交叉)。应用尚无纪录主钟，纯计划显式接收frame，不代表快照接线；两个条件窗口与主责短测见[示例](../ui/examples/README.md)。
+
 ## 检查归属
 
 2026-10-10补Steam独立窗框展开：`steam_startup_window_skin`、`steam_startup_box_skin`、`steam_startup_window2_skin`、`steam_startup_window3_skin`返回有序`SteamStartupFramePlan`。复用已有图元载体，不调用APK算法冒充Steam实现；独立来源是[完整窗框合同](../ui/STEAM_WINDOW_FRAME.md)。矩形为变换前半开逻辑几何，outline是一逻辑单位内边环，平台缩放／DPI仍由后端处理。

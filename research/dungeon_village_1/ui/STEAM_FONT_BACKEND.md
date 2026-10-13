@@ -66,7 +66,7 @@ OnGUI的多条正常／异常收尾调用`0x1077BDF0`。该116字节helper从当
 | --- | --- | --- |
 | useFontTexture=false、glRender=false | 更新GUI组后调用UnityEngine.GUI.Label(Rect,text,GUIStyle) | 最终字体栅格化／缺字回退由引擎消费，未认证 |
 | useFontTexture=false、glRender=true | 准备Graphics.GLText、传入位置／文字／GUIStyle／clip并增加glTextCount | [队列最终消费／退休](STEAM_GLTEXT_LIFECYCLE.md)已核至GUI.Label；实际字形仍待证 |
-| useFontTexture=true | 取得FontTexture后调用DrawScaledImage，透明度不足时配对RenderMode | 缓存年龄退休及事件入口见下节；纹理生成器、底层释放与最终采样仍待闭合 |
+| useFontTexture=true | 取得FontTexture后调用DrawScaledImage，透明度不足时配对RenderMode | 缓存年龄退休、UI调度及Unity销毁请求见下节；纹理生成器、实际释放时刻与最终采样仍待闭合 |
 | 目标Image的另一分支 | 复制Font，建立Image.TextRenderTask并AddTextRenderTask | 不是即时GUI.Label；实际重放／引用保留见下节 |
 
 `KairoPlugin.GetFontTextureSize(text,size)`（`0x8749A0`）构造闭包并以wait=true交IApplication.RunOnUiThread，要求取得可解箱SizeF的非空结果。闭包（`0x8870A0`）检查的是Config.UNITY_EDITOR（元数据静态字段+0x28）：false直接返回null；true才反射`WinLib`程序集的`kairo.windows.plugin.Utility.GetFontTextureSize`，把返回字节读成两个float。
@@ -83,7 +83,17 @@ OnGUI的多条正常／异常收尾调用`0x1077BDF0`。该116字节helper从当
 
 该消费者已有真实上游：`Graphics.cctor` RVA`775990`尾部通过方法槽`110E97E8`（metadata方法7796）取得RemoveExpiredFontTextures，构造实际`System.EventHandler`并调用当前应用的`add_Updated`（`10776686–1077669F`）。`IApplication.Update` RVA`78E3F0`在已核正常段`1078F96A`增加totalFrames，随后于`1078FABD–1078FAF5`取得并调用Updated；这里仅认证该执行路径，不把Unity的每次Update、失焦或提前返回都说成一次世界更新／缓存清理。
 
-`FontTexture.Dispose` RVA`77CE20`在Image非空时调用`Image.Dispose` RVA`79B2A0`，正常返回后将自身Image引用设null（`1077CE27–1077CE44`）；它不清Text或其它值字段，也不是调用Image.Release。缓存随后移除该FontTexture项，不能由此保证外部持有的Image／FontTexture或底层Unity纹理立即销毁。图像Dispose及任务引用边界见下节；异常时该原链没有联合回滚保证。**已闭合缓存年龄退休、事件入口和Image引用断开，剩余是底层纹理实际释放、其它间接持有者及全局容量保证。** 未运行原游戏、导出字体或新增缓存产物。
+`FontTexture.Dispose` RVA`77CE20`在Image非空时调用`Image.Dispose` RVA`79B2A0`，正常返回后将自身Image引用设null（`1077CE27–1077CE44`）；它不清Text或其它值字段。缓存随后移除该FontTexture项，不能由此保证外部持有的Image／FontTexture立即回收。图像Dispose确实继续调用Release，调度与销毁请求如下；异常时该原链没有联合回滚保证。已闭合缓存年龄退休、事件入口和Image引用断开，保留其它间接持有者及全局容量缺口。
+
+### Image释放有明确UI线程与Unity销毁请求
+
+2026-10-14沿实际调用补核，不运行原程序。`Image.Dispose`先调用Unuse，再在`1079B338`调用`Image.Release` RVA`79EA80`。Release只在`image_ +8`非空时构造捕获自身的真实ThreadStart，方法槽`110EB4C4`独立解析为`<Release>b__136_0`；`1079EB3F–1079EB43`以**wait=true**交`IApplication.RunOnUiThread`。不能把它写成后台“发出即成功”的释放，也不能把方法默认参数false代入这个调用。
+
+`RunOnUiThread(ThreadStart,bool)` RVA`78B100`先CheckUiThread：已在UI线程则直接调用；否则在`lockUITask_`锁内加入`uiMethodTasks_`，wait=true时轮询任务finished，并在完成后检查error。这里没有已证等待超时。`CheckUiThread` RVA`782EE0`通常交JThread.IsCurrentThread；UI线程为空且Unity不在playing时另有直接准入分支，不能泛称始终是后台线程。`ExecuteUIMethods` RVA`784C40`在锁内从首项取出并RemoveAt，再于锁外原序调用；正常／已见错误处理都将finished设真，错误保存供等待者回传。任务先从队列退休，捕获的Image仍由执行及等待局部持有到返回，不能等同当场GC。
+
+实际释放闭包RVA`7A0A00`分所有权：若`atlasRegion_.Atlas.type_==Load(1)`，仅将本Image的image_清null，不Destroy共享图集。其余路径对RenderTexture先调用Release（`107A0ABB`），随后对Texture调用`UnityEngine.Object.Destroy`（`107A0ADC`），正常返回后清image_。两包装已核至实际原生入口字符串：RenderTexture RVA`BFF630`→`UnityEngine.RenderTexture::Release()`；Destroy RVA`C0B3D0`→`UnityEngine.Object::Destroy(UnityEngine.Object,System.Single)`，本调用传0.0f。**这是已证的引擎释放／销毁请求，不证明GPU显存当轮归还或原生对象已立即消失。** 本批止于原生调用边界，不追UnityPlayer完整GC实现。
+
+Dispose在图集ID有效且管理器启用时，还调用`ImageAtlasManager.RemoveAtlas` RVA`794530`，同样wait=true交UI线程；闭包`7A3CD0`到`ImageAtlas.RemoveAtlas` RVA`798630`，正常尾执行AtlasRegion.Dispose及regions字典Remove，并置Image图集ID为−1。AtlasRegion.Dispose RVA`793390`断开Image.atlasRegion与自身Atlas／Image／Pixels引用，清Valid／Hint；这条区域退休链不Destroy整个共享图集。Dispose正常尾另清images／优化及源字节／文件等具名引用，清尺寸、置isDisposed，并对静态Image.all_执行List.Remove；不据此宣称全部外部引用已解除。文字／气泡任务数组和计数的保留边界仍按下节，合法持有与泄漏分别判断。
 
 ## Image.TextRenderTask是可重复重放的图像文字
 
@@ -107,4 +117,4 @@ Image构造7A1CF0在+A0建立零长任务数组，+A4计数采用零初值。Add
 
 产品可按上述契约区分字体对象、后端开关、临时GUIStyle与外层GUISkin恢复，避免SetFont误改后端或认为一次DrawString已恢复所有外部状态。默认资源的Arial引用可用于后续取证，不能直接作为中文字体交付或以另选系统字体冒充原样。
 
-仍缺：真实当前GUI.skin、原生默认皮肤返回对象及中文glyph fallback提供者、DefaultUseFontTexture完整上游、FontTexture底层纹理释放与全局持有者，以及完整游戏窗框的全部页面使用资格。缓存年龄退休及Updated事件入口已核，不能继续将它们整体列为未知；同样不能宣称缓存永久有界。托管空font到原生默认字体的交接已核，不再列为完全未知。TextLayout的14项标签局部生产／消费、普通断行及空串字段分工已有[字体合同](STEAM_FONT_CONSUMER.md)，全部语言禁则、运行注册绑定和实际字形仍未认证。普通位置变换见[文字绘制](STEAM_FONT_DRAW.md)，GUI组／clip见[窗框](STEAM_WINDOW_FRAME.md)，GLText最终消费者／保留对象见[生命周期](STEAM_GLTEXT_LIFECYCLE.md)。窗口观察可补最终画面尺寸和字形表现，但单张截图仍不能证明font对象身份。后续继续静态缩小这些边界，必要动态由既有外部提示词分支取得。
+仍缺：真实当前GUI.skin、原生默认皮肤返回对象及中文glyph fallback提供者、DefaultUseFontTexture完整上游、纹理实际回收时刻与全局持有者，以及完整游戏窗框的全部页面使用资格。缓存年龄退休、Updated事件入口、UI任务消费及Unity销毁请求已核，不能继续将它们整体列为未知；同样不能宣称缓存永久有界。托管空font到原生默认字体的交接已核，不再列为完全未知。TextLayout的14项标签局部生产／消费、普通断行及空串字段分工已有[字体合同](STEAM_FONT_CONSUMER.md)，全部语言禁则、运行注册绑定和实际字形仍未认证。普通位置变换见[文字绘制](STEAM_FONT_DRAW.md)，GUI组／clip见[窗框](STEAM_WINDOW_FRAME.md)，GLText最终消费者／保留对象见[生命周期](STEAM_GLTEXT_LIFECYCLE.md)。窗口观察可补最终画面尺寸和字形表现，但单张截图仍不能证明font对象身份。后续继续静态缩小这些边界，必要动态由既有外部提示词分支取得。

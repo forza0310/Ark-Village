@@ -17,6 +17,7 @@
 #include "dungeon_village_prototype/steam_clear_score_skin.hpp"
 #include "dungeon_village_prototype/steam_new_game_skin.hpp"
 #include "dungeon_village_prototype/steam_config_skin.hpp"
+#include "dungeon_village_prototype/steam_commerce_skin.hpp"
 #include "dungeon_village_prototype/steam_platform_button_skin.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
@@ -401,7 +402,8 @@ class ChineseFont {
                              "请选择街道内地域有建筑物金钱不足没有设施不可撤除状态异常施工"
                              "设施情报品质魅力维护费收入建设完毕加成返回图范围"
                              "信息距下一等级还有达到最高级周围设施的奖励没有使用道具"
-                             "按确认键赠送礼物习得魔法精通特定职业可以一种两种三种全部";
+                             "按确认键赠送礼物习得魔法精通特定职业可以一种两种三种全部"
+                             "南瓜商会欢迎光临购买出售道具设施";
         for (int i = 32; i < 127; ++i)
             glyphs += static_cast<char>(i);
         for (const auto &v : startup_evidence().definitions)
@@ -1083,6 +1085,11 @@ template<class Plan> void draw_facility_ceremony(const Plan &plan,SourceSprites 
             const auto &r=value.crop;
             sprites.crop("event/event_backGlad.png",{float(r[0]),float(r[1]),float(r[2]),float(r[3])},
                 {origin.x+value.offset[0],origin.y+value.offset[1]});
+        } else if constexpr(std::is_same_v<T,SteamCommerceImage>) {
+            const auto r=steam_commerce_resource(value.asset);
+            if(!r)throw std::runtime_error("商会资源映射拒绝");
+            sprites.published_sprite(r->image,r->published_image,r->published_sprite,
+                value.position,value.frame,value.crop,origin);
         } else if constexpr(std::is_same_v<T,SteamConfigImage>) {
             const auto controls=steam_config_image_skin(value,128);
             if(!controls)throw std::runtime_error("设置控件来源拒绝");
@@ -1505,6 +1512,19 @@ std::optional<SteamClearScorePlan> window_clear_score_plan(
     const StartupApplication &app,std::uint64_t id,const ChineseFont &font) {
     const auto input=steam_clear_score_input(app,id);
     return input?steam_clear_score_skin(*input,clear_score_options(*input,font)):std::nullopt;
+}
+SteamCommerceSkinOptions commerce_options(const ChineseFont &font) {
+    SteamCommerceSkinOptions o;o.view_y=23;
+    o.text.title="南瓜商会";o.text.welcome="欢迎光临";
+    o.text.names={"购买道具","出售道具","购买设施"};
+    o.text.explanations={"购买道具","出售道具","购买设施"};
+    o.text.title_widths=std::array<int,2>{int(font.measure(o.text.title)),int(font.measure(o.text.title))};
+    return o;
+}
+std::optional<SteamCommerceSkinPlan> window_commerce_plan(
+    const StartupWorldRuntimeState &state,std::uint64_t id,const ChineseFont &font) {
+    const auto input=steam_commerce_input(state,id);
+    return input?steam_commerce_skin(*input,commerce_options(font)):std::nullopt;
 }
 std::optional<SteamConfigSkinPlan> config_example(const std::string &name,const ChineseFont &font) {
     // 显式条件值不是平台默认设置；不创建世界或触发实际音量/画质/保存。
@@ -1962,6 +1982,7 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
     const bool clear_fixture=inspect_page=="clear-count"||inspect_page=="clear-score"||inspect_page=="clear-record"||inspect_page=="clear-closing";
     const bool new_game_fixture=inspect_page=="new-game-village"||inspect_page=="new-game-name"||inspect_page=="new-game-sex"||inspect_page=="new-game-start";
     const bool config_fixture=inspect_page=="config-quality"||inspect_page=="config-locked"||inspect_page=="config-speed"||inspect_page=="config-volume";
+    const bool commerce_fixture=inspect_page=="commerce-buy"||inspect_page=="commerce-sell"||inspect_page=="commerce-facility";
     const bool gift_claim_fixture=inspect_page=="gift-facility"||inspect_page=="gift-profession"||inspect_page=="gift-equipment"||inspect_page=="gift-item";
     const bool award_result_fixture=inspect_page=="award-giving"||inspect_page=="award-lift"||inspect_page=="award-celebration"||inspect_page=="award-reward";
     const bool task_fixture=info_fixture||result_fixture||victory_fixture||deadline_fixture||roster_fixture||inspect_page=="task-selection"||inspect_page=="task-offer"||inspect_page=="task-recruitment";
@@ -2003,10 +2024,16 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
     if(clear_fixture)reputation_glyphs+="通关点数发表那么赶紧开始计算吧任务完成数设施发现数冒险者全员合计自宅努力度总和追加排行榜更新接下来就是这样当前最高分研究绘制夹具无自然触发认证…！";
     if(new_game_fixture)reputation_glyphs+="重新开始城镇名称冒险者姓名性别男女开始游戏口袋冒险村太郎花子研究绘制夹具无自然触发认证";
     if(config_fixture)reputation_glyphs+="环境设置画面速度效果音画质优先高速普通更改游戏的运行通关后可以设置中大小部分演出及显示研究绘制夹具无自然触发认证省略";
+    if(commerce_fixture)reputation_glyphs+="南瓜商会欢迎光临购买出售道具设施研究绘制夹具无自然触发认证返回";
     ChineseFont font(font_path,reputation_glyphs);
-    if(magic_fixture||task_fixture||residence_fixture||award_fixture||effort_fixture||award_result_fixture||mastery_fixture||gift_claim_fixture||clear_fixture||new_game_fixture||config_fixture) {
-        std::variant<SteamMagicPotPlan,SteamTaskSelectionPlan,SteamTaskRosterPlan,SteamTaskResultPlan,SteamTaskVictoryPlan,SteamTaskDeadlinePlan,SteamHumanOverviewPlan,SteamTownProgressPlan,SteamNewGamePlan,SteamConfigSkinPlan> plan;
-        if(config_fixture) {
+    if(magic_fixture||task_fixture||residence_fixture||award_fixture||effort_fixture||award_result_fixture||mastery_fixture||gift_claim_fixture||clear_fixture||new_game_fixture||config_fixture||commerce_fixture) {
+        std::variant<SteamMagicPotPlan,SteamTaskSelectionPlan,SteamTaskRosterPlan,SteamTaskResultPlan,SteamTaskVictoryPlan,SteamTaskDeadlinePlan,SteamHumanOverviewPlan,SteamTownProgressPlan,SteamNewGamePlan,SteamConfigSkinPlan,SteamCommerceSkinPlan> plan;
+        if(commerce_fixture) {
+            // 只读表现条件；不创建或修改原版经营进度。
+            const int row=inspect_page=="commerce-buy"?0:inspect_page=="commerce-sell"?1:2;
+            const auto value=steam_commerce_skin({row,0,row==0,row==2},commerce_options(font));
+            if(!value)throw std::runtime_error("Commerce example rejected");plan=*value;
+        } else if(config_fixture) {
             const auto value=config_example(inspect_page,font);
             if(!value)throw std::runtime_error("Config example rejected");plan=*value;
         } else if(new_game_fixture) {
@@ -3558,7 +3585,25 @@ int run_startup_world_window(const std::filesystem::path &assets,
                         if(error!=StartupWorldRuntimeError::none)throw std::runtime_error("Reward claim rejected");
                     }
                 } else if(page->lifecycle!=0)throw std::runtime_error("Reward input source rejected");
-            } else if (raw >= 83 && raw <= 86) {
+            } else if(raw==83) {
+                const auto plan=window_commerce_plan(session.state(),page->id,font);
+                if(plan) {
+                    StartupCommerceTopInput input;
+                    input.up=IsKeyPressed(KEY_UP);input.down=IsKeyPressed(KEY_DOWN);
+                    input.confirm=IsKeyPressed(KEY_ENTER);input.cancel=IsKeyPressed(KEY_ESCAPE)||hit({176,265,58,24});
+                    for(const auto &op:plan->operations)if(const auto *touch=std::get_if<SteamStartupTouch>(&op)) {
+                        if(touch->component!=11||!touch->rectangle)continue;
+                        const auto &r=*touch->rectangle;
+                        if(!pointer_consumed&&IsMouseButtonReleased(MOUSE_BUTTON_LEFT)&&
+                           CheckCollisionPointRec(mouse,{human_overview_origin.x+r[0],human_overview_origin.y+r[1],float(r[2]),float(r[3])})) {
+                            input.selection=touch->value&0xffff;input.confirm=true;
+                        }
+                    }
+                    if(input.up||input.down||input.confirm||input.cancel||input.selection)
+                        if(session.input_commerce_top(page->id,input)!=StartupWorldRuntimeError::none)
+                            throw std::runtime_error("Commerce top input transaction rejected");
+                } else if(page->lifecycle!=0)throw std::runtime_error("Commerce top input source rejected");
+            } else if (raw >= 84 && raw <= 86) {
                 const auto view = inspect_startup_world_commerce_page(session.state(), page->id);
                 if (view) {
                     using A = StartupCommerceAction;
@@ -3569,7 +3614,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                             action = A::previous;
                         if (IsKeyPressed(KEY_DOWN))
                             action = A::next;
-                        const int count = raw == 83 ? 3 : static_cast<int>(view->entries.size());
+                        const int count = static_cast<int>(view->entries.size());
                         const int rows = raw == 84 ? 5 : 3;
                         for (int n = view->first_visible;
                              n < std::min(count, view->first_visible + rows); ++n)
@@ -4814,6 +4859,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
             const bool steam_gift_claim=page->legacy_page==93||page->legacy_page==94;
             const bool steam_magic=page->legacy_page>=41&&page->legacy_page<=47;
             const bool steam_commodity=page->legacy_page==72||page->legacy_page==79;
+            const bool steam_commerce_top=page->legacy_page==83;
             const bool steam_reputation=page->legacy_page==82;
             const bool steam_effect=page->legacy_page>=75&&page->legacy_page<=77;
             const bool steam_facility=page->legacy_page==74&&startup_world_facility_page_count(state,*page)==2;
@@ -4825,7 +4871,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
             const bool steam_gift_result=page->legacy_page==66&&startup_world_human_page_ready(state,page->id);
             const bool steam_attribute_result=(page->legacy_page==68||page->legacy_page==69)&&startup_world_human_page_ready(state,page->id);
             const bool steam_profession=(page->legacy_page==62||page->legacy_page==63)&&startup_world_human_page_ready(state,page->id);
-            if (page->legacy_page != 21&&!steam_gift_claim&&!steam_info&&!steam_task&&!steam_residence&&!steam_magic&&!steam_reputation&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result) DrawRectangle(5, 170, 230, 119, paper);
+            if (page->legacy_page != 21&&!steam_commerce_top&&!steam_gift_claim&&!steam_info&&!steam_task&&!steam_residence&&!steam_magic&&!steam_reputation&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result) DrawRectangle(5, 170, 230, 119, paper);
             std::string title = page->title;
             if (title.empty() && page->kind == ref::WorldScriptPageKind::raw_page) {
                 if (page->legacy_page == 30 || page->legacy_page == 31 || page->legacy_page == 32)
@@ -4846,7 +4892,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                          page->monster_definition)
                     title = rules.monsters.at(*page->monster_definition).name;
             }
-            if (page->legacy_page != 21&&!steam_gift_claim&&!steam_info&&!steam_task&&!steam_residence&&!steam_magic&&!steam_reputation&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result)
+            if (page->legacy_page != 21&&!steam_commerce_top&&!steam_gift_claim&&!steam_info&&!steam_task&&!steam_residence&&!steam_magic&&!steam_reputation&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result)
                 font.text(title, 12, 177, ink, font.measure(title) > 208 ? 10 : 12);
             if(steam_gift_claim) {
                 const auto plan=window_town_progress_plan(state,page->id,font);
@@ -4888,21 +4934,17 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 const auto plan=window_facility_reputation_plan(state,page->id,font);
                 if(!plan)throw std::runtime_error("Steam facility reputation source rejected");
                 draw_facility_ceremony(*plan,sprites,font);
-            } else if (page->legacy_page >= 83 && page->legacy_page <= 86) {
+            } else if(steam_commerce_top) {
+                const auto plan=window_commerce_plan(state,page->id,font);
+                if(plan)draw_facility_ceremony(*plan,sprites,font);
+                else if(page->lifecycle!=0)throw std::runtime_error("Commerce top drawing source rejected");
+            } else if (page->legacy_page >= 84 && page->legacy_page <= 86) {
                 DrawRectangle(8, 42, 224, 214, paper);
                 const auto view = inspect_startup_world_commerce_page(state, page->id);
                 font.text("南瓜商会", 16, 48);
                 if (view) {
                     const int raw = view->raw;
-                    if (raw == 83) {
-                        constexpr const char *labels[]{"购买道具", "出售道具", "购买设施"};
-                        for (int n = 0; n < 3; ++n) {
-                            const float y = 78 + n * 27;
-                            if (n == view->selection)
-                                DrawRectangle(12, y - 4, 216, 26, {219, 232, 204, 255});
-                            font.text(labels[n], 24, y);
-                        }
-                    } else if (raw == 84 || raw == 85) {
+                    if (raw == 84 || raw == 85) {
                         const int rows = raw == 85 ? 3 : 5;
                         if (raw == 84 && view->mode == 0)
                             font.text(view->tab == 0 ? "价格 >" : "持有 >", 164, 48, ink, 10);

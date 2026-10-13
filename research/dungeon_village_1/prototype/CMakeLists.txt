@@ -92,7 +92,7 @@ add_library(dungeon_village_startup_application src/startup_application.cpp src/
     src/startup_title_actor_skin.cpp src/steam_startup_skin.cpp src/steam_manual_skin.cpp
     src/steam_clear_score_skin.cpp
     src/steam_new_game_skin.cpp
-    src/steam_config_skin.cpp src/steam_platform_button_skin.cpp
+    src/steam_config_skin.cpp src/steam_platform_button_skin.cpp src/steam_commerce_skin.cpp
     src/steam_facility_skin.cpp src/steam_facility_catalog_skin.cpp src/steam_human_skin.cpp src/steam_information_skin.cpp
     src/steam_facility_effect_skin.cpp src/steam_facility_reputation_skin.cpp
     src/steam_village_activity_skin.cpp src/steam_town_progress_skin.cpp

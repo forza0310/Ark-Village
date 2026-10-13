@@ -1,5 +1,7 @@
 # 产品侧小窗 UI 示例
 
+[商会主页三种选择](steam-commerce-top.png)（1440×640／38145字节）：左至右为购买道具、出售道具、购买设施，三张480×640研究窗口原尺寸拼接。消费`steam_commerce_skin`及已出版图像，等级1、两NEW的有无与静态手形帧0为显式条件；`commerce-buy`／`commerce-sell`／`commerce-facility`各8帧、0世界更新、不加`--world`。原Owner查询与输入已另接真实商会入口；本图不证明自然开放、交易、共享手形调度或原OS输入。中文、Noto、VIEW_Y23、绿色背景与研究标签属适配，原私有南瓜裁片、三行、图标与NEW条件见[合同](../../rules/COMMERCE.md#steam-commerce-top)。
+
 [设置页主体四态](steam-config.png)（960×1280／80579字节）：左上画质行、右上锁定速度行、左下已解锁高速、右下音量行及加号／平台键盘高亮态。四张480×640研究窗口原尺寸拼接，消费正式`steam_config_skin`与现`buttoneffect.png`；P12/P13/J3/J4基值0/0/3/5、后两态的资格／速度／音量变化都是显式绘制条件，不是平台初值。每态8帧、0世界更新，不建世界、不改真实音量／画质、不保存。`config-quality`／`config-locked`／`config-speed`／`config-volume`均不加`--world`。VIEW_Y23，Noto、中文说明、绿色背景和研究标签为适配；现已绘平台键盘，清原点后固定锚，最后一态高亮沿已核生成shader公式作GLSL适配；现成原shader和GPU像素未认证，本图不认证完整平台设置页、原字体、OS拖动／外链或设置Owner。源热区、旋钮位置、密度与反向值合同见[设置合同](../STEAM_INTERACTIONS.md#游戏设置与标题平台按钮)。
 
 [新局配置四种选择](steam-new-game.png)（960×1280／84242字节）：按左上村名、右上姓名、左下性别、右下开始排列，四张480×640研究窗口原尺寸拼接。消费正式`steam_new_game_skin`及已出版原图，文字来自新局草稿默认值；后两态切为女性，main9／手形帧0为显式绘制条件，冒险职业沿真实flags4定义0，weapon0按来源保留。`new-game-village`／`new-game-name`／`new-game-sex`／`new-game-start`各8帧、不加`--world`，0世界更新，不创建应用存档或正式新局。Noto、绿色背景、中文及底部研究标签为适配；这只是只读计划，不认证编辑输入、取消恢复、原字体或原OS交互，配置选择／主钟尚未进入Owner。详见[Steam91合同](../STARTUP_SKIN.md#steam新局91的独立绘制交叉)。

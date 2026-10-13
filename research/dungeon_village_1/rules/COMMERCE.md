@@ -78,9 +78,69 @@ Steam85在`10319B9E`检查村点，足额`10319BC5`先扣点，`10319BE7–19C05
 
 共尾重设棕色，在(120,198,anchor2)画当前行说明，原序字面为`アイテムを購入します／アイテムを売却します／施設を購入します`。正文没有底栏按钮、标题箭头、滚动条、价格或购买付款；三项始终可选，NEW不是资格门控。文字槽依次为title `110FC3AC`、welcome `110F09A4`、三名称`110FB7E0／110FB7B4／110F7558`、三说明`110F21BC／110F2168／110F7580`，按真实metadata usage5解得；当前语言转换／字体度量仍由文字后端消费，不以这些日文字面认证中文显示。
 
-上述common19／38／147／173、SEB21／38及common2的图2／SEB1均已有原样出版；IMAGE_COVERAGE对Steam对应具名PNG／SEB登记与固定APK字节相同。同图这里只由具名Steam实际调用认证，尚未有研究83纯计划／完整原窗口，不新增整包素材副本。
+上述common19／38／147／173、SEB21／38及common2的图2／SEB1均已有原样出版；IMAGE_COVERAGE对Steam对应具名PNG／SEB登记与固定APK字节相同。同图由具名Steam实际调用认证；维护83纯计划已消费这些原出版资源，完整原窗口仍未观察，不新增整包素材副本。
 
-现Owner已持久化`commerce_pages_initialized`、`commerce_page_data[id]`及`page_counters[id]`；83六槽为`{mode0,tab0,selection,first0,binding−1,feedback0}`，没有commerce_page_lists。已有inspect输出selection/counter，三子页、取消、保留父选择、严格拒绝及退休可复用，不需要为83再造schema。真正维护缺口是独立Steam有序皮肤及把上→下→确认优先返回纳入一次Owner输入；现逐action API不能冒称已覆盖同轮组合。Shop NEW可直接读取已有货源／item_commerce_read、facility_presence／facility_commerce_read及星级，但必须保持上文原谓词和短路消费，不用85维护策略替换提示资格。84主体下一入口为Update2 `10319CA9`、Draw `1034D218`；86为Update2 `10319895`、Draw `1034C86F`，本段不提前认证其完整表现。
+现Owner已持久化`commerce_pages_initialized`、`commerce_page_data[id]`及`page_counters[id]`；83六槽为`{mode0,tab0,selection,first0,binding−1,feedback0}`，没有commerce_page_lists。已有inspect输出selection/counter，三子页、取消、保留父选择、严格拒绝及退休可复用，不需要为83再造schema。现已新增[独立纯皮肤](../prototype/include/dungeon_village_prototype/steam_commerce_skin.hpp)及`input_startup_world_commerce_top`：设备选择先安装，再上→下→确认优先返回，子页插入与选择在同一候选提交，失败回滚；Session／应用／研究窗口均接此入口，未初始化或缺字段明确拒绝。研究窗口按源无marker的行作松开选择并确认，键盘用现离散按键适配；不认证原repeat及OS投递。Shop NEW可直接读取已有货源／item_commerce_read、facility_presence／facility_commerce_read及星级，现`steam_commerce_input`保持上文原谓词和短路消费，不用85维护策略替换提示资格；只读查询不初始化、清NEW或抽随机。研究文字／Noto和显式静态手形帧0是适配，共享原手形调度未接。84主体下一入口为Update2 `10319CA9`、Draw `1034D218`；86为Update2 `10319895`、Draw `1034C86F`，本段不提前认证其完整表现。
+
+<a id="steam-commerce-items"></a>
+
+### Steam买卖目录84：两展示页、反馈时序与版差
+
+固定Steam2.56的Init2／Update2／`_draw2_4`方法索引与上节相同；本次直接从原DLL方法入口按指令边界核84局部，范围分别为`1030EC06–1030EE00`、`10319CA9–1031A37D`、`1034D218–1034DBD6`，未操作游戏。mode来自value1_，0购买／1出售；不是展示页page_。构造初选0、公共Init清frame及装软标签，cctor在`1032A5BD–A612`安装84两软标签`{0,2}`。Init2新建ary1，沿AppData.itemData原序仅按购买restNum_>0／出售haveNum_>0收集，不读state；空目录分别事件13／15后Pop，非空才SetHelpMsgInit(mode)。
+
+普通Update先调用UpdateHelpMsg(mode)，随后独立上→下循环选择；仅mode0再独立左→右各翻一次两页，mode1不读取左右。之后只修首行使selection落在五行窗内，再确认优先软返回2。确认有同83的DEBUG_CMD旁支，正常输入不接；无确认的返回逐剩余ary1写isShopSee=true才Pop，不清定义NEW。正反馈在这一轮开始先减1：减后仍>0的确认只清反馈并SetHelpMsgInit、返回false，不交易；原counter1的这一轮可在减到0后真正交易，不能在前一轮快照上先判“有反馈”阻挡它。方向／展示翻页不因正反馈屏蔽。
+
+真正交易仍沿前文BuyItem／SellItem。买入先ChPayMoney(price)不足事件11并保留页；mode0调用BuyItem，mode1调用SellItem。交易后若所选索引≥新count归0，先修五行可见窗，再把过高first夹到max(count−5,0)、必要时夹selection；**只有这一交易后段显式夹新目录尾部**，不能把这段误写成所有普通方向输入的步骤。随后绑定本次ItemData、mode创建并Push86，再PlaySe(`AppData.SHOP_SE[shopSeIndex]`)；声音不是86再次发。若目录空，买完／卖完分别事件13／14后Pop84，已创建86不被抹掉；目录非空才SetHelpMsg(`まいどあり!`,本次买价或向零半卖价)。正常成功次序不证明原异常／Push失败的事务安全，维护Owner仍独立回滚。
+
+84 Draw外框220×168、top0，Box(17,74,219,184)。购买标题用LT(`ﾊﾟﾝﾌﾟｷﾝ商会 <0>/2`,page+1)且调用Draw_titleBarArrow(220,168)；出售标题只是商会名，无序号／箭头。箭头复用已核helper：q=3×trunc((frame%16)/8)、左(26−q,55)／右(214+q,55)、SEB3帧3／0、组件1值16／18，不增加独立持久时钟。表头／行／底栏均沿棕色SC_WINDOW_BLACK，只有选中底沿SC_SELECT。
+
+| 具名绘制／输入 | Steam实际消费者；APK差异单列 |
+| --- | --- |
+| 表头 | 名称(30,69)普通字；购买page0“残り”始终TextLayout(137,69,40,13,anchor32,lineSpace0)，价格JP185／非JP179；购买page1仅“所持”JP185／非JP175；出售“所持”JP137／非JP128，价格JP185／非JP179。此处无额外临时字号。APK买剩余普通字x134、卖持有JP134／非JP125，不套其位置。 |
+| 五行原序 | 从first最多五行，Y=97+19×(absolute−first)。选中底FillRect(23,Y−2,191,16)，先底→Touch→NEW→手形→道具图标→名称→数量／价格。此页NEW读isShopSee而非new_；false就画common147@(10,Y+2)，不因state或买卖mode隐藏。手形common SEB21当前帧@(21,Y+8)；mode1道具两层图标@(30,Y−2)，读取ItemData.icon_，见[共享图标](../ui/ITEM_ICON_RENDER.md)。 |
+| 行Touch | SLIST组件11、base(23,Y−2,191,16)、value=`0x20000\|absolute`，TouchOption flag16及Margin(29,0,0,0)，实参顺序为left／right／top／bottom。APK同处Margin(29,29,0,0)。保留首次仅标记资格，不能照79或83取消marker，也不将base＋margin当最终OS实测热区。 |
+| 名称 | JP普通DrawString(50,Y)。非JP是继承当前字号的TextLayout(50,Y−3,85,17,anchor32,lineSpace0)，本分支未SetFontSize。APK则临时字号10、普通字(50,Y+1)，两者不能合并为同一消费者。 |
+| 数量／钱 | 购买page0：restNum_用Draw_count(161,Y+1,SEB12)，售价Draw_money(210,Y+1)足额15／不足19；购买page1：只读haveNum_并Draw_count(210,Y+1,SEB12)，不改交易方向或跳过付款。出售：haveNum_在161，向零半价金额在210、SEB15，不检查购买预算。APK第一数量锚158。count先Comma右锚dx−10再SEB76/frame2单位；买入持有展示的0合法，不能复用只收1..999的正库存接口而改成1。 |
+| 滚动／正常底栏 | 原DrawVerticalScroll2(221,85,4,110,first,count−1,5)，此页110高，不套79的111。无正反馈时对当前所选ItemData调用Draw_itemExplain(g,item,120,199)，不是description／价格拼句。现[普通道具说明计划](../prototype/include/dungeon_village_prototype/steam_human_skin.hpp)同锚可复用其已证效果分类及实际测宽；完整字体后端仍另验。 |
+
+正反馈底栏不读取当前商品价：原静态SubForm三字段shopMode_helpMsg／Cnt／Money位于`+158／+15C／+160`。SetHelpMsg（RVA`316760`）保存传入文本／金额并置Cnt20；SetHelpMsgInit（`3166D0`）只取SHOPMODE_HELPMSGS[mode]、置Cnt0，**不清Money**；UpdateHelpMsg（`320AF0`）只减正Cnt，到0才恢复默认。Draw在Cnt>0时先棕色原文本(54,199,anchor1)，再Draw_spCharaClip(g,30,195,imgId2,direct0,18,18)；mode0冻结金额以SEB19 Draw_minusValue(201,200)后同SEB19／image109 frame20单位，mode1以SEB12 Draw_plusValue后同SEB12／image103 frame20单位。原序数字／正负号→单位，不把钱数画成普通文字或重新交易。20是获准页面更新次数，非秒数；这些原全局静态字段不能被描述为原文件必保存的页面载荷。
+
+文字槽按usage5独立核：购买标题`110FC3D8`、名称`110F5D68`、持有`110F6E48`、价格`110F4CB4`、剩余`110F7FD8`、交易反馈`110F1CA4`；对应字面见上文。当前语言转换、真正字体度量、继承字号／SEB当前帧、所有TextLayout排版及触控到OS的投递不由这批机器码／PNG关系证明。资源均沿现出版common图标、数字／单位、手形、箭头和南瓜肖像，不新复制图集；本次只交静态合同，没有新增84研究窗口认证。
+
+现Owner的`commerce_page_data[id]={mode,tab,selection,first,binding−1,feedbackCounter}`、`commerce_page_lists[id]`原序ID、初始化集合及page_counters已持久；库存／货源／已读、现金与月桶已有唯一消费者，可接严格只读目录桥，不另建目录／游标缓存。但当前逐action API还需整轮输入及反馈先减的次序接线；当前仅保存feedbackCounter，**没有本次冻结反馈金额**，选中商品已删除／价格改变／导航后不能拿当前价格替代。纯计划可先显式接受已核反馈金额来源，Owner桥与精确恢复须先解决这项实际缺口，不能靠0占位伪称反馈完整；保存该额外显示载荷的设计另按仓库约定处理。既有普通档规则／研究安全校验不因皮肤查询放宽。
+
+<a id="steam-commerce-facilities"></a>
+
+### Steam设施购买85：三行预览、详情与两个提交时点
+
+来源仍为固定Steam2.56：Init2局部`1030EADF–1030EC05`、Update2 `103198B1–10319CA8`、`_draw2_4` `1034CBC9–1034D217`。Init按TenantData原序收`state!=2 && saleRank!=-1 && saleRank<=UserData.nowRank_`，空目录执行13后Pop；它不预筛足额或isShopSee。构造初选0、公共Init软标签读取沿83，cctor `1032A617–A67D`独立安装85的`{7,2}`。**原p!=2与用户批准的维护p0目录收紧分开**，皮肤查询只消费已冻结目录，不能再按另一种资格重新排列表。
+
+Update独立上→下循环选择，再修first使selection落在三行窗内，无左右；随后确认优先返回2，返回优先详情7，调试确认仍只属DEBUG_CMD。详情在`10319A26–AAF`构造74、value1=1、tenantData绑定当前定义，再`this.Push`，不付点、不写已读、不绑定地图实例或清父85选择。确认先ChPayTownPoint(cost)，不足事件12并保留85；足额先SubTownPoint，再建93/r3、奖励ID取当前定义，Push93→Pop85→逐旧完整目录写isShopSee=true。返回也逐完整目录写已读后Pop；详情不写。领取仍由93满40另一次确认，85支付不调用GetTenant、不增加H或自动建设，原失败不具有维护Owner原子保证。
+
+Draw先220×168、top0窗与Box(17,74,219,184)，标题槽`110F7558`字面`施設の購入`。棕色设施头`110F7484`字面`施設`在(51,69)；价格先LT槽`110F4CB4`，JP(162,69)／非JP(158,69)，再用**当前真实Font**的StringWidth得到W，common SEB44／image31 frame4锚(166+W,67)显示点数单位，两语言均用166+W而非各表头x加4。此资源须沿已出版Steam `icon_result00`，不能因SEB相同借APK不同像素。
+
+三行令Y=`89+34*(absolute−first)`，每行有序请求如下：
+
+| 顺序／职责 | Steam实参与APK差异 |
+| --- | --- |
+| 建筑图块 | RGB(0,255,128) DrawRect(21,Y,89,34)，端点语义转半开90×35；push交集clip(22,Y+1,88,33)→DrawMapchip2(65,Y+11,定义mapchip,orientation0)→PopClip。不是普通Mapchip、当前实例朝向或绿色填底。 |
+| NEW／右框 | isShopSee=false才画common147@(22,Y+25)，不读new_。右绿DrawRect(110,Y,105,34)转半开106×35；选中才填SC_SELECT矩形(111,Y+1,104,33)。本页没有手形或标题箭头。 |
+| 行Touch／名称 | Touch11 base(110,Y,106,35)、value=`0x20000\|absolute`、marker16、Margin(29,0,0,0)；不是图块全行热区。棕色名称所有语言均TextLayout(116,Y+5,90,11,anchor32,lineSpace0)，继承字号。APK同锚普通DrawString、Margin左右各29；不得复制其字形策略或右边距。 |
+| 点价 | 当前村点足额用SEB20／image108、不足用SEB19／image109，DrawNumImage(cost,206,Y+20,padding0,anchor4)。读定义cost字段+48，不用金币造价或每行加G／点数单位；选择与不足颜色独立，零价合法。 |
+| 滚动／说明 | DrawVerticalScroll2(221,85,4,110,first,count−1,3)，110高不套79的111。末棕色槽`110F93A8`字面`街ポイントで購入できます。`在(45,199,anchor1)，再Draw_spCharaClip(g,21,195,id2,direct0,18,18)，复用上文南瓜私有数组和clip，不创建购买按钮。 |
+
+当前Owner已有85的六槽`{0,0,selection,first,−1,0}`、原序`commerce_page_lists`、初始化集合／计数、村点及设施已读；定义预览74用独立绑定，93领取和退休已有消费者，皮肤／整轮输入无需新持久字段。Mapchip2、点数字、Steam单位、NEW和肖像资源均可复用已出版接口；绘制桥必须提供实际价格头测宽，并严格读取当前定义／点数，不补估宽或重查商品资格。缺口仍为Steam有序皮肤、一次Owner整轮输入及原字体／OS动态；本次只读静态与APK普通文本交叉，不冒称自然兑换、截图或产品验收已完成。
+
+<a id="steam-commerce-result"></a>
+### Steam交易反馈86：已付款后的自动关闭页
+
+Steam `Update2`分派`10317C64–67`到`10319895`，专属处理仅调用`FormBase.Pop`（RVA`7E3A20`）后返回，没有按键门槛、数量、付款或父答案回传；APK `b/g.java:5906`同为下一获准更新直接`m()`。普通Init转Init2，后者没有86专属分支，走`10312333`默认true尾；cctor `1032A682–A6BE`安装两零软标签，故为`{0,0}`。84先在`1031A013／10319FF4`完成买／卖，修目录后才建86、绑定原道具和mode（`1031A161–18A`），声音随后由84请求；86不重复发声或交易。
+
+`_draw2_4`的`1034C86F–1034CBC8`绘170×125普通窗、top0，标题字面`ショップ`，Box端点(42,95,197,162)。棕色RGB(92,51,31)表头(47,91)虽写`所持金`，右侧**实际消费本笔交易差额，不是余额**：mode1将道具原价向零除2，以SEB12 plusValue@(184,92)，同SEB／图103另画frame20@(185,92)；mode0用原价、SEB19 minusValue及图109的同坐标frame20。没有乘数量。
+
+正文先实测当前Font的道具名宽W，令H=trunc((W+20)/2)，不夹宽；Draw_icon(mode1,真实iconIndex)锚(116−H,119)，名称普通文字@(136−H,122)。尾字居中(120,146,anchor2)，分别为`を売却しました／を購入しました`。底部`Draw_btmMsg('了解',175,true,true,200)`复用现帮助器：宽=min(实际字宽,200)+16，left=120−trunc(宽/2)，橙底(left,175,宽,16)，Touch4／value20=(left−20,155,宽+40,56)，文字anchor34，手形SEB21当前帧@(left−4,184)。**画出“了解”并注册Touch不改变下一获准更新自动Pop的消费者**，不能据截图新增等待确认。APK `b/g.java:8112`几何同构，译文与Steam字面仍分开。
+
+现Owner的mode／道具绑定／page_counter及真实定义名、icon、price足够提供本页只读输入，不新增数量或父答案字段。86是否实际被绘制仍受原框架调度影响；本次只有局部静态交叉，没有原窗口动态。维护84冻结反馈金额的缺口独立，不能借86临时绑定在其退休后继续猜金额；源异常非事务，唯一Owner回滚属于维护保证。
 
 ### 大炮店与未开放装备的有限排除
 

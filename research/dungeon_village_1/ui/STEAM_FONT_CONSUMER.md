@@ -195,6 +195,12 @@ Draw在107DA945–DAA8A取注册Frame／Wait／X／Y，再按非空参数1／2�
 
 外层TextBlock.Draw在已有局部矩阵时先压本块坐标平移并清局部x/y，随后将`Language.UnicodeToChanakyaEnable`置false；正常及所核异常尾都走helper RVA7D06C0，写该开关true并在CheckLocalMatrix成立时PopMatrix。它没有保存开关原值，不是完全无副作用；逐片render／blend／Transform的Pop只见于正常路径，helper不证明这些栈遇中途异常也恢复。产品应把已证key→SEB／源图／参数／Transform绑定作为外部提供者，缺绑定显式登记，维护拒绝与RAII作为独立策略；本批未认证完整注册键集合、自动wrap或真实字体，没有游戏操作、素材导出、核对脚本或磁盘过程产物。
 
+### 图标注册上游的有限排查
+
+固定样本的`.text`与`il2cpp`两可执行节中，未找到以`E8 rel32`直接调用或以`E9 rel32`直接跳转至`AddPictograph` RVA7C96C0的引用；同范围内Pictograph构造RVA7ADC10的唯一这类调用是Add内部VA107C9787。作为指令边界对照，GetPictograph确有四处直接调用：Add内部107C9727、布局107CE44B、块绘制107DA934、块测宽107DB29E，均可从对应具名方法入口解码抵达。因此已核布局／绘制消费者不能反推为游戏已注册具体图标。
+
+DLL中Add入口绝对VA的唯一四字节匹配在`.data`的1112D608；邻项依次对应SetTextCheckSize、SetRenderRectVisible、GetRenderRectVisible、Add／Get／Remove／ClearPictographs及SetPictographVisible，呈方法指针表排列，**不是具名游戏注册调用证据**。metadata全部11013条字符串literal中，含精确`<pic=`的只有前缀`<pic=`与模板`<pic=>`，没有可直接绑定SEB的具体key实例；这不覆盖外部本地化文本、运行时拼串或资源注入。当前仍无已证游戏调用者／key→SEB绑定，不凭素材名称补注册表，也不据上述有限扫描排除间接／虚调用、反射、Unity或原生注入，更不宣称运行时字典必为空。后继应从实际具名生产者或注册证据继续，不重复扫描helper绘制。
+
 ## 仍需闭合及产品使用边界
 
 已核层级是资源查找顺序、GUIStyle对象切换资格、本地化公式、两种测宽调用链及14项TAG的局部生产／消费。仍缺当前语言真实返回值、Unity空font具体回退、局部开关／scale／offset完整设置来源、完整自动换行／语言禁则、具体图标注册与素材绑定及实际字形baseline。[文字后端](STEAM_FONT_BACKEND.md)已有开关资格及栈恢复，[普通DrawString](STEAM_FONT_DRAW.md)已核锚点／字号补偿／矩阵→clip→GUI位置；这些不代替当前运行字体对象和字形度量。

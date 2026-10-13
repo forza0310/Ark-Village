@@ -885,6 +885,76 @@ void steam_commerce_skin_checks(Checks &check,const std::filesystem::path &root)
         check(!steam_commerce_input(invalid,id),"Steam83Owner只读桥拒缺键/错误页目录，不以默认值凑输出");
     }
 }
+void steam_commerce_result_skin_checks(Checks &check) {
+    SteamCommerceResultOptions options;options.finger_frame=4;
+    options.text.title="商店";options.text.cash_label="所持金";options.text.acknowledgement="了解";
+    options.text.messages={"已购买","已出售"};options.text.title_widths=std::array<int,2>{24,26};
+    // 调用点夹具绑定真实定义0；初始化不执行84交易，不把它声称为自然购买。
+    for(int mode=0;mode<2;++mode) {
+        auto state=test_support::page_fixture(86);const auto id=state.scripts.pages.back().id;
+        state.scripts.pages.back().legacy_f=mode;state.scripts.pages.back().legacy_s=0;
+        options.text.name_width=31;options.text.acknowledgement_width=mode==0?100:240;
+        check(!steam_commerce_result_skin(state,id,options),"Steam86缺初始化载荷不能靠真实定义补成合法反馈");
+        check(initialize_startup_world_commerce_pages(state),"Steam86真实绑定初始化条件夹具");
+        const auto before=startup_world_state_digest(state);
+        const auto item=std::find_if(state.rules->items.begin(),state.rules->items.end(),[](const auto &d){return d.identity==0;});
+        check(item!=state.rules->items.end(),"Steam86使用原定义0商品，不补演示定义或价格");
+        for(int sample=0;sample<3;++sample) {
+            constexpr std::array<int,3> widths{0,31,400},half{10,25,210};
+            options.text.name_width=widths[sample];const auto result=steam_commerce_result_skin(state,id,options);
+            check(bool(result),"Steam86买卖两类与零/奇数/宽名称实际Font测宽输入");
+            const auto &p=*result;std::vector<SteamFacilityNumber> numbers;
+            std::vector<SteamFacilityImage> images;std::vector<SteamHumanImage> icons;
+            std::vector<SteamHumanOverviewText> texts;std::vector<SteamStartupTouch> touches;
+            for(const auto &op:p.operations) {
+                if(const auto *n=std::get_if<SteamFacilityNumber>(&op))numbers.push_back(*n);
+                if(const auto *i=std::get_if<SteamFacilityImage>(&op))images.push_back(*i);
+                if(const auto *i=std::get_if<SteamHumanImage>(&op))icons.push_back(*i);
+                if(const auto *t=std::get_if<SteamHumanOverviewText>(&op))texts.push_back(*t);
+                if(const auto *t=std::get_if<SteamStartupTouch>(&op))touches.push_back(*t);
+            }
+            const auto digits=mode==1?SteamFacilityAsset::number05:SteamFacilityAsset::number12;
+            check(p.soft_labels==std::array<int,2>{0,0}&&numbers.size()==1&&
+                numbers[0].asset==digits&&numbers[0].kind==(mode==1?SteamFacilityNumberKind::plus_value:SteamFacilityNumberKind::minus_value)&&
+                numbers[0].value==(mode==1?item->commerce_price/2:item->commerce_price)&&
+                numbers[0].position==std::array<int,2>{184,92}&&images.size()==2&&images[0].asset==digits&&
+                images[0].position==std::array<int,2>{185,92}&&images[0].frame==20,
+                "Steam86买价SEB19 minus/卖价SEB12 plus显示单次差额，另画同图frame20单位");
+            check(texts.size()==4&&texts[0].value=="所持金"&&texts[0].rectangle==std::array<int,4>{47,91,0,0}&&
+                texts[1].value==item->name&&texts[1].rectangle==std::array<int,4>{136-half[sample],122,0,0}&&
+                texts[2].value==options.text.messages[mode]&&texts[2].rectangle==std::array<int,4>{120,146,0,0}&&
+                texts[2].anchor==2&&icons.size()==2&&icons[0].asset==SteamHumanAsset::equipment_background&&
+                icons[0].position==std::array<int,2>{115-half[sample],118}&&icons[0].crop==std::array<int,4>{18,0,18,18}&&
+                icons[1].asset==SteamHumanAsset::item_icon&&icons[1].position==std::array<int,2>{116-half[sample],119}&&
+                icons[1].crop==std::array<int,4>{80,0,16,16},
+                "Steam86真实item0 icon5/分类底图先于名称；W+20先整半，不截长名称或拿定义ID裁图");
+            const int button_width=mode==0?116:216,left=mode==0?62:12;
+            const auto *frame=std::get_if<SteamStartupFrameDraw>(&p.operations[p.operations.size()-4]);
+            const auto *rectangle=frame?std::get_if<StartupSkinRect>(frame):nullptr;
+            check(rectangle&&rectangle->rect==std::array<int,4>{left,175,button_width,16}&&
+                rectangle->rgb==std::array<int,3>{255,153,55}&&touches.size()==1&&touches[0].component==4&&touches[0].value==20&&
+                touches[0].rectangle==std::array<int,4>{left-20,155,button_width+40,56}&&
+                texts[3].rectangle==std::array<int,4>{left,175,button_width,16}&&texts[3].anchor==34&&texts[3].layout&&
+                images[1].asset==SteamFacilityAsset::finger&&images[1].frame==4&&images[1].position==std::array<int,2>{left-4,184},
+                "Steam86原底部了解夹200后加16，原序橙底/Touch4/限框字/当前帧手形，不增加软确认标签");
+            check(startup_world_state_digest(state)==before,"Steam86重复绘制不付款/发声/Pop或推进输出/随机");
+        }
+        for(int fault=0;fault<8;++fault) {
+            auto bad=state;auto input=options;
+            if(fault==0)bad.commerce_page_data.erase(id);
+            if(fault==1)bad.page_counters.erase(id);
+            if(fault==2)bad.commerce_page_lists[id]={0};
+            if(fault==3)bad.commerce_page_data.at(id)[4]=1;
+            if(fault==4)input.text.name_width.reset();
+            if(fault==5)input.text.acknowledgement_width=-1;
+            if(fault==6)input.finger_frame=6;
+            if(fault==7)input.text.messages[1].clear();
+            const auto digest=startup_world_state_digest(bad);
+            check(!steam_commerce_result_skin(bad,id,input)&&startup_world_state_digest(bad)==digest,
+                "Steam86错绑定/缺键/孤立目录/坏字体或手形输入显式拒绝且原Owner不变");
+        }
+    }
+}
 void steam_platform_skin_checks(Checks &check,const std::filesystem::path &source_root) {
     // 原managed kairolib的显式seb23/img27及seb25/img29；与游戏common包不同。
     struct Oracle {const char *stem;int image,width,height,dx,dy;};
@@ -2641,6 +2711,7 @@ int check_startup_skin(const std::filesystem::path &source_root,
     steam_new_game_skin_checks(check);
     steam_config_skin_checks(check);
     steam_commerce_skin_checks(check,source_root);
+    steam_commerce_result_skin_checks(check);
     steam_platform_skin_checks(check,source_root);
     frame_geometry(check);
     income_information(check);

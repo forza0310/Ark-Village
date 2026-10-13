@@ -143,6 +143,7 @@ Options parse_options(int argc, char **argv) {
             options.inspect_page != "new-game-village" && options.inspect_page != "new-game-name" &&
             options.inspect_page != "new-game-sex" && options.inspect_page != "new-game-start" &&
             options.inspect_page != "commerce-buy" && options.inspect_page != "commerce-sell" && options.inspect_page != "commerce-facility" &&
+            options.inspect_page != "commerce-bought" && options.inspect_page != "commerce-sold" &&
             options.inspect_page != "config-quality" && options.inspect_page != "config-locked" &&
             options.inspect_page != "config-speed" && options.inspect_page != "config-volume" &&
           options.inspect_page != "gift-facility" && options.inspect_page != "gift-profession" &&

@@ -1,5 +1,7 @@
 # 产品侧小窗 UI 示例
 
+[商会交易反馈两态](steam-commerce-result.png)（960×640／22129字节）：左购买、右出售。条件开放商会并补货后，通过实际83→84单件交易产生86，读取原道具0／400G价与图标；买−400G／卖+200G显示的是本笔差额，不能因表头“所持金”改画余额。`commerce-bought`／`commerce-sold`各8帧、0世界更新、不加`--world`，明确冻结已产生86供观察，不认证原框架必然绘到它。正常消费者下一获准更新自动关闭，“了解”图元不增加一次交易或确认门槛。中文、Noto、背景和手形0属适配；[来源及接口](../../rules/COMMERCE.md#steam-commerce-result)保留字体／OS动态边界。
+
 [商会主页三种选择](steam-commerce-top.png)（1440×640／38145字节）：左至右为购买道具、出售道具、购买设施，三张480×640研究窗口原尺寸拼接。消费`steam_commerce_skin`及已出版图像，等级1、两NEW的有无与静态手形帧0为显式条件；`commerce-buy`／`commerce-sell`／`commerce-facility`各8帧、0世界更新、不加`--world`。原Owner查询与输入已另接真实商会入口；本图不证明自然开放、交易、共享手形调度或原OS输入。中文、Noto、VIEW_Y23、绿色背景与研究标签属适配，原私有南瓜裁片、三行、图标与NEW条件见[合同](../../rules/COMMERCE.md#steam-commerce-top)。
 
 [设置页主体四态](steam-config.png)（960×1280／80579字节）：左上画质行、右上锁定速度行、左下已解锁高速、右下音量行及加号／平台键盘高亮态。四张480×640研究窗口原尺寸拼接，消费正式`steam_config_skin`与现`buttoneffect.png`；P12/P13/J3/J4基值0/0/3/5、后两态的资格／速度／音量变化都是显式绘制条件，不是平台初值。每态8帧、0世界更新，不建世界、不改真实音量／画质、不保存。`config-quality`／`config-locked`／`config-speed`／`config-volume`均不加`--world`。VIEW_Y23，Noto、中文说明、绿色背景和研究标签为适配；现已绘平台键盘，清原点后固定锚，最后一态高亮沿已核生成shader公式作GLSL适配；现成原shader和GPU像素未认证，本图不认证完整平台设置页、原字体、OS拖动／外链或设置Owner。源热区、旋钮位置、密度与反向值合同见[设置合同](../STEAM_INTERACTIONS.md#游戏设置与标题平台按钮)。

@@ -125,7 +125,7 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 83 | SHOPPING_TOP | 商会 | Steam完整局部合同、只读皮肤／Owner NEW查询及同轮输入已接研究窗口：三入口、等级、私有南瓜、两NEW、上→下→确认优先返回；见[合同](../rules/COMMERCE.md#steam-commerce-top)与[接口](../prototype/include/dungeon_village_prototype/steam_commerce_skin.hpp)。字体／共享手形调度及原OS动态独立，未由条件图认证 |
 | 84 | SHOPPING_ITEMSELECT | 商会 | Steam局部Init／输入／绘制与APK差异已核，见[目录合同](../rules/COMMERCE.md#steam-commerce-items)。已有交易Owner；冻结反馈金额缺载荷，不能用当前选项价替代。皮肤与整轮反馈次序接线待补，原动态未验 |
 | 85 | SHOPPING_TENANT | 商会 | Steam三行／Mapchip2／点价／滚动／NEW、详情74及先扣点再93领取已核，见[设施合同](../rules/COMMERCE.md#steam-commerce-facilities)。Owner与定义预览已有，p0收紧为用户策略；原序皮肤和整轮输入待接，原动态未验 |
-| 86 | SHOPPING_ACT_AFTER | 商会 | Steam完整局部已核：已交易后创建，下一获准更新直接Pop，虽画了解但不等待确认；所持金标签旁实际绘本笔差额。见[反馈合同](../rules/COMMERCE.md#steam-commerce-result)。维护自动关闭已有，纯皮肤待接／原动态未验 |
+| 86 | SHOPPING_ACT_AFTER | 商会 | Steam完整局部已核：已交易后创建，下一获准更新直接Pop，虽画了解但不等待确认；所持金标签旁实际绘本笔差额。见[反馈合同](../rules/COMMERCE.md#steam-commerce-result)。维护只读皮肤／真实图标／实际测宽及研究窗口已接，保留原自动关闭；原动态未验 |
 | 87 | MEDAL_LIST | 授勋／怪物／住宅 | [局部合同与纯计划](PAGES.md#steam住宅候选80与授勋目录87)及显式游标helper已接：三页签、五行、各数值列／勋章与住宅图；现奖励消费者不等于原dialog父子页，Owner游标／页签／问答接线及原动态待补 |
 | 88 | MEDAL_CELEMONY | 授勋／怪物／住宅 | [合同与有序皮肤](STEAM_HUMAN_DETAIL.md#human-reward-followups)：Steam背景／演员／奖章／气泡／陪衬和mentalUp偏移135、严格Owner桥／窗口／恢复已接；共享scratch附效、字体及原动态待证 |
 | 89 | MONSTER_NEWAPPEAR | 授勋／怪物／住宅 | Steam静态产生者：介绍脚本→绑定所选怪物的89请求→立即置介绍标志已核；维护同步介绍／对话身份与回滚已接。89自身Steam更新／皮肤／原动态仍缺，见[怪物介绍合同](../rules/STEAM_MONSTER_PROGRESSION.md) |

@@ -1,6 +1,7 @@
 // Steam SubForm raw83；静态合同见rules/COMMERCE.md#steam-commerce-top。
 #include "dungeon_village_prototype/steam_commerce_skin.hpp"
 #include "dungeon_village_prototype/startup_world_commerce.hpp"
+#include "dungeon_village_prototype/startup_world_visuals.hpp"
 #include <algorithm>
 #include <limits>
 
@@ -87,6 +88,58 @@ std::optional<SteamCommerceSkinPlan> steam_commerce_skin(
             SteamFacilityAsset::finger,{o.japanese?68:66,y+13},o.finger_frame,{}});
     }
     text(o.text.explanations[in.selection],{120,198,0,0},2);
+    return p;
+}
+std::optional<SteamCommerceSkinPlan> steam_commerce_result_skin(
+    const StartupWorldRuntimeState &s,std::uint64_t page,const SteamCommerceResultOptions &o) {
+    const auto view=inspect_startup_world_commerce_page(s,page);
+    const auto valid_text=[](const std::string &value){return !value.empty()&&value.size()<=4096;};
+    const auto valid_width=[](const std::optional<int> &width){return width&&*width>=0&&*width<=4096;};
+    if(!view||view->raw!=86||s.commerce_page_lists.count(page)||view->mode<0||view->mode>1||
+       o.view_y< -65536||o.view_y>65536||o.finger_frame<0||o.finger_frame>5||
+       !valid_text(o.text.title)||!valid_text(o.text.cash_label)||!valid_text(o.text.acknowledgement)||
+       !valid_text(o.text.messages[0])||!valid_text(o.text.messages[1])||!o.text.title_widths||
+       std::any_of(o.text.title_widths->begin(),o.text.title_widths->end(),[](int w){return w<0||w>4096;})||
+       !valid_width(o.text.name_width)||!valid_width(o.text.acknowledgement_width))return {};
+    const auto item=std::find_if(s.rules->items.begin(),s.rules->items.end(),
+        [&](const auto &definition){return definition.identity==view->binding;});
+    if(item==s.rules->items.end()||!valid_text(item->name)||item->commerce_price<0)return {};
+    const auto icons=startup_world_item_icon_draws(s,view->binding);
+    if(!icons)return {};
+    const auto window=steam_startup_window_skin(
+        {170,125,0,0,SteamStartupTextRole::message_title,0},o.view_y,o.text.title_widths);
+    const auto box=steam_startup_box_skin({42,95,197,162},o.view_y);
+    if(!window||!box)return {};
+    SteamCommerceSkinPlan p;p.title=o.text.title;p.soft_labels={0,0};
+    for(const auto &op:window->draws)p.operations.emplace_back(op);
+    for(const auto &op:box->draws)p.operations.emplace_back(op);
+    const auto text=[&](const std::string &value,std::array<int,4> rect,int anchor,bool layout=false) {
+        p.operations.emplace_back(SteamHumanOverviewText{
+            SteamHumanOverviewTextRole::equipment_name,value,rect,anchor,0,layout,{92,51,31}});
+    };
+    text(o.text.cash_label,{47,91,0,0},0);
+    const bool sell=view->mode==1;
+    const auto digits=sell?SteamFacilityAsset::number05:SteamFacilityAsset::number12;
+    // 单件原定义价；余额/商会反馈数量不参与原86差额显示。
+    p.operations.emplace_back(SteamFacilityNumber{
+        sell?SteamFacilityNumberKind::plus_value:SteamFacilityNumberKind::minus_value,
+        digits,sell?item->commerce_price/2:item->commerce_price,{184,92},0,4,-1});
+    p.operations.emplace_back(SteamFacilityImage{digits,{185,92},20,{}});
+    const int half=(*o.text.name_width+20)/2;
+    for(const auto &part:*icons) {
+        if(part.resource!=StartupVisualResource::common||(part.image!=24&&part.image!=9)||part.sprite!=-1)return {};
+        p.operations.emplace_back(SteamHumanImage{
+            part.image==24?SteamHumanAsset::equipment_background:SteamHumanAsset::item_icon,
+            {116-half+part.offset[0],119+part.offset[1]},0,part.crop});
+    }
+    text(item->name,{136-half,122,0,0},0);
+    text(o.text.messages[view->mode],{120,146,0,0},2);
+    // 原了解仅绘制/触区；保持自动Pop的原更新合同，不添加等待确认状态。
+    const int width=std::min(*o.text.acknowledgement_width,200)+16,left=120-width/2;
+    p.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{{left,175,width,16},{255,153,55},false}});
+    p.operations.emplace_back(SteamStartupTouch{4,20,std::array<int,4>{left-20,155,width+40,56},{},0});
+    text(o.text.acknowledgement,{left,175,width,16},34,true);
+    p.operations.emplace_back(SteamFacilityImage{SteamFacilityAsset::finger,{left-4,184},o.finger_frame,{}});
     return p;
 }
 } // namespace dungeon_village_prototype

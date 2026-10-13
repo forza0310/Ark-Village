@@ -49,4 +49,20 @@ struct SteamCommerceSkinPlan {
 // 不读Owner、不初始化子页、不改NEW/库存、页面计数或随机；仅覆盖raw83。
 std::optional<SteamCommerceSkinPlan> steam_commerce_skin(
     const SteamCommerceSkinInput &input,const SteamCommerceSkinOptions &options);
+struct SteamCommerceResultTextInput {
+    std::string title, cash_label, acknowledgement;
+    std::array<std::string,2> messages; // mode0购买／mode1出售的原尾字，不含道具名。
+    std::optional<std::array<int,2>> title_widths;
+    std::optional<int> name_width, acknowledgement_width;
+};
+struct SteamCommerceResultOptions {
+    int view_y{}, finger_frame{};
+    SteamCommerceResultTextInput text;
+};
+// raw86已付款反馈；只读真实绑定/定义价/图标及实际Font测宽，soft为{0,0}。
+// 表头“所持金”右侧画本次差额而非余额；了解Touch是原绘制输出，不新增确认门槛。
+// 下一获准更新自动关闭仍由既有Owner消费者负责，此查询不发声音/再次交易/Pop。
+std::optional<SteamCommerceSkinPlan> steam_commerce_result_skin(
+    const StartupWorldRuntimeState &state,std::uint64_t page,
+    const SteamCommerceResultOptions &options);
 } // namespace dungeon_village_prototype

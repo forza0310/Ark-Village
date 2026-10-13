@@ -1153,6 +1153,54 @@ void effort_skin_checks(Checks &c) {
     for(int n=0;n<8;++n)c(steam_human_effort_result_skin(s,id,o)->operations.size()==plan->operations.size()&&startup_world_state_digest(s)==digest,"67查询不重算属性或推进输出");
     s.page_counters.erase(id);c(!steam_human_effort_result_skin(s,id,o),"67已初始化缺main拒绝");
 }
+void award_result_checks(Checks &c,const std::filesystem::path &source_root) {
+    SteamHumanAwardResultInput in;in.human={0,1,0,0,0,"授勋条件",{{{95,90},{100,100},{20,15}}}};
+    SteamHumanOverviewOptions o;o.title_widths=std::array<int,2>{60,60};o.character_frame=12;
+    o.ceremony_message_widths={30,42};
+    // 独立Steam MC_ANIME_TIME=30/60/75/95/135；相邻边界覆盖演员动作、奖章路径、气泡与陪衬。
+    struct Sample {int phase,tick,minister,body,medal_x,medal_y,crowd;const char *bubble;};
+    for(const auto &v:std::array<Sample,10>{{
+        {0,29,0,2,-1,0,0,""},{0,30,8,2,111,123,0,"恭喜!"},{0,59,8,2,111,123,0,"恭喜!"},
+        {0,60,0,26,121,123,0,""},{0,74,0,26,121,123,0,""},{0,75,0,22,128,108,0,""},
+        {0,94,0,22,128,108,0,""},{0,95,6,22,128,108,1,"太好了!"},
+        {0,134,6,22,128,108,1,"太好了!"},{1,135,6,22,128,108,1,""}}}) {
+        in.phase=v.phase;in.counter=v.tick;const auto p=steam_human_award_result_skin(in,o);c(bool(p),"88各源门槛可绘");
+        const auto images=parts<SteamHumanImage>(*p);const auto actors=parts<SteamHumanPortrait>(*p);const auto texts=parts<SteamHumanOverviewText>(*p);
+        c(std::any_of(images.begin(),images.end(),[&](const auto &i){return i.asset==SteamHumanAsset::president&&i.frame==v.minister&&i.position==std::array<int,2>{108,139};}),"88大臣按主钟站立/授予/庆祝");
+        c(!actors.empty()&&actors[0].position==std::array<int,2>{136,139}&&actors[0].actor.body.sprite==v.body&&
+          actors[0].actor.body.frame==0&&!actors[0].actor.weapon,"88上人物方向2步0、动作0/10/4且无武器");
+        const auto medal=std::find_if(images.begin(),images.end(),[](const auto &i){return i.asset==SteamHumanAsset::medal;});
+        c(v.medal_x<0?medal==images.end():medal!=images.end()&&medal->position==std::array<int,2>{v.medal_x,v.medal_y}&&
+          medal->crop==std::optional<std::array<int,4>>{{14,0,14,14}},"88奖章三段锚点不按人物脚点移动");
+        int crowd=0;for(const auto &i:images)if(i.asset==SteamHumanAsset::award_crowd) {
+            c(i.frame==2*crowd+v.crowd,"88三个陪衬独立SEB帧组");++crowd;
+        }
+        c(crowd==3,"88恰三个陪衬");
+        c(std::count_if(texts.begin(),texts.end(),[&](const auto &t){return t.value=="恭喜!"||t.value=="太好了!";})==(*v.bubble?1:0),"88气泡只在各自区间");
+        if(*v.bubble)c(std::any_of(texts.begin(),texts.end(),[&](const auto &t){return t.value==v.bubble;}),"88气泡字面与阶段对应");
+    }
+    in.phase=0;in.counter=30;auto missing=o;missing.ceremony_message_widths[0].reset();
+    c(!steam_human_award_result_skin(in,missing),"88显示中的气泡必须实测宽");
+    in.counter=60;c(bool(steam_human_award_result_skin(in,missing)),"88未显示气泡不要求无关测宽");
+    in.phase=1;in.counter=212;auto plan=steam_human_award_result_skin(in,o);c(bool(plan),"88奖励段完整输出");
+    const auto actors=parts<SteamHumanPortrait>(*plan);
+    c(actors.size()==2&&!actors[0].actor.weapon&&actors[1].actor.weapon&&actors[1].actor.body.frame==3,
+        "88底奖励人物共享12帧、当前武器不继承上人物动作");
+    const auto touches=parts<SteamStartupTouch>(*plan);
+    c(touches.size()==1&&touches[0].component==2&&!touches[0].rectangle&&touches[0].option==2&&
+      plan->soft_labels==std::array<int,2>{0,0},"88原Touch2无返回按钮");
+    in.counter=0;c(bool(steam_human_award_result_skin(in,o)),"88phase1主钟回绕local负135仍绘前值");
+    in.counter=std::numeric_limits<int>::max();c(!steam_human_award_result_skin(in,o),"88非法主钟拒绝");
+    const auto resource=steam_human_resource(SteamHumanAsset::award_crowd);c(bool(resource),"88陪衬具名资源");
+    auto img=LoadImage((source_root.parent_path()/resource->published_image).string().c_str());
+    c(img.data&&img.width==32&&img.height==63,"88复用原32x63图集而非重画");UnloadImage(img);
+    auto s=test_support::page_fixture(88);const auto id=s.scripts.pages.back().id;s.scripts.pages.back().lifecycle=2;
+    s.page_human_bindings[id]=1;s.page_counters[id]=212;s.page_phases[id]=1;s.reward_display=in.human.rewards;
+    const auto digest=startup_world_state_digest(s);plan=steam_human_award_result_skin(s,id,o);c(bool(plan),"88严格Owner桥");
+    for(int i=0;i<8;++i)c(steam_human_award_result_skin(s,id,o)->operations.size()==plan->operations.size()&&startup_world_state_digest(s)==digest,
+        "88重复查询不改世界/奖励/随机/输出且请求规模稳定");
+    s.page_counters.erase(id);c(!steam_human_award_result_skin(s,id,o),"88已初始化缺main不修补");
+}
 void residence_result_checks(Checks &check,const std::filesystem::path &source_root) {
     const auto &facilities=startup_world_rules().facilities;
     const auto home=std::find_if(facilities.begin(),facilities.end(),[](const auto &d){return d.kind==12;});
@@ -1243,5 +1291,6 @@ int check_steam_human_skin(const std::filesystem::path &source_root) {
     gift_catalogue_checks(check);profession_catalogue_checks(check);attribute_result_checks(check);shared_character_clock_checks(check);
     residence_result_checks(check,source_root);
     award_skin_checks(check,source_root);effort_skin_checks(check);
+    award_result_checks(check,source_root);
     return check.count;
 }

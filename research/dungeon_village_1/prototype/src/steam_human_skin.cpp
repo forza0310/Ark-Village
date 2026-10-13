@@ -60,6 +60,7 @@ std::optional<SteamHumanResource> steam_human_resource(Asset asset) {
     case Asset::continue_cursor:return SteamHumanResource{72,2,"original/common/arrow01.png","original/common/arrow01.seb"};
     case Asset::result_icon:return SteamHumanResource{31,44,"original/common/icon_result00.png","original/common/icon_result00.seb"};
     case Asset::president:return SteamHumanResource{171,46,"original/common/chara_president.png","original/common/chara_president.seb"};
+    case Asset::award_crowd:return SteamHumanResource{12,6,"original/event/event_medelCelemony_chara.png","original/event/event_medelCelemony_chara.seb"};
     case Asset::gift_box:return SteamHumanResource{82,73,"original/common/present00.png","original/common/present00.seb"};
     case Asset::gift_face:return SteamHumanResource{11,29,"original/common/icon_nico00.png","original/common/icon_nico00.seb"};
     case Asset::item_icon:return SteamHumanResource{9,-1,"original/common/tresureIcon00.png",nullptr};
@@ -663,10 +664,11 @@ std::optional<SteamHumanOverviewPlan> steam_human_reward_skin(
     return steam_human_reward_skin(SteamHumanRewardInput{h->profession,h->sex,
         h->equipment[0].value_or(-1),page,frame,h->name,s.reward_display},o);
 }
-std::optional<SteamHumanOverviewPlan> steam_human_reward_skin(
+static std::optional<SteamHumanOverviewPlan> human_reward_skin_impl(
     const SteamHumanRewardInput &in,const SteamHumanOverviewOptions &o) {
     const int page=in.phase,frame=in.counter;
-    if((page!=0&&page!=1)||frame<0||!o.character_frame||*o.character_frame<0||
+    // raw88 phase1的主钟可回绕至0，局部钟最低−135；原负局部钟只显示旧值。
+    if((page!=0&&page!=1)||frame<(page==1?-135:0)||!o.character_frame||*o.character_frame<0||
        in.name.empty()||in.name.size()>4096)return {};
     SteamHumanOverviewPlan out;out.soft_labels={0,0};
     out.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{{23,156,78,51},{223,239,255},false}});
@@ -695,6 +697,15 @@ std::optional<SteamHumanOverviewPlan> steam_human_reward_skin(
     if(page==1&&frame>=77&&(frame-77)%25<15)
         out.operations.emplace_back(SteamHumanImage{Asset::continue_cursor,{212,204},0,{}});
     return out;
+}
+std::optional<SteamHumanOverviewPlan> steam_human_reward_skin(
+    const SteamHumanRewardInput &in,const SteamHumanOverviewOptions &o) {
+    if(in.counter<0)return {};
+    return human_reward_skin_impl(in,o);
+}
+std::optional<SteamHumanOverviewPlan> steam_human_award_mental_skin(
+    const SteamHumanRewardInput &in,const SteamHumanOverviewOptions &o) {
+    return human_reward_skin_impl(in,o);
 }
 std::optional<SteamHumanOverviewPlan> steam_human_profession_result_skin(
     const StartupWorldRuntimeState &s,std::uint64_t id,const SteamHumanOverviewOptions &o) {

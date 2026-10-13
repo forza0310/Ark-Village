@@ -574,7 +574,7 @@ Steam2.56静态来源：22为`SubForm._draw` VA10353269–10353798，23／24为`
 
 ### Steam参加名单、追加与出发25–28
 
-本批[纯皮肤](../prototype/include/dungeon_village_prototype/steam_task_roster_skin.hpp)及[条件示例](examples/README.md)已提供，不等于新Owner UI载荷／输入恢复接线；新增持久布局见[待确认设计](../prototype/PERSISTENCE.md#任务后继ui载荷设计待确认)。原源为_draw1_1的25／26分支VA10331996、27分支103311DE、28分支10330630，与APK对应页交叉；不从旧粗框窗口反推精确位置。
+本批[纯皮肤](../prototype/include/dungeon_village_prototype/steam_task_roster_skin.hpp)及[条件示例](examples/README.md)已提供，不等于新Owner UI载荷／输入恢复接线；新增持久布局见[已批准设计](../prototype/PERSISTENCE.md#任务后继ui载荷设计待确认)。原源为_draw1_1的25／26分支VA10331996、27分支103311DE、28分支10330630，与APK对应页交叉；不从旧粗框窗口反推精确位置。
 
 25／26原X为冻结人物名单＋末尾−1追加行，标题人数另读实时m.size，不能从X推算。行y97+19×offset，原行Touch11无marker、margin(0,−22,0,0)，肖像clip(29,y−1,15,14)、脚底(37,y+21)；等级10显示MAX，努力值为APK e.u／Steam CharacterData.putUp_+54（10331EC9），不混同勋章E。25软标签详情7／开始12，26详情7／返回2，详情优先取消，末尾追加行上的详情输入即便无动作也吞本轮取消。成功追加回父时才重抄m并选追加行，取消或详情返回保持X，不能在每次绘制刷新名单。
 
@@ -588,7 +588,7 @@ DTO严格区分冻结X、实时人数、候选四战斗值、费用可负担和�
 
 ### Steam任务成果与期限的后继定位
 
-29–33业务已有维护消费者；[成果皮肤](../prototype/include/dungeon_village_prototype/steam_task_result_skin.hpp)现含30纯计划／严格Owner只读桥和31／32纯计划，[期限皮肤](../prototype/include/dungeon_village_prototype/steam_task_deadline_skin.hpp)提供33完整局部纯计划。31–33新Owner UI载荷接线仍待设计确认。29在_draw1_1 VA10330601–10330629调用`Draw_dungeonInfo RVA30BED0(mode1)`，确认／取消关闭，无新增游标。30在10330284／1033029E明确用独立frame2模26，10330321又传给人物动作；主frame只控制展开5–40／40门槛，page控制两段。维护复用现secondary保存副钟，两真实结算producer直接安装三零，切段不清副钟，不重复奖励；查询不修补未初始化载荷。
+29–33业务已有维护消费者；[成果皮肤](../prototype/include/dungeon_village_prototype/steam_task_result_skin.hpp)现含30纯计划／严格Owner只读桥和31／32纯计划，[期限皮肤](../prototype/include/dungeon_village_prototype/steam_task_deadline_skin.hpp)提供33完整局部纯计划。31–33新Owner UI载荷已获设计确认，接线尚未交付。29在_draw1_1 VA10330601–10330629调用`Draw_dungeonInfo RVA30BED0(mode1)`，确认／取消关闭，无新增游标。30在10330284／1033029E明确用独立frame2模26，10330321又传给人物动作；主frame只控制展开5–40／40门槛，page控制两段。维护复用现secondary保存副钟，两真实结算producer直接安装三零，切段不清副钟，不重复奖励；查询不修补未初始化载荷。
 
 31 Update VA10324073–10324126为上→下→五行修首行；Draw1032F67A–1032FDAD从first最多五人，y97+19×offset。肖像底(29,y−2)16×16，clip15×15，人物脚底(37,y+21)朝向1；手形(21,y+8)、名(48,y)，击杀H／倒下I分别用`Draw_count3 RVA252EA0`右162／`Draw_count2 RVA252E10`右210，共SEB12。第三栏标题使用DrawText(185,75,40,anchor32)，不同于APK普通文字(185,69)。110高滑条，未见整行Touch11，不能照25追加行注册。底部f/g人物分别脚底(21,220)朝向1／(218,220)朝向2，不从当前队伍猜首尾。
 

@@ -2653,8 +2653,67 @@ void annual_award() {
           valid_startup_world_runtime_effort_result_page(s,*produced_effort),
           "actual annual award initializes its67 payload before the covering88 starts");
     const auto display = s.scripts.pages.back().id;
-    s.page_phases[display] = 1;
-    s.page_counters[display] = 212;
+    check(valid_startup_world_runtime_award_result_page(s,s.scripts.pages.back())&&
+          s.page_phases.at(display)==0&&s.page_counters.at(display)==0&&
+          acknowledge_startup_world_runtime_page(s,display)==StartupWorldRuntimeError::missing_source,
+          "real88 producer has full zero payload but pending Init cannot consume confirmation");
+    auto paused=s;paused.scene.framework_paused=true;
+    const auto frozen=prepare_startup_world_runtime(paused);
+    check(frozen.candidate&&frozen.candidate->scripts.pages.back().lifecycle==0&&
+          frozen.candidate->page_counters.at(display)==0&&frozen.candidate->page_phases.at(display)==0&&
+          frozen.candidate->sound_requests==s.sound_requests,"paused88 leaves pending Init and parent audio unchanged");
+    const auto begun=prepare_startup_world_runtime(s);
+    check(begun.candidate&&begun.candidate->page_counters.at(display)==1&&begun.candidate->page_phases.at(display)==0&&
+          begun.candidate->sound_requests==s.sound_requests,"88 first update has no extra jingle or reward");
+    s=*begun.candidate;
+    for(int fault=0;fault<11;++fault) {
+        auto bad=s;
+        if(fault==0)bad.page_counters.erase(display);
+        if(fault==1)bad.page_phases.erase(display);
+        if(fault==2)bad.page_phases.at(display)=2;
+        if(fault==3)bad.page_counters.at(display)=-1;
+        if(fault==4)bad.page_counters.at(display)=std::numeric_limits<int>::max();
+        if(fault==5)bad.page_human_bindings.erase(display);
+        if(fault==6)bad.page_human_bindings.at(display)=-1;
+        if(fault==7)bad.reward_display[0][0]=-1;
+        if(fault==8)bad.reward_display[1][0]=101;
+        if(fault==9)bad.reward_display[2][0]=-1;
+        if(fault==10)bad.page_secondary_counters.emplace(display,0);
+        const auto before=startup_world_state_digest(bad);
+        check(acknowledge_startup_world_runtime_page(bad,display)==StartupWorldRuntimeError::missing_source&&
+              !update_startup_world_runtime_page(bad)&&!prepare_startup_world_runtime(bad).candidate&&
+              startup_world_state_digest(bad)==before,"88 malformed payload rejects without repair, reward or random mutation");
+        bad.scene.framework_paused=true;
+        check(!update_startup_world_runtime_page(bad)&&!prepare_startup_world_runtime(bad).candidate,
+              "88 malformed pause rejects missing payload");
+    }
+    check(acknowledge_startup_world_runtime_page(s,display)==StartupWorldRuntimeError::none&&s.page_counters.at(display)==1,
+          "88 phase0 early confirmation cannot skip the first135");
+    auto same_round=s;same_round.page_counters.at(display)=135;
+    same_round.scene.random=ref::WorldRandomStream::from_raw({0});
+    check(acknowledge_startup_world_runtime_page(same_round,display)==StartupWorldRuntimeError::none&&
+          same_round.scene.random.draws()==1&&same_round.scripts.event_calls.at(24)==1&&
+          same_round.page_phases.at(display)==1&&same_round.page_counters.at(display)==212,
+          "88 phase0 exactly135 confirmation uses pre-transition local135 and draws immediately");
+    s.page_counters.at(display)=134;
+    const auto transitioned=prepare_startup_world_runtime(s);
+    check(transitioned.candidate&&transitioned.candidate->page_counters.at(display)==135&&
+          transitioned.candidate->page_phases.at(display)==1&&transitioned.candidate->scene.random.draws()==s.scene.random.draws(),
+          "88 ordinary update at135 automatically enters phase1 without resetting main or drawing");
+    s=*transitioned.candidate;
+    auto wrapped=s;wrapped.page_counters.at(display)=std::numeric_limits<int>::max()-1;
+    const auto wrapped_update=update_startup_world_runtime_page(wrapped);
+    check(wrapped_update&&wrapped_update->page_counters.at(display)==0&&wrapped_update->page_phases.at(display)==1&&
+          valid_startup_world_runtime_award_result_page(*wrapped_update,wrapped_update->scripts.pages.back()),
+          "88 phase1 main wraps moduloINTMAX, preserving legitimate negative local time");
+    wrapped=*wrapped_update;
+    check(acknowledge_startup_world_runtime_page(wrapped,display)==StartupWorldRuntimeError::none&&
+          wrapped.page_counters.at(display)==202&&wrapped.scene.random.draws()==s.scene.random.draws(),
+          "88 wrapped negative local confirmation fast-forwards202 without random event");
+    check(acknowledge_startup_world_runtime_page(s,display)==StartupWorldRuntimeError::none&&s.page_counters.at(display)==202&&
+          acknowledge_startup_world_runtime_page(s,display)==StartupWorldRuntimeError::none&&s.page_counters.at(display)==212&&
+          s.scripts.pages.back().id==display&&s.scripts.pages.back().lifecycle==2,
+          "88 phase1 uses old local for separate202 and212 confirmations before final draw");
     s.scene.random = ref::WorldRandomStream::from_raw({1});
     auto exhausted = s;
     exhausted.scene.random = ref::WorldRandomStream::from_raw({});
@@ -2671,6 +2730,9 @@ void annual_award() {
             s.scene.world.world.ai.accounting.funds() == cash && s.scene.calendar.units == 0 &&
             s.scene.world.world.ai.battle.actors.empty(),
         "raw88 selects actual event25 on sole RNG and binds last page without world/cash advance");
+    auto malformed_closed=s;malformed_closed.page_phases.erase(display);
+    check(!prepare_startup_world_runtime(malformed_closed).candidate&&malformed_closed.page_human_bindings.count(display),
+          "88 closed malformed payload rejects before Finish erases source binding");
     for (int n = 0; n < 100 && !ref::world_script_seen(s.scripts, 22); ++n) {
         const auto next = prepare_startup_world_runtime(s);
         check(next.candidate.has_value(), "award return chain keeps valid Owner");
@@ -2688,7 +2750,8 @@ void annual_award() {
         }
     }
     check(ref::world_script_seen(s.scripts, 22) && s.medal_count == 0 &&
-              s.human_calendar.at(1).celebrations == 1,
+              s.human_calendar.at(1).celebrations == 1&&!s.page_human_bindings.count(display)&&
+              !s.page_counters.count(display)&&!s.page_phases.count(display),
           "zero medals close ceremony after child return, never repeat reward");
 }
 void task_display() {

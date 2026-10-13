@@ -208,7 +208,7 @@ WorldAwardResult prepare_world_award_page(const WorldAwardPageState &state, Worl
 std::optional<WorldAwardDisplayCandidate>
 prepare_world_award_display(WorldAwardDisplayState state, bool confirm,
                             const WorldRandomStream &random) {
-    if (state.counter < 0 || state.phase < 0 || state.phase > 1)
+    if (state.counter < 0 || state.counter == std::numeric_limits<int>::max() || state.phase < 0 || state.phase > 1)
         return {};
     WorldAwardDisplayCandidate c{state, random, {}};
     const int local = state.counter - state.phase * 135;

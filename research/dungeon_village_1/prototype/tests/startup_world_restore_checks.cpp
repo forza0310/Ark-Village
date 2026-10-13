@@ -174,9 +174,9 @@ int check_startup_world_restore_contracts(
         expect(victory,true,"retired30 no residual map entries");
     }
     {
-        // 年度授勋真实producer产生67；资格和88结束时点为定向夹具，不重跑一年。
+        // 年度授勋真实producer产生88/67；资格和135边界为定向夹具，不重跑一年。
         using E=p::StartupWorldRuntimeError;
-        const auto require=[&](bool ok,const char *why){++checks;if(!ok)throw std::runtime_error(std::string("restore effort67: ")+why);};
+        const auto require=[&](bool ok,const char *why){++checks;if(!ok)throw std::runtime_error(std::string("restore award/effort: ")+why);};
         auto effort=p::test_support::page_fixture(87);effort.human_presence.at(1)=1;
         const auto parent=effort.scripts.pages.back().id;
         const auto advance=[&](auto &s){const auto next=p::prepare_startup_world_runtime(s);require(next.candidate.has_value(),"admitted result update");s=*next.candidate;};
@@ -187,26 +187,53 @@ int check_startup_world_restore_contracts(
         require(page!=effort.scripts.pages.end(),"real67 queued");const auto id=page->id;
         expect(effort,true,"actual award67 pending below88");
         const auto reject=[&](const auto &source,const char *why,const auto &damage){auto bad=source;damage(bad);expect(bad,false,why);};
+        const auto check_replay=[&](const auto &source,const auto &consume,const char *why) {
+            expect(source,true,why);const auto bytes=p::persistence_detail::encode_state(source);
+            auto restored=p::persistence_detail::decode_state(bytes,*source.rules),live=source;
+            require(p::persistence_detail::encode_state(restored)==bytes,"exact ceremony clock and shared display restore");
+            consume(live);consume(restored);expect(live,true,why);expect(restored,true,why);
+            require(p::persistence_detail::encode_state(live)==p::persistence_detail::encode_state(restored),"same input preserves clocks, reward, bound dialogue and random");
+        };
         reject(effort,"pending67 cannot omit main",[&](auto &s){s.page_counters.erase(id);});
         reject(effort,"pending67 cannot invent advanced clock",[&](auto &s){s.page_counters.at(id)=1;});
         reject(effort,"pending67 cannot omit phase",[&](auto &s){s.page_phases.erase(id);});
         const auto display=effort.scripts.pages.back().id;
         require(effort.scripts.pages.back().legacy_page==88,"source88 covers67");
-        effort.page_phases.at(display)=1;effort.page_counters.at(display)=212;
+        reject(effort,"pending88 cannot omit clock",[&](auto &s){s.page_counters.erase(display);});
+        reject(effort,"pending88 cannot invent phase1",[&](auto &s){s.page_phases.at(display)=1;});
+        auto pending_paused=effort;pending_paused.scene.framework_paused=true;
+        check_replay(pending_paused,advance,"88 pause before Init retains complete zero payload");
+        check_replay(effort,advance,"88 first admitted update with restored shared reward");advance(effort);
+        reject(effort,"initialized88 missing phase",[&](auto &s){s.page_phases.erase(display);});
+        reject(effort,"initialized88 wrong human",[&](auto &s){s.page_human_bindings.at(display)=-1;});
+        reject(effort,"initialized88 extra secondary",[&](auto &s){s.page_secondary_counters.emplace(display,0);});
+        reject(effort,"initialized88 invalid shared new reward",[&](auto &s){s.reward_display[1][0]=101;});
+        effort.page_counters.at(display)=134;
+        check_replay(effort,advance,"88 boundary134 to automatic135 phase1 without random");advance(effort);
+        require(effort.page_phases.at(display)==1&&effort.page_counters.at(display)==135,"source ordinary135 transition");
+        auto paused_award=effort;paused_award.scene.framework_paused=true;
+        check_replay(paused_award,advance,"88 phase1 pause retains independent application state");
+        const auto fastforward=[&](auto &s){
+            require(p::acknowledge_startup_world_runtime_page(s,display)==E::none&&s.page_counters.at(display)==202&&
+                    p::acknowledge_startup_world_runtime_page(s,display)==E::none&&s.page_counters.at(display)==212,
+                    "separate local0 then67 confirmations fast-forward without closing");
+        };
+        check_replay(effort,fastforward,"88 restore keeps202 and212 separate from final random event");fastforward(effort);
+        const auto final_award=[&](auto &s){require(p::acknowledge_startup_world_runtime_page(s,display)==E::none&&
+            s.scripts.pages.back().speaker_kind==1&&s.scripts.pages.back().speaker_definition==1,"final88 random dialogue binds same human");};
+        check_replay(effort,final_award,"88 final confirmation restores same random event and closes before Finish");
         require(p::acknowledge_startup_world_runtime_page(effort,display)==E::none,"qualified88 close through actual event");
+        reject(effort,"closed88 cannot omit main",[&](auto &s){s.page_counters.erase(display);});
+        reject(effort,"closed88 cannot omit bound human",[&](auto &s){s.page_human_bindings.erase(display);});
+        check_replay(effort,advance,"closed88 Finish clears retained references exactly once");
         for(int n=0;n<32&&!(effort.scripts.pages.back().id==id&&effort.scripts.pages.back().lifecycle==2);++n) {
             advance(effort);
             if(effort.scripts.pages.back().kind==r::WorldScriptPageKind::dialogue)
                 require(p::acknowledge_startup_world_runtime_page(effort,effort.scripts.pages.back().id)==E::none,"real award dialogue return");
         }
-        require(effort.scripts.pages.back().id==id&&effort.scripts.pages.back().lifecycle==2,"source67 becomes admitted top");
-        const auto check_replay=[&](const auto &source,const auto &consume,const char *why) {
-            expect(source,true,why);const auto bytes=p::persistence_detail::encode_state(source);
-            auto restored=p::persistence_detail::decode_state(bytes,*source.rules),live=source;
-            require(p::persistence_detail::encode_state(restored)==bytes,"exact old/new effort and shared display restore");
-            consume(live);consume(restored);expect(live,true,why);expect(restored,true,why);
-            require(p::persistence_detail::encode_state(live)==p::persistence_detail::encode_state(restored),"same67 input preserves clocks, reward and random");
-        };
+        require(effort.scripts.pages.back().id==id&&effort.scripts.pages.back().lifecycle==2&&
+                !effort.page_counters.count(display)&&!effort.page_phases.count(display)&&!effort.page_human_bindings.count(display),
+                "source67 becomes admitted top after all88 references retire");
         reject(effort,"initialized67 missing binding",[&](auto &s){s.page_human_bindings.erase(id);});
         reject(effort,"initialized67 wrong phase",[&](auto &s){s.page_phases.at(id)=1;});
         reject(effort,"67 does not accept invented secondary clock",[&](auto &s){s.page_secondary_counters.emplace(id,0);});

@@ -17,7 +17,7 @@ enum class SteamHumanAsset {
     equipment_background, weapon_icon, armour_icon, accessory_icon, magic_icon, catalogue_new, catalogue_get, gift_tab,
     ceremony_background, curtain, continue_cursor, result_icon,
     president, gift_box, gift_face, item_icon, gift_flash, recovery_effect, recovery_number,
-    residence_background, shadow, contribution_unit, residence_icon
+    residence_background, shadow, contribution_unit, residence_icon, award_crowd
 };
 struct SteamHumanResource {
     int image{}, sprite{-1};
@@ -152,6 +152,7 @@ struct SteamHumanOverviewOptions {
     // 原当前Font实际测宽：属性名／属性后缀／学习完整句。只消费当前分支需要的槽。
     std::array<std::optional<int>,3> item_explain_widths;
     std::optional<int> result_name_width, result_suffix_width; // 68非JP在11号字测，69沿当前字号；68JP后缀固定36。
+    std::array<std::optional<int>,2> ceremony_message_widths; // 88两句气泡按当前Font实测，仅当前可见句必需。
 };
 // 共用mentalUp的只读调用输入，三行仍分别为旧值／新值／原请求，不补封顶差。
 struct SteamHumanRewardInput {
@@ -161,10 +162,22 @@ struct SteamHumanRewardInput {
 };
 std::optional<SteamHumanOverviewPlan> steam_human_reward_skin(
     const SteamHumanRewardInput &,const SteamHumanOverviewOptions &);
+// 88专用mentalUp入口：phase1主钟回绕后的局部钟可为−135..−1，其余结果页仍拒负钟。
+std::optional<SteamHumanOverviewPlan> steam_human_award_mental_skin(
+    const SteamHumanRewardInput &,const SteamHumanOverviewOptions &);
 struct SteamHumanResidenceResultInput {
     int phase{},counter{},secondary{},mapchip{};
     SteamHumanRewardInput human;
 };
+struct SteamHumanAwardResultInput {
+    int phase{},counter{};
+    SteamHumanRewardInput human;
+};
+// raw88授勋仪式：上方演员读主钟，底部mentalUp小像另读共享character_frame。
+std::optional<SteamHumanOverviewPlan> steam_human_award_result_skin(
+    const SteamHumanAwardResultInput &,const SteamHumanOverviewOptions &);
+std::optional<SteamHumanOverviewPlan> steam_human_award_result_skin(
+    const StartupWorldRuntimeState &,std::uint64_t page,const SteamHumanOverviewOptions &);
 struct SteamHumanEffortResultInput {
     int profession{},sex{},counter{},old_effort{},new_effort{};
     std::string name;

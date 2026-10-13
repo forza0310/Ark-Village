@@ -1368,6 +1368,21 @@ SteamHumanOverviewOptions effort_result_options(const ChineseFont &font) {
     SteamHumanOverviewOptions o;o.view_y=23;const int width=int(font.measure("努力奖励"));
     o.title_widths=std::array<int,2>{width,width};return o;
 }
+SteamHumanOverviewOptions award_result_options(const ChineseFont &font,std::optional<int> character_frame) {
+    SteamHumanOverviewOptions o;o.view_y=23;o.character_frame=character_frame;
+    const int width=int(font.measure("勋章授予式"));o.title_widths=std::array<int,2>{width,width};
+    o.ceremony_message_widths={int(font.measure("恭喜!")),int(font.measure("太好了!"))};return o;
+}
+std::optional<SteamHumanOverviewPlan> award_result_example(const std::string &name,const ChineseFont &font) {
+    StartupSession initial;StartupWorldRuntimeSession session(initial.state(),ref::WorldRandomStream::from_java_seed(1));
+    const auto h=startup_world_human_details(session.state(),1);if(!h)return {};
+    // 授予／举章／庆祝／奖励四个局部时点；不执行年度奖励或推进世界。
+    SteamHumanAwardResultInput in;in.phase=name=="award-reward"?1:0;
+    in.counter=in.phase?212:name=="award-celebration"?100:name=="award-lift"?65:35;
+    in.human={h->profession,h->sex,h->equipment[0].value_or(-1),in.phase,in.counter,h->name,
+        {{{20,30},{40,40},{20,10}}}};
+    return steam_human_award_result_skin(in,award_result_options(font,12));
+}
 std::optional<SteamHumanOverviewPlan> effort_result_example(const ChineseFont &font) {
     StartupSession initial;StartupWorldRuntimeSession session(initial.state(),ref::WorldRandomStream::from_java_seed(1));
     const auto h=startup_world_human_details(session.state(),1);if(!h)return {};
@@ -1722,6 +1737,7 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
     const bool residence_fixture=inspect_page=="residence-candidates"||inspect_page=="residence-completed"||inspect_page=="residence-reward";
     const bool award_fixture=inspect_page=="award-contribution"||inspect_page=="award-income"||inspect_page=="award-residents";
     const bool effort_fixture=inspect_page=="effort-result";
+    const bool award_result_fixture=inspect_page=="award-giving"||inspect_page=="award-lift"||inspect_page=="award-celebration"||inspect_page=="award-reward";
     const bool task_fixture=info_fixture||result_fixture||victory_fixture||deadline_fixture||roster_fixture||inspect_page=="task-selection"||inspect_page=="task-offer"||inspect_page=="task-recruitment";
     const bool management_fixture=inspect_page.rfind("village-",0)==0||inspect_page.rfind("town-",0)==0;
     const bool reputation_fixture=inspect_page=="facility-reputation"||inspect_page=="facility-reputation-result";
@@ -1749,14 +1765,17 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
         for(const auto &d:startup_world_rules().items)reputation_glyphs+=d.name;
         for(const auto &d:startup_world_rules().equipment)reputation_glyphs+=d.name;
     }
-    if(residence_fixture||award_fixture||effort_fixture) {
-        reputation_glyphs+="选择入住者姓名费用请研究绘制夹具无自然触发认证自宅完成的满意努力上升勋章授予式贡献获得消费居住还有个详细终止奖励基础能力→";
+    if(residence_fixture||award_fixture||effort_fixture||award_result_fixture) {
+        reputation_glyphs+="选择入住者姓名费用请研究绘制夹具无自然触发认证自宅完成的满意努力上升勋章授予式贡献获得消费居住还有个详细终止奖励基础能力恭喜太好了!→";
         for(const auto &human:startup_world_rules().humans)reputation_glyphs+=human.name;
     }
     ChineseFont font(font_path,reputation_glyphs);
-    if(magic_fixture||task_fixture||residence_fixture||award_fixture||effort_fixture) {
+    if(magic_fixture||task_fixture||residence_fixture||award_fixture||effort_fixture||award_result_fixture) {
         std::variant<SteamMagicPotPlan,SteamTaskSelectionPlan,SteamTaskRosterPlan,SteamTaskResultPlan,SteamTaskVictoryPlan,SteamTaskDeadlinePlan,SteamHumanOverviewPlan> plan;
-        if(effort_fixture) {
+        if(award_result_fixture) {
+            const auto value=award_result_example(inspect_page,font);
+            if(!value)throw std::runtime_error("Award ceremony example rejected");plan=*value;
+        } else if(effort_fixture) {
             const auto value=effort_result_example(font);
             if(!value)throw std::runtime_error("Effort example rejected");plan=*value;
         } else if(award_fixture) {
@@ -3917,8 +3936,10 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     clear_confirm_pending=page->id;
                     ++confirmation_inputs;
                 }
-            } else if (raw==96||raw==67) {
-                const auto plan=raw==67?steam_human_effort_result_skin(session.state(),page->id,effort_result_options(font)):
+            } else if (raw==96||raw==67||raw==88) {
+                const auto plan=raw==88?steam_human_award_result_skin(session.state(),page->id,
+                    award_result_options(font,steam_human_shared_character_frame(session.state()))):
+                    raw==67?steam_human_effort_result_skin(session.state(),page->id,effort_result_options(font)):
                     steam_human_residence_result_skin(session.state(),page->id,
                     residence_result_options(font,steam_human_shared_character_frame(session.state())));
                 const bool clicked=plan&&!pointer_consumed&&IsMouseButtonReleased(MOUSE_BUTTON_LEFT)&&
@@ -3926,7 +3947,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 if(plan&&(clicked||IsKeyPressed(KEY_ENTER))) {
                     ++confirmation_inputs;pointer_consumed=pointer_consumed||clicked;
                     if(session.acknowledge_page(page->id)!=StartupWorldRuntimeError::none)
-                        throw std::runtime_error("住宅完成页面输入拒绝");
+                        throw std::runtime_error("人物仪式页面输入拒绝");
                 }
             } else if (raw==30) {
                 // 原Touch2无显式矩形；此240×320适配在画布内松开确认，原OS投递另验。
@@ -4532,7 +4553,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
         } else if (const auto page = top_page()) {
             const bool steam_info=page->legacy_page==29;
             const bool steam_task=(page->legacy_page>=22&&page->legacy_page<=24)||page->legacy_page==30;
-            const bool steam_residence=page->legacy_page==96||page->legacy_page==67;
+            const bool steam_residence=page->legacy_page==96||page->legacy_page==67||page->legacy_page==88;
             const bool steam_magic=page->legacy_page>=41&&page->legacy_page<=47;
             const bool steam_commodity=page->legacy_page==72||page->legacy_page==79;
             const bool steam_reputation=page->legacy_page==82;
@@ -4570,11 +4591,13 @@ int run_startup_world_window(const std::filesystem::path &assets,
             if (page->legacy_page != 21&&!steam_info&&!steam_task&&!steam_residence&&!steam_magic&&!steam_reputation&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result)
                 font.text(title, 12, 177, ink, font.measure(title) > 208 ? 10 : 12);
             if(steam_residence) {
-                const auto plan=page->legacy_page==67?steam_human_effort_result_skin(state,page->id,effort_result_options(font)):
+                const auto plan=page->legacy_page==88?steam_human_award_result_skin(state,page->id,
+                    award_result_options(font,steam_human_shared_character_frame(state))):
+                    page->legacy_page==67?steam_human_effort_result_skin(state,page->id,effort_result_options(font)):
                     steam_human_residence_result_skin(state,page->id,
                     residence_result_options(font,steam_human_shared_character_frame(state)));
                 if(plan)draw_facility_ceremony(*plan,sprites,font);
-                else if(page->lifecycle!=0)throw std::runtime_error("Residence completion drawing rejected");
+                else if(page->lifecycle!=0)throw std::runtime_error("Human ceremony drawing rejected");
             } else if(steam_info) {
                 const auto plan=steam_task_information_skin(state,page->id,window_task_info_options(font,false));
                 if(plan)draw_facility_ceremony(*plan,sprites,font,{0,0});

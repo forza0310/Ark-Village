@@ -187,7 +187,9 @@ void displays() {
     for (const auto c : {Case{134, 0, true, 134, 0, false}, Case{135, 0, true, 212, 1, true},
                          Case{201, 1, true, 202, 1, false}, Case{202, 1, true, 212, 1, false},
                          Case{211, 1, true, 212, 1, false}, Case{212, 1, true, 212, 1, true},
-                         Case{500, 1, false, 500, 1, false}}) {
+                         Case{500, 1, false, 500, 1, false}, Case{0,1,false,0,1,false},
+                         Case{0,1,true,202,1,false},
+                         Case{std::numeric_limits<int>::max()-1,1,true,212,1,true}}) {
         const auto r = prepare_world_award_display({c.counter, c.phase}, c.confirm, random);
         check(r && r->state.counter == c.next_counter && r->state.phase == c.next_phase &&
                   r->event.has_value() == c.event && r->random.draws() == (c.event ? 1U : 0U),
@@ -197,6 +199,9 @@ void displays() {
     }
     check(!prepare_world_award_display({212, 1}, true, WorldRandomStream::from_raw({})),
           "exhausted RNG cannot return partial display or close");
+    check(!prepare_world_award_display({std::numeric_limits<int>::max(),1},false,random)&&
+          !prepare_world_award_display({-1,0},true,random)&&!prepare_world_award_display({0,2},true,random),
+          "raw88 rejects out-of-modulo counter and invalid phase before random consumption");
     for (const int n : {0, 2, 41, 42, 66, 67, 72, 73}) {
         const auto r = prepare_world_effort_display(n, true, {});
         check(r && r->counter == (n < 67 ? 67 : n) && r->closed == (n >= 73),

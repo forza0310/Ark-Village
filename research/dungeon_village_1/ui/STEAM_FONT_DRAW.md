@@ -16,7 +16,21 @@
 float32(旧usedSize − 新usedSize) × float32(0.5)
 ```
 
-然后锁住本地化设置，防止内层再次缩放。这里是一次文字请求的临时调整，不把Font的业务请求字号永久改小；原代码后续有恢复／解锁清理，具体异常清理跳板不在本批给未命名入口强行命名。
+然后锁住本地化设置，防止内层再次缩放。这里是一次文字请求的临时调整；下面补核恢复的具体顺序和保护范围，不能将其概括为完整Font对象回滚。
+
+### 临时字号与本地化锁的清理
+
+2026-10-13补核普通DrawString的直接调用helper RVA75CC00（VA1075CC00–1075CC63），不为未具名helper编造原函数名。调用者保存的是旧请求`Font.size_`，不是`usedSize_`或整个Font：旧字号槽初值−1（10766606），TextFormat确实改变字号时在10766662–65保存，本地化缩放时在1076672F–32保存；无临时修改则保留−1。本次是否取得本地化锁由独立布尔槽记录，初值false，只在`IsNeedLocalizeScale`结果为真时设定并调用Lock（10766713／107667B0）。
+
+helper从调用者传入的三个局部引用读取Graphics、本次锁标志和旧请求字号，严格按以下顺序执行：
+
+1. 调用当前Graphics的`EndRenderMatrix` RVA7690D0。
+2. 仅本次锁标志为true时，调用`Font.UnlockLocalizeSetting` RVA77EB30。
+3. 仅旧字号不是−1时，对**当前Graphics.font_**调用`SetSize(旧size_,true)`；并不恢复此前的`usePreset_`或直接写回旧`usedSize_`。
+
+因此字号恢复仍经过[字号／preset合同](STEAM_FONT_CONSUMER.md#请求字号preset与usedsize)。例如进入前显式`SetSize(1,false)`、本次TextFormat实际暂改字号时，尾部恢复会以preset1重算为24（静态100%前提），不能擅改成恢复显式1。Lock／Unlock两个具名方法只将Font静态+18布尔字段置true／false（1077DBF9／1077EB69），不是计数锁，也不操作`PushLocalizeSetting`的布尔设置栈；未取得本次锁的内层调用不会在这个helper中解开外层锁。
+
+正常GUI支在10767504／10767528、无目标Image支在10767531、Image文字任务完成后均汇入107677BF，107677C6调用同一helper，再由107677E8结束Profiler采样。已核异常续体10767801–10767829也在10767819调用helper，随后检查并重新抛出保存的异常；外层续体10767839–1076786A另负责EndSample及重抛。这证明已见受保护绘制分支会尝试上述清理，**不证明整个请求的异常事务性**：临时设字号／Lock和BeginRenderMatrix都位于内层保护记录建立（107667CA–107667F3）之前，helper自身若在EndRenderMatrix或SetSize抛出也没有继续全部清理的保证。已排入GLText／Image的任务、已绘制像素、GUI.skin.font及颜色另有各自消费者；本helper没有撤销它们。标签／换行转TextLayout的早返回不经过此普通分支，仍须独立核查。
 
 ## 逻辑锚点先于屏幕矩阵
 

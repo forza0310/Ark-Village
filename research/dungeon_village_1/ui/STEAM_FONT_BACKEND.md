@@ -30,7 +30,7 @@ OnGUI的多条正常／异常收尾调用`0x1077BDF0`。该116字节helper从当
 2. 先按TextFormat／本地化设置暂改字体，再处理anchor和逻辑坐标变换。当前Font的usedSize、fontScale和Graphics.fontScaleOffsetEnable分别参与位置；不能只用字符串长度和一个固定中文偏移替代。
 3. `fontKeep_`为false时，把当前Font.GetFont()与FontStyle装入Graphics的GUIStyle，并置fontKeep；随后设置本轮GUI字号。
 4. 读取当前GUI.skin.font，与GUIStyle.font作Unity对象不等比较；不同就把GUIStyle.font设进skin.font，包括GUIStyle.font为空的情形。
-5. 之后才进入文字后端分支。正常路径恢复临时textColor；函数末尾另有局部清理helper。本批未把该局部helper的完整字号／锁恢复行为补猜成已证。
+5. 之后才进入文字后端分支。正常路径恢复临时textColor；末尾helper的[矩阵／本次锁／请求字号清理](STEAM_FONT_DRAW.md#临时字号与本地化锁的清理)已补核，旧字号以`SetSize(old,true)`重算，正常和已见异常续体共同调用。它不恢复完整Font对象或撤销后端输出，不能合并成“整次绘制失败无修改”。
 
 特别保留机器码边界：DrawString末端有`UnityEngine.Object.op_Inequality(null,null)`的调用及其条件设置空font分支；本批不将其润色成“用之前保存的skin字体恢复”。外层OnGUI的已证恢复负责另一时点。不能把旧GUI.skin状态、当前GUIStyle.font和最终字形回退合成同一个“字体字段”。
 

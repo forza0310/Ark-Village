@@ -713,8 +713,12 @@ SaveAll已证true→false→system的顺序保留，完整生命周期上游仍�
 
 原先Close候选的对象是`KairoPlugin.languageDialogWindows_`。其已登记构造仅订阅Click／CheckedChanged／SizeChanged；
 本样本`Form.Close`是交给runtime帮助器的48字节stub，不能补成标准.NET主窗口Closing／Closed事件链。
-因此已闭合正常尾段及所核异常续体的预留保存分派；普通暂停／退出／后台如何提出值2、停止运行后是否有消费机会、
-OS关闭／暂停／强制终止是否触发保存仍未知。已有五处Billing setter记录不是完整入口清单或玩家动态认证。
+
+2026-10-13进一步核到普通暂停的表单调用链：`IApplication.OnApplicationPause`（RVA `0x787A30`）的true分支在VA `0x10787E7F`投递`Hidden=0`事件，随后从末项向前取当前管理器的表单；VA `0x10787EDC`通过辅助`0x10097EC0`调用**管理器**槽12 `DoMethod(form,Suspend=4,null)`，不是直接用表单槽12。该辅助完整区间`0x10097EC0..0x10097EEC`仍按`class+0xBC+slot*8`分派。`DoMethod`（RVA `0x7E52C0`）在VA `0x107E55C7..0x107E55C9`明确转到表单槽25 `Suspend`。当前dump中此槽只有FormBase的共享空实现；已登记游戏表单没有Suspend覆盖，管理器也没有DoMethod覆盖。false分支对应`Resume=4`事件和`CallMethodType.Resume=3`，后者在VA `0x107E55ED`取表单槽20；GameForm／TitleForm／MyFormBase的Resume均为共享返回true实现。结合前述已核事件继承分派与Main覆盖，这条具体的游戏表单暂停／恢复链不提出预留保存请求。通知、账号及平台服务更深层和真实OS回调时序未由本链认证，不能扩写为整个暂停过程绝不保存。
+
+同批重新扫描全部可执行区的E8／E9目的地址，`SetReserveSave`仍只有五处已核Billing直调，`SetReserveSaveEnable`没有直接调用命中。后者RVA `0x795290`还被多个无关类型的布尔setter共享，包括通知、字体／图像管理及Unity配置；单凭该地址或`+0x0C`写入不能识别KairoBase配置。基构造VA `0x108CDA26`的使能true已证，但全部间接／内联赋值仍未穷尽，不能承诺使能运行期间始终为true。来源是同身份DLL、既有`work/persistence-replay-analysis/exe/methods.json`与`dumper/dump.cs`的具体方法／槽声明，无新增过程产物。
+
+因此已闭合正常尾段及所核异常续体的预留保存分派，并排除上述具体游戏表单暂停／恢复链；普通暂停／退出／后台还有何入口提出值2、停止运行后是否有消费机会、OS关闭／暂停／强制终止是否触发保存仍未知。五处Billing setter记录不等于完整入口清单或玩家动态认证。
 
 ## 当前C++边界与持续存取
 

@@ -1,5 +1,8 @@
 # 产品侧小窗 UI 示例
 
+[授勋仪式四时点](steam-award-ceremony.png)（960×1280／121324字节）：左上授予35、右上举章65、左下庆祝100、右下phase1奖励212。`award-giving`／`award-lift`／`award-celebration`／`award-reward`各8帧、0世界更新，原尺寸480×640拼接；人物1的职业／性别／装备取新局，共享人物钟12、奖励20/30→40/40及请求20/10是明确显示条件，不发放年度奖励。原event背景、陪衬、大臣、人物、奖章和气泡执行正式计划；严格Owner桥另验。中文／Noto、底满意标签窄框截断和物理输入均保留适配限制，不认证原动态、历史scratch附效或自然授勋，见[合同](../STEAM_HUMAN_DETAIL.md#human-reward-followups)。
+
+
 [努力奖励与授勋三页](steam-effort-award.png)（960×1280／74385字节），按左上67、右上87贡献、左下87年取得／消费、右下87住宅／勋章排列。四个480×640窗口原尺寸拼接；`effort-result`、`award-contribution`、`award-income`、`award-residents`各8帧、0世界更新。67人物1职业／性别取新局，旧努力19→25、四战斗值50/10/8/5→55/11/9/6及主73为显示条件；87六人目录／剩一枚勋章为条件，其余姓名、贡献、年取得／消费、住宅和奖章读取原初装零值，没有授勋或自然年度资格。贡献后原图是“点”，不是百分比；67底旧新基础能力才是百分数。87只交纯目录和游标helper，原问答及UI持久载荷未接；67严格Owner桥另经短验。Noto、中文／原日文图签、底软控件为研究适配，不认证原窗口／OS动态；[合同](../STEAM_HUMAN_DETAIL.md#human-reward-followups)和[授勋目录](../PAGES.md#steam住宅候选80与授勋目录87)分别维护。
 
 [住宅候选及完成两段](steam-residence.png)（1440×640／55268字节）由三个480×640研究窗口原尺寸并排。80六候选、selection3／first0明确是目录条件，真实初装姓名／职业／性别／入住费／5000G可负担判断逐行读取，未满足入住资格或扣款；96人物1和住宅取原定义，主50／77、副18及奖励20/30→40/40、请求20/10是局部显示条件，不声称自然住宅完成。`residence-candidates`、`residence-completed`、`residence-reward`各8帧、0世界更新，不加`--world`。96真实Owner桥另有短功能／恢复覆盖；80纯游标不冒充已持久化。Noto、绿色背景和条件字样为适配，满意标签原窄框仍截断，完整原字体／OS动态未验，见[合同](../STEAM_HUMAN_DETAIL.md#human-reward-followups)。

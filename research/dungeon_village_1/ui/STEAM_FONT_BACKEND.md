@@ -85,4 +85,4 @@ Image构造7A1CF0在+A0建立零长任务数组，+A4计数采用零初值。Add
 
 产品可按上述契约区分字体对象、后端开关、临时GUIStyle与外层GUISkin恢复，避免SetFont误改后端或认为一次DrawString已恢复所有外部状态。默认资源的Arial引用可用于后续取证，不能直接作为中文字体交付或以另选系统字体冒充原样。
 
-仍缺：真实当前GUI.skin及中文glyph fallback、DefaultUseFontTexture完整上游、完整TextLayout标签、FontTexture资源退休，以及完整游戏窗框的全部页面使用资格。普通位置变换见[文字绘制](STEAM_FONT_DRAW.md)，GUI组／clip见[窗框](STEAM_WINDOW_FRAME.md)，GLText最终消费者／保留对象见[生命周期](STEAM_GLTEXT_LIFECYCLE.md)，不再重复列为完全未知。窗口观察可补最终画面尺寸和字形表现，但单张截图仍不能证明font对象身份。后续继续静态缩小这些边界，必要动态由既有外部提示词分支取得。
+仍缺：真实当前GUI.skin及中文glyph fallback、DefaultUseFontTexture完整上游、FontTexture资源退休，以及完整游戏窗框的全部页面使用资格。TextLayout的14项标签局部生产／消费、普通断行及空串字段分工已有[字体合同](STEAM_FONT_CONSUMER.md)，全部语言禁则、运行注册绑定和实际字形仍未认证。普通位置变换见[文字绘制](STEAM_FONT_DRAW.md)，GUI组／clip见[窗框](STEAM_WINDOW_FRAME.md)，GLText最终消费者／保留对象见[生命周期](STEAM_GLTEXT_LIFECYCLE.md)，不再重复列为完全未知。窗口观察可补最终画面尺寸和字形表现，但单张截图仍不能证明font对象身份。后续继续静态缩小这些边界，必要动态由既有外部提示词分支取得。

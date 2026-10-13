@@ -31,6 +31,7 @@
 #include "dungeon_village_prototype/startup_world_information.hpp"
 #include "dungeon_village_prototype/steam_main_menu_skin.hpp"
 #include "dungeon_village_prototype/steam_information_skin.hpp"
+#include "dungeon_village_prototype/steam_monster_skin.hpp"
 #include "dungeon_village_prototype/startup_world_tax.hpp"
 #include "dungeon_village_prototype/startup_world_village_activity.hpp"
 #include "dungeon_village_prototype/startup_world_visuals.hpp"
@@ -1316,7 +1317,7 @@ template<class Plan> void draw_facility_ceremony(const Plan &plan,SourceSprites 
                 {origin.x+p.position[0],origin.y+p.position[1]});
         } else if constexpr(std::is_same_v<T,SteamFacilityMapchipDraw>) {
             sprites.draw(value.sprite,value.frame,{origin.x+value.position[0],origin.y+value.position[1]});
-        } else if constexpr(std::is_same_v<T,SteamTaskDeadlineMonster>) {
+        } else if constexpr(std::is_same_v<T,SteamTaskDeadlineMonster>||std::is_same_v<T,SteamMonsterBody>) {
             sprites.actor(true,value.sprite,value.image,value.frame,{origin.x+value.position[0],origin.y+value.position[1]});
         } else if constexpr(std::is_same_v<T,SteamFacilityEffectImage>) {
             const auto r=steam_facility_effect_resource(value.asset);
@@ -1370,6 +1371,22 @@ template<class Plan> void draw_facility_ceremony(const Plan &plan,SourceSprites 
     if(plan.soft_labels[1]==12)font.text("开始",188,272);
     if(plan.soft_labels[1]==2)font.text("返回",188,272);
     if(plan.soft_labels[1]==10)font.text("终止",188,272);
+}
+SteamMonsterSkinOptions window_monster_options(const ChineseFont &font) {
+    SteamMonsterSkinOptions o;o.view_y=23;
+    o.title_widths=std::array<int,2>{int(font.measure("新型怪物")),int(font.measure("新型怪物"))};
+    return o;
+}
+std::optional<SteamMonsterSkinPlan> monster_introduction_example(bool early,const ChineseFont &font) {
+    StartupSession startup;StartupWorldRuntimeSession world(startup.state(),ref::WorldRandomStream{});
+    const auto pending=consume_startup_world_runtime_encounter_request(world.state(),
+        {ref::EncounterCreationRequestKind::page89,3});
+    if(!pending)return {};
+    auto ready=prepare_startup_world_runtime(*pending);if(!ready.candidate)return {};
+    const auto id=ready.candidate->scripts.pages.back().id;
+    // 原型调用点夹具：定义来自原表，真正Init后冻结主钟观察展开，不认证自然出现。
+    ready.candidate->page_counters.at(id)=early?20:40;
+    return steam_monster_introduction_skin(*ready.candidate,id,window_monster_options(font));
 }
 std::optional<SteamFacilityEffectPlan> window_facility_effect_plan(
     const StartupWorldRuntimeState &s,std::uint64_t id,const ChineseFont &font,bool first_touch=false) {
@@ -2245,6 +2262,7 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
     const bool residence_fixture=inspect_page=="residence-candidates"||inspect_page=="residence-completed"||inspect_page=="residence-reward";
     const bool award_fixture=inspect_page=="award-contribution"||inspect_page=="award-income"||inspect_page=="award-residents";
     const bool tax_fixture=inspect_page=="tax-income"||inspect_page=="tax-income-tail";
+    const bool monster_fixture=inspect_page=="monster-introduction"||inspect_page=="monster-introduction-early";
     const bool effort_fixture=inspect_page=="effort-result";
     const bool mastery_fixture=inspect_page=="mastery-announcement"||inspect_page=="mastery-bonus"||inspect_page=="mastery-choice";
     const bool clear_fixture=inspect_page=="clear-count"||inspect_page=="clear-score"||inspect_page=="clear-record"||inspect_page=="clear-closing";
@@ -2317,10 +2335,17 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
         reputation_glyphs+="税金收入住宅所有者合计研究绘制夹具无自然触发认证";
         for(const auto &human:startup_world_rules().humans)reputation_glyphs+=human.name;
     }
+    if(monster_fixture) {
+        reputation_glyphs+="新型怪物出现了研究绘制夹具无自然触发认证!!";
+        for(const auto &monster:startup_world_rules().monsters)reputation_glyphs+=monster.name;
+    }
     ChineseFont font(font_path,reputation_glyphs);
-    if(magic_fixture||task_fixture||residence_fixture||award_fixture||tax_fixture||effort_fixture||award_result_fixture||mastery_fixture||gift_claim_fixture||clear_fixture||new_game_fixture||config_fixture||commerce_fixture||commerce_result_fixture||commerce_facility_fixture||commerce_preview_fixture||facility_special_fixture) {
-        std::variant<SteamMagicPotPlan,SteamTaskSelectionPlan,SteamTaskRosterPlan,SteamTaskResultPlan,SteamTaskVictoryPlan,SteamTaskDeadlinePlan,SteamHumanOverviewPlan,SteamTownProgressPlan,SteamNewGamePlan,SteamConfigSkinPlan,SteamCommerceSkinPlan,SteamFacilityDetailSkinPlan,SteamInformationSkinPlan> plan;
-        if(tax_fixture) {
+    if(magic_fixture||task_fixture||residence_fixture||award_fixture||tax_fixture||monster_fixture||effort_fixture||award_result_fixture||mastery_fixture||gift_claim_fixture||clear_fixture||new_game_fixture||config_fixture||commerce_fixture||commerce_result_fixture||commerce_facility_fixture||commerce_preview_fixture||facility_special_fixture) {
+        std::variant<SteamMagicPotPlan,SteamTaskSelectionPlan,SteamTaskRosterPlan,SteamTaskResultPlan,SteamTaskVictoryPlan,SteamTaskDeadlinePlan,SteamHumanOverviewPlan,SteamTownProgressPlan,SteamNewGamePlan,SteamConfigSkinPlan,SteamCommerceSkinPlan,SteamFacilityDetailSkinPlan,SteamInformationSkinPlan,SteamMonsterSkinPlan> plan;
+        if(monster_fixture) {
+            const auto value=monster_introduction_example(inspect_page=="monster-introduction-early",font);
+            if(!value)throw std::runtime_error("Monster introduction example rejected");plan=*value;
+        } else if(tax_fixture) {
             const auto value=tax_information_example(inspect_page=="tax-income-tail",font);
             if(!value)throw std::runtime_error("Tax income example rejected");plan=*value;
         } else if(facility_special_fixture) {
@@ -2819,6 +2844,8 @@ int run_startup_world_window(const std::filesystem::path &assets,
         glyphs += equipment.name;
     for (const auto &job : rules.jobs)
         glyphs += job.name;
+    glyphs+="新型怪物出现了!!";
+    for(const auto &monster:rules.monsters)glyphs+=monster.name;
     for (const auto &activity : rules.activities)
         glyphs += activity.name + activity.detail + activity.description;
     for (const auto &recipe : rules.magic_pot_recipes)
@@ -4402,6 +4429,13 @@ int run_startup_world_window(const std::filesystem::path &assets,
                             act(A::confirm);
                     }
                 }
+            } else if (raw == 89) {
+                // 原Touch2无显式矩形；仅接已知确认键，不造底栏按钮或把Esc当确认。
+                if(page->lifecycle==2&&IsWindowFocused()&&IsKeyPressed(KEY_ENTER)) {
+                    ++confirmation_inputs;
+                    if(session.acknowledge_page(page->id)!=StartupWorldRuntimeError::none)
+                        throw std::runtime_error("怪物介绍确认载荷拒绝");
+                }
             } else if (raw == 90) {
                 const auto pid=page->id;
                 const auto view=inspect_startup_world_tax_page(session.state(),pid);
@@ -5257,6 +5291,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
             const bool steam_commerce_result=page->legacy_page==86;
             const bool steam_commerce_facility=page->legacy_page==85;
             const bool steam_tax=page->legacy_page==90;
+            const bool steam_monster=page->legacy_page==89;
             const bool steam_reputation=page->legacy_page==82;
             const bool steam_effect=page->legacy_page>=75&&page->legacy_page<=77;
             const bool steam_facility=page->legacy_page==74&&
@@ -5270,7 +5305,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
             const bool steam_gift_result=page->legacy_page==66&&startup_world_human_page_ready(state,page->id);
             const bool steam_attribute_result=(page->legacy_page==68||page->legacy_page==69)&&startup_world_human_page_ready(state,page->id);
             const bool steam_profession=(page->legacy_page==62||page->legacy_page==63)&&startup_world_human_page_ready(state,page->id);
-            if (page->legacy_page != 21&&!steam_tax&&!steam_commerce_top&&!steam_commerce_result&&!steam_commerce_facility&&!steam_gift_claim&&!steam_info&&!steam_task&&!steam_residence&&!steam_magic&&!steam_reputation&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result) DrawRectangle(5, 170, 230, 119, paper);
+            if (page->legacy_page != 21&&!steam_monster&&!steam_tax&&!steam_commerce_top&&!steam_commerce_result&&!steam_commerce_facility&&!steam_gift_claim&&!steam_info&&!steam_task&&!steam_residence&&!steam_magic&&!steam_reputation&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result) DrawRectangle(5, 170, 230, 119, paper);
             std::string title = page->title;
             if (title.empty() && page->kind == ref::WorldScriptPageKind::raw_page) {
                 if (page->legacy_page == 30 || page->legacy_page == 31 || page->legacy_page == 32)
@@ -5291,7 +5326,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                          page->monster_definition)
                     title = rules.monsters.at(*page->monster_definition).name;
             }
-            if (page->legacy_page != 21&&!steam_tax&&!steam_commerce_top&&!steam_commerce_result&&!steam_commerce_facility&&!steam_gift_claim&&!steam_info&&!steam_task&&!steam_residence&&!steam_magic&&!steam_reputation&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result)
+            if (page->legacy_page != 21&&!steam_monster&&!steam_tax&&!steam_commerce_top&&!steam_commerce_result&&!steam_commerce_facility&&!steam_gift_claim&&!steam_info&&!steam_task&&!steam_residence&&!steam_magic&&!steam_reputation&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result)
                 font.text(title, 12, 177, ink, font.measure(title) > 208 ? 10 : 12);
             if(steam_gift_claim) {
                 const auto plan=window_town_progress_plan(state,page->id,font);
@@ -5645,6 +5680,10 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 const auto plan=window_human_attribute_result_plan(state,page->id,font);
                 if(!plan)throw std::runtime_error("Steam attribute result payload rejected");
                 draw_human_overview(*plan,sprites,font);
+            } else if (steam_monster) {
+                const auto plan=steam_monster_introduction_skin(state,page->id,window_monster_options(font));
+                if(plan)draw_facility_ceremony(*plan,sprites,font);
+                else if(page->lifecycle!=0)throw std::runtime_error("怪物介绍正式皮肤载荷拒绝");
             } else if (page->legacy_page == 90) {
                 const auto plan=window_tax_plan(state,page->id,font,tax_scroll_drag&&tax_scroll_drag->page==page->id);
                 if(plan)draw_tax_information(*plan,sprites,font);

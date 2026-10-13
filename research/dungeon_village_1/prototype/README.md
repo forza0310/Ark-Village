@@ -10,10 +10,11 @@
 | `startup_world_human`、`steam_human_skin` | 60详情、职业／赠礼目录和演出；[人物合同](../ui/STEAM_HUMAN_DETAIL.md) |
 | `startup_world_building`／`facility_catalog`／`facility_items`、`steam_facility_*_skin` | 74详情、79／72商品、75／76／77改良、82口碑；[设施皮肤](STEAM_FACILITY_SKIN.md)、[商品](../rules/COMMERCE.md)、[效果](../rules/FACILITY_EFFECTS.md) |
 | `startup_world_village_activity`／runtime_pages、`steam_village_activity_skin`／`steam_town_progress_skin` | 51–54村办、48／49／50晋级及95领取；[规则与皮肤](../ui/PAGES.md#steam-village-progress) |
-| `startup_world_runtime_task_pages`、`steam_task_selection_skin`／`steam_task_roster_skin`／`steam_task_result_skin` | 22–24与scene4查看位置、raw29严格信息桥；25–28及31／32纯计划尚待Owner UI接线；[任务操作与皮肤](../ui/PAGES.md#steam任务选择与募集22–24) |
+| `startup_world_runtime_task_pages`、`steam_task_selection_skin`／`steam_task_roster_skin`／`steam_task_result_skin` | 22–24与scene4查看位置、raw29严格信息桥；25–28及31–33已有Owner UI、严格恢复和研究窗口接线；[任务操作与皮肤](../ui/PAGES.md#steam任务选择与募集22–24) |
 | `startup_world_magic_pot`、`steam_magic_pot_skin`／`steam_magic_pot_effect_skin` | 41–47壶目录、投入／处理演出、配方发现／制作确认；[操作与表现](../ui/STEAM_MAGIC_POT.md) |
 | `startup_world_commerce`、`steam_commerce_skin` | 83主页三入口同轮事务、原序只读皮肤及真实NEW查询；85三行图块目录／整轮输入、86交易反馈已接，保留独立93领取和86自动关闭；84金额及皮肤另列；[商会合同](../rules/COMMERCE.md#steam-commerce-top) |
 | `startup_world_menu`／`information`／`manual`／`save`、`steam_information_skin` | 菜单、34–39信息、90税收、13说明及14保存；[信息合同](../ui/INFORMATION_MENU.md)、[菜单](../ui/PAGES.md) |
+| `startup_world_runtime_pages`、`steam_monster_skin` | 89怪物介绍的严格单主钟业务、有序正常皮肤／Owner只读桥与研究窗口；92局部合同已核、维护后继待接；[共享显示前提](../rules/STEAM_MONSTER_PROGRESSION.md) |
 | `startup_application`、应用存储／标题／回放模块 | [应用](STARTUP_APPLICATION.md)、[存储事务](APPLICATION_STORAGE.md)、[标题](TITLE_MENU.md)、[完整回放](APPLICATION_REPLAY.md) |
 | `startup_world_persistence`／codec／restore_validation | [正常文件、精确回放及字段政策](PERSISTENCE.md) |
 | `startup_world_presentation`／`visuals`、`startup_view`／`startup_window_host` | [显式表现请求](../ui/INPUT_RENDER_REQUESTS.md)、只读计划与平台执行；[声音一次输出](AUDIO_REQUESTS.md) |

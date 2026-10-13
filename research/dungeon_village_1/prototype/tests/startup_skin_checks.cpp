@@ -7,6 +7,8 @@
 #include "dungeon_village_prototype/steam_platform_button_skin.hpp"
 #include "dungeon_village_prototype/startup_information.hpp"
 #include "dungeon_village_prototype/steam_information_skin.hpp"
+#include "dungeon_village_prototype/steam_monster_skin.hpp"
+#include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
 #include "dungeon_village_prototype/startup_world_information.hpp"
 #include "dungeon_village_prototype/startup_world_menu.hpp"
 #include "dungeon_village_prototype/startup_world_tax.hpp"
@@ -55,6 +57,66 @@ struct Checks {
             throw std::runtime_error("启动皮肤：" + message);
     }
 };
+void monster_introduction_skin(Checks &check,const std::filesystem::path &root) {
+    SteamMonsterSkinOptions options;options.view_y=23;options.title_widths=std::array<int,2>{48,48};
+    struct Case {int body,counter,frame,height;bool arrow;};
+    for(const auto c:std::array<Case,10>{{{0,0,0,0,false},{0,5,0,0,false},{0,6,1,1,false},
+        {1,39,2,46,false},{2,8,1,4,false},{2,31,3,35,false},{3,40,0,48,true},
+        {3,54,1,48,true},{3,55,1,48,false},{3,65,2,48,true}}})for(bool japanese:{false,true}) {
+        options.japanese=japanese;
+        const auto plan=steam_monster_introduction_skin({c.counter,c.body,0,3,"原定义名"},options);
+        check(plan&&plan->soft_labels==std::array<int,2>{0,0}&&
+            plan->title==(japanese?"新種ﾓﾝｽﾀｰ":"新型怪物"),"89独立日文字面与APK中文适配，原soft0/0");
+        int bodies=0,shadows=0,backgrounds=0,arrows=0,texts=0,clips=0,touches=0;
+        std::size_t shadow_at=0,body_at=0,clip_at=0,pop_at=0;
+        for(std::size_t i=0;i<plan->operations.size();++i) {
+            const auto &op=plan->operations[i];
+            if(const auto *v=std::get_if<SteamMonsterBody>(&op)) {
+                ++bodies;body_at=i;check(v->image==c.body*30&&v->sprite==c.body*4+2&&v->frame==c.frame&&
+                    v->position==std::array<int,2>{120,132},"89身体源身份、方向2与源速度帧oracle");
+            } else if(const auto *v=std::get_if<SteamHumanImage>(&op)) {
+                if(v->asset==SteamHumanAsset::shadow){++shadows;shadow_at=i;check(v->frame==3&&v->position==std::array<int,2>{120,133},"89影子读定义而非体型默认");}
+                if(v->asset==SteamHumanAsset::residence_background)++backgrounds;
+                if(v->asset==SteamHumanAsset::continue_cursor){++arrows;check(v->position==std::array<int,2>{212,204}&&v->frame==0,"89继续箭头原锚与帧");}
+            } else if(const auto *v=std::get_if<SteamHumanClip>(&op)) {
+                ++clips;if(v->kind==SteamHumanClipKind::push_intersect){clip_at=i;check(v->rectangle==std::array<int,4>{0,158,240,c.height},"89源整数RateConvert展开窗口");}else pop_at=i;
+            } else if(const auto *v=std::get_if<SteamHumanOverviewText>(&op)) {
+                check(v->value==(texts==0?std::string("原定义名")+(japanese?"が":""):(japanese?"出現しました!!":"出现了!!"))&&
+                    v->rectangle[1]==(texts==0?165:187)&&v->anchor==2,"89名字模板/出现句及顺序");++texts;
+            } else if(const auto *v=std::get_if<SteamStartupTouch>(&op)) {
+                ++touches;check(i+1==plan->operations.size()&&v->component==2&&v->option==2&&!v->rectangle,"89末Touch2不造全屏热区");
+            }
+        }
+        check(bodies==1&&shadows==1&&backgrounds==3&&arrows==int(c.arrow)&&texts==2&&clips==2&&touches==1&&
+            shadow_at<body_at&&body_at<clip_at&&clip_at<pop_at,"89有序图元及固定输出规模");
+    }
+    constexpr std::array<const char *,4> sizes{"S","M","L","LL"};
+    for(int body=0;body<4;++body) {
+        const auto seb=tools::parse_legacy_seb(read_bytes(root/"monster"/(std::string("walk_")+sizes[body]+"_02.seb")));
+        auto image=LoadImage((root/"monster"/(std::string("monster")+sizes[body]+"00.png")).string().c_str());
+        check(image.data&&seb.frame_count==4,"89四体型方向2使用真实已出版四帧SEB/PNG");
+        for(const auto &layer:seb.layers)for(const auto &part:layer.parts)
+            check(part.source_x>=0&&part.source_y>=0&&part.width>0&&part.height>0&&
+                part.source_x+part.width<=image.width&&part.source_y+part.height<=image.height,"89身体裁片没有越出真实图片");
+        UnloadImage(image);
+    }
+    SteamMonsterIntroductionInput good{40,0,0,0,"原定义名"};
+    for(int fault=0;fault<6;++fault){auto bad=good;if(fault==0)bad.body=4;if(fault==1)bad.variant=9;
+        if(fault==2)bad.shadow=4;if(fault==3)bad.counter=-1;if(fault==4)bad.counter=std::numeric_limits<int>::max();if(fault==5)bad.name.clear();
+        check(!steam_monster_introduction_skin(bad,options),"89坏资源/计数/文本明确拒绝");}
+    auto state=consume_startup_world_runtime_encounter_request(test_support::world_fixture(),{ref::EncounterCreationRequestKind::page89,3});
+    check(state.has_value(),"89皮肤用真实请求生产者");const auto id=state->scripts.pages.back().id;
+    check(!steam_monster_introduction_skin(*state,id,options),"89皮肤不替pending执行Init");
+    const auto ready=prepare_startup_world_runtime(*state);check(ready.candidate.has_value(),"89皮肤经真实框架初始化");state=ready.candidate;
+    const auto before=startup_world_state_digest(*state);
+    const auto first=steam_monster_introduction_skin(*state,id,options),again=steam_monster_introduction_skin(*state,id,options);
+    check(first&&again&&first->operations.size()==again->operations.size()&&startup_world_state_digest(*state)==before,"89重复查询不消费页面/随机/声音/实体，输出规模稳定");
+    auto bad=*state;bad.page_counters.erase(id);check(!steam_monster_introduction_skin(bad,id,options),"89Owner桥拒缺钟，不补默认");
+    check(!steam_monster_introduction_skin(*state,id+1,options),"89Owner桥拒陈旧页身份");
+    check(acknowledge_startup_world_runtime_page(*state,id)==StartupWorldRuntimeError::none&&
+        acknowledge_startup_world_runtime_page(*state,id)==StartupWorldRuntimeError::none&&
+        !steam_monster_introduction_skin(*state,id,options),"89已关闭页不能继续产生皮肤");
+}
 void income_information(Checks &check) {
     // 条件夹具只检验raw36统计口径，不声称这些现金桶由自然经营获得。
     StartupInformationCash buckets{};
@@ -2933,6 +2995,7 @@ int check_startup_skin(const std::filesystem::path &source_root,
     const auto assets=tables(source_root,check);
     phases(check);
     steam_clear_score_skin_checks(check);
+    monster_introduction_skin(check,source_root);
     steam_new_game_skin_checks(check);
     steam_config_skin_checks(check);
     steam_commerce_skin_checks(check,source_root);

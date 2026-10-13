@@ -141,7 +141,20 @@ APK `aa.f()`同三组使用十进制参数，`</si>`回原Font请求`n.c()`，`<
 
 LF（U+000A）独立置断行标志，不要求multiLine_为真，也不受W=−1豁免；精确`<br>`已在扫描前换成LF。CR（U+000D）不走LF分支，本步不测增量宽，同样交下述源范围规则。发生断行时，107CEE44–EF9E先为当前待排块写旧行坐标，随后清L、把待排起点置当前块数，通常令Y增加`H+lineSpace_`，将下一行高重置为当前工作Font.usedSize并请求新块；ff另沿后节已核路径。**当前溢出字符在旧行提交之后才进入新块**，并按新块重新测宽，不回退源游标或循环重试fit。因此超宽首字符也可能先推进一个空行，再保留超宽字符；连续LF可各推进一行，但没有为LF创建可见字符块。非日式布局的溢出ASCII空格另在107CEE0B–2D把本次增量置0，不能统一成所有行首空格自动裁掉。
 
-普通块只在需要新块且本次D>0、组合续体或pic／btn资格成立时创建（107CF0A0–138）；普通字符追加另检查D>0或组合续体。识别到的样式标签只改变工作状态／请求新块，本身不作为普通字符宽；pic／btn沿各自已核布局宽进入同一溢出与行提交主干，之后作为独立特殊块。循环终点仅在仍有待排块时再收末行并计其H，否则沿已有Y，不无条件补尾部空块／空行（107CF381–4D4）。原输入长度0则更早在107CD918→107CF7EB建立空textBlocks数组并返回，尚未到107CDBAD的textWidth_=0，不能把这条局部早退写成同时清零全部旧测量字段；调用前SetText／Init的完整状态清理另验。null输入不与空串混同。
+普通块只在需要新块且本次D>0、组合续体或pic／btn资格成立时创建（107CF0A0–138）；普通字符追加另检查D>0或组合续体。识别到的样式标签只改变工作状态／请求新块，本身不作为普通字符宽；pic／btn沿各自已核布局宽进入同一溢出与行提交主干，之后作为独立特殊块。循环终点仅在仍有待排块时再收末行并计其H，否则沿已有Y，不无条件补尾部空块／空行（107CF381–4D4）。进入本方法时实例text_长度0，则在107CD918→107CF7EB建立空textBlocks数组并返回，尚未到107CDBAD的textWidth_=0；这与非空原串后来被翻译为空的路径不同。
+
+空串上游由两个SetText入口闭合：公开RVA7CC170先将null转换为空literal，再调用TextLayout.Replace(text,null)，计算hash后交私有RVA7CC200。后者先TranslateConsoleText及特定标记处理，在107CC4A6–4D7安装text／hash、清pos／beginTime／timeOffset；107CC546才调用_makeTextBlocks，未调用Init，也未清textWidth。以下结论限定于该次装入的text_确为空且调用正常完成，不假定运行替换表／平台文案转换必保持所有输入不变，也不将私有null载荷当合法空串。
+
+| 空SetText正常完成后的读取 | 已核结果与来源 |
+| --- | --- |
+| 块／渐显长度 | textBlocks为零长数组；SetText后段107CC699–71A先清length_再遍历块求和，故length=0，pos仍为0。没有保留旧文字块作为空串占位 |
+| 完整缓存宽 | textWidth_保留此前值；GetTextWidthF RVA7CB400直接返回+50，GetTextWidth RVA7CB410返回`trunc(float32(textWidth+0.9f))`。不是空串必返回0，也不是按旧字符串重新测量；新构造旧缓存本来为0是另一前提 |
+| 高与渐显宽 | 没有独立textHeight_字段；height_ +24是配置框高。GetHeight RVA7CAE80按块的非空text求最大`y+font.usedSize`，空数组返回0；GetNextHeight RVA7CB130与已核实例StringWidth亦因没有可消费块返回0。不能用配置框高代替内容高 |
+| 原绘制 | Draw RVA7C9AC0在107CA054–0C6跳过全部TextBlock.Draw，不会借旧宽画出旧文本。但仍可执行坐标／文字设置栈、按overArea压弹clip，正常尾107CA11D–128还增加draw_；renderRectVisible且框尺寸有效时可另画框线。因此无文字块输出不等于整个Draw完全无操作／无图元 |
+
+SetText的autoScale路径也保留这一区别：多行时用GetHeight，空块为0；单行且配置宽高为正时，107CC651–697比较的是旧textWidth，过宽可反复以`当前usedSize−1`调用SetSize(...,false)并再次_makeTextBlocks，空早退仍不更新该宽。局部退出检查是该次减一实参恰1或宽度条件解除，不据此保证任意比例／字号下循环终止。正常尾107CC71A–729恢复此前复制的Font；不能把这些临时调用说成空串真实字形缩小或缓存宽已重置，全部异常路径亦未由此认证。
+
+Init RVA7CB430是另一组赋值：重建Font，text设空、清渐显时间／位置、width_/height_设−1，并在107CB570将textWidth清0；**没有写textBlocks或length_**。新构造RVA7CD4A0先在107CD4CC–4E3建零长块数组，再内联同Init赋值，不能由新对象的零状态推断对旧对象再Init会联合清空所有字段。若仅重复Init而未SetText／重排，旧块及length仍在、GetHeight仍读那些块，但pos0暂不消费文字；没有据此认证原页面真的执行这种复用链。固定APK `aa.a(String)`（744行起）同样归一null、置文本／pos、调用f，再清总长度并按块求和；f的空串早退留下旧m宽，b()按空块返回高度0。APK构造初始化空块／m0，但没有此Steam独立Init入口；其失真的非空换行循环不参与上述小型调用链结论。
 
 游标及块start_/length_基于UTF-16代码单元。TextBlock构造在107DB4EA–F1令start=−1、length=0；普通追加门槛为D>0或组合续体（107CF14F–167）。通过时仅首个接受单元设置start，此后每次写`length=当前源索引−start+1`，三单元组合资格另加1（107CF1CF–1E9）；未通过则不扩范围、不追加临时text，也不增加width。全部块最后在107CF6E1–73F对start≠−1者，用**翻译／字符转换／br替换后的局部串**执行`Substring(start,length)`覆盖text。此后本方法不再测宽，原width和已排坐标保留。
 
@@ -223,7 +236,7 @@ DLL中Add入口绝对VA的唯一四字节匹配在`.data`的1112D608；邻项依
 
 ## 仍需闭合及产品使用边界
 
-已核资源查找、GUIStyle切换、本地化公式、两种测宽链、14项TAG局部生产／消费，以及普通溢出／LF行提交、整词前瞻、末行对齐和format标点／CR等零增量单元的最终块字符串范围。仍缺当前语言与实际翻译串样本、Unity空font具体回退、局部开关／scale／offset完整设置来源、全部语言禁则覆盖、SetText／Init对空串旧测量状态的联合清理、具体运行图标注册与素材绑定，以及真实字形宽度／baseline；已核原串与处理后串混用索引及字符串重建不等于这些运行输入／像素已验。[文字后端](STEAM_FONT_BACKEND.md)已有开关资格及栈恢复，[普通DrawString](STEAM_FONT_DRAW.md)已核锚点／字号补偿／矩阵→clip→GUI位置；这些不代替当前运行字体对象和字形度量。
+已核资源查找、GUIStyle切换、本地化公式、两种测宽链、14项TAG局部生产／消费，以及普通溢出／LF行提交、整词前瞻、末行对齐、format标点／CR等零增量单元的最终块字符串范围和SetText／Init空串字段分工。仍缺当前语言与实际翻译串样本、Unity空font具体回退、局部开关／scale／offset完整设置来源、全部语言禁则覆盖、具体运行图标注册与素材绑定，以及真实字形宽度／baseline；已核原串与处理后串混用索引及字符串重建不等于这些运行输入／像素已验。[文字后端](STEAM_FONT_BACKEND.md)已有开关资格及栈恢复，[普通DrawString](STEAM_FONT_DRAW.md)已核锚点／字号补偿／矩阵→clip→GUI位置；这些不代替当前运行字体对象和字形度量。
 
 产品可据此分开语言字体选择、测宽与绘制，并把比例／临时字号恢复作为契约候选；不能把静态存在的字体直接发布为“原Steam中文字体”，不能在未核中文字体和真实尺寸前用截图目测常量替代测宽。本批没有导出或发布字体制品。
 

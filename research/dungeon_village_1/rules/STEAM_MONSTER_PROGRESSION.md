@@ -63,9 +63,9 @@ Steam metadata三个字面槽分别为`110F745C`（标题）、`110EA494`（名�
 
 **共享显示调用不是纯裁片函数。** `UserData.dispMonster_`为static+0x18，区别于人物scratch +0x14。页先写其`objSize_ +0x14`和`bodyImg_ +0x18`；SetDispMonsterData（RVA `2E6AE0`，`102E6B19–102E6B7E`）只写`seb_/bodyImg_/animeIndex_/direct_/sebCnt_`五项，不清其它历史状态。DrawDispMonster（RVA `2CCD70`，`102CCDA9–102CCDF6`）不读取外层animeIndex，先以`seb×3`调用SetDrawParam再Draw_monster；正常monster action0会重新算身体SEB为`body×4+2`、帧为`(frame%(speed×4))/speed`。Steam cctor `10294567–102945E8`独立给出speed `[6,6,8,10]`，不能把外层四槽步帧直接裁PNG。
 
-SetDrawParam会写Character2共享临时字段及scratch `draw_param[5…10]`；Draw_monster（RVA `27D280`）还画条件状态／伤害／效果并在`1027D710–1027D739`写`effect_pos[0…1]`。本批已读其主体调用，但未穷尽这些特效子树及任意旧scratch残留，不能宣称整页绘制永远零随机。维护按现有Owner显式表现请求／独立消费方案保留上述顺序，纯基础皮肤只认证正常身体；不能为达到该前提创建实体或把共有显示monster请求当任务99／100的BD随机目录。
+SetDrawParam会写Character2共享临时字段及scratch `draw_param[5…10]`；Draw_monster（RVA `27D280`）在`1027D710–1027D739`写`effect_pos[0…1]`。它还包含选中高亮、血条、伤害、效果和调试显示；本节基础皮肤的充分条件在下文明确，不能只凭setter的五项覆盖宣称任意旧显示状态相同。
 
-当前请求没有覆盖所有被读字段。显示怪物由`UserData.Setting`（RVA `2E89D0`）在`102EA2B2–102EA32A`创建Character2、调用Init(1,0,0)并将uid设−1；不是UserData cctor创建。Character2构造明确分配`draw_param`、`effect_pos`、空效果列表及6槽powerBar；Init绑定共同上下文／对象身份并初始化动作、朝向、flag和部分状态／计数（`1028418D–1028421D`），不重置上述效果列表和伤害计数。89及setter没有覆盖`uid_ +0x0C`（选择高亮／选中血条）、`powerBar_ +0x104`的第4槽（主动血条）、`effD_hitTime +0x114`／`effD_miss +0x118`（DrawEffDamage RVA `276BF0`入口）、效果列表`+0x19C`（DrawEffect RVA `277150`），也没有覆盖调试Draw_stateInfo／Draw_actInfo读取的状态／行动字段。因此最小后续问题是：**Setting后各个显示monster使用者是否只改当次已覆盖字段，能否证明这些附效在89准入时仍为空／未启用？** 不能把未追的共享历史补0当正常状态，也不能据此承诺当次显式请求就足以完整恢复。现Owner还没有此共享monster scratch载荷；先沿89这条具名链补闭包，再决定复用独立表现请求是否足够，不扩大成全世界actor重构。
+显示怪物由`UserData.Setting`（RVA `2E89D0`）在`102EA2B2–102EA32A`创建独立Character2、调用Init(1,0,0)并将uid设−1；不是UserData cctor创建，也不加入世界人物／怪物容器。构造明确分配`draw_param`、`effect_pos`、空效果列表及6槽powerBar；新标量和int数组槽按语言语义置零。Init绑定共同上下文／对象身份并初始化动作、朝向、flag和部分状态／计数（`1028418D–1028421D`）。89及setter不清uid、powerBar、伤害计数、miss或效果列表，但以下已核正常显示使用者也不改这些槽。
 
 2026-10-14续核从以下四个具名方法入口顺序解码至实际调用边界，已把上一批E8候选收为真实指令，局部直接写集如下；不把顺序解码代替全程序指针别名证明。
 
@@ -76,15 +76,33 @@ SetDrawParam会写Character2共享临时字段及scratch `draw_param[5…10]`；
 | SubForm._draw1_2，RVA `332DB0`的raw33期限分支 | `10332FEB–10332FEE`将33送至`10336228`；`103370AC–103370D4`写size／bodyImg；`103370FD/1033710E`依次setter(action0)／draw |
 | SubForm._draw2_4，RVA `3472B0`的raw92怪物信息分支 | `10347779–1034777C`将92送至`1034937C`；`10349820–1034984B`写size／bodyImg；`10349873/10349885`依次setter(action0)／draw |
 
-四处都未在这些已核局部直接覆写uid／powerBar／伤害计数／miss／效果列表；它们经相同SetDrawParam和Draw_monster消费。DrawEffDamage在`10276C2B–10276C33`读取hitTime，≤0直接走返回`10276F86`；DrawEffect在`1027720D–10277231`取列表长度，空列表直接走返回`1027ADAF`。新Character2的标量及新int数组零初始化、空列表构造和Setting的显式uid=−1共同证明**刚完成该初始化时**这些附效未开启；这不是任意历史进入89时由当次setter清零。调试状态／行动显示还依赖原全局配置，不能由无伤害／空效果推成只有身体一层。
+四处经相同SetDrawParam和Draw_monster消费；正常monster action0的SetDrawParam只做数组查询、算帧及上述派生写入，不向世界AI／战斗／任务更新传出scratch。Draw_monster把scratch传给血条、伤害、效果及调试helper，但以下准入会跳过相关绘制和写入，身体的AppData.DrawSeb只收到图像／SEB／帧／坐标，不收到Character2。这闭合的是正常显示链，不涉及世界怪物实例更新。
 
-以当前具名方法表范围顺序解码并跟踪普通`mov`的TypeInfo→static→`dispMonster_ +0x18`访问，最小直接读取候选只有Setting、setter、draw及上表四个方法；均已核实相关实际指令。该有限检查不覆盖其它地址加载形式、跨调用指针别名、反射或外部改写，不能宣称全部writer穷尽。下一步只需核这些直接使用者是否向会污染未覆盖槽的路径传出scratch，以及调试准入；若这层闭合，才可讨论从已证初始化状态独立消费当次89请求，而无需新增持久字段。当前不能据这张表补零或承诺所有旧显示历史等价，原动态准入仍未取得。
+| 正常基础皮肤的充分条件 | 来源与保持关系 |
+| --- | --- |
+| 已完成Setting的独立显示初始化；`uid=-1`、powerBar[4]为0、hitTime为0、effects为空 | 构造／Init／Setting如上；setter及四个显示调用者不写这些槽。DrawEffDamage在`10276C2B–10276C33`读`effD_hitTime +0x114`，≤0直接返回`10276F86`，因此不读miss或画伤害；DrawEffect在`1027720D–10277231`读`+0x19C`长度，空列表直接返回`1027ADAF` |
+| 相机仅选合法世界对象，或没有选中对象 | Camera.Collision（RVA `29DB60`）从AppData的人物／怪物Vector建命中名单，`1029E624–1029E655`按objType绑定subPlayer／subMonster；不会加入独立显示scratch。GetHumanUniqueId（`27FB40`）／GetMonsterUniqueId（`281AF0`）从0找最小未用身份，在正常有限世界规模内非负，因此不匹配scratch的−1。Draw_monster的`1027D2D5–1027D37F`高亮及`1027D575–1027D5FC`选中血条分支不成立；powerBar[4]为0也跳主动血条 |
+| 普通根游戏的非调试显示，Map.DISP_ENEMYAREA为0 | metadata槽`110FBACC`独立解析为game.Map，static+0x20；Map.cctor `102BAF46`明确置0。Draw_monster在`1027D61D–1027D624`仅值恰1才调用Draw_stateInfo／Draw_actInfo，不能把它误称Config.DEBUG直接准入 |
+
+发行配置须区分基类默认与游戏覆盖：基础库Config.cctor先令DEBUG=true（`1083D964`），DEBUG_CMD从DEBUG复制（`1083DCC2`）；游戏`cfg.MyConfig.cctor`却令DEBUG=false（`10228D49`）并据此令DEBUG_CMD=false（`10228F14–10228F1B`）。IApplication.Awake在`107815FE–1078169C`查找Config派生类型并调用Config.Create；后者通过同名字段GetValue→基类GetField→SetValue复制（`1083B66C–1083B6D3`）。根应用正常复制这些游戏值；非根应用会跳过含DEBUG／DEBUG_CMD的SKIP_OVERRIDE_STATIC_FIELD_NAMES，因此本合同不承诺子应用配置。GameForm.Update在`1030156C–10301573`要求DEBUG_CMD后，才允许CheckKeyRepeat(mask8)在`10301608–10301638`以1−旧值切换DISP_ENEMYAREA；正常根游戏的玩家输入不进入这条调试切换。这里是固定发行静态启动链，未读取用户运行期配置。
+
+在上述初始化、合法相机对象、正常根游戏非调试及资源有效的前提内，本次显示只改可重新计算的绘制参数和effect_pos，**不消耗游戏随机、不发声音、不改uid／血条／伤害／效果列表，也不创建世界实体**。图像／SEB／帧的纯基础计划可以独立消费，不必为这些派生缓存新增Owner持久字段；这是已证正常链的维护策略，不是把未知附效补0。原公共Update待发SE和框架进出声音仍沿前文消费者，不能从本次Draw零声音推成整轮静音。调试态、损坏／外部改写的身份和附效状态不在该纯计划范围，不能静默回退为普通身体。
 
 资源复用现[全量索引](../assets/IMAGE_COVERAGE.json)：两版common图片3／39／72、SEB25／2，以及monster方向2的四个walk SEB及全部35张monster PNG在该索引中同字节。索引的Steam monster／common容器分别为resources.assets TextAsset1129／1148；这仅认证这些条目身份，不把整个common目录或所有显示效果都宣称同版本。图片索引为body×30+variant，方向SEB为body×4+2，沿正式img.inf／seb.inf检验缺图和帧界，不按PNG列数猜动作。
 
 当前Owner生产者绑定并校验`monster_definition`，89仅在真实栈顶首次准入时建立现有`page_counters`；暂停或被覆盖的pending页不提前Init。统一validator拒绝缺定义、重复／未知身份、ready缺钟、非法计数及误挂phase／副钟，框架在清理关闭页之前也校验；恢复入口复用该规则。确认只接就绪栈顶，早确认快进40、后次关闭，不重触发介绍脚本、introduced、随机抽样或奖励；主钟沿已核INT_MAX回卷，关闭后下一框架入口共同退休页及主钟。这些是当前单主钟业务与维护拒绝策略，不是原程序损坏档案的安全保证。
 
-89尚无专用副钟、共同SEB调度或完整皮肤；共享scratch历史及表现请求身份仍须沿上文闭合，坏素材拒绝属于未来绘制消费者，不能以当前业务校验替代。原窗口的物理输入与最终画面未由本次静态分析取得。
+研究[有序皮肤](../prototype/include/dungeon_village_prototype/steam_monster_skin.hpp)及实现`steam_monster_skin.cpp`按上述正常前提只读生成背景、阴影、身体、文字、箭头和Touch2请求；Owner桥严格读真实就绪栈顶89、定义与现主钟，缺图／坏帧拒绝，不修改scratch或世界随机。研究窗口已接经营中的89以及早期／就绪两种例图，本轮visuals短测及两种8帧窗口通过；这是维护绘制／接线验证，不是原Steam动态认证。当前仍没有原公共副钟／SEB更新、完整原字体和物理Touch2动态证据；这些独立补证，不阻碍正常只读基础皮肤。[两态例图](../ui/examples/steam-monster-introduction.png)与接口已供产品消费，后继接下述92，不再扩大扫描世界actor或新增共享显示存档。
+
+## raw92怪物信息：共享定义入口与局部皮肤
+
+Steam `GameForm._update`在VA `103052F3–10305305`接确认脉冲`0x100000`，按已选人物→怪物→设施顺序处理。怪物分支`10305985–103059F7`创建92，由`Character2.GetMonsterData()`取共享定义写入页`+0x198`后Push；不是冻结当前怪物实例。APK `b/c.java`约1600行同为选中实例→定义→`g(92).ah`。公共Init归零主钟；Init2没有92专支，cctor `1032A85B–1032A8B0`给软标签`{0,2}`。Update在`10318645–1031865D`确认立即转Pop，另在`1031F640–1031F680`接受soft2；无本页等待门槛、目录／滚动、奖励或随机，公共Update／框架声音仍独立。
+
+Draw分派`10347779–1034777C→1034937C`，取定义name`+1C`、flags`+0C`、body／variant／shadow`+20/+28/+2C`、description`+50`、累计击杀`+5C`与倒下人数`+64`。普通显示Lv按累计击杀100／200／300／400分1–5档；BOSS为`min(count+1,10)`。`GetExp` RVA21C580和`GetDropMoney` RVA21C4D0分别从基础`+40/+4C`按flags4选普通／BOSS奖励倍率，沿[已核奖励合同](ai/ENCOUNTERS.md)，不把Lv档数直接当收益倍率。这些具名helper不消费随机或写共享进度。
+
+窗220×168、Box(17,74,219,184)，名字(26,69)，Lv为common38及SEB12，common39地板(23,89)，定义shadow帧在(70,158)，身体(70,157)面向1并沿原speed数组计步，经验(42,178)／数值(95,177)，掉钱图标(147,189)／数值(200,177)，说明(120,198)。Steam字面独立解码：标题槽110F3EC0为“モンスター情報”、110F7190为“支給”，110F4DB0／110F4D5C为“倒した数…”／“倒された人数…”。本节中文仅为说明，维护中文显示仍须注明汉化APK适配。
+
+非JP布局先将两条LT标签按空格分段，只有**两条都至少两段**（`10349906–10349924`）才临时用字号10：击杀文字(125,98)/(125,112)、count3(210,104)，倒下文字(125,132)/(125,146)、count4(210,138)，随后ResetFont。分段不足则走JP后备`10349AD5–10349BA7`：两标签分别(125,95)/(125,129)，计数(210,110)/(210,144)。APK非JP直接索引前两段，没有此后备，不能为两版统一去掉Steam资格检查。92与89复用共享显示对象，但方向／统计布局／退出门槛独立；当前只完成上述局部合同，尚无92维护目录入口、皮肤或原窗口动态认证。
 
 ## 新局与复发关系
 

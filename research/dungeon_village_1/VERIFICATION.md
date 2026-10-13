@@ -1,5 +1,13 @@
 # 当前研究验证与历史索引
 
+## Steam按钮Image布局与右键原图 2026-10-14
+
+接`c79459f`，扩现[平台按钮模块](prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)，交付有效Image的60／75最大边、float32长宽、无矩阵偏移截断及独立矩阵平移请求；两支绘后重查矩阵再决定Pop。只增加实际消费的[right_click.png](assets/steam-platform/right_click.png)，128×128／3548字节，沿既有全量索引核源并查看；没有新增SEB、target、持久字段或临时核对脚本。
+
+单Release动态构建与现visuals **1/1通过1.56秒**，覆盖六组独立几何oracle、负锚、坏尺寸／类型和实际PNG解码。纯计划不持Owner或设备引用、不发一次性业务输出，资源在现测试作用域释放；未接SDK、原窗口或后端像素验收，不编他人住宅在途测试、不跑长测。Release1375文件／144463550字节，assets857文件／9476740字节（本次统计）；无新增临时取证文件，构建／测试已退出。魔法壶外部反馈仍是通道正常但无原窗口，五项未覆盖；既有提示词保留先停在壶主页的补证前提。
+
+并行将[虚拟屏幕光标](ui/STEAM_INTERACTIONS.md#虚拟屏幕光标模式位置与合成touch)的真实模式表、UI线程输入生产者、位置约束、合成MotionEvent与绘制门槛合入现合同；不把可达分支冒称当前设备启用，也不由停顿常量推导自动隐藏。全部本轮子任务已结束，文档差异／本地链接通过；仅研究白名单提交，保留产品及他人住宅测试改动。
+
 ## 控制器后备资源、字体与预留保存边界 2026-10-14
 
 接`7ef95d1`，出版managed kairolib三套原按钮PNG／SEB，共6文件103028字节，复用全量索引身份；扩现[平台按钮模块](prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)交付后备资源选择、原frame0／1互斥反转及层重映射。源码补核所有layer最终归0，特殊frame7无控制器时取独立鼠标图并按75缩放，与60及SEB后备分开。现visuals覆盖三套132实际帧、裁片／索引／设备族、反转次序、坏输入及固定输出规模；单Release动态构建、最终 **1/1通过1.55秒**。未改Owner／codec／CMake或新增target，未编他人住宅在途测试、不跑长测。

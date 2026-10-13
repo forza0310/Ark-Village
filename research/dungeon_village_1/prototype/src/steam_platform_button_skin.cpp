@@ -58,4 +58,26 @@ std::optional<SteamControllerButtonFallbackPlan> steam_controller_button_fallbac
         resource={"steam-platform/buttons_xbox.png","steam-platform/buttons_xbox.seb",33,29};
     return SteamControllerButtonFallbackPlan{resource,frame,0};
 }
+std::optional<SteamButtonImagePlan> steam_button_image_layout(const SteamButtonImageInput &in) {
+    if(in.width<=0||in.width>65536||in.height<=0||in.height>65536||
+       in.anchor[0]<-65536||in.anchor[0]>65536||in.anchor[1]<-65536||in.anchor[1]>65536)return {};
+    float maximum{};
+    switch(in.kind) {
+    case SteamButtonImageKind::dynamic_glyph: maximum=60.F;break;
+    case SteamButtonImageKind::right_click: maximum=75.F;break;
+    default: return {};
+    }
+    // 原单精度除法、乘法分别发生；保留非整数尺寸，直到无矩阵分支才截断偏移。
+    const float width=static_cast<float>(in.width),height=static_cast<float>(in.height);
+    const float ratio=maximum/(width>height?width:height);
+    SteamButtonImagePlan plan;
+    plan.scaled_size={width*ratio,height*ratio};
+    const std::array<float,2> offset{plan.scaled_size[0]*-0.5F,plan.scaled_size[1]*-0.5F};
+    plan.draw_anchor=in.anchor;
+    if(in.local_matrix)plan.translation=offset;
+    else for(int axis=0;axis<2;++axis)plan.draw_anchor[axis]+=static_cast<int>(offset[axis]);
+    // 原尾段无论先前是否有矩阵都重新CheckLocalMatrix，消费端依实际结果决定Pop。
+    plan.recheck_matrix_before_pop=true;
+    return plan;
+}
 } // namespace dungeon_village_prototype

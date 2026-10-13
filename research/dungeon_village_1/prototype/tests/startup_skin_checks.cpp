@@ -1423,6 +1423,37 @@ void steam_platform_skin_checks(Checks &check,const std::filesystem::path &sourc
         check(!steam_controller_button_fallback(bad),
               "后备frame与真正消费的反转值明确拒绝0..43维护预算之外或缺值，不静默夹到首帧");
     }
+    // 静态指令独立oracle：75方图中心为37.5，整数路径向零截断而非floor。
+    struct ImageOracle {int width,height;SteamButtonImageKind kind;float w,h;int x,y;};
+    const std::array<ImageOracle,6> image_oracles{{
+        {128,128,SteamButtonImageKind::dynamic_glyph,60.F,60.F,-10,21},
+        {128,128,SteamButtonImageKind::right_click,75.F,75.F,-17,14},
+        {127,65,SteamButtonImageKind::dynamic_glyph,60.F,30.7086620331F,-10,36},
+        {129,63,SteamButtonImageKind::dynamic_glyph,60.F,29.3023262024F,-10,37},
+        {67,129,SteamButtonImageKind::dynamic_glyph,31.1627922058F,60.F,5,21},
+        {101,53,SteamButtonImageKind::right_click,75.F,39.3564376831F,-17,32}}};
+    for(const auto &expected:image_oracles)for(bool matrix:{false,true}) {
+        const auto p=steam_button_image_layout({expected.kind,expected.width,expected.height,{20,51},matrix});
+        check(p&&p->scaled_size==std::array<float,2>{expected.w,expected.h}&&
+                  p->draw_anchor==(matrix?std::array<int,2>{20,51}:std::array<int,2>{expected.x,expected.y})&&
+                  bool(p->translation)==matrix&&p->recheck_matrix_before_pop,
+              "Steam有效Image保持单精度长宽和独立矩阵平移，无矩阵偏移先截断再加整数锚");
+        if(matrix)check(*p->translation==std::array<float,2>{expected.w*-0.5F,expected.h*-0.5F},
+              "已有矩阵保持负半尺寸浮点平移，Draw仍用原锚，末尾重查矩阵后才Pop");
+    }
+    CpuImage mouse_image(LoadImage((source_root.parent_path()/steam_right_click_image_path).string().c_str()));
+    check(mouse_image.image.data&&mouse_image.image.width==128&&mouse_image.image.height==128,
+          "无控制器返回提示实际消费已出版128方图，未用RB或SEB裁片代替");
+    for(int fault=0;fault<7;++fault) {
+        SteamButtonImageInput bad{SteamButtonImageKind::dynamic_glyph,128,128,{20,51},false};
+        if(fault==0)bad.width=0;if(fault==1)bad.height=-1;if(fault==2)bad.width=65537;
+        if(fault==3)bad.height=65537;if(fault==4)bad.anchor[0]=-65537;
+        if(fault==5)bad.anchor[1]=65537;if(fault==6)bad.kind=static_cast<SteamButtonImageKind>(-1);
+        check(!steam_button_image_layout(bad),"动态图布局坏尺寸/类型/锚明确拒绝，不造缺图或夹值");
+    }
+    const auto negative=steam_button_image_layout({SteamButtonImageKind::right_click,128,128,{-20,-51},false});
+    check(negative&&negative->draw_anchor==std::array<int,2>{-57,-88},
+          "负锚仍先截断中心偏移，不能合并浮点锚后截断");
     const SteamControllerButtonFallbackInput stable{13,0,1,true,16,{}};
     for(int repeat=0;repeat<3;++repeat) {
         const auto plan=steam_controller_button_fallback(stable);

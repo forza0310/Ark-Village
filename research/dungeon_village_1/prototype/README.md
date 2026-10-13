@@ -16,7 +16,7 @@
 | `startup_world_menu`／`information`／`manual`／`save`、`steam_information_skin` | 菜单、34–39信息、90税收、13说明及14保存；[信息合同](../ui/INFORMATION_MENU.md)、[菜单](../ui/PAGES.md) |
 | `startup_world_runtime_pages`、`steam_monster_skin` | 89怪物介绍、92当前怪物共享定义详情：严格单主钟业务、有序正常皮肤／Owner只读桥与研究窗口；92允许仍在当前名单的死亡演出，不保留实例根；[共享显示前提与入口](../rules/STEAM_MONSTER_PROGRESSION.md) |
 | `startup_application`、应用存储／标题／回放模块 | [应用](STARTUP_APPLICATION.md)、[存储事务](APPLICATION_STORAGE.md)、[标题](TITLE_MENU.md)、[完整回放](APPLICATION_REPLAY.md) |
-| `steam_platform_button_skin` | 平台绑定／键盘按钮与Switch／PS4／Xbox的纯后备资源选择；不调用Steam或发现设备；[按钮及glyph合同](../ui/STEAM_FONT_CONSUMER.md#内嵌按钮提示) |
+| `steam_platform_button_skin` | 平台绑定／键盘按钮、Switch／PS4／Xbox后备及有效glyph／原右键图的矩阵分支几何；不调用Steam或发现设备；[按钮及glyph合同](../ui/STEAM_FONT_CONSUMER.md#内嵌按钮提示) |
 | `startup_world_persistence`／codec／restore_validation | [正常文件、精确回放及字段政策](PERSISTENCE.md) |
 | `startup_world_presentation`／`visuals`、`startup_view`／`startup_window_host` | [显式表现请求](../ui/INPUT_RENDER_REQUESTS.md)、只读计划与平台执行；[声音一次输出](AUDIO_REQUESTS.md) |
 

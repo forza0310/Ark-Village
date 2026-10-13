@@ -65,4 +65,23 @@ struct SteamControllerButtonFallbackPlan {
 // 调用者须先完成源动态图像优先分支；frame7无控制器时的right_click路径不是此后备。
 std::optional<SteamControllerButtonFallbackPlan> steam_controller_button_fallback(
     const SteamControllerButtonFallbackInput &input);
+
+// 调用者已完成USE_STEAM/设备/frame分流并取得有效Image；这里仅还原Draw调用几何。
+enum class SteamButtonImageKind { dynamic_glyph, right_click };
+struct SteamButtonImageInput {
+    SteamButtonImageKind kind{};
+    int width{}, height{};
+    std::array<int,2> anchor{};
+    bool local_matrix{};
+};
+struct SteamButtonImagePlan {
+    std::array<int,2> draw_anchor{};
+    std::array<float,2> scaled_size{};
+    std::optional<std::array<float,2>> translation; // TranslateTemporary→PushMatrix，不合并进anchor。
+    bool recheck_matrix_before_pop{}; // Draw之后重新检查真实图形状态，不能无条件Pop。
+};
+// 尺寸1..65536、锚±65536为维护预算；不取得SDK图片、不操作图形栈或注册输入。
+std::optional<SteamButtonImagePlan> steam_button_image_layout(const SteamButtonImageInput &input);
+// frame7、USE_STEAM且HasController=false的原整图；不是SEB裁片或控制器后备。
+inline constexpr const char *steam_right_click_image_path="steam-platform/right_click.png";
 } // namespace dungeon_village_prototype

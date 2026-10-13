@@ -172,6 +172,25 @@ Unity KeyCode 经允许的焦点Keypad写入 `1 << keyID`，再由 `DecideKeySta
 物理键到上述基础逻辑位已有静态证据；实际窗口投递、全部手柄别名和每个页面的返回软件键仍分别待验证。
 产品消费时应保留“选择／确认／返回”语义，并按目标平台适配输入；Steam键位不直接赋给固定APK。
 
+### 虚拟屏幕光标：模式、位置与合成Touch
+
+2026-10-14补固定Steam2.56具名静态分支，不操作窗口。这里的`screenCursor_`是Canvas内部虚拟光标，区别于物理鼠标／Unity Touch。真正生产者为`DecideKeyState` RVA`748780`经`RunOnUiThread(wait=true)`提交的`<DecideKeyState>b__325_0` RVA`752BB0`；实际委托槽`110FB634`独立解码为metadata method7605，与具名入口交叉。`OnInputUpdate`的物理Touch循环不能代替这条生产链。
+
+Canvas.cctor在`10757754–10757796`建立真实`CONTROLLER_TABLE=[0,2]`，含Joystick与ScreenCursor，没有表内Remocon项。新Canvas的controllerIndex采用零初值，因此初始索引0不是虚拟光标；`IsScreenCursor` RVA`74E6D0`实际检查表值等于2。输入lambda在`10754BEE–10754CF5`遇button10释放，或无平台GUI对话（`guiMode_=0`）且键盘P按下时，令索引加1模表长、清三项摇杆指针，再检查是否进入光标模式。这是普通Steam样本里的可达切换分支，不要求Editor；未读取当前窗口索引或实际输入，不能声称用户会话已经启用。实际设备button10映射及guard／焦点仍是平台输入前提。
+
+| 局部消费者 | 已证效果与边界 |
+| --- | --- |
+| InitScreenCursor `74CD80`及Init内联 `1074DA96–1074DBBA` | 独立建立screenPointer／screenCursor／previous三个两元素float数组，click=−1、移动／停顿／恢复／绘制计数清0。Init把Screen整数中心先装入pointer，再交SetScreenCursor；不是以物理鼠标当前位置初始化 |
+| SetScreenCursor `752200`／JumpScreenCursor `74EA30` | 保存float位置，限制到横向`[8,KairoPlugin.GetWidth()−8]`、纵向`[8,Canvas.GetHeight()−8]`；原比较／赋值没有按格吸附。Jump随后将恢复计数置12，不自行发送点击。宽高不足、非有限值不由此认证为安全输入 |
+| lambda移动 `10754497–10754866` | 仅ScreenCursor模式移动；无平台GUI对话且某轴为0时才可用左右/A/D或上下/W/S以−0.5／+0.5补该轴。读取Steam StickL分量并除220，按模长与joystickPointerAsobi比较；低于阈值时用方向按钮，连续计数≤2／>2分别选构造中的速度4／8，乘Screen.height/240后截断；模拟轴路径以`trunc(16×Screen.height/240)`乘原轴分量。两路都更新已有位置并交SetScreenCursor，不以秒数计算距离 |
+| lambda合成事件 `10754869–10754BEB` | 非Joystick模式且guiMode=0才进入；当前顶页A/B映射及反转选出的候选按钮、符合顶页映射的Y、Return或RightControl可维持点击。click=−1首次按住发原MotionEvent action0；已按住且两轴位移各向零截断后的平方和>0才发action2；松开已有点击发action1并清click。每次以pointerID0、当前float坐标、null delta和`isMousePointer=true`构造MotionEvent，交Canvas.OnTouchEvent；这些action不是GameView的TouchEvent TYPE值 |
+
+APPLI_TYPE4的合成坐标再各加`trunc((Screen尺寸−Canvas尺寸)/2)`，与光标绘制的客户区域补偿保持分层。`OnTouchEvent` RVA`751000`倒序把事件交现有surface的虚方法；此入口本身不直接KeyClick确认。最终组件命中、guard、marker及世界／菜单消费仍走原surface链，不因虚拟事件存在就视为全页输入认证。
+
+显示入口为FormManagerBase.OnDraw的`107E77A0`，在页面绘制后、附加控制器图标和Touch效果前调用`DrawScreenCursor` RVA`7497B0`。该方法先令独立drawFrame加1，达到192归0，即使Joystick模式随后跳过图像也已推进；非Joystick且位置数组存在才取平台Kairolib.ScreenCursor（getter`807370`实际为resource.seb[10]，正式索引`screen_cursor.seb`／图片12），以显式frame0或按当前点击映射取得frame1、layer1绘制。恢复计数>0另以原Easing缩放／alpha重复绘制同一光标；Jump与输入后继驱动12次恢复计数，不能改成墙钟秒或世界tick。lambda的stop计数在无活动时增到101，活动时清0、达到100后再活动置恢复12；**已核DrawScreenCursor并不读取stop计数隐藏基础光标**，不能只凭常量名SCREENCURSOR_HIDE_COUNT推导“100帧后消失”。原图尚未在本批新增出版或原窗口认证。
+
+维护接线应把模式、原应用输入回调、float位置／previous／click及恢复状态放在共同平台表现上下文；冻结计划重复展示不能再推进drawFrame或合成Touch。现研究窗口没有接这套原虚拟光标调度；完整设备映射、原OS投递、全部guard及框架回调次数仍待证。本批只合静态结论，无C++、存档、素材副本或过程文件新增。
+
 ## 设施初始化与动画原表
 
 Steam `SubForm.Init2`的76分支在VA `0x1030F7BB`调用`TenantData.SetTenantItemParam`（RVA `0x222E90`）。

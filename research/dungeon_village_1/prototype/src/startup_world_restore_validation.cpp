@@ -10,6 +10,7 @@
 #include "dungeon_village_prototype/startup_world_save.hpp"
 #include "dungeon_village_prototype/startup_world_manual.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
+#include "dungeon_village_prototype/startup_world_village_activity.hpp"
 #include "dungeon_village_reference/actor_control.hpp"
 #include "dungeon_village_reference/world_perception.hpp"
 
@@ -719,7 +720,7 @@ struct Validation {
             if (!counter(n))
                 return fail("page: 计数非法");
         for (const auto &[id, n] : s.page_secondary_counters)
-            if (!counter(n)||!page_kind(id,{24,81,82})||
+            if (!counter(n)||!page_kind(id,{24,50,81,82})||
                 (page_kind(id,{82})&&(!s.facility_catalog_pages_initialized.count(id)||n==std::numeric_limits<int>::max())))
                 return fail("page: 独立计数非法");
         for (const auto &[id, n] : s.page_phases)
@@ -775,8 +776,8 @@ struct Validation {
             if (!page_kind(id, {28}) || prediction < 0 || prediction > 6)
                 return fail("task page: 预测值非法");
         for (const auto &[id, records] : s.rank_celebration_participants) {
-            if (!page_kind(id, {50}) || !s.page_counters.count(id) || !s.page_phases.count(id) ||
-                s.page_phases.find(id)->second > 2)
+            const auto source=page(id);
+            if (!page_kind(id, {50}) || !source||!valid_startup_world_town_progress_page(s,*source))
                 return fail("rank page: 已初始化庆典缺载荷");
             for (const auto &record : records)
                 if (!human(record[0]))
@@ -915,7 +916,7 @@ struct Validation {
                 return fail("activity page: 未接效果类型");
         }
         if (!s.activity_pages_initialized.count(id))
-            return p.lifecycle == 0 || fail("activity page: 缺初始化标记");
+            return valid_startup_world_village_activity_page(s,p)||fail("activity page: 未初始化含半载荷或来源非法");
         const auto selection = get(s.activity_page_selections, id),
                    scroll = get(s.activity_page_scroll, id);
         if (!selection || !scroll || !s.page_counters.count(id))
@@ -935,7 +936,8 @@ struct Validation {
             return (*selection == 0 && *scroll == 0) || fail("activity page: 演出选择非法");
         const auto list = get(s.activity_page_lists, id);
         const auto display = get(s.activity_page_display_humans, id);
-        if (!list || !display || !scrolling(*selection, *scroll, list->size(), 5) ||
+        if (!list || !display || *selection<0||*scroll<0||
+            (list->empty()?*selection!=0||*scroll!=0:std::size_t(*selection)>=list->size()||*scroll>*selection||*selection-*scroll>=5)||
             !unique_references(
                 *list, [&](int n) { return raw == 51 ? activities.count(n) != 0 : human(n); }) ||
             !human((*display)[0]) || !human((*display)[1]))
@@ -1047,6 +1049,10 @@ struct Validation {
                 s.commerce_page_data.count(p.id) || s.page_counters.count(p.id)) &&
                 !commerce_page(p))
                 return false;
+            if(p.kind==ref::WorldScriptPageKind::raw_page&&
+               (p.legacy_page==48||p.legacy_page==49||p.legacy_page==50||p.legacy_page==95)&&
+               !valid_startup_world_town_progress_page(s,p))
+                return fail("town progress: 缺完整初始化/退休载荷");
             if (p.lifecycle == 4 || p.kind == ref::WorldScriptPageKind::scene)
                 continue;
             const auto id = p.id;
@@ -1107,6 +1113,8 @@ struct Validation {
             } else if (raw == 72 || raw == 79 || raw == 82) {
                 if (!valid_startup_world_facility_catalog_page(s, p))
                     return fail("facility catalogue page: 初始化/绑定/选择载荷非法");
+            } else if (raw==48||raw==49||raw==50||raw==95) {
+                if(!valid_startup_world_town_progress_page(s,p))return fail("town progress: 初始化/选择/庆典/领取载荷非法");
             }
             if (raw == 90 && (s.tax_page_selection.count(id) || s.tax_page_scroll.count(id)) &&
                 !s.tax_page_residents.count(id))

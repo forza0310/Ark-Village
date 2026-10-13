@@ -28,7 +28,10 @@
 #include "dungeon_village_prototype/steam_facility_catalog_skin.hpp"
 #include "dungeon_village_prototype/steam_facility_effect_skin.hpp"
 #include "dungeon_village_prototype/steam_facility_reputation_skin.hpp"
+#include "dungeon_village_prototype/steam_village_activity_skin.hpp"
+#include "dungeon_village_prototype/steam_town_progress_skin.hpp"
 #include "dungeon_village_reference/world_notices.hpp"
+#include "dungeon_village_reference/world_village_activity.hpp"
 #include "dungeon_village_tools/sprite.hpp"
 #include "dungeon_village_tools/table.hpp"
 
@@ -1000,7 +1003,49 @@ template<class Plan> void draw_facility_ceremony(const Plan &plan,SourceSprites 
     };
     for(const auto &op:plan.operations)std::visit([&](const auto &value) {
         using T=std::decay_t<decltype(value)>;
-        if constexpr(std::is_same_v<T,SteamFacilityClip>) {
+        if constexpr(std::is_same_v<T,SteamTownClip>) {
+            if(value.kind==SteamTownClipKind::push_intersect) {
+                clips.push_back(clips.empty()?value.rectangle:intersect(clips.back(),value.rectangle));apply_clip();
+            } else if(value.kind==SteamTownClipKind::replace) {
+                if(clips.empty())clips.push_back(value.rectangle);else clips.back()=value.rectangle;
+                EndScissorMode();apply_clip();
+            } else {
+                if(clips.empty())throw std::runtime_error("城镇演出裁剪下溢");
+                clips.pop_back();EndScissorMode();apply_clip();
+            }
+        } else if constexpr(std::is_same_v<T,SteamVillageActivityImage>||std::is_same_v<T,SteamTownImage>) {
+            const auto resource=[&] {
+                if constexpr(std::is_same_v<T,SteamVillageActivityImage>)return steam_village_activity_resource(value.asset);
+                else return steam_town_resource(value.asset);
+            }();
+            if(!resource)throw std::runtime_error("城镇活动资源映射缺失");
+            if(!resource->published_sprite&&!value.crop) {
+                // 具名整图节点没有SEB，按原图大小绘制；不为缺SEB的其它节点猜帧。
+                const auto relative=std::filesystem::path(resource->published_image).lexically_relative("original");
+                sprites.image(relative,{human_overview_origin.x+value.position[0],human_overview_origin.y+value.position[1]});
+            } else sprites.published_sprite(resource->image,resource->published_image,resource->published_sprite,
+                value.position,value.frame,value.crop,human_overview_origin);
+        } else if constexpr(std::is_same_v<T,SteamVillageActivityText>||std::is_same_v<T,SteamTownText>) {
+            std::string visible=value.value;
+            if(value.rich)for(std::size_t at=0;(at=visible.find('<',at))!=std::string::npos;) {
+                const auto end=visible.find('>',at);if(end==std::string::npos)throw std::runtime_error("活动富文本标签未闭合");
+                visible.erase(at,end-at+1);
+            }
+            const float size=value.font_size?float(value.font_size):12.F;
+            float x=human_overview_origin.x+value.rectangle[0],y=human_overview_origin.y+value.rectangle[1];
+            if(value.anchor&2)x+=(value.layout?float(value.rectangle[2])/2:0.F)-font.measure(visible,size)/2;
+            else if(value.anchor&4)x+=(value.layout?float(value.rectangle[2]):0.F)-font.measure(visible,size);
+            const bool bounded=value.layout&&value.rectangle[3]>0;
+            if(bounded) {
+                y+=std::max(0.F,(value.rectangle[3]-size)/2);
+                const auto box=clips.empty()?value.rectangle:intersect(clips.back(),value.rectangle);
+                BeginScissorMode(int(human_overview_origin.x)+box[0],int(human_overview_origin.y)+box[1],box[2],box[3]);
+            }
+            const auto &c=value.rgb;const Color color{static_cast<unsigned char>(c[0]),static_cast<unsigned char>(c[1]),static_cast<unsigned char>(c[2]),255};
+            if(value.rich||value.layout)font.manual_text(value.value,x,y,value.layout?float(value.rectangle[2]):1000.F,size,0,color);
+            else font.text(value.value,x,y,color,size);
+            if(bounded){EndScissorMode();apply_clip();}
+        } else if constexpr(std::is_same_v<T,SteamFacilityClip>) {
             if(value.kind==SteamFacilityClipKind::push_intersect) {
                 clips.push_back(clips.empty()?value.rectangle:intersect(clips.back(),value.rectangle));apply_clip();
             } else {
@@ -1049,6 +1094,70 @@ std::optional<SteamFacilityReputationPlan> window_facility_reputation_plan(
     o.title_widths=std::array<int,2>{int(font.measure("传说中的商店")),int(font.measure("传说中的商店"))};
     o.increase_suffix_width=int(font.measure("上升!"));
     return steam_facility_reputation_skin(s,id,o);
+}
+std::optional<SteamVillageActivityPlan> window_village_activity_plan(
+    const StartupWorldRuntimeState &s,std::uint64_t id,const ChineseFont &font,bool touching=false) {
+    const auto view=inspect_startup_world_village_activity_page(s,id);if(!view||!s.rules)return {};
+    const int definition=view->activity.value_or(view->entries.empty()?-1:view->entries[view->selection]);
+    const auto d=std::find_if(s.rules->activities.begin(),s.rules->activities.end(),[=](const auto &a){return a.identity==definition;});
+    if(d==s.rules->activities.end())return {};
+    SteamVillageActivityOptions o;o.view_y=23;o.scroll_first_touch=touching;
+    const std::string title=view->raw==51?"开展活动":view->raw==54?"活动结束":d->name;
+    o.title_widths=std::array<int,2>{int(font.measure(title)),int(font.measure(title))};
+    o.description_width=int(font.measure(d->description));o.increase_suffix_width=int(font.measure("上升了!"));
+    const bool execute=(s.activity_flags.at(definition)&8U)!=0;
+    o.button_widths={int(font.measure(execute?"实施":"开展")),int(font.measure(execute?"不实施":"不开展"))};
+    if(d->parameters[2]==1) {
+        constexpr const char *names[]{"体力","力","器用","丈夫","魔力","运"};
+        const int attribute=d->parameters[3];if(attribute<0||attribute>=6)return {};
+        o.attribute_widths={int(font.measure(view->raw==53?"冒险者们的":"冒险者的")),
+            int(font.measure(names[attribute])),int(font.measure("上升"))};
+    }
+    return steam_village_activity_skin(s,id,o);
+}
+SteamTownProgressOptions window_town_options(const StartupWorldRuntimeState &s,int raw,const ChineseFont &font) {
+    SteamTownProgressOptions o;o.view_y=23;
+    const std::string title=raw==50?"街道等级上升":raw==95?"活动":"街道升级";
+    o.title_widths=std::array<int,2>{int(font.measure(title)),int(font.measure(title))};
+    o.condition_suffix_width=int(font.measure("的升级条件"));
+    const bool ready=std::all_of(s.rank_met.begin(),s.rank_met.end(),[](bool met){return met;});
+    o.bottom_width=int(font.measure(raw==49?"了解":ready?"升级!":"申请"));
+    o.promoted_suffix_width=int(font.measure("升级！"));
+    o.bubble_widths={int(font.measure("恭喜!")),int(font.measure("太好了!")),int(font.measure("万岁")),int(font.measure("请"))};
+    return o;
+}
+std::optional<SteamTownProgressPlan> window_town_progress_plan(
+    const StartupWorldRuntimeState &s,std::uint64_t id,const ChineseFont &font) {
+    const auto p=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[=](const auto &page){return page.id==id&&page.lifecycle!=4;});
+    if(p==s.scripts.pages.end())return {};
+    auto options=window_town_options(s,p->legacy_page,font);
+    options.reward_number_width=int(font.measure(std::to_string(p->legacy_s)));
+    if(p->legacy_page==48||p->legacy_page==49)return steam_town_conditions_skin(s,id,options);
+    if(p->legacy_page==50)return steam_town_celebration_skin(s,id,options);
+    if(p->legacy_page==95)return steam_town_gift_skin(s,id,options);
+    return {};
+}
+// 从已绘制的正式组件展开PC热区；设备只产生DTO，不保存第二份业务选择。
+template<class Plan> std::vector<SteamStartupTouch> management_touches(const Plan &plan,SourceSprites &sprites) {
+    std::vector<SteamStartupTouch> result;
+    for(const auto &op:plan.operations)std::visit([&](const auto &value) {
+        using T=std::decay_t<decltype(value)>;
+        if constexpr(std::is_same_v<T,SteamStartupTouch>)result.push_back(value);
+        else if constexpr(std::is_same_v<T,SteamHumanEquipmentRow>||std::is_same_v<T,SteamFacilityEffectTouch>) {
+            auto touch=value.touch;
+            if(!touch.rectangle&&touch.image_draw&&*touch.image_draw<plan.operations.size()) {
+                const auto *image=std::get_if<SteamFacilityImage>(&plan.operations[*touch.image_draw]);
+                if(!image||image->asset!=SteamFacilityAsset::title_arrows)throw std::runtime_error("管理箭头来源拒绝");
+                auto r=sprites.manual_arrow_bounds(image->frame);r[0]+=image->position[0];r[1]+=image->position[1];touch.rectangle=r;
+            }
+            if(touch.rectangle) {
+                auto &r=*touch.rectangle;r[0]+=value.margin[0];r[1]+=value.margin[2];
+                r[2]+=value.margin[1]-value.margin[0];r[3]+=value.margin[3]-value.margin[2];
+            }
+            result.push_back(touch);
+        }
+    },op);
+    return result;
 }
 std::optional<SteamHumanOverviewPlan> window_commodity_plan(
     const StartupWorldRuntimeState &s,std::uint64_t id,const ChineseFont &font,bool first_touch=false) {
@@ -1219,13 +1328,105 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
     Window window;
     Canvas canvas;
     SourceSprites sprites(assets / "original");
+    const bool management_fixture=inspect_page.rfind("village-",0)==0||inspect_page.rfind("town-",0)==0;
     const bool reputation_fixture=inspect_page=="facility-reputation"||inspect_page=="facility-reputation-result";
     std::string reputation_glyphs;
     if(reputation_fixture) {
         reputation_glyphs="传说中的商店冒险者们中间的话题传了开来街道人气上升口碑绘制夹具条件载荷无自然触发认证";
         for(const auto &d:startup_world_rules().facilities)if(d.id==33)reputation_glyphs+=d.name;
     }
+    if(management_fixture) {
+        reputation_glyphs+="开展活动活动结束价格还有辛苦了姓名上升满足冒险者的街道的人气提升了不开展升级申请了解的升级条件街道等级上升月收入设施数居住数建设任务完成数举办活动数恭喜太好了万岁请可以开展了可实施了研究绘制夹具无自然触发认证○×「」";
+        for(const auto &a:startup_world_rules().activities)reputation_glyphs+=a.name+a.detail+a.description;
+        for(const auto &d:startup_world_rules().facilities)reputation_glyphs+=d.name;
+        for(const auto &h:startup_world_rules().humans)reputation_glyphs+=h.name;
+    }
     ChineseFont font(font_path,reputation_glyphs);
+    if(management_fixture) {
+        // 仅例图的条件载荷，原定义和初值来自固定表；不安装世界或宣称自然经营。
+        StartupSession original;
+        StartupWorldRuntimeSession base(original.state(),ref::WorldRandomStream::from_java_seed(1));
+        auto source=base.state();
+        std::variant<SteamVillageActivityPlan,SteamTownProgressPlan> plan;
+        if(inspect_page.rfind("village-",0)==0) {
+            const auto d=std::find_if(source.rules->activities.begin(),source.rules->activities.end(),[](const auto &a){return a.identity==0;});
+            const auto h=startup_world_human_profile(source,0);
+            if(d==source.rules->activities.end()||!h)throw std::runtime_error("Village example source missing");
+            SteamVillageActivitySkinInput in;
+            in.raw=inspect_page=="village-event-info"?52:inspect_page=="village-event-animation"?53:54;
+            in.counter=in.raw==53?120:40;in.points=d->parameters[4];in.quarter_remaining=3;
+            in.activity=SteamVillageActivityDefinition{d->identity,d->parameters[0],d->parameters[1],d->parameters[2],d->parameters[3],
+                d->parameters[4],d->parameters[5],d->name,d->detail,d->description,d->flags,false};
+            const auto &growth=source.scene.world.world.ai.growth.at(0);
+            SteamVillageActivityHuman human{0,growth.definition.current_profession,h->sex,0,0,h->name};
+            if(in.raw==54) {
+                const auto effect=ref::prepare_world_village_human_effect(
+                    {d->identity,1,d->flags,0,d->parameters[2],d->parameters[3],d->parameters[4],d->parameters[5]},
+                    growth.definition,source.scene.world.world.ai.professions,growth.derived,source.shop_humans.at(0).satisfaction);
+                if(!effect.candidate)throw std::runtime_error("Village example actual effect refused");
+                human.current=effect.candidate->satisfaction;human.previous=effect.candidate->previous_value;
+                in.humans.push_back(human);
+            }
+            in.display_humans={human,human};in.options.view_y=23;
+            const std::string title=in.raw==54?"活动结束":d->name;
+            in.options.title_widths=std::array<int,2>{int(font.measure(title)),int(font.measure(title))};
+            in.options.description_width=int(font.measure(d->description));
+            in.options.button_widths={int(font.measure("开展")),int(font.measure("不开展"))};
+            const auto result=steam_village_activity_skin(in);
+            if(!result)throw std::runtime_error("Village example plan refused");plan=*result;
+        } else {
+            auto options=window_town_options(source,inspect_page=="town-rank-celebration"?50:inspect_page=="town-activity-reward"?95:48,font);
+            std::optional<SteamTownProgressPlan> result;
+            if(inspect_page=="town-rank-conditions") {
+                if(!refresh_startup_world_runtime_rank(source))throw std::runtime_error("Town example criteria refused");
+                SteamTownConditionsInput in;in.raw_page=48;in.rank=0;in.village_name=source.scripts.village_name;in.options=options;
+                const auto terms=ref::fixed_calendar_task_rank_terms().at(0);
+                for(int row=0;row<4;++row) {
+                    if(source.rank_values[row]<std::numeric_limits<int>::min()||source.rank_values[row]>std::numeric_limits<int>::max())throw std::runtime_error("Town example criterion overflow");
+                    in.rows[row]={terms[row].type,int(source.rank_values[row]),terms[row].threshold,source.rank_met[row],{}};
+                    if(terms[row].type==3) {
+                        const auto facility=std::find_if(source.rules->facilities.begin(),source.rules->facilities.end(),[&](const auto &d){return d.id==terms[row].threshold;});
+                        if(facility==source.rules->facilities.end())throw std::runtime_error("Town criterion definition missing");
+                        in.rows[row].facility_name=facility->name;
+                    }
+                }
+                result=steam_town_conditions_skin(in);
+            } else if(inspect_page=="town-rank-celebration") {
+                SteamTownCelebrationInput in;in.rank=1;in.phase=2;in.frame=90;in.frame2=17;in.options=options;
+                auto cast=ref::prepare_world_rank_celebration({0},source.scene.random);
+                const auto profile=startup_world_human_profile(source,0);
+                if(!cast||!profile)throw std::runtime_error("Town example cast refused");
+                for(const auto &actor:cast->participants)in.participants.push_back({actor[0],source.scene.world.world.ai.growth.at(0).definition.current_profession,
+                    profile->sex,{actor[1],actor[2],actor[3],actor[4]}});
+                result=steam_town_celebration_skin(in);
+            } else {
+                const auto a=std::find_if(source.rules->activities.begin(),source.rules->activities.end(),[](const auto &activity){return activity.identity==30;});
+                if(a==source.rules->activities.end())throw std::runtime_error("Town reward definition missing");
+                SteamTownGiftInput in;in.kind=11;in.value=30;in.frame=40;in.name=a->name;in.activity_icon=a->parameters[0];in.activity_flags=a->flags;in.options=options;
+                result=steam_town_gift_skin(in);
+            }
+            if(!result)throw std::runtime_error("Town example plan refused");plan=*result;
+        }
+        int count{};
+        while(!WindowShouldClose()&&(frames==0||count<frames)) {
+            BeginTextureMode(canvas.value);ClearBackground(Color{83,141,77,255});
+            font.text("研究绘制夹具",8,10,WHITE,10);
+            std::visit([&](const auto &value){draw_facility_ceremony(value,sprites,font);},plan);
+            font.text("无自然触发认证",8,260,WHITE,9);
+            EndTextureMode();BeginDrawing();ClearBackground(BLACK);
+            DrawTexturePro(canvas.value.texture,{0,0,width,-height},{0,0,width*scale,height*scale},{0,0},0,WHITE);
+            EndDrawing();++count;
+            if(count==frames&&screenshot) {
+                if(!screenshot->parent_path().empty())std::filesystem::create_directories(screenshot->parent_path());
+                auto pixels=LoadImageFromScreen();
+                if(!pixels.data)throw std::runtime_error("Management example screenshot missing");
+                const bool saved=ExportImage(pixels,screenshot->string().c_str());UnloadImage(pixels);
+                if(!saved)throw std::runtime_error("Management example screenshot refused");
+            }
+        }
+        std::cout<<"management drawing fixture closed: page="<<inspect_page<<" frames="<<count<<" world_updates=0 natural_trigger_verified=false\n";
+        return 0;
+    }
     if(reputation_fixture) {
         // 独立纯绘制条件载荷，不创建/安装世界Owner，也不伪造原自然36个月与五次使用前缀。
         const auto &rules=startup_world_rules();
@@ -2325,7 +2526,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
     float body_scroll{}, body_extent{};
     std::uint64_t viewed_page{};
     int task_selection{}, task_scroll{};
-    int award_selection{}, prompt_selection{}, rank_selection{};
+    int award_selection{}, prompt_selection{};
     int build_tab{}, build_selection{};
     int bonus_selection{}, bonus_scroll{}; // 原5行视窗的研究输入适配，不进入Owner或存档。
     std::map<std::uint64_t,SteamFacilityBonusCursor> bonus_views; // 父74覆盖后恢复，退休页及时回收。
@@ -2395,7 +2596,6 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 award_selection = prompt_selection = 0;
                 if (page->legacy_page == 1 && session.state().task_abort_questions.count(page->id))
                     prompt_selection = 1; // 原主动中止询问默认“否”，不因新页重置变成“是”。
-                rank_selection = 0;
                 command_feedback.clear();
             }
             const int raw = page->legacy_page;
@@ -2632,56 +2832,79 @@ int run_startup_world_window(const std::filesystem::path &assets,
                             throw std::runtime_error("Facility item input transaction failed");
                 }
             } else if (raw >= 51 && raw <= 54) {
-                const auto view =
-                    inspect_startup_world_village_activity_page(session.state(), page->id);
-                if (view) {
-                    using A = StartupVillageActivityAction;
-                    const auto pid = page->id;
-                    std::optional<A> action;
-                    int selection{};
-                    if (raw != 53) {
-                        if (IsKeyPressed(KEY_UP))
-                            action = A::previous;
-                        if (IsKeyPressed(KEY_DOWN))
-                            action = A::next;
-                        const int count = raw == 52 ? 2 : static_cast<int>(view->entries.size());
-                        for (int row = 0; row < 5 && row + view->first_visible < count; ++row)
-                            if (hit({12, 74.F + row * 27, 216, 26})) {
-                                action = A::select;
-                                selection = row + view->first_visible;
+                const auto view=inspect_startup_world_village_activity_page(session.state(),page->id);
+                if(view) {
+                    const auto pid=page->id;
+                    const auto plan=window_village_activity_plan(session.state(),pid,font,human_scroll_drag&&human_scroll_drag->page==pid);
+                    if(!plan)throw std::runtime_error("Village activity input plan rejected");
+                    StartupVillageActivityInput input;
+                    input.confirm=IsKeyPressed(KEY_ENTER);
+                    const auto point=[&](std::array<int,4> r){return Rectangle{human_overview_origin.x+r[0],human_overview_origin.y+r[1],float(r[2]),float(r[3])};};
+                    if(raw!=53) {
+                        input.up=IsKeyPressed(raw==52?KEY_LEFT:KEY_UP);
+                        input.down=IsKeyPressed(raw==52?KEY_RIGHT:KEY_DOWN);
+                        input.cancel=IsKeyPressed(KEY_ESCAPE)||hit({176,265,58,24});
+                    }
+                    for(const auto &touch:management_touches(*plan,sprites)) {
+                        if(!touch.rectangle)continue;
+                        const auto r=point(*touch.rectangle);
+                        if(!pointer_consumed&&IsMouseButtonReleased(MOUSE_BUTTON_LEFT)&&CheckCollisionPointRec(mouse,r)) {
+                            if(touch.component==11||touch.component==3) {
+                                input.selection=touch.value&0xffff;input.confirm=true;
+                            } else if(touch.component==23||touch.component==2) {
+                                input.up|=touch.component==23?touch.value==17:(*touch.rectangle)[1]<100;
+                                input.down|=touch.component==23?touch.value==19:(*touch.rectangle)[1]>=100;
                             }
-                        if (IsKeyPressed(KEY_ESCAPE) || hit({8, 265, 58, 24}))
-                            action = A::cancel;
+                        }
                     }
-                    if ((raw != 53 || view->counter >= 120) &&
-                        (IsKeyPressed(KEY_ENTER) || hit({176, 265, 58, 24})))
-                        action = A::confirm;
-                    if (action) {
-                        const auto error =
-                            session.act_village_activity_page(pid, *action, selection);
-                        if (error != StartupWorldRuntimeError::none &&
-                            error != StartupWorldRuntimeError::missing_source)
-                            throw std::runtime_error("村办页面输入失败：" +
-                                                     std::to_string(static_cast<int>(error)));
-                        command_feedback =
-                            error == StartupWorldRuntimeError::none ? "" : "尚未接入";
+                    const int count=static_cast<int>(view->entries.size());
+                    if(raw==51||raw==54) {
+                        for(const auto &op:plan->operations)if(const auto *bar=std::get_if<SteamHumanCatalogueScroll>(&op)) {
+                            const auto &r=bar->rectangles[1].rect;
+                            auto expanded=r;expanded[0]-=3;expanded[2]+=23;
+                            if(count>5&&hit(point(expanded))) {
+                                const float grid=std::max(float(111-(r[3]-1))/(count-5),1.F);
+                                human_scroll_drag=FacilityScrollDrag{pid,mouse.y,view->first_visible,grid};
+                                human_scroll_gesture=true;pointer_consumed=true;
+                            } else if(count>5&&bar->track_touch.rectangle&&hit(point(*bar->track_touch.rectangle))) {
+                                input.scroll=StartupVillageActivityInput::Scroll{false,mouse.y<human_overview_origin.y+r[1]?-5:5};pointer_consumed=true;
+                            }
+                        }
+                        const float wheel=GetMouseWheelMove();
+                        if(count>5&&wheel!=0)input.scroll=StartupVillageActivityInput::Scroll{false,wheel>0?-1:1};
+                        if(human_scroll_drag&&human_scroll_drag->page==pid) {
+                            const double wanted=human_scroll_drag->first+std::trunc(double(mouse.y-human_scroll_drag->start_y)/human_scroll_drag->grid);
+                            input.scroll=StartupVillageActivityInput::Scroll{true,int(std::clamp(wanted,0.,double(std::max(count-5,0))))};
+                        }
+                        if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT))human_scroll_drag.reset();
                     }
+                    if(raw==53&&view->counter>=120&&!pointer_consumed&&IsMouseButtonReleased(MOUSE_BUTTON_LEFT))input.confirm=true;
+                    if(input.up||input.down||input.confirm||input.cancel||input.selection||input.scroll)
+                        if(session.input_village_activity_page(pid,input)!=StartupWorldRuntimeError::none)
+                            throw std::runtime_error("Village activity transaction rejected");
                 }
             } else if (raw == 48) {
-                if (IsKeyPressed(KEY_UP))
-                    rank_selection = (rank_selection + 4) % 5;
-                if (IsKeyPressed(KEY_DOWN))
-                    rank_selection = (rank_selection + 1) % 5;
-                if (hit({12, 77, 216, 20}))
-                    rank_selection = 0;
-                for (int n = 0; n < 4; ++n)
-                    if (hit({12, 101.F + n * 24, 216, 20}))
-                        rank_selection = n + 1;
-                const bool cancel = IsKeyPressed(KEY_ESCAPE) || hit({8, 265, 58, 24});
-                if ((cancel || IsKeyPressed(KEY_ENTER) || hit({176, 265, 58, 24})) &&
-                    session.act_rank_page(page->id, rank_selection, cancel) !=
-                        StartupWorldRuntimeError::none)
-                    throw std::runtime_error("晋级页面输入失败");
+                const auto plan=window_town_progress_plan(session.state(),page->id,font);
+                if(plan) {
+                    StartupTownRankInput input;input.up=IsKeyPressed(KEY_UP);input.down=IsKeyPressed(KEY_DOWN);
+                    input.confirm=IsKeyPressed(KEY_ENTER);input.cancel=IsKeyPressed(KEY_ESCAPE)||hit({176,265,58,24});
+                    for(const auto &touch:management_touches(*plan,sprites))if(touch.rectangle&&
+                        !pointer_consumed&&IsMouseButtonReleased(MOUSE_BUTTON_LEFT)&&CheckCollisionPointRec(mouse,
+                            {human_overview_origin.x+(*touch.rectangle)[0],human_overview_origin.y+(*touch.rectangle)[1],float((*touch.rectangle)[2]),float((*touch.rectangle)[3])})) {
+                        input.selection=touch.value&0xffff;input.confirm=true;
+                    }
+                    if(input.up||input.down||input.selection||input.confirm||input.cancel)
+                        if(session.input_rank_page(page->id,input)!=StartupWorldRuntimeError::none)throw std::runtime_error("Town rank input rejected");
+                }
+            } else if(raw==49||raw==50||raw==95) {
+                bool confirm=IsKeyPressed(KEY_ENTER);
+                if(const auto plan=window_town_progress_plan(session.state(),page->id,font)) {
+                    for(const auto &touch:management_touches(*plan,sprites)) {
+                        if(touch.rectangle&&touch.component==4&&hit({human_overview_origin.x+(*touch.rectangle)[0],human_overview_origin.y+(*touch.rectangle)[1],float((*touch.rectangle)[2]),float((*touch.rectangle)[3])}))confirm=true;
+                        if(!touch.rectangle&&touch.component==2&&!pointer_consumed&&IsMouseButtonReleased(MOUSE_BUTTON_LEFT))confirm=true;
+                    }
+                }
+                if(confirm&&session.acknowledge_page(page->id)!=StartupWorldRuntimeError::none)throw std::runtime_error("Town progress confirmation rejected");
             } else if (raw == 87) {
                 const auto &s = session.state();
                 const bool ending = s.award_termination_pending.count(page->id) &&
@@ -3888,37 +4111,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 if(!plan)throw std::runtime_error("Steam facility effect source rejected");
                 draw_facility_ceremony(*plan,sprites,font);
             } else if (page->legacy_page == 95) {
-                // 简化奖励投影；计数、领取和解锁仍只由Owner消费者提交。
-                DrawRectangle(8, 42, 224, 214, paper);
-                font.text("获得奖励", 16, 48);
-                std::string reward;
-                switch (page->legacy_r) {
-                case 0:
-                    reward = std::to_string(page->legacy_s) + "G";
-                    break;
-                case 1:
-                    reward = "村子点 " + std::to_string(page->legacy_s);
-                    break;
-                case 3:
-                    reward = rules.facilities.at(page->legacy_s).name;
-                    break;
-                case 4:
-                    reward = rules.jobs.at(page->legacy_s).name;
-                    break;
-                case 9:
-                    reward = "配置更替";
-                    break;
-                case 10:
-                    reward = "勋章";
-                    break;
-                case 11:
-                    reward = rules.activities.at(page->legacy_s).name;
-                    break;
-                default:
-                    throw std::runtime_error("未维护的奖励页类型");
-                }
-                font.paragraph(reward, 16, 96, 208);
-                font.text("确认领取", 176, 272, ink, 10);
+                if(const auto plan=window_town_progress_plan(state,page->id,font))draw_facility_ceremony(*plan,sprites,font);
             } else if (page->legacy_page == 21) {
                 DrawRectangle(build_menu_x,build_menu_y,175,210,{79,72,48,255});
                 DrawRectangle(build_menu_x+1,build_menu_y+1,173,208,{193,234,94,255});
@@ -4145,79 +4338,8 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 font.text("返回", 18, 272);
                 font.text("入住", 190, 272);
             } else if (page->legacy_page >= 51 && page->legacy_page <= 54) {
-                const auto view = inspect_startup_world_village_activity_page(state, page->id);
-                DrawRectangle(8, 42, 224, 214, paper);
-                font.text("村办活动", 16, 48);
-                if (view) {
-                    const auto *activity =
-                        view->activity ? &rules.activities.at(*view->activity) : nullptr;
-                    if (view->raw == 51 || view->raw == 54) {
-                        for (int n = view->first_visible;
-                             n < std::min(static_cast<int>(view->entries.size()),
-                                          view->first_visible + 5);
-                             ++n) {
-                            const int y = 78 + (n - view->first_visible) * 27;
-                            if (n == view->selection)
-                                DrawRectangle(12, y - 4, 216, 26, {219, 232, 204, 255});
-                            const int entry = view->entries[n];
-                            if (view->raw == 51) {
-                                const auto &a = rules.activities.at(entry);
-                                font.text(a.name, 16, y, ink, 10);
-                                font.text(std::to_string(a.parameters[4]) + "点", 184, y, ink, 10);
-                            } else {
-                                const auto h = startup_world_human_details(state, entry);
-                                if (!h || !activity)
-                                    throw std::runtime_error("活动结果人物缺失");
-                                const int current = activity->parameters[2] == 0
-                                                        ? h->satisfaction
-                                                        : h->attributes.at(activity->parameters[3]);
-                                font.text(human_name(entry), 16, y, ink, 10);
-                                font.text(std::to_string(state.human_activity_previous.at(entry)) +
-                                              " > " + std::to_string(current),
-                                          154, y, ink, 10);
-                            }
-                        }
-                        if (view->raw == 51)
-                            font.text("村子点 " + std::to_string(state.village_points) +
-                                          "  季度剩余 " + std::to_string(state.quarter_counter),
-                                      16, 216, ink, 10);
-                        // 展示共享定义当前职业/性别，不创建场上人物实例。
-                        for (int n = 0; n < 2; ++n) {
-                            const int human = view->display_humans[n];
-                            const auto presence = state.human_presence.find(human);
-                            if (presence == state.human_presence.end())
-                                throw std::runtime_error("活动展示人物引用无效");
-                            if (presence->second == 0)
-                                continue;
-                            const auto portrait = startup_world_portrait(state, human);
-                            if (!portrait)
-                                throw std::runtime_error("活动展示人物职业或性别无效");
-                            sprites.actor(false, 0, portrait->image, 0, {74.F + n * 90, 252});
-                        }
-                    } else if (view->raw == 52) {
-                        if (activity)
-                            font.text(activity->name, 98, 48, ink, 10);
-                        for (int n = 0; n < 2; ++n) {
-                            if (n == view->selection)
-                                DrawRectangle(12, 74 + n * 27, 216, 26, {219, 232, 204, 255});
-                            font.text(n == 0 ? "开展活动" : "返回", 16, 78 + n * 27);
-                        }
-                        if (activity)
-                            font.paragraph(activity->detail, 16, 152, 208);
-                    } else {
-                        if (activity)
-                            font.paragraph(activity->description, 16, 82, 208);
-                        font.text(std::to_string(std::min(view->counter, 120)) + " / 120", 74, 150);
-                        DrawRectangle(16, 178, 208, 8, GRAY);
-                        DrawRectangle(16, 178, 208 * std::min(view->counter, 120) / 120, 8, GREEN);
-                    }
-                    if (view->raw != 53)
-                        font.text("返回", 18, 272);
-                    if (view->raw != 53 || view->counter >= 120)
-                        font.text("确定", 190, 272);
-                }
-                if (!command_feedback.empty())
-                    font.text(command_feedback, 92, 272, RED, 10);
+                if(const auto plan=window_village_activity_plan(state,page->id,font,human_scroll_drag&&human_scroll_drag->page==page->id))
+                    draw_facility_ceremony(*plan,sprites,font);
             } else if (page->legacy_page == 60 && startup_world_human_page_ready(state, page->id)) {
                 const auto plan=window_human_overview_plan(state,page->id,font);
                 if(!plan)throw std::runtime_error("Steam人物详情显示载荷拒绝");
@@ -4302,34 +4424,8 @@ int run_startup_world_window(const std::filesystem::path &assets,
                                   std::to_string(state.facility_upgrade_display[1][n]),
                               17, 100 + n * 24);
                 font.text("确定", 190, 272);
-            } else if (page->legacy_page == 50) {
-                font.text("城镇等级 " + std::to_string(state.rank), 17, 66);
-                const auto cast = state.rank_celebration_participants.find(page->id);
-                if (cast != state.rank_celebration_participants.end())
-                    for (std::size_t n = 0; n < cast->second.size(); ++n)
-                        font.text(human_name(cast->second[n][0]), 17 + (n % 2) * 110,
-                                  100 + (n / 2) * 24);
-                font.text("确定", 190, 272);
-            } else if (page->legacy_page == 48 || page->legacy_page == 49) {
-                font.text("城镇等级 " + std::to_string(state.rank), 17, 66);
-                if (page->legacy_page == 48) {
-                    DrawRectangle(12, rank_selection == 0 ? 77 : 101 + (rank_selection - 1) * 24,
-                                  216, 20, {219, 232, 204, 255});
-                    font.text("晋级申请", 17, 80);
-                    font.text("返回", 18, 272);
-                }
-                if (state.rank < 5) {
-                    static const std::array<std::string, 7> labels{{"月收入", "设施数", "居住数",
-                                                                    "指定建设", "任务完成数",
-                                                                    "街道人气", "举办活动数"}};
-                    const auto terms = ref::fixed_calendar_task_rank_terms().at(state.rank);
-                    for (int n = 0; n < 4; ++n)
-                        font.text(labels.at(terms[n].type) + " " +
-                                      std::to_string(state.rank_values[n]) +
-                                      (state.rank_met[n] ? " 达成" : " 未达成"),
-                                  17, 104 + n * 24);
-                }
-                font.text("确定", 190, 272);
+            } else if (page->legacy_page == 48 || page->legacy_page == 49 || page->legacy_page == 50 || page->legacy_page == 95) {
+                if(const auto plan=window_town_progress_plan(state,page->id,font))draw_facility_ceremony(*plan,sprites,font);
             } else if (page->legacy_page == 67 || page->legacy_page == 88 ||
                        page->legacy_page == 96) {
                 if (state.page_human_bindings.count(page->id))

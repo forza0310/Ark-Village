@@ -110,7 +110,7 @@ bool rebuild(State &s, std::uint64_t id) {
         return false;
     if (chosen >= static_cast<int>(list->size()))
         chosen = 0;
-    first = std::clamp(first, 0, std::max(0, static_cast<int>(list->size()) - 5));
+    if(list->empty())first=0;
     if (first > chosen)
         first = chosen;
     if (first + 5 <= chosen)
@@ -155,7 +155,7 @@ bool payload(const State &s, std::uint64_t id, int raw) {
     if ((count == 0 && (chosen->second != 0 || scroll->second != 0)) ||
         (count > 0 &&
          (chosen->second >= count || scroll->second > chosen->second ||
-          chosen->second - scroll->second >= 5 || scroll->second > std::max(0, count - 5))))
+          chosen->second - scroll->second >= 5 || scroll->second >= count)))
         return false;
     std::set<int> seen;
     for (const int entry : list->second) {
@@ -180,6 +180,14 @@ bool payload(const State &s, std::uint64_t id, int raw) {
 bool initialize(State &s, std::uint64_t id, int raw) {
     if (s.activity_pages_initialized.count(id))
         return payload(s, id, raw);
+    const auto source=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[=](const auto &page){return page.id==id;});
+    if(source==s.scripts.pages.end()||!valid_startup_world_village_activity_page(s,*source))return false;
+    // 新页不能接收旧选择/首行/名单等半载荷；Init只创建本页真正需要的字段。
+    if(s.activity_page_lists.count(id)||(raw!=54&&s.activity_page_display_humans.count(id))||
+       s.activity_page_selections.count(id)||s.activity_page_scroll.count(id)||
+       s.activity_page_answers.count(id)||s.page_counters.count(id)||
+       (raw==51&&s.activity_page_bindings.count(id))||
+       (raw!=52&&s.activity_page_parents.count(id)))return false;
     if (raw == 51) {
         if (!rebuild(s, id))
             return false;
@@ -284,6 +292,26 @@ bool finish(State &s, std::uint64_t page, const ref::WorldVillageActivityDefinit
 }
 } // namespace
 
+bool valid_startup_world_village_activity_page(const State &s,const ref::WorldScriptPage &p) {
+    if(!s.rules||p.kind!=ref::WorldScriptPageKind::raw_page||!supported(p.legacy_page)||p.lifecycle==4)return false;
+    if(s.activity_pages_initialized.count(p.id))return payload(s,p.id,p.legacy_page);
+    const auto id=p.id;const int raw=p.legacy_page;
+    if(p.lifecycle!=0||s.activity_page_lists.count(id)||s.activity_page_selections.count(id)||
+       s.activity_page_scroll.count(id)||s.activity_page_answers.count(id)||s.page_counters.count(id)||
+       (raw!=54&&s.activity_page_display_humans.count(id))||
+       (raw!=52&&s.activity_page_parents.count(id)))return false;
+    if(raw==51)return !s.activity_page_bindings.count(id);
+    const auto binding=s.activity_page_bindings.find(id);
+    const auto a=binding==s.activity_page_bindings.end()?std::optional<ref::WorldVillageActivityDefinition>{}:definition(s,binding->second);
+    if(!a||!supported_kind(a->kind)||(raw==54&&a->kind>1))return false;
+    if(raw==52&&!parent(s,id))return false;
+    if(raw==54) {
+        const auto pair=s.activity_page_display_humans.find(id);
+        if(pair==s.activity_page_display_humans.end()||!human_reference(s,pair->second[0])||!human_reference(s,pair->second[1]))return false;
+    }
+    return true;
+}
+
 Error open_startup_world_village_activities(State &s) {
     const auto p = top(s);
     const bool menu = startup_world_menu_callback(s, 7);
@@ -336,6 +364,8 @@ inspect_startup_world_village_activity_page(const State &s, std::uint64_t id) {
 }
 Error act_startup_world_village_activity_page(State &s, std::uint64_t id, Action action,
                                               int selection) {
+    if(action!=Action::previous&&action!=Action::next&&action!=Action::select&&action!=Action::confirm&&action!=Action::cancel)
+        return Error::invalid_page;
     const auto p = top(s);
     if (!s.rules || s.scene.framework_paused || !p || p->id != id ||
         p->kind != ref::WorldScriptPageKind::raw_page || !supported(p->legacy_page))
@@ -438,6 +468,37 @@ Error act_startup_world_village_activity_page(State &s, std::uint64_t id, Action
     next.scripts.executing_page.reset();
     s = std::move(next);
     return Error::none;
+}
+Error input_startup_world_village_activity_page(State &s,std::uint64_t id,const StartupVillageActivityInput &input) {
+    const auto p=top(s);
+    if(s.scene.framework_paused||!p||p->id!=id||!valid_startup_world_village_activity_page(s,*p))return Error::invalid_page;
+    if(p->lifecycle==0||!payload(s,id,p->legacy_page))return Error::missing_source;
+    const int raw=p->legacy_page;
+    if(raw==51&&s.activity_page_answers.count(id))return Error::invalid_page;
+    if(raw==53&&(input.up||input.down||input.selection||input.scroll||input.cancel))return Error::invalid_page;
+    if(raw==52&&input.scroll)return Error::invalid_page;
+    auto next=s;
+    if(raw!=53) {
+        auto &chosen=next.activity_page_selections.at(id),&first=next.activity_page_scroll.at(id);
+        const int count=raw==52?2:static_cast<int>(next.activity_page_lists.at(id).size());
+        if(input.scroll) {
+            if(input.scroll->value==std::numeric_limits<int>::max())return Error::invalid_page;
+            const auto wanted=input.scroll->absolute?std::int64_t(input.scroll->value):std::int64_t(first)+input.scroll->value;
+            const int moved=static_cast<int>(std::clamp(wanted,std::int64_t(0),std::int64_t(std::max(0,count-5))));
+            chosen+=moved-first;first=moved;
+        }
+        if(input.selection) {if(*input.selection<0||*input.selection>=count)return Error::invalid_page;chosen=*input.selection;}
+        if(count) {
+            if(input.up)chosen=chosen==0?count-1:chosen-1;
+            if(input.down)chosen=chosen==count-1?0:chosen+1;
+        } else if(input.up||input.down||input.scroll||input.selection)return Error::invalid_page;
+        if(chosen<first)first=chosen;else if(chosen-first>=5)first=chosen-4;
+    }
+    if(input.confirm||input.cancel) {
+        const auto error=act_startup_world_village_activity_page(next,id,input.confirm?Action::confirm:Action::cancel);
+        if(error!=Error::none)return error;
+    }
+    s=std::move(next);return Error::none;
 }
 std::optional<State> update_startup_world_village_activity_page(const State &s, std::uint64_t id) {
     const auto p = top(s);

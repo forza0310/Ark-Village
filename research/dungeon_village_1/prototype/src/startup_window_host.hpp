@@ -121,6 +121,9 @@ class StartupWindowHost {
     StartupWorldRuntimeError act_rank_page(std::uint64_t page, int selection = 0, bool cancel = false) {
         return command([&](auto &owner) { return owner.act_rank_page(page, selection, cancel); });
     }
+    StartupWorldRuntimeError input_rank_page(std::uint64_t page,const StartupTownRankInput &input) {
+        return command([&](auto &owner){return owner.input_rank_page(page,input);});
+    }
     StartupWorldRuntimeError open_task_menu() {
         return command([&](auto &owner) { return owner.open_task_menu(); });
     }
@@ -180,6 +183,9 @@ class StartupWindowHost {
     }
     StartupWorldRuntimeError act_village_activity_page(std::uint64_t page, StartupVillageActivityAction action, int selection = 0) {
         return command([&](auto &owner) { return owner.act_village_activity_page(page, action, selection); });
+    }
+    StartupWorldRuntimeError input_village_activity_page(std::uint64_t page,const StartupVillageActivityInput &input) {
+        return command([&](auto &owner){return owner.input_village_activity_page(page,input);});
     }
     StartupWorldRuntimeError act_human_page(std::uint64_t page, StartupHumanPageAction action, int selection = 0) {
         return command([&](auto &owner) { return owner.act_human_page(page, action, selection); });

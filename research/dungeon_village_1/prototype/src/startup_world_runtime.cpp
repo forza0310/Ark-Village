@@ -1025,6 +1025,10 @@ StartupWorldRuntimeError StartupWorldRuntimeSession::act_village_activity_page(
     std::uint64_t page, StartupVillageActivityAction action, int selection) {
     return act_startup_world_village_activity_page(state_, page, action, selection);
 }
+StartupWorldRuntimeError StartupWorldRuntimeSession::input_village_activity_page(
+    std::uint64_t page,const StartupVillageActivityInput &input) {
+    return input_startup_world_village_activity_page(state_,page,input);
+}
 StartupWorldRuntimeError StartupWorldRuntimeSession::input_facility_catalog_page(
     std::uint64_t page,const StartupFacilityCatalogInput &input) {
     return input_startup_world_facility_catalog_page(state_,page,input);
@@ -1077,6 +1081,9 @@ std::vector<int> StartupWorldRuntimeSession::take_sound_requests() {
 StartupWorldRuntimeError StartupWorldRuntimeSession::act_rank_page(std::uint64_t page,
                                                                    int selection, bool cancel) {
     return act_startup_world_runtime_rank_page(state_, page, selection, cancel);
+}
+StartupWorldRuntimeError StartupWorldRuntimeSession::input_rank_page(std::uint64_t page,const StartupTownRankInput &input) {
+    return input_startup_world_runtime_rank_page(state_,page,input);
 }
 StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
     if (!valid_startup_world_human_profiles(s))
@@ -1204,6 +1211,8 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
                 ref::WorldSceneError::missing_consumer,
                 ref::WorldScheduleError::none,
                 {}};
+    if(!initialize_startup_world_town_progress_pages(admitted))
+        return {StartupWorldRuntimeError::missing_source,{},ref::WorldSceneError::missing_consumer,ref::WorldScheduleError::none,{}};
     admitted.scripts.executing_page = admitted.scripts.pages.back().id;
     const auto &top = admitted.scripts.pages.back();
     if (top.kind == ref::WorldScriptPageKind::raw_page && top.legacy_page == 31 &&

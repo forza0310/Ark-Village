@@ -416,6 +416,9 @@ std::string StartupApplication::act_village_activity_page(std::uint64_t page,
         return world.act_village_activity_page(page, action, selection);
     });
 }
+std::string StartupApplication::input_village_activity_page(std::uint64_t page,const StartupVillageActivityInput &input) {
+    return apply_world_action([&](auto &world){return world.input_village_activity_page(page,input);});
+}
 std::string StartupApplication::open_task_menu() {
     return apply_world_action([](auto &world) { return world.open_task_menu(); });
 }
@@ -479,6 +482,9 @@ std::string StartupApplication::input_human_detail_page(std::uint64_t page,const
 }
 std::string StartupApplication::act_rank_page(std::uint64_t page, int selection, bool cancel) {
     return apply_world_action([&](auto &world) { return world.act_rank_page(page, selection, cancel); });
+}
+std::string StartupApplication::input_rank_page(std::uint64_t page,const StartupTownRankInput &input) {
+    return apply_world_action([&](auto &world){return world.input_rank_page(page,input);});
 }
 std::string StartupApplication::cancel_page(std::uint64_t page) {
     return apply_world_action([&](auto &world) { return world.cancel_page(page); });

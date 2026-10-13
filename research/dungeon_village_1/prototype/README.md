@@ -359,6 +359,10 @@ StartupApplication已接四目录菜单及完整应用文件视图；上述独�
 例如`--world --inspect-page world-activities --frames 12 --screenshot research/dungeon_village_1/work/world-activities.png`，
 Windows使用本机构建的`.exe`并以`--font`指定可用中文字体；有界截图检查不等于真实鼠标／键盘验收。
 
+村办51–54与晋级48／49／50、奖励95已接正式有序只读皮肤及同一Owner输入；选择／首行／等待／支付与实际兑现由Owner维护，不从绘制触发。接口为`steam_village_activity_skin.hpp`、`steam_town_progress_skin.hpp`，合同与限制见[页面](../ui/PAGES.md)、[存取](PERSISTENCE.md#村办与晋级窗口恢复)和[示例](../ui/examples/README.md)。
+
+纯绘制参考入口为`--inspect-page village-event-info`／`village-event-animation`／`village-event-result`／`town-rank-conditions`／`town-rank-celebration`／`town-activity-reward`，须有`--frames N`且不能与`--world`、文件存取或应用根混用。使用真实定义／初装值和注明的演出条件，只生成绘制计划，世界更新为0；庆典名单准备与活动效果计算属于例图夹具，不是自然晋级／经营认证。真实51使用上述`world-activities`入口。
+
 默认窗口为240×320逻辑画布、480×640物理像素。建设→目录分类→条目→地图格→确定。
 返回或Esc取消，放置模式支持连续建设；右键拖动视图，暂停/继续和1倍/2倍按钮控制模拟资格。
 施工只在正常模式推进。首访两句提示逐次确认，然后镜头移到人物；没有人物移动命令。

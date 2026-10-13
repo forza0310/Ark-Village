@@ -1,5 +1,7 @@
 # Steam 2.56 UI／操作覆盖清单
 
+2026-10-13：48—54与95补[具名局部皮肤／输入](PAGES.md#steam-village-progress)及维护只读计划；保留原窗口、字体与OS事件缺口。功能短测与条件示例不计为自然晋级或全解锁验收，具体结果仍查[验证](../VERIFICATION.md)。
+
 2026-10-10更新：按正式合同与维护接口修正已闭合条目；静态消费者、维护绘制计划与原窗口局部分列。信息9／34–39、人物60基础表现及设施81不再笼统标“仅声明”，未证字体、物理输入及附加效果仍保留缺口。
 
 2026-10-10[建设资源装载与旋转](STEAM_BUILD_RESOURCE_INSTALL.md)补地图manager安装／退休、image来源与flags32软标签；[两张差异素材](../assets/steam-build-common/README.md)已正式发布。静态素材范围不替代列表Init／Update、全语言覆盖或原窗口输入。
@@ -85,13 +87,13 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 45 | DEVELMP_OPEN_PARAM | 魔法壶 | 仅声明；更新／绘制／动态链待逐项 |
 | 46 | DEVELMP_GETRECIPE | 魔法壶 | 仅声明；更新／绘制／动态链待逐项 |
 | 47 | DEVELMP_CREATE | 魔法壶 | 仅声明；更新／绘制／动态链待逐项 |
-| 48 | AS_RANKUP_TOWN | 村办／晋级 | 仅声明；更新／绘制／动态链待逐项 |
-| 49 | AS_RANKUP_TOWN_AUTO | 村办／晋级 | 仅声明；更新／绘制／动态链待逐项 |
-| 50 | AS_RANKUP_TOWN_ANIME | 村办／晋级 | 仅声明；更新／绘制／动态链待逐项 |
-| 51 | AS_EVENT_SELECT | 村办／晋级 | 仅声明；更新／绘制／动态链待逐项 |
-| 52 | AS_EVENT_INFO | 村办／晋级 | 仅声明；更新／绘制／动态链待逐项 |
-| 53 | AS_EVENT_ANIME | 村办／晋级 | 仅声明；更新／绘制／动态链待逐项 |
-| 54 | AS_EVENT_AFTER | 村办／晋级 | 仅声明；更新／绘制／动态链待逐项 |
+| 48 | AS_RANKUP_TOWN | 村办／晋级 | 静态：四条件／五选择、星与底栏helper已核。维护：Owner选择／说明／申请及有序皮肤已接。动态：旧S007仅布局候选；原字体／OS输入与完整原窗口仍缺，见[合同](PAGES.md#steam-village-progress) |
+| 49 | AS_RANKUP_TOWN_AUTO | 村办／晋级 | 静态：只读条件、底栏与48差异已核。维护：只读皮肤／返回已接；不提供申请命令。动态：未完整认证，见[合同](PAGES.md#steam-village-progress) |
+| 50 | AS_RANKUP_TOWN_ANIME | 村办／晋级 | 静态：三段／冻结布局、两人物层与独立frame2步帧已核。维护：双钟、X、绘图和140确认已接，查询不重洗名单。动态：连续庆典／共享scratch／原字体仍缺，见[合同](PAGES.md#steam-village-progress) |
+| 51 | AS_EVENT_SELECT | 村办／晋级 | 静态：目录／准入顺序、五行／季度／th分支、Touch11独立margin与111滑条已核。维护：Owner首行／整轮输入及有序皮肤已接。动态：最终OS滚动／点击及连续原窗口仍缺，见[合同](PAGES.md#steam-village-progress) |
+| 52 | AS_EVENT_INFO | 村办／晋级 | 静态：支付时点、插画、说明夹190、按钮夹60与六行边距已核。维护：两选项输入／纯计划已接。动态：原字体／OS热区实测仍缺，见[合同](PAGES.md#steam-village-progress) |
+| 53 | AS_EVENT_ANIME | 村办／晋级 | 静态：[60,70,110,120]、jingle5及效果时点、进度／mask／mini和类型1语言分支已核。维护：六类结果计划、120确认及Owner效果已接；类型4拒绝。动态：连续原窗口／字体及条件held后备资格仍缺，见[合同](PAGES.md#steam-village-progress) |
+| 54 | AS_EVENT_AFTER | 村办／晋级 | 静态：冻结开放人物、当前减ao、五行／clip／111滑条及无option行已核。维护：Owner姓名／性别覆盖、只读结果及关闭已接。动态：原字体／OS输入与附加scratch仍缺，见[合同](PAGES.md#steam-village-progress) |
 | 55 | CAMERAMOVE_MA | 相机／来访 | 仅声明；更新／绘制／动态链待逐项 |
 | 56 | CAMERAMOVE_MAA | 相机／来访 | 仅声明；更新／绘制／动态链待逐项 |
 | 57 | CAMERAMOVE_DUNGEON | 相机／来访 | 仅声明；更新／绘制／动态链待逐项 |
@@ -132,7 +134,7 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 92 | MONSTER_INFO | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |
 | 93 | GET_OBJ | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |
 | 94 | GET_OBJ_FROM_CHARA | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |
-| 95 | GET_OBJ_FROM_AWARD | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |
+| 95 | GET_OBJ_FROM_AWARD | 新局／奖励／解锁／事件 | 静态：共93／94绘制模板的七类图文、SetClip替换及r11择一后缀已核。维护：真实r/s/t只读皮肤、等待／40领取及拒绝已接，范围见[合同](../rules/ACCOUNTING.md#script-rewards)。动态：原窗口／字体与94其它分支仍缺 |
 | 96 | GET_MYHOME | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |
 | 97 | TP_LOCKOFF | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |
 | 98 | TAX_INCOME | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |
@@ -152,18 +154,18 @@ GameView先让顶页处理事件，再通用分派；跳表接受ID0–24，25�
 | 0 TITLEMENU | 通用标题分支 | 路由已核；完整输入未知 |
 | 1 DLGPAGE、18 ARROW | 同入口0x1023CCBE | 36／38等页箭头注册及逻辑翻页已有合同；其它页、最终物理输入仍另核 |
 | 2 DLGCMD、9 SUBMENU | 同入口0x1023C9CD | raw9基矩形／值及ENTER选行、UP请求确认已核，见[输入后继](INFORMATION_MENU.md#steam9选行确认与虚拟光标后继静态已核)；维护只接解析后输入，完整命中／guard和其它页仍独立 |
-| 3 DLGSEL、10 LIST、11 SLIST | 同入口0x1023CA42；标记后确认 | 75及21行注册分别已核；21的Margin不同，不能混用全部输入政策 |
+| 3 DLGSEL、10 LIST、11 SLIST | 同入口0x1023CA42；有marker才标记后确认，无marker的UP直接确认 | 75／21有marker；48／51／52／54无marker注册及不同Margin已核，不能混用全部输入政策 |
 | 4 KEYCLICK、20 PLUS、21 MINUS | OnTouchKeyClick | raw9组件4/value22/flag2无矩形、34测宽底栏value20已核并有计划；不能推广全屏热区，其它参数仍逐页核 |
 | 5 KEYPRESS | OnTouchKeyPress | 同上 |
 | 6 KEYDOWN、7 KEYUP | 通用内联分支 | 位拆分及完整资格链待核 |
 | 8 MAINMENU | OnTouchMainMenu | 完整菜单／解锁待核 |
-| 12 VSCROLLBAR、14 VSCROLLBAR2、15 VSCROLLBAR3 | OnTouchVScrollBar | 8相对／9绝对滚动及35／37–39组件12注册已核，维护保留110／111差异；其它页注册及最终输入仍待核 |
+| 12 VSCROLLBAR、14 VSCROLLBAR2、15 VSCROLLBAR3 | OnTouchVScrollBar | 8相对／9绝对滚动及35／37–39、51／54组件12注册已核，维护保留110／111差异；其它页注册及最终输入仍待核 |
 | 13 VSCROLLBTN | OnTouchVScrollButton | ON上下边界已核，注册待核 |
 | 16 UNMARKER | OnTouchUnMarker | 完整生命周期待核 |
 | 17 CAMERA | GameForm.OnTouchEvent→OnTouchCamera | 主世界／建设局部已核；OS投递及全模式待核 |
 | 19 TRACKBAR | 通用轨条分支 | 具体用途待核 |
 | 22 OVER、24 RECT | 各自通用内联分支 | 用途及注册未知 |
-| 23 ARROW_UD | 默认入口0x1023CA3B | 顶页／实际注册未知 |
+| 23 ARROW_UD | 默认入口0x1023CA3B | 51上／下组件17／19及独立margin已核并有计划；最终OS输入及其它页仍缺 |
 | 25 SCROLLBG | 超通用跳表上限 | 35／37–39的背景注册／flag4已核并有计划；不能据注册推成通用跳表已处理，最终命中仍独立 |
 
 14事件为DOWN0、UP1、ENTER2、LEAVE3、MOVE4、CLICK5、LOST6、DRAG7、GRID_DRAG8、CELL_DRAG9、CANCEL10、PINCH_START11、PINCH12、ON13。

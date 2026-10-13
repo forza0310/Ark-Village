@@ -373,6 +373,42 @@ Error act_startup_world_facility_catalog_page(State &s, std::uint64_t id, Action
     s = std::move(next);
     return Error::none;
 }
+Error input_startup_world_facility_catalog_page(State &s,std::uint64_t id,const StartupFacilityCatalogInput &input) {
+    const auto view=inspect_startup_world_facility_catalog_page(s,id);
+    if(s.scene.framework_paused||!view)return Error::invalid_page;
+    if(view->raw!=79&&(input.up||input.down||input.selection||input.scroll||input.inspect))return Error::invalid_page;
+    if(view->raw==82&&(input.left||input.right))return Error::invalid_page;
+    auto next=s;
+    auto &v=next.facility_catalog_page_data.find(id)->second;
+    auto &phase=next.page_phases.find(id)->second;
+    const int count=static_cast<int>(view->entries.size());
+    if(input.scroll) {
+        if(input.scroll->value==std::numeric_limits<int>::max())return Error::invalid_page;
+        const auto wanted=input.scroll->absolute?std::int64_t(input.scroll->value):std::int64_t(v[2])+input.scroll->value;
+        const int first=static_cast<int>(std::clamp(wanted,std::int64_t(0),std::int64_t(std::max(0,count-4))));
+        v[1]+=first-v[2];v[2]=first;
+    }
+    if(input.selection) {
+        if(*input.selection<0||*input.selection>=count)return Error::invalid_page;
+        v[1]=*input.selection;
+    }
+    if(view->raw==79) {
+        if(input.up)v[1]=v[1]==0?count-1:v[1]-1;
+        if(input.down)v[1]=v[1]==count-1?0:v[1]+1;
+        scroll(v);
+        if(input.left)phase=1-phase;
+        if(input.right)phase=1-phase;
+    } else if(view->raw==72) {
+        if(input.left)phase=phase==0?count-1:phase-1;
+        if(input.right)phase=phase==count-1?0:phase+1;
+    }
+    if(input.confirm||input.cancel||input.inspect) {
+        const auto action=input.confirm?Action::confirm:input.cancel?Action::cancel:Action::inspect;
+        const auto error=act_startup_world_facility_catalog_page(next,id,action);
+        if(error!=Error::none)return error;
+    }
+    s=std::move(next);return Error::none;
+}
 std::optional<State> update_startup_world_facility_catalog_page(const State &s, std::uint64_t id) {
     const auto p = top(s);
     if (!p || p->id != id || p->kind != ref::WorldScriptPageKind::raw_page || !supported(p->legacy_page))

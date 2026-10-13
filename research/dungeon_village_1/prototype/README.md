@@ -1,5 +1,7 @@
 # 可玩研究原型包
 
+设施经营主线的79／72现接[Steam商品只读计划](include/dungeon_village_prototype/steam_facility_catalog_skin.hpp)及研究窗口：价格／属性页、四行滚动、商品详情及父页返回，输入整轮候选提交；确认清全类NEW，不购买。`--world --inspect-page world-goods/world-goods-attributes/world-equipment-info --frames 8`分别进入三种状态，名称须逐个传入。人物结果窗同时只读已有`entry_updates`作为原共享人物计数，不再使用窗口刷新帧。[合同](../rules/COMMERCE.md#steam商品79详情72只读皮肤)、[参考图](../ui/examples/README.md)和[验收](../VERIFICATION.md#steam商品目录与共享时钟2026-10-13)可供产品消费；75／76／77／82仍在本goal后继，不混为已验交付。
+
 当前世界语义5／应用8已修正新局九设施原初值p2，并按用户确认使85仅列p0未开放图纸；预览、支付、93领取及恢复同资格，旧研究档拒绝、不迁移。原85的p!=2事实与维护p0策略分别登记在[商会合同](../rules/COMMERCE.md)，不修改原表、玩家旧进度或追溯退款。
 
 [应用存储](APPLICATION_STORAGE.md)与[标题控制器](TITLE_MENU.md)已接系统2四目录、显式菜单输入和完整文件视图；世界语义4／应用语义7修复建设、移动、撤除后的到达价格缓存，当批Driver v3与字段布局未变，验收见[收费缓存交付](../VERIFICATION.md#邻接价格与语义4应用7修正2026-10-09)。信息目录与追踪上下文另行扩展Owner字段，旧布局研究普通档及精确快照均拒绝，见[存取模块](PERSISTENCE.md)。CLI使用显式`--root`，旧三路径接口拒绝且不迁移；raw14已接下述应用保存桥，自动中断原轮内产生者及原游戏档兼容仍未实现。

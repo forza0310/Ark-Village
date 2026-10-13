@@ -1025,6 +1025,10 @@ StartupWorldRuntimeError StartupWorldRuntimeSession::act_village_activity_page(
     std::uint64_t page, StartupVillageActivityAction action, int selection) {
     return act_startup_world_village_activity_page(state_, page, action, selection);
 }
+StartupWorldRuntimeError StartupWorldRuntimeSession::input_facility_catalog_page(
+    std::uint64_t page,const StartupFacilityCatalogInput &input) {
+    return input_startup_world_facility_catalog_page(state_,page,input);
+}
 StartupWorldRuntimeError StartupWorldRuntimeSession::open_human_page(int human) {
     return open_startup_world_human_page(state_, human);
 }

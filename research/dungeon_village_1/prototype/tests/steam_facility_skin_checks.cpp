@@ -1,4 +1,6 @@
 #include "dungeon_village_prototype/steam_facility_skin.hpp"
+#include "dungeon_village_prototype/steam_facility_catalog_skin.hpp"
+#include "dungeon_village_prototype/startup_world_facility_catalog.hpp"
 #include "dungeon_village_prototype/startup.hpp"
 #include "dungeon_village_prototype/startup_world_projection.hpp"
 #include "dungeon_village_prototype/startup_world_building.hpp"
@@ -566,5 +568,71 @@ int check_steam_facility_skin(const std::filesystem::path &source_root) {
         const auto resource=steam_facility_resource(static_cast<A>(id));
         check(resource&&std::filesystem::is_regular_file(assets/resource->published_image),"74复用已出版Steam资源，不读Unity/work");
     }
+    // 商品目录条件夹具：开放六个定义用于四行窗口，不认证自然获取。
+    auto goods=test_support::page_fixture(79);const auto goods_id=goods.scripts.pages.back().id;
+    goods.scripts.executing_page.reset();goods.scripts.pages.back().legacy_f=1;goods.scripts.pages.back().lifecycle=0;
+    for(auto &entry:goods.catalog)if(entry.first.first==1)entry.second.status=entry.first.second<6?1:0;
+    check(initialize_startup_world_facility_catalog_pages(goods),"79真实初始化已有目录载荷");
+    SteamHumanOverviewOptions go;go.title_widths=std::array<int,2>{64,64};go.bottom_widths[0]=96;
+    auto gp=steam_facility_commodity_skin(goods,goods_id,go);
+    check(gp&&gp->title=="商品 1/2"&&gp->soft_labels==std::array<int,2>{7,2},"79双页及详情/返回标签");
+    int rows=0,prices=0;bool first_row=false,first_price=false,first_finger=false;
+    for(const auto &op:gp->operations) {
+        if(const auto *r=std::get_if<SteamHumanEquipmentRow>(&op)) {
+            ++rows;first_row|=r->touch.rectangle==std::optional<std::array<int,4>>({1,96,233,16})&&r->margin==std::array<int,4>{0,-20,0,0};
+        }
+        if(const auto *n=std::get_if<SteamFacilityNumber>(&op)) {
+            ++prices;first_price|=n->kind==SteamFacilityNumberKind::money&&n->asset==A::number08&&n->position==std::array<int,2>{211,99};
+        }
+        if(const auto *i=std::get_if<SteamFacilityImage>(&op))first_finger|=i->asset==A::finger&&i->position==std::array<int,2>{19,106};
+    }
+    check(rows==4&&prices==4&&first_row&&first_price&&first_finger,"79四行坐标/无marker行触摸/基础售价/手形");
+    const auto goods_before=startup_world_state_digest(goods);
+    for(int n=0;n<12;++n)check(steam_facility_commodity_skin(goods,goods_id,go)->operations.size()==gp->operations.size(),"商品计划输出不累计");
+    check(startup_world_state_digest(goods)==goods_before,"商品绘制不清NEW/收费/抽随机/推进页面");
+    check(act_startup_world_facility_catalog_page(goods,goods_id,StartupFacilityCatalogAction::select,5)==StartupWorldRuntimeError::none&&
+          act_startup_world_facility_catalog_page(goods,goods_id,StartupFacilityCatalogAction::next_tab)==StartupWorldRuntimeError::none,"目录末项与属性页接线");
+    gp=steam_facility_commodity_skin(goods,goods_id,go);rows=0;int columns=0;
+    for(const auto &op:gp->operations) {
+        rows+=std::holds_alternative<SteamHumanEquipmentRow>(op);
+        if(const auto *i=std::get_if<SteamHumanImage>(&op))if(i->asset==SteamHumanAsset::combat_icon) {
+            ++columns;check(i->frame==1||i->frame==3,"武器页正攻击/魔法列，不能套防具列");
+        }
+    }
+    check(rows==4&&columns==2&&gp->title=="商品 2/2","末端滚动保持四行与两属性列");
+    goods.facility_catalog_page_data.at(goods_id)[2]=5;
+    StartupFacilityCatalogInput combined;combined.up=combined.down=combined.left=combined.right=true;
+    check(input_startup_world_facility_catalog_page(goods,goods_id,combined)==StartupWorldRuntimeError::none&&
+          inspect_startup_world_facility_catalog_page(goods,goods_id)->first_visible==5&&
+          inspect_startup_world_facility_catalog_page(goods,goods_id)->selection==5&&
+          inspect_startup_world_facility_catalog_page(goods,goods_id)->phase==1,"79双方向先合成，不把合法单行尾窗逐方向改掉");
+    const auto input_before=startup_world_state_digest(goods);
+    combined.selection=99;
+    check(input_startup_world_facility_catalog_page(goods,goods_id,combined)==StartupWorldRuntimeError::invalid_page&&
+          startup_world_state_digest(goods)==input_before,"同轮坏选择与方向失败无部分页/NEW修改");
+    combined={};combined.scroll=StartupFacilityCatalogInput::Scroll{true,0};
+    check(input_startup_world_facility_catalog_page(goods,goods_id,combined)==StartupWorldRuntimeError::none&&
+          inspect_startup_world_facility_catalog_page(goods,goods_id)->selection==0,"滚动以实际delta同步选择");
+    check(act_startup_world_facility_catalog_page(goods,goods_id,StartupFacilityCatalogAction::select,5)==StartupWorldRuntimeError::none,"恢复详情预选末项");
+    auto broken=goods;broken.facility_catalog_page_data.erase(goods_id);
+    check(!steam_facility_commodity_skin(broken,goods_id,go),"已初始化缺目录字段显式拒绝");
+    check(act_startup_world_facility_catalog_page(goods,goods_id,StartupFacilityCatalogAction::inspect)==StartupWorldRuntimeError::none&&
+          initialize_startup_world_facility_catalog_pages(goods),"79信息入口真实创建72");
+    const auto child=goods.scripts.pages.back().id;
+    const auto goods_detail=steam_facility_commodity_detail_skin(goods,child,go);
+    check(goods_detail&&goods_detail->title=="装备信息 6/6"&&!steam_facility_commodity_skin(goods,goods_id,go),"72读取浏览序号且父页覆盖时不冒充顶页");
+    broken=goods;broken.facility_catalog_page_parents.erase(child);
+    check(!steam_facility_commodity_detail_skin(broken,child,go),"72错父与孤立载荷拒绝");
+    auto single=test_support::page_fixture(79);single.scripts.executing_page.reset();single.scripts.pages.back().legacy_f=1;single.scripts.pages.back().lifecycle=0;
+    for(auto &entry:single.catalog)if(entry.first.first==1)entry.second.status=entry.first.second==0?1:0;
+    const auto single_id=single.scripts.pages.back().id;
+    check(initialize_startup_world_facility_catalog_pages(single)&&
+          act_startup_world_facility_catalog_page(single,single_id,StartupFacilityCatalogAction::inspect)==StartupWorldRuntimeError::none&&
+          initialize_startup_world_facility_catalog_pages(single),"单条商品实际进入信息页");
+    const auto single_detail=steam_facility_commodity_detail_skin(single,single.scripts.pages.back().id,go);
+    int single_arrows=0;for(const auto &op:single_detail->operations)single_arrows+=std::holds_alternative<SteamFacilityArrowTouch>(op);
+    check(single_detail->title=="装备信息 1/1"&&single_arrows==2,"72单条仍有序号/双箭头，不复用73单条隐藏策略");
+    check(act_startup_world_facility_catalog_page(goods,child,StartupFacilityCatalogAction::cancel)==StartupWorldRuntimeError::none&&
+          !steam_facility_commodity_detail_skin(goods,child,go),"信息页退休后不可继续出图");
     return check.count;
 }

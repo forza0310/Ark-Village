@@ -1,5 +1,7 @@
 # Steam人物详情60：四页布局与输入
 
+2026-10-13共享表现时钟后继：Steam `UserData.frame_ +0xB4`／APK `n.V`已由Owner的`entry_updates`维护并纳入现codec，缺口实际是皮肤接线，不需要第二时钟或新字段。`UserData.Update`（RVA2ED980，VA102EDA3F–49）入口执行`(frame+1)%INT_MAX`，`GameForm._update`只有normal／focus两调用点（103052E0／10304404）；建设、等待、源模态及框架暂停不据渲染次数推进。`Draw_mentalUp`在102D3A0A读取共享计数，经SetDrawParam的action0／步速4得到`(frame%16)/4`，结果counter／快进／分段不复位它。[只读query](../prototype/include/dungeon_village_prototype/steam_human_skin.hpp)和研究窗口现接既有Owner值，取代旧窗口刷新帧适配。原Serialize／Deserialize不保存该字段，Init也不复位；维护新世界取0、正常文件及精确快照保存恢复它是维护保证，不是原档事实。下文旧交付“尚未建模／窗口适配”保持当时身份，当前缺口已由此收窄。
+
 2026-10-13职业61／赠礼64目录已接[同一只读模块](../prototype/include/dungeon_village_prototype/steam_human_skin.hpp)、真实Owner滚动及窗口；目录与普通道具说明不再回落临时白底代码。参考见[职业目录](examples/steam-human-professions.png)、[装备赠礼](examples/steam-human-gifts.png)及[普通道具](examples/steam-human-items.png)。主线仍作联合范围审计，原字体及原OS动态独立未认证。
 
 后继四页局部皮肤已接`steam_human_information_skin`统一入口，复用共用区及现有计划类型，页2四装备／页3魔法不再回落旧白底展示；[参考图](examples/steam-human-equipment-magic.png)与[验收](../VERIFICATION.md#人物60四页与槽位输入2026-10-12)可供产品消费。原字体／平台按钮图标／滚动条鼠标与原OS动态仍分别未验，赠礼和职业子窗为主线后继。

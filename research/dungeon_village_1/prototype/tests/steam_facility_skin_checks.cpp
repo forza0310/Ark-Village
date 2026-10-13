@@ -673,6 +673,151 @@ int check_steam_facility_skin(const std::filesystem::path &source_root) {
         const auto diagnostic="74拒绝场景"+std::to_string(fault)+"：隐藏坏载荷/缺测宽/越界选择/输出或坐标超限";
         check(!steam_facility_detail_skin(bad),diagnostic.c_str());
     }
+    // 特殊74仅装备/植物；源坐标独立断言，不复算库存、经济或邻接规则。
+    const auto special_source=[](int definition) -> const StartupDefinition & {
+        const auto &definitions=startup_world_rules().facilities;
+        const auto d=std::find_if(definitions.begin(),definitions.end(),[&](const auto &v){return v.id==definition;});
+        if(d==definitions.end())throw std::runtime_error("特殊74缺冻结定义");
+        return *d;
+    };
+    for(const int definition:{30,31,32,66})for(const bool japanese:{false,true})
+        for(const bool is_preview:{false,true}) {
+            const auto &source=special_source(definition);
+            SteamFacilitySpecialSkinInput in;in.definition=definition;in.mapchip=source.display_id;
+            in.icon=source.legacy_icon;in.name=source.name;in.japanese=japanese;in.definition_preview=is_preview;
+            in.title_widths=std::array<int,2>{48,50};
+            if(definition==66) {
+                in.plant_deltas=std::array<int,2>{1234,-7};in.plant_money_text="1,234G";
+                if(!is_preview)in.bottom_text="会给周围带来好的影响";
+            } else {
+                in.equipment_count=0;in.sale_text="类别出售中";
+                if(!is_preview){in.bottom_text="查看商品";in.bottom_width=48;}
+            }
+            const auto plan=steam_facility_special_skin(in);
+            check(plan&&plan->soft_labels==std::array<int,2>{0,2},"特殊74两语言/实例/预览均单页左空右返回，装备零种合法");
+            const auto title=detail_labels(*plan,DR::title),names=detail_labels(*plan,DR::name);
+            check(title.size()==2&&title[0].argument==0&&names.size()==1&&
+                names[0].rectangle==std::array<int,4>{41,69,japanese?0:85,japanese?0:11}&&
+                detail_labels(*plan,DR::parameter).empty()&&detail_labels(*plan,DR::remaining).empty()&&
+                preview_images(*plan,A::level_label)==0&&preview_images(*plan,A::maximum)==0,
+                "特殊标题无/2，名称沿两语言；无普通数值面板/Lv/MAX/剩余");
+            int maps=0,clips=0,rectangles=0,interactive=0,preview_touches=0,numbers=0;
+            for(const auto &op:plan->operations) {
+                if(const auto *draw=std::get_if<SteamFacilityDraw>(&op)) {
+                    if(const auto *map=std::get_if<SteamFacilityMapchip2>(draw)) {
+                        ++maps;check(map->position==std::array<int,2>{120,125}&&map->orientation==0,"特殊Mapchip2图居中方向0");
+                    }
+                    if(const auto *clip=std::get_if<SteamFacilityClip>(draw)) {
+                        ++clips;if(clip->kind==SteamFacilityClipKind::push_intersect)
+                            check(clip->rectangle==std::array<int,4>{71,88,98,75},"特殊大图独立居中clip");
+                    }
+                    if(const auto *r=std::get_if<StartupSkinRect>(draw))if(r->rect==std::array<int,4>{71,88,98,75})++rectangles;
+                    if(const auto *number=std::get_if<SteamFacilityNumber>(draw)) {
+                        ++numbers;check(definition!=66&&number->value==0&&number->asset==A::number08&&
+                            number->position==std::array<int,2>{214,70}&&number->anchor==4,"装备种类用SEB15零数字右锚，不是库存");
+                    }
+                }
+                if(const auto *touch=std::get_if<SteamStartupTouch>(&op)) {
+                    if(touch->component==4) {
+                        ++interactive;check(touch->value==20&&touch->rectangle==std::array<int,4>{68,177,104,56},"装备互动提示原Touch4边距");
+                    }
+                    if(touch->component==2) {++preview_touches;check(!touch->rectangle&&touch->option==2,"特殊预览仅源无坐标Touch2");}
+                }
+                check(!std::holds_alternative<SteamFacilityArrowTouch>(op)&&!std::holds_alternative<SteamFacilityScrollRequest>(op),
+                    "特殊不借普通双箭头/邻接滚动");
+            }
+            check(maps==1&&clips==2&&rectangles==1&&numbers==(definition==66?0:1)&&
+                interactive==(!is_preview&&definition!=66?1:0)&&preview_touches==(is_preview?1:0)&&
+                preview_images(*plan,A::finger)==(!is_preview&&definition!=66?1:0),"特殊输出规模与互动归属明确");
+            if(definition==66) {
+                const auto price=detail_labels(*plan,DR::plant_price),quality=detail_labels(*plan,DR::plant_quality);
+                check(price.size()==2&&quality.size()==2&&price[0].rectangle[0]==(japanese?54:78)&&
+                    price[1].rectangle[0]==(japanese?118:82)&&quality[0].rectangle[0]==(japanese?134:158)&&
+                    quality[1].rectangle[0]==(japanese?187:162)&&price[1].value=="+1,234G"&&quality[1].value=="+-7"&&
+                    price[1].anchor==(japanese?4:1)&&price[1].font_size==(japanese?11:10)&&
+                    detail_labels(*plan,DR::plant_description).size()==(is_preview?0U:1U)&&
+                    detail_labels(*plan,DR::bottom).empty(),"Steam植物语言锚点/显式货币/邻接品质signed串；实例底文没有互动按钮");
+                auto bad=in;bad.plant_money_text.reset();check(!steam_facility_special_skin(bad),"植物缺后端货币串显式拒绝，不猜G格式");
+            } else {
+                const auto sale=detail_labels(*plan,DR::sale_description);
+                check(sale.size()==1&&sale[0].value=="类别出售中"&&sale[0].rectangle[0]==120&&sale[0].rectangle[1]==172&&
+                    sale[0].anchor==2&&detail_labels(*plan,DR::bottom).size()==(is_preview?0U:1U),"销售说明始终存在，预览仅跳过实例互动底钮");
+                auto bad=in;bad.sale_text.reset();check(!steam_facility_special_skin(bad),"装备缺销售译文拒绝，不猜类别格式");
+            }
+            auto bad=in;bad.title_widths.reset();check(!steam_facility_special_skin(bad),"特殊缺标题实测宽拒绝");
+            bad=in;bad.definition=34;check(!steam_facility_special_skin(bad),"特殊API拒普通设施，避免另建数值皮肤");
+            bad=in;bad.bottom_text=std::string(4097,'x');if(!is_preview)
+                check(!steam_facility_special_skin(bad),"特殊实例输出文本预算拒超限，不累计字符串");
+        }
+    for(const int definition:{30,66}) {
+        auto state=test_support::world_fixture();
+        const auto installed=std::find_if(state.scene.world.world.facilities.begin(),state.scene.world.world.facilities.end(),
+            [&](const auto &f){return f.second.placement.definition_id==definition;});
+        check(installed!=state.scene.world.world.facilities.end(),"特殊定义真实初装存在，不猜维护实例ID");
+        const auto instance=installed->first;
+        check(open_startup_world_facility_page(state,instance)==StartupWorldRuntimeError::none,"特殊真实原初实例进入74");
+        const auto page=state.scripts.pages.back().id;
+        const auto &source=special_source(state.scripts.pages.back().legacy_f);
+        SteamFacilitySpecialSkinOptions options;options.title_widths=std::array<int,2>{48,50};
+        if(definition==30){options.sale_text="武器出售中";options.bottom_text="查看商品";options.bottom_width=48;}
+        else {options.plant_money_text="源货币译文";options.bottom_text="会给周围带来好的影响";}
+        const auto before=startup_world_state_digest(state);
+        const auto plan=steam_facility_special_skin(state,page,options);
+        check(plan.has_value(),"特殊Owner严格真实绑定可读，无普通经济依赖");
+        if(definition==30) {
+            int expected=0;for(const auto &e:state.rules->equipment)if(e.shop.kind==1&&state.catalog.at({1,e.shop.id}).status!=0)++expected;
+            for(const auto &op:plan->operations)if(const auto *draw=std::get_if<SteamFacilityDraw>(&op))
+                if(const auto *number=std::get_if<SteamFacilityNumber>(draw))check(number->value==expected,"装备完整定义目录状态投影只计种类");
+            auto zero=state;for(auto &e:zero.catalog)if(e.first.first==1)e.second.status=0;
+            check(steam_facility_special_skin(zero,page,options).has_value(),"装备全未开放是合法零种，不用拒空商品helper");
+            auto bad=state;bad.catalog.erase({1,0});check(!steam_facility_special_skin(bad,page,options),"装备缺目录键不可当未开放");
+            bad=state;bad.catalog.at({1,0}).status=3;check(!steam_facility_special_skin(bad,page,options),"装备坏状态明确拒绝");
+        } else {
+            const auto quality=detail_labels(*plan,DR::plant_quality);
+            check(quality[1].value=="+"+std::to_string(source.neighbour_effects[1].delta),"植物Owner只读邻接前两项，不用经济或exit效果");
+            auto bad=state;auto missing_source=*state.rules;
+            for(auto &d:missing_source.facilities)if(d.id==source.id)d.neighbour_effects.resize(1);
+            bad.rules=&missing_source;
+            check(!steam_facility_special_skin(bad,page,options),"植物缺第二项邻接定义拒绝，不补品质零值");
+        }
+        for(int n=0;n<2;++n)check(steam_facility_special_skin(state,page,options)->operations.size()==plan->operations.size(),"特殊重复只读输出规模稳定");
+        check(startup_world_state_digest(state)==before,"特殊绘制不改页/资金/随机/一次性输出");
+        for(int fault=0;fault<5;++fault) {
+            auto bad=state;
+            if(fault==0)bad.page_counters.erase(page);
+            if(fault==1)bad.page_phases.at(page)=1;
+            if(fault==2)bad.facility_page_bindings.erase(page);
+            if(fault==3)bad.facility_definition_page_bindings[page]=source.id;
+            if(fault==4)bad.facility_page_neighbours.at(page).push_back({ref::BuildingId{999999},source.id});
+            check(!steam_facility_special_skin(bad,page,options),"特殊拒缺初始化/越界phase/孤立绑定或邻接源");
+        }
+        check(act_startup_world_facility_page(state,page,StartupFacilityPageAction::cancel)==StartupWorldRuntimeError::none&&
+            !steam_facility_special_skin(state,page,options),"特殊实例页退休后不能再出图");
+    }
+    for(const bool equipment_preview:{true,false}) {
+        auto state=test_support::page_fixture(85);state.rank=5;
+        const auto parent=state.scripts.pages.back().id;
+        check(initialize_startup_world_commerce_pages(state),"特殊预览真实初始化85");
+        const auto &list=state.commerce_page_lists.at(parent);
+        const auto selected=std::find_if(list.begin(),list.end(),[&](int id) {
+            const auto &d=special_source(id);
+            return equipment_preview?(d.detail==1||d.detail==4||d.detail==5):d.kind==2;
+        });
+        check(selected!=list.end(),"特殊定义在原p0商会候选目录中");
+        const int definition=*selected;
+        // 原flags30/31为101/103，bit1使新局p2；32为100、rank1，才是首个装备p0候选。
+        check(definition==(equipment_preview?32:67),"冻结初值首个未开放装备/植物为32/67，不改变原开放位造候选");
+        check(act_startup_world_commerce_page(state,parent,StartupCommerceAction::select,static_cast<int>(selected-list.begin()))==StartupWorldRuntimeError::none&&
+            act_startup_world_commerce_page(state,parent,StartupCommerceAction::inspect)==StartupWorldRuntimeError::none,"特殊通过实际85详情生成74");
+        const auto page=state.scripts.pages.back().id;
+        SteamFacilitySpecialSkinOptions options;options.title_widths=std::array<int,2>{48,50};
+        if(equipment_preview)options.sale_text="饰品出售中";else options.plant_money_text="源货币译文";
+        const auto before=startup_world_state_digest(state);const auto plan=steam_facility_special_skin(state,page,options);
+        check(plan&&startup_world_state_digest(state)==before&&std::holds_alternative<SteamStartupTouch>(plan->operations.back()),"特殊85预览无实例/底宽/互动字段，末Touch2且Owner不变");
+        auto bad=state;bad.page_counters.erase(parent);check(!steam_facility_special_skin(bad,page,options),"特殊预览父85缺载荷明确拒绝");
+        check(act_startup_world_facility_page(state,page,StartupFacilityPageAction::confirm)==StartupWorldRuntimeError::none&&
+            !steam_facility_special_skin(state,page,options),"特殊预览确认退休仍沿既有Owner，无购买副作用");
+    }
     auto detail_owner=test_support::world_fixture();
     check(open_startup_world_facility_page(detail_owner,4)==StartupWorldRuntimeError::none,"74真实实例入口");
     const auto detail_page=detail_owner.scripts.pages.back().id;

@@ -491,6 +491,46 @@ void details() {
     check(act_startup_world_facility_page(s, page, StartupFacilityPageAction::cancel) ==
               StartupWorldRuntimeError::invalid_page,
           "stale double close rejected");
+    // 原初始实例66向日葵，无合成数值或额外建设；植物确认与预览关闭不能混用。
+    auto plant=test_support::world_fixture();
+    const auto sunflower=source_facility(plant,66);
+    check(open_startup_world_facility_page(plant,sunflower)==StartupWorldRuntimeError::none,
+          "initial sunflower instance opens genuine single-page74");
+    const auto plant_page=plant.scripts.pages.back().id;
+    check(startup_world_facility_page_count(plant,plant.scripts.pages.back())==1,
+          "plant74 has no invented bonus page");
+    const auto plant_digest=startup_world_state_digest(plant);
+    const auto plant_draws=plant.scene.random.draws();
+    const auto outputs=plant.sound_requests.size();
+    for(int repeat=0;repeat<2;++repeat)
+        check(act_startup_world_facility_page(plant,plant_page,StartupFacilityPageAction::confirm)==
+                  StartupWorldRuntimeError::none&&startup_world_state_digest(plant)==plant_digest&&
+              plant.scene.random.draws()==plant_draws&&plant.sound_requests.size()==outputs,
+              "plant instance confirm succeeds without changing any Owner state, random or one-shot output");
+    check(act_startup_world_facility_page(plant,plant_page,StartupFacilityPageAction::cancel)==
+              StartupWorldRuntimeError::none&&plant.scripts.pages.back().lifecycle==4,
+          "plant cancel still closes the actual74 page");
+    const auto retired=prepare_startup_world_runtime(plant);
+    check(retired.candidate&&!retired.candidate->facility_page_bindings.count(plant_page)&&
+          !retired.candidate->facility_page_neighbours.count(plant_page)&&
+          !retired.candidate->page_counters.count(plant_page)&&!retired.candidate->page_phases.count(plant_page),
+          "plant cancel follows framework retirement and releases all74 payload references");
+
+    auto preview=test_support::page_fixture(85);
+    const auto commerce=preview.scripts.pages.back().id;
+    check(initialize_startup_world_commerce_pages(preview),"plant preview fixture initializes actual85");
+    const auto &entries=preview.commerce_page_lists.at(commerce);
+    const auto tulip=std::find(entries.begin(),entries.end(),67);
+    check(tulip!=entries.end()&&act_startup_world_commerce_page(preview,commerce,
+              StartupCommerceAction::select,static_cast<int>(tulip-entries.begin()))==StartupWorldRuntimeError::none&&
+          act_startup_world_commerce_page(preview,commerce,StartupCommerceAction::inspect)==StartupWorldRuntimeError::none,
+          "original eligible tulip67 opens real definition preview from85");
+    const auto preview_page=preview.scripts.pages.back().id;
+    const auto points=preview.village_points;
+    check(act_startup_world_facility_page(preview,preview_page,StartupFacilityPageAction::confirm)==
+              StartupWorldRuntimeError::none&&preview.scripts.pages.back().lifecycle==4&&
+          preview.village_points==points&&preview.scene.random.draws()==0,
+          "plant definition preview confirmation keeps its earlier close priority without point or random effects");
 }
 void facility_bonus_rows() {
     auto s = test_support::world_fixture();

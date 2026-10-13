@@ -146,6 +146,8 @@ Options parse_options(int argc, char **argv) {
             options.inspect_page != "commerce-bought" && options.inspect_page != "commerce-sold" &&
             options.inspect_page != "commerce-buildings" && options.inspect_page != "commerce-buildings-funded" && options.inspect_page != "commerce-buildings-tail" &&
             options.inspect_page != "commerce-building-preview" &&
+            options.inspect_page != "facility-shop" && options.inspect_page != "facility-plant" &&
+            options.inspect_page != "commerce-shop-preview" && options.inspect_page != "commerce-plant-preview" &&
             options.inspect_page != "config-quality" && options.inspect_page != "config-locked" &&
             options.inspect_page != "config-speed" && options.inspect_page != "config-volume" &&
           options.inspect_page != "gift-facility" && options.inspect_page != "gift-profession" &&

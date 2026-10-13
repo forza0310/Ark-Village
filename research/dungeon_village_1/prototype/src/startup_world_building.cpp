@@ -1001,8 +1001,12 @@ Error act_startup_world_facility_page(State &s, std::uint64_t id,
         if (d->kind != 2 && d->kind != 12 && d->detail != 1 && d->detail != 4 && d->detail != 5 &&
             d->detail != 6)
             return open_startup_world_facility_items(s, id);
-        if (d->detail != 6)
+        if (d->detail != 6) {
+            // Steam74/Update2及APK b/g:5553：实例植物确认成功但无业务；预览已在前支关闭。
+            if (d->kind == 2)
+                return Error::none;
             return Error::missing_source; // 75/79/人物60尚有各自操作，不能通用关页。
+        }
         ref::WorldScriptPage p;
         p.kind = ref::WorldScriptPageKind::raw_page;
         p.legacy_page = 80;

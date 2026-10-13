@@ -1029,6 +1029,10 @@ StartupWorldRuntimeError StartupWorldRuntimeSession::input_facility_catalog_page
     std::uint64_t page,const StartupFacilityCatalogInput &input) {
     return input_startup_world_facility_catalog_page(state_,page,input);
 }
+StartupWorldRuntimeError StartupWorldRuntimeSession::input_facility_item_page(
+    std::uint64_t page,const StartupFacilityItemInput &input) {
+    return input_startup_world_facility_item_page(state_,page,input);
+}
 StartupWorldRuntimeError StartupWorldRuntimeSession::open_human_page(int human) {
     return open_startup_world_human_page(state_, human);
 }

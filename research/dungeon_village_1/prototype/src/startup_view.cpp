@@ -2290,6 +2290,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
     std::optional<FacilityScrollDrag> facility_scroll_drag; // 只绑定当前页，释放/切页/退休清理。
     std::optional<FacilityScrollDrag> human_scroll_drag; // 只保存平台拖动手势，目录游标在唯一Owner。
     std::optional<std::pair<std::uint64_t,int>> human_catalogue_marker;
+    std::optional<std::pair<std::uint64_t,int>> facility_item_marker; // raw75 marker16，同页同绝对行的第二次UP。
     bool human_scroll_gesture{};
     bool facility_scroll_gesture{}; // 即使切页清引用，仍吞掉本次拖动的最终release。
     auto build_orientation = ref::FacilityOrientation::first;
@@ -2309,6 +2310,8 @@ int run_startup_world_window(const std::filesystem::path &assets,
            (current_top->legacy_page!=60&&current_top->legacy_page!=61&&current_top->legacy_page!=64&&current_top->legacy_page!=79)))human_scroll_drag.reset();
         if(human_catalogue_marker&&(current_top==session.state().scripts.pages.rend()||
            current_top->id!=human_catalogue_marker->first))human_catalogue_marker.reset();
+        if(facility_item_marker&&(session.state().scene.framework_paused||current_top==session.state().scripts.pages.rend()||
+           current_top->id!=facility_item_marker->first||current_top->legacy_page!=75))facility_item_marker.reset();
         bool pointer_consumed=facility_scroll_gesture||human_scroll_gesture;
         const auto hit = [&](Rectangle r) { return pressed && !pointer_consumed && CheckCollisionPointRec(mouse, r); };
         if (!application_clear && hit({4, 295, 44, 22})) {
@@ -2442,12 +2445,12 @@ int run_startup_world_window(const std::filesystem::path &assets,
                         for(const auto &op:plan->operations) {
                             if(const auto *arrow=std::get_if<SteamFacilityArrowTouch>(&op)) {
                                 const auto part=facility_detail_arrow(*arrow,sprites);const auto &r=part.destination;
-                                if(hit({float(r[0]),float(23+r[1]),float(r[2]),float(r[3])})) {
+                                if(hit({float(r[0]),human_overview_origin.y+r[1],float(r[2]),float(r[3])})) {
                                     input.left|=arrow->value==16;input.right|=arrow->value==18;
                                 }
                             } else if(const auto *row=std::get_if<SteamHumanEquipmentRow>(&op)) {
                                 const auto &r=*row->touch.rectangle;
-                                const Rectangle area{float(r[0]-row->margin[0]),float(23+r[1]-row->margin[2]),
+                                const Rectangle area{float(r[0]-row->margin[0]),human_overview_origin.y+r[1]-row->margin[2],
                                     float(r[2]+row->margin[0]+row->margin[1]),float(r[3]+row->margin[2]+row->margin[3])};
                                 if(hit(area)) {
                                     input.selection=row->touch.value&0xffff;
@@ -2458,7 +2461,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                                    CheckCollisionPointRec(mouse,area)) {input.selection=row->touch.value&0xffff;input.confirm=true;}
                             } else if(const auto *scroll=std::get_if<SteamHumanCatalogueScroll>(&op)) {
                                 const auto &r=*scroll->touch.rectangle;
-                                if(hit({float(r[0]-3),float(23+r[1]),float(r[2]+23),float(r[3])})&&view->entries.size()>4) {
+                                if(hit({float(r[0]-3),human_overview_origin.y+r[1],float(r[2]+23),float(r[3])})&&view->entries.size()>4) {
                                     const float grid=110.F/static_cast<float>(view->entries.size());
                                     human_scroll_drag=FacilityScrollDrag{pid,mouse.y,view->first_visible,grid};
                                     human_scroll_gesture=true;pointer_consumed=true;human_catalogue_marker.reset();
@@ -2517,33 +2520,50 @@ int run_startup_world_window(const std::filesystem::path &assets,
                         throw std::runtime_error("商会输入事务失败");
                 }
             } else if (raw >= 75 && raw <= 77) {
-                if (session.state().facility_item_pages_initialized.count(page->id) &&
-                    valid_startup_world_facility_item_page(session.state(), *page)) {
-                    using A = StartupFacilityItemAction;
-                    std::optional<A> action;
-                    int selected{};
-                    if (raw == 75) {
-                        const auto &list = session.state().facility_item_page_lists.at(page->id);
-                        const int first = std::max(
-                            0, session.state().facility_item_page_selections.at(page->id) - 4);
-                        if (IsKeyPressed(KEY_UP))
-                            action = A::previous;
-                        if (IsKeyPressed(KEY_DOWN))
-                            action = A::next;
-                        for (int n = first; n < std::min(static_cast<int>(list.size()), first + 5);
-                             ++n)
-                            if (hit({12, 74.F + (n - first) * 27, 216, 26})) {
-                                action = A::select;
-                                selected = n;
+                const auto pid=page->id;
+                if(session.state().facility_item_pages_initialized.count(pid)&&
+                   valid_startup_world_facility_item_page(session.state(),*page)) {
+                    StartupFacilityItemInput input;
+                    input.confirm=raw==77&&IsKeyPressed(KEY_ENTER);
+                    if(raw==75) {
+                        input.up=IsKeyPressed(KEY_UP);input.down=IsKeyPressed(KEY_DOWN);
+                        input.confirm=IsKeyPressed(KEY_ENTER);
+                        input.cancel=IsKeyPressed(KEY_ESCAPE)||hit({176,265,58,24});
+                        const int first=std::max(0,session.state().facility_item_page_selections.at(pid)-4);
+                        const auto plan=window_facility_effect_plan(session.state(),pid,font,first);
+                        if(!plan)throw std::runtime_error("Facility item input plan rejected");
+                        const auto point=[&](std::array<int,4> r) {return Rectangle{
+                            human_overview_origin.x+r[0],human_overview_origin.y+r[1],float(r[2]),float(r[3])};};
+                        for(const auto &op:plan->operations) {
+                            if(const auto *row=std::get_if<SteamFacilityEffectTouch>(&op)) {
+                                std::optional<std::array<int,4>> bounds=row->touch.rectangle;
+                                if(!bounds&&row->touch.image_draw&&*row->touch.image_draw<plan->operations.size()) {
+                                    const auto *image=std::get_if<SteamFacilityImage>(&plan->operations[*row->touch.image_draw]);
+                                    if(!image||image->asset!=SteamFacilityAsset::title_arrows)throw std::runtime_error("Facility arrow source rejected");
+                                    auto r=sprites.manual_arrow_bounds(image->frame);r[0]+=image->position[0];r[1]+=image->position[1];bounds=r;
+                                }
+                                if(!bounds)throw std::runtime_error("Facility item row has no logical bounds");
+                                auto r=*bounds;r[0]+=row->margin[0];r[1]+=row->margin[2];
+                                r[2]+=row->margin[1]-row->margin[0];r[3]+=row->margin[3]-row->margin[2];
+                                if(row->touch.component==11&&!input.cancel&&!pointer_consumed&&
+                                   IsMouseButtonReleased(MOUSE_BUTTON_LEFT)&&CheckCollisionPointRec(mouse,point(r))) {
+                                    const int chosen=row->touch.value&0xffff;
+                                    input.selection=chosen;
+                                    input.confirm|=row->touch.option==0||facility_item_marker==std::make_pair(pid,chosen);
+                                    facility_item_marker=std::make_pair(pid,chosen);
+                                } else if(row->touch.component==23&&hit(point(r))) {
+                                    input.up|=row->touch.value==17;input.down|=row->touch.value==19;
+                                }
+                            } else if(const auto *touch=std::get_if<SteamStartupTouch>(&op)) {
+                                if(touch->rectangle&&hit(point(*touch->rectangle))) {
+                                    input.up|=(*touch->rectangle)[1]<100;input.down|=(*touch->rectangle)[1]>100;
+                                }
                             }
-                        if (IsKeyPressed(KEY_ESCAPE) || hit({8, 265, 58, 24}))
-                            action = A::cancel;
+                        }
                     }
-                    if (raw != 76 && (IsKeyPressed(KEY_ENTER) || hit({176, 265, 58, 24})))
-                        action = A::confirm;
-                    if (action && session.act_facility_item_page(page->id, *action, selected) !=
-                                      StartupWorldRuntimeError::none)
-                        throw std::runtime_error("设施道具输入事务失败");
+                    if(input.up||input.down||input.confirm||input.cancel||input.selection)
+                        if(session.input_facility_item_page(pid,input)!=StartupWorldRuntimeError::none)
+                            throw std::runtime_error("Facility item input transaction failed");
                 }
             } else if (raw >= 51 && raw <= 54) {
                 const auto view =

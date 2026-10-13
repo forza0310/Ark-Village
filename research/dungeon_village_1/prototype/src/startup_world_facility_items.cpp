@@ -342,6 +342,29 @@ Error act_startup_world_facility_item_page(State &s, std::uint64_t id, Action ac
     s = std::move(next);
     return Error::none;
 }
+Error input_startup_world_facility_item_page(State &s,std::uint64_t id,const StartupFacilityItemInput &input) {
+    const auto *p=top(s);
+    if(s.scene.framework_paused||!p||p->id!=id||!valid_startup_world_facility_item_page(s,*p))return Error::invalid_page;
+    if(p->legacy_page!=75&&(input.up||input.down||input.selection||input.cancel))return Error::invalid_page;
+    if(p->legacy_page==76&&input.confirm)return Error::invalid_page;
+    if(!s.facility_item_pages_initialized.count(id)||!initialized_payload(s,*p))return Error::missing_source;
+    auto next=s;
+    if(p->legacy_page==75) {
+        auto &chosen=next.facility_item_page_selections.find(id)->second;
+        const int count=static_cast<int>(next.facility_item_page_lists.find(id)->second.size());
+        if(input.selection) {
+            if(*input.selection<0||*input.selection>=count)return Error::invalid_page;
+            chosen=*input.selection;
+        }
+        if(input.up)chosen=chosen==0?count-1:chosen-1;
+        if(input.down)chosen=chosen==count-1?0:chosen+1;
+    }
+    if(input.confirm||input.cancel) {
+        const auto error=act_startup_world_facility_item_page(next,id,input.confirm?Action::confirm:Action::cancel,-1);
+        if(error!=Error::none)return error;
+    }
+    s=std::move(next);return Error::none;
+}
 std::optional<State> prepare_startup_world_facility_item_page(const State &s) {
     const auto *p = top(s);
     if (s.scene.framework_paused || !p || !valid_startup_world_facility_item_page(s, *p))

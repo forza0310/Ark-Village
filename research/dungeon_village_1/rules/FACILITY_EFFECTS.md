@@ -211,6 +211,8 @@ Steam75在`1031B249`先PresentItem，再Push76、实例道具计数加1、`1031B
 
 ### Steam75／76／77只读皮肤
 
+输入后继复用已证75／77顺序，新增非持久`StartupFacilityItemInput`：先合成选择／上下，再确认优先于取消，整轮候选一次提交；不带行号的确认沿`−1`消费Owner当前行。Session／Application／窗口宿主均转发同一入口。窗口75行热区、marker16及上下组件从正式计划读取，mouse UP处理两次同key选择；取消、换页／遮挡、暂停、退休释放设备标记。75精确scroll仍待持久设计确认，不将设备标记或派生first冒充保存字段。
+
 具名`SubForm._draw2_3` RVA`342C30`的75／76／77入口分别为VA`1034492B／10343ECB／10343DBB`；
 `UserData.Draw_tenantStrength` RVA`2D7CD0`与APK`b/g.java:7259–7667`、`c/n.java:1467–1545`交叉。
 [设施道具皮肤](../prototype/include/dungeon_village_prototype/steam_facility_effect_skin.hpp)保留有序图元、clip及原触摸请求，

@@ -175,6 +175,9 @@ class StartupWindowHost {
     StartupWorldRuntimeError input_facility_catalog_page(std::uint64_t page,const StartupFacilityCatalogInput &input) {
         return command([&](auto &owner) { return owner.input_facility_catalog_page(page,input); });
     }
+    StartupWorldRuntimeError input_facility_item_page(std::uint64_t page,const StartupFacilityItemInput &input) {
+        return command([&](auto &owner) { return owner.input_facility_item_page(page,input); });
+    }
     StartupWorldRuntimeError act_village_activity_page(std::uint64_t page, StartupVillageActivityAction action, int selection = 0) {
         return command([&](auto &owner) { return owner.act_village_activity_page(page, action, selection); });
     }

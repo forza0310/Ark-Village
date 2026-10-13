@@ -838,6 +838,32 @@ void facility_item_pages() {
           "framework initializes75 in source item order using positive inventory only");
     s = *update.candidate;
     const auto original = s;
+    // 两种正库存的定向目录，验证不带行号的确认使用Owner选择，非自然取得声明。
+    auto selected_item=s;
+    selected_item.items.at(0).inventory=2;selected_item.catalog.at({0,0})=selected_item.items.at(0);
+    selected_item.facility_item_page_lists.at(directory)={0,1};
+    StartupFacilityItemInput input;input.selection=1;
+    check(input_startup_world_facility_item_page(selected_item,directory,input)==StartupWorldRuntimeError::none&&
+          selected_item.facility_item_page_selections.at(directory)==1,"75 input selects second original item without paying");
+    input={};input.up=input.down=true;
+    check(input_startup_world_facility_item_page(selected_item,directory,input)==StartupWorldRuntimeError::none&&
+          selected_item.facility_item_page_selections.at(directory)==1,"75 same-round up/down cancel before current-item confirmation");
+    const auto input_before=startup_world_state_digest(selected_item);
+    input.selection=9;input.confirm=true;
+    check(input_startup_world_facility_item_page(selected_item,directory,input)==StartupWorldRuntimeError::invalid_page&&
+          startup_world_state_digest(selected_item)==input_before,"75 bad same-round row rejects before direction/payment/page changes");
+    auto late_input=selected_item;late_input.scripts.next_page_id=std::numeric_limits<std::uint64_t>::max();
+    const auto late_input_before=startup_world_state_digest(late_input);
+    input={};input.down=input.confirm=true;
+    check(input_startup_world_facility_item_page(late_input,directory,input)==StartupWorldRuntimeError::script_failed&&
+          startup_world_state_digest(late_input)==late_input_before,"75 late insertion failure rolls back same-round changed choice and payment");
+    input={};input.confirm=input.cancel=true;
+    check(input_startup_world_facility_item_page(selected_item,directory,input)==StartupWorldRuntimeError::none&&
+          selected_item.items.at(0).inventory==2&&selected_item.items.at(1).inventory==1&&
+          selected_item.scripts.pages.back().legacy_page==76,"75 confirm wins cancel and consumes actual current row1 rather than window default0");
+    input={};input.selection=0;
+    check(input_startup_world_facility_item_page(selected_item,selected_item.scripts.pages.back().id,input)==StartupWorldRuntimeError::invalid_page,
+          "76 rejects row input rather than consuming another item");
     check(act_startup_world_facility_item_page(s, directory, Action::select, 1) ==
                   StartupWorldRuntimeError::invalid_page &&
               s.facility_item_page_selections.at(directory) == 0 && s.items.at(1).inventory == 2,

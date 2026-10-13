@@ -30,6 +30,7 @@ enum class StartupMagicPotAction;
 struct StartupInformationInput;
 struct StartupHumanCatalogueInput;
 struct StartupFacilityCatalogInput;
+struct StartupFacilityItemInput;
 struct StartupWorldMenuInput;
 struct StartupManualInput;
 struct StartupManualPageData {
@@ -449,6 +450,8 @@ class StartupWorldRuntimeSession {
                                                        int selection = -1);
     StartupWorldRuntimeError input_facility_catalog_page(std::uint64_t page,
                                                         const StartupFacilityCatalogInput &input);
+    StartupWorldRuntimeError input_facility_item_page(std::uint64_t page,
+                                                     const StartupFacilityItemInput &input);
     StartupWorldRuntimeError act_village_activity_page(std::uint64_t page,
                                                        StartupVillageActivityAction action,
                                                        int selection = 0);

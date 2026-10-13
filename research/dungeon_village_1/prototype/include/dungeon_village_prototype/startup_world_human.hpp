@@ -24,6 +24,9 @@ struct StartupHumanDetails {
 // raw60只读当前共享定义/装备；不使用创建时的metadata替代玩家变更。
 std::optional<StartupHumanDetails>
 startup_world_human_details(const StartupWorldRuntimeState &state, int human);
+// raw67持原旧/新努力、共享四战斗显示及构造主钟；查询不补齐半初始化页。
+bool valid_startup_world_runtime_effort_result_page(const StartupWorldRuntimeState &state,
+                                                    const ref::WorldScriptPage &page);
 // 原页0回复入口资格：每次实时按人物原序取首个同定义W，缺来源返回空。
 std::optional<bool> startup_world_human_recovery_gift(const StartupWorldRuntimeState &state,int human);
 struct StartupHumanPresentationLive {

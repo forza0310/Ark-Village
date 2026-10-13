@@ -176,17 +176,21 @@ Steam共用helper `102D0F00`／`102D0420`及两组静态表分别2/42/52/67/73�
 页0回复入口现由同一只读资格供提示与Owner输入消费：Steam `1031E482–E5D1`实时按人物原序取首个同定义W，持有recoverValue>0道具，且HP_AFTER严格小于最大HP整除2或state7；无W／无库存不进入。命中打开64道具页4，原表遇首个recoverValue>0即停止，之前每个正库存条目累计成初选下标；不是找首个已拥有回复ID，也不另筛回复目录。来源缺失拒绝整次输入，不改世界／随机；原回复实际HP时点仍在66。
 
 <a id="human-reward-followups"></a>
-## 住宅、努力与授勋后继67／88／96：有限静态
+## 住宅、努力与授勋后继67／88／96
 
-96已交只读计划及真实Owner桥，67／88仍是有限静态。67在`SubForm._draw2_2` VA10340A27–10340DD0，10340B5D调用`Draw_charaPutUpBonus RVA2D0F00`的index0；68已用同helper的index1，可复用四战斗值演出，但不能为通过68入口伪造装备choice。67小肖像clip(30,68,15,14)、脚底(38,89)，当前职业／性别；努力旧／新百分比各由`(legacy_f/10)*10+100`、`(legacy_g/10)*10+100`取得，不能从当前努力倒推旧值。现Owner已有绑定、main、phase、effort_display和f/g；这部分不需要新增持久字段。
+67、96已交只读计划及真实Owner桥，88完整演员仍待核。67在`SubForm._draw2_2` VA10340A27–10340DD0，10340B5D调用`Draw_charaPutUpBonus RVA2D0F00`的index0；现`steam_human_combat_result_rows`与68/index1共用四战斗值算法，68仍在上层核装备choice，69六属性独立。67小肖像clip(30,68,15,14)、脚底(38,89)，当前职业／性别、无武器；努力旧／新百分比各由`(legacy_f/10)*10+100`、`(legacy_g/10)*10+100`取得，不能从当前努力倒推旧值。现Owner绑定、main、phase、effort_display和f/g足够，不增加持久字段。
+
+67纯输入／严格桥`steam_human_effort_result_skin`沿同人物模块：标题“努力奖励”、姓名能力句(50,70)，四图标(31,97+23i)、数右138／y101+23i，差额右202，2起逐行错开6槽、42落稳、52–67沿countAnime、73起箭头(208,187)按(main−73)%25闪烁；±1与下降在67前保留旧值，负差用SEB19正幅minus。底“基础能力”非日文9号(27,200)，日文当前字号(33,199)，旧／新数右126／190、y200，两处SEB76/frame0单位与箭头149,199独立；末无矩形Touch2/option2，soft0/0。空delta仍按原更新等待确认，不因没有可见增量自动关闭。研究窗口Enter／画布内UP为适配，不是原物理输入认证；坏载荷拒绝及恢复退休见[存取模块](../prototype/PERSISTENCE.md#努力提升67的显示载荷)。
 
 88的`_draw2_4` VA1034B396–1034BC4B在尾1034BC3E调用已有`mentalUp(human,page,main−page×135)`；96在10347B1D–10347FC5，phase1的10347B97调用同helper但使用原main。两者小肖像仍要求显式共享`character_frame`，不能拿仪式主钟替代。88／96公共尾103477DA–10347816注册无显式矩形Touch2／option2；配置门控key64支路未认证实际运行值，不写成普通取消。
+
+88 Update2分派10317C76→10318F45–1031921E已交叉：先算local=main−phase×135，phase0满135改phase1但本轮local保留旧值；phase1确认local<67置main202，否则212，旧local≥77才随机Draw(2)+24、执行原事件并绑定speaker1及人定义后关闭。该专属分支没有音频调用；父87首轮BGM3不能添为88的jingle。Init通用10312616清主钟，Init2所核比较链1030E672–1030E75D不含88特分支而直接返回true，没有本页特殊奖励／声音。完整演员、严格88载荷／暂停／恢复仍是后继。
 
 96上方用mp_back三原裁片和RGB148边框；原DrawRect179×81含端点，平台半开计划为180×82。10347E5C调用**DrawMapchip2 RVA21B9C0**、锚(120,113)，与33普通Mapchip不同。住宅定义由现producer的legacy_f绑定，不是实例ID。人物读取独立frame2(+A4)，模26前10走路、后16 action6/step0并用8／16的float抛物线，body方向2、脚基(175,142)，无武器；阴影固定(175,142)，不随跳高改变。主钟(+A0)与副钟在10321B63–10321B88各自+1模INT_MAX，换段只清主。主1／phase0在10317E9F–10317EC1请求jingle5；40和77确认门槛沿当前合同。维护96已扩现secondary初始化、暂停、恢复／拒绝及退休域，缺键不能默认用main兜底，没有新codec字段。
 
 实际接口`steam_human_residence_result_skin`纯DTO与严格Owner桥位于[人物公共头](../prototype/include/dungeon_village_prototype/steam_human_skin.hpp)，实现归同模块[住宅演出源](../prototype/src/steam_human_ceremony_skin.cpp)。原序为窗→内框→底文或mentalUp→mp_back三裁→边框→Mapchip2→固定阴影→身体→Touch2。phase0只对底文push交集裁剪(0,158,240,Rate(main,5,40,0,48))，姓名句DrawString2在120,165，完成句普通DrawString在120,187，然后pop；箭头main≥50且main%25<15，与40确认门槛不同。phase1复用同一个mentalUp纯消费者，底小人物带当前主武器／共享character_frame，上方身体仍用副钟。Owner桥读取已维护的共享人物钟，不推进它；原文字后端／OS投递仍另验。
 
-研究窗口96执行正式计划和确认适配，Enter／画布内鼠标松开不等于原Steam物理输入；不把Esc接作未经认证的原取消。三种[条件例图](examples/README.md)含80名单及96两段，字体Noto／中文句式为适配；满意标签原窄TextLayout在当前后端仍有截断，不为示例改变原宽度，完整字体排版待闭合。未决为67／88完整字号／字面／图元顺序，以及88上方event13、event12陪衬的全部Steam演员帧／声音／Init；这些APK候选不提升为原动态、自然入住／授勋或完整皮肤认证。
+研究窗口96执行正式计划和确认适配，Enter／画布内鼠标松开不等于原Steam物理输入；不把Esc接作未经认证的原取消。[条件例图](examples/README.md)含80名单、96两段及67，字体Noto／中文句式为适配；满意标签原窄TextLayout在当前后端仍有截断，不为示例改变原宽度，完整字体排版待闭合。未决仍含88完整字号／字面／上方event13、event12陪衬与全部Steam演员帧；有限APK候选不提升为原动态、自然入住／授勋或完整皮肤认证。
 
 ## 未闭合与后续最小范围
 

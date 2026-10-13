@@ -106,7 +106,7 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 64 | CHARA_PRESENT_ITEMSELECT | 人物／成长／礼物 | 静态及维护：装备／普通道具目录、五槽／四行／首行、回复预选及整轮输入已接；原动态另验，见[人物合同](STEAM_HUMAN_DETAIL.md) |
 | 65 | CHARA_PRESENT_ITEMSELECT_INFO | 人物／成长／礼物 | 静态及维护：装备赠礼确认皮肤及答案回父64，父恢复才支付／装配；原动态另验，见[人物合同](STEAM_HUMAN_DETAIL.md) |
 | 66 | CHARA_PRESENT_ANIME | 人物／成长／礼物 | 静态及维护：赠礼演出、类别结果和原资源计划已交付；Owner显式表现请求与原Draw准入分开，完整scratch／字体／OS仍缺，见[人物合同](STEAM_HUMAN_DETAIL.md) |
-| 67 | CHARA_PUTUP_BONUS | 人物／成长／礼物 | [有限静态](STEAM_HUMAN_DETAIL.md#human-reward-followups)：已定位四战斗值helper index0、肖像与冻结努力百分比；完整图元／桥及原动态待补 |
+| 67 | CHARA_PUTUP_BONUS | 人物／成长／礼物 | [合同与有序皮肤](STEAM_HUMAN_DETAIL.md#human-reward-followups)：与68共用四战斗行，冻结努力百分比／严格Owner桥／窗口及短恢复已接；原字体与OS动态仍待证 |
 | 68 | CHARA_EQUIP_EFFECT | 人物／成长／礼物 | 静态及维护：冻结装备槽／新ID、当前与差额动画、有序计划与真实消费参考已交付；完整原动态另验，见[人物合同](STEAM_HUMAN_DETAIL.md) |
 | 69 | CHARA_ITEM_EFFECT | 人物／成长／礼物 | 静态及维护：普通道具结果、冻结前值、当前能力动画与实际消费参考已交付；完整原动态另验，见[人物合同](STEAM_HUMAN_DETAIL.md) |
 | 70 | CHARA_LVMAX | 人物／成长／礼物 | 仅声明；更新／绘制／动态链待逐项 |
@@ -126,8 +126,8 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 84 | SHOPPING_ITEMSELECT | 商会 | 仅声明；更新／绘制／动态链待逐项 |
 | 85 | SHOPPING_TENANT | 商会 | 仅声明；更新／绘制／动态链待逐项 |
 | 86 | SHOPPING_ACT_AFTER | 商会 | 仅声明；更新／绘制／动态链待逐项 |
-| 87 | MEDAL_LIST | 授勋／怪物／住宅 | [局部Init／Update／Draw合同](PAGES.md#steam住宅候选80与授勋目录87)已核：三页签、五行及两种问答；现奖励消费者不等于原dialog父子页，纯皮肤／UI持久接线／动态待补 |
-| 88 | MEDAL_CELEMONY | 授勋／怪物／住宅 | [有限静态](STEAM_HUMAN_DETAIL.md#human-reward-followups)：mentalUp偏移135及公共确认已核；Steam顶图／演员帧／声音、完整皮肤与动态未闭合 |
+| 87 | MEDAL_LIST | 授勋／怪物／住宅 | [局部合同与纯计划](PAGES.md#steam住宅候选80与授勋目录87)及显式游标helper已接：三页签、五行、各数值列／勋章与住宅图；现奖励消费者不等于原dialog父子页，Owner游标／页签／问答接线及原动态待补 |
+| 88 | MEDAL_CELEMONY | 授勋／怪物／住宅 | [有限静态](STEAM_HUMAN_DETAIL.md#human-reward-followups)：mentalUp偏移135、Init无本页奖励／声音、Update确认与最终随机对话已核；Steam顶图／全部演员帧、严格载荷与原动态未闭合 |
 | 89 | MONSTER_NEWAPPEAR | 授勋／怪物／住宅 | 仅声明；更新／绘制／动态链待逐项 |
 | 90 | MYHOME_TAX | 授勋／怪物／住宅 | 仅声明；更新／绘制／动态链待逐项 |
 | 91 | NEWGAME | 新局／奖励／解锁／事件 | 静态：[NewGame／默认参数小方法](../rules/STARTUP_RECORDS.md#steam小方法交叉及设计决策)及[标题空栏入口](STEAM_TITLE_MENU.md)已核，完整Steam Update／Draw未核。维护：已有草稿／正式开始与APK图片计划；动态：空栏配置、默认联动／输入面板局部已见，未读运行页号；自定义保名／取消保留属用户批准策略，非Steam实测 |

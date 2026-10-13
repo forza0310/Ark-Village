@@ -68,6 +68,8 @@ std::optional<SteamHumanResource> steam_human_resource(Asset asset) {
     case Asset::recovery_number:return SteamHumanResource{108,18,"original/common/number11.png","original/common/number11.seb"};
     case Asset::residence_background:return SteamHumanResource{39,-1,"original/common/mp_back.png",nullptr};
     case Asset::shadow:return SteamHumanResource{3,25,"original/common/shadow00.png","original/common/shadow00.seb"};
+    case Asset::contribution_unit:return SteamHumanResource{104,13,"original/common/number06.png","original/common/number06.seb"};
+    case Asset::residence_icon:return SteamHumanResource{91,-1,"original/common/icon_tenantInfo.png",nullptr};
     }
     return {};
 }
@@ -814,6 +816,42 @@ std::optional<SteamHumanOverviewPlan> steam_human_gift_result_skin(
     out.operations.emplace_back(SteamStartupTouch{2,0,{},{},2});
     return out;
 }
+std::optional<SteamHumanOverviewPlan> steam_human_combat_result_rows(
+    const std::array<std::array<int,4>,3> &attributes,int frame) {
+    if(frame<0||frame>=std::numeric_limits<int>::max())return {};
+    SteamHumanOverviewPlan out;out.soft_labels={0,0};
+    // Draw_charaPutUpBonus RVA2D0F00；仅表索引不同，67／68不复制四行演出算法。
+    for(int i=0;i<4;++i) {
+        const int before=attributes[0][i],after=attributes[1][i],delta=attributes[2][i],y=101+23*i;
+        if(std::int64_t(after)-before!=delta||delta==std::numeric_limits<int>::min())return {};
+        out.operations.emplace_back(SteamHumanImage{Asset::combat_icon,{31,y-4},i,{}});
+        int value=before;
+        if(frame>=67)value=after;
+        else if(frame>=52&&delta) {
+            const auto first=std::int64_t(before)+(delta>0?1:-1),remaining=std::int64_t(after)-first;
+            const auto proposed=52+3*remaining;
+            if(!fits(first)||!fits(proposed))return {};
+            const auto end=std::clamp(proposed,std::int64_t(52),std::int64_t(67));
+            if(!remaining||end==52)value=before;
+            else if(frame>=end)value=after;
+            else {
+                const auto scaled=remaining*(frame-52);
+                if(!fits(scaled)||!fits(first+scaled/(end-52)))return {};
+                value=static_cast<int>(first+scaled/(end-52));
+            }
+        }
+        out.operations.emplace_back(SteamFacilityNumber{SteamFacilityNumberKind::number,SteamFacilityAsset::number08,value,{138,y},0,4,i});
+        const int local=frame-2-6*i;
+        if(delta&&frame>=2&&(frame>=42||local>=0)) {
+            const int delta_y=y-(frame<42?reward_jump(local):0);
+            out.operations.emplace_back(SteamFacilityNumber{delta<0?SteamFacilityNumberKind::minus_value:SteamFacilityNumberKind::plus_value,
+                delta<0?SteamFacilityAsset::number12:SteamFacilityAsset::number05,delta<0?-delta:delta,{202,delta_y},0,4,i});
+        }
+    }
+    if(frame>=73&&(frame-73)%25<15)
+        out.operations.emplace_back(SteamHumanImage{Asset::continue_cursor,{208,187},0,{}});
+    return out;
+}
 std::optional<SteamHumanOverviewPlan> steam_human_attribute_result_skin(
     const StartupWorldRuntimeState &s,std::uint64_t id,const SteamHumanOverviewOptions &o) {
     const auto page=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[=](const auto &p){return p.id==id;});
@@ -857,16 +895,19 @@ std::optional<SteamHumanOverviewPlan> steam_human_attribute_result_skin(
         {120+width/2-(equipment_result&&o.japanese?36:0),70,0,0},equipment_result&&o.japanese?0:4,font);
     append_text(out,SteamHumanOverviewTextRole::result_message,equipment_result?"装备变更使能力上升":"使用道具使能力上升",
         {120,198,0,0},2);
-    const int count=equipment_result?4:6,move_start=equipment_result?52:24,move_end=equipment_result?67:39;
-    const int jump_end=equipment_result?42:14,cursor_start=equipment_result?73:45;
+    if(equipment_result) {
+        const auto rows=steam_human_combat_result_rows(s.equipment_attribute_display,frame);if(!rows)return {};
+        out.operations.insert(out.operations.end(),rows->operations.begin(),rows->operations.end());
+        out.operations.emplace_back(SteamStartupTouch{2,0,{},{},2});return out;
+    }
+    const int count=6,move_start=24,move_end=39,jump_end=14,cursor_start=45;
     for(int i=0;i<count;++i) {
-        const int before=equipment_result?s.equipment_attribute_display[0][i]:s.human_attribute_display[0][i];
-        const int after=equipment_result?s.equipment_attribute_display[1][i]:s.human_attribute_display[1][i];
-        const int delta=equipment_result?s.equipment_attribute_display[2][i]:s.human_attribute_display[2][i];
+        const int before=s.human_attribute_display[0][i];
+        const int after=s.human_attribute_display[1][i];
+        const int delta=s.human_attribute_display[2][i];
         if(std::int64_t(after)-before!=delta||delta==std::numeric_limits<int>::min())return {};
-        const int y=equipment_result?101+23*i:93+17*i;
-        if(equipment_result)out.operations.emplace_back(SteamHumanImage{Asset::combat_icon,{31,y-4},i,{}});
-        else {
+        const int y=93+17*i;
+        {
             out.operations.emplace_back(SteamFacilityImage{SteamFacilityAsset::effect_icon,{31,y-4},0,std::array<int,4>{i==5?96:16*i,16,16,16}});
             append_text(out,SteamHumanOverviewTextRole::attribute,{}, {49,y-2,0,0},0,0,false,i,{0,100,255});
         }
@@ -887,9 +928,9 @@ std::optional<SteamHumanOverviewPlan> steam_human_attribute_result_skin(
             }
         }
         out.operations.emplace_back(SteamFacilityNumber{SteamFacilityNumberKind::number,SteamFacilityAsset::number08,value,{138,y},0,4,i});
-        const int local=frame-2-(equipment_result?6*i:0);
-        if(delta&&(equipment_result||i==item->effect)&&frame>=2&&(frame>=jump_end||local>=0)) {
-            // 两窗都沿原8/12抛物线；68四行错开6槽，69仅实际效果行同步起跳。
+        const int local=frame-2;
+        if(delta&&i==item->effect&&frame>=2&&(frame>=jump_end||local>=0)) {
+            // 69仅实际效果行同步起跳；68的四行现由共用四战斗值helper负责。
             const int delta_y=y-(frame<jump_end?reward_jump(local):0);
             out.operations.emplace_back(SteamFacilityNumber{delta<0?SteamFacilityNumberKind::minus_value:SteamFacilityNumberKind::plus_value,
                 delta<0?SteamFacilityAsset::number12:SteamFacilityAsset::number05,delta<0?-delta:delta,{202,delta_y},0,4,i});

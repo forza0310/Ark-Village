@@ -1149,6 +1149,7 @@ template<class Plan> void draw_facility_ceremony(const Plan &plan,SourceSprites 
     else if(plan.soft_labels[0]==7)font.text("详细",12,272);
     if(plan.soft_labels[1]==12)font.text("开始",188,272);
     if(plan.soft_labels[1]==2)font.text("返回",188,272);
+    if(plan.soft_labels[1]==10)font.text("终止",188,272);
 }
 std::optional<SteamFacilityEffectPlan> window_facility_effect_plan(
     const StartupWorldRuntimeState &s,std::uint64_t id,const ChineseFont &font,bool first_touch=false) {
@@ -1346,6 +1347,34 @@ std::optional<SteamHumanOverviewPlan> residence_result_example(const std::string
     in.human={human->profession,human->sex,human->equipment[0].value_or(-1),in.phase,in.counter,human->name,
         {{{20,30},{40,40},{20,10}}}};
     return steam_human_residence_result_skin(in,residence_result_options(font,0));
+}
+std::optional<SteamHumanOverviewPlan> award_catalogue_example(const std::string &name,const ChineseFont &font) {
+    StartupSession initial;StartupWorldRuntimeSession session(initial.state(),ref::WorldRandomStream::from_java_seed(1));
+    const auto &s=session.state();SteamHumanAwardInput in;
+    in.cursor={4,1,name=="award-income"?1:name=="award-residents"?2:0};in.frame=8;in.medals_left=1;
+    // 六人目录／一个待授勋章为纯显示条件；各人物数据读取原新局，不执行年度授予。
+    for(int id=0;id<6;++id) {
+        const auto h=startup_world_human_details(s,id);if(!h)return {};
+        in.rank_order.push_back(id);in.humans.push_back({id,h->profession,h->sex,s.human_calendar.at(id).contribution,h->effort,
+            s.scene.world.world.ai.battle.humans.at(id).killed_stat1,s.scene.world.world.human_spending.at(id),
+            s.human_homes.at(id)[2],h->medals,h->name});
+    }
+    const auto title="勋章授予式 "+std::to_string(in.cursor.tab+1)+"/3";
+    in.options.view_y=23;const int width=int(font.measure(title));in.options.title_widths=std::array<int,2>{width,width};
+    in.options.footer_widths=std::array<int,2>{int(font.measure("1个")),int(font.measure("还有"))};
+    return steam_human_award_skin(in);
+}
+SteamHumanOverviewOptions effort_result_options(const ChineseFont &font) {
+    SteamHumanOverviewOptions o;o.view_y=23;const int width=int(font.measure("努力奖励"));
+    o.title_widths=std::array<int,2>{width,width};return o;
+}
+std::optional<SteamHumanOverviewPlan> effort_result_example(const ChineseFont &font) {
+    StartupSession initial;StartupWorldRuntimeSession session(initial.state(),ref::WorldRandomStream::from_java_seed(1));
+    const auto h=startup_world_human_details(session.state(),1);if(!h)return {};
+    // 跨努力十位门槛和四战斗值为明确显示条件，不向世界发放奖励或重算人物。
+    SteamHumanEffortResultInput in{h->profession,h->sex,73,19,25,h->name,
+        {{{50,10,8,5},{55,11,9,6},{5,1,1,1}}}};
+    return steam_human_effort_result_skin(in,effort_result_options(font));
 }
 SteamTaskVictoryOptions window_task_victory_options(const ChineseFont &font) {
     SteamTaskVictoryOptions o;o.view_y=23;
@@ -1691,6 +1720,8 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
     const bool victory_fixture=inspect_page=="task-victory"||inspect_page=="task-victory-reputation";
     const bool deadline_fixture=inspect_page=="task-deadline"||inspect_page=="task-deadline-battle"||inspect_page=="task-deadline-continue";
     const bool residence_fixture=inspect_page=="residence-candidates"||inspect_page=="residence-completed"||inspect_page=="residence-reward";
+    const bool award_fixture=inspect_page=="award-contribution"||inspect_page=="award-income"||inspect_page=="award-residents";
+    const bool effort_fixture=inspect_page=="effort-result";
     const bool task_fixture=info_fixture||result_fixture||victory_fixture||deadline_fixture||roster_fixture||inspect_page=="task-selection"||inspect_page=="task-offer"||inspect_page=="task-recruitment";
     const bool management_fixture=inspect_page.rfind("village-",0)==0||inspect_page.rfind("town-",0)==0;
     const bool reputation_fixture=inspect_page=="facility-reputation"||inspect_page=="facility-reputation-result";
@@ -1718,14 +1749,20 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
         for(const auto &d:startup_world_rules().items)reputation_glyphs+=d.name;
         for(const auto &d:startup_world_rules().equipment)reputation_glyphs+=d.name;
     }
-    if(residence_fixture) {
-        reputation_glyphs+="选择入住者姓名费用请研究绘制夹具无自然触发认证自宅完成的满意努力上升";
+    if(residence_fixture||award_fixture||effort_fixture) {
+        reputation_glyphs+="选择入住者姓名费用请研究绘制夹具无自然触发认证自宅完成的满意努力上升勋章授予式贡献获得消费居住还有个详细终止奖励基础能力→";
         for(const auto &human:startup_world_rules().humans)reputation_glyphs+=human.name;
     }
     ChineseFont font(font_path,reputation_glyphs);
-    if(magic_fixture||task_fixture||residence_fixture) {
+    if(magic_fixture||task_fixture||residence_fixture||award_fixture||effort_fixture) {
         std::variant<SteamMagicPotPlan,SteamTaskSelectionPlan,SteamTaskRosterPlan,SteamTaskResultPlan,SteamTaskVictoryPlan,SteamTaskDeadlinePlan,SteamHumanOverviewPlan> plan;
-        if(residence_fixture) {
+        if(effort_fixture) {
+            const auto value=effort_result_example(font);
+            if(!value)throw std::runtime_error("Effort example rejected");plan=*value;
+        } else if(award_fixture) {
+            const auto value=award_catalogue_example(inspect_page,font);
+            if(!value)throw std::runtime_error("Award catalogue example rejected");plan=*value;
+        } else if(residence_fixture) {
             const auto value=inspect_page=="residence-candidates"?residence_candidates_example(font):residence_result_example(inspect_page,font);
             if(!value)throw std::runtime_error("Residence candidate example rejected");plan=*value;
         } else if(magic_fixture) {
@@ -2186,7 +2223,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
               "研究适配页签设施列表持有物品装备一览村情报";
     glyphs += "村办季度剩余次数村子点开展活动完成等待尚未接入获得奖励金币配置更替确认领取设备一般";
     glyphs += "保存中保存完成保存失败本窗口仅预览保存页消息了解";
-    glyphs += "体力力量灵活结实魔力运气";
+    glyphs += "体力力量灵活结实魔力运气努力奖励基础能力→";
     glyphs += "周围设施的奖励没有";
     glyphs += "传说中的商店冒险者们中间的话题传了开来街道人气上升";
     glyphs += "南瓜商会购买出售持有剩余价格道具使用强化反应赠送多谢惠顾免费建设返回";
@@ -3880,8 +3917,9 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     clear_confirm_pending=page->id;
                     ++confirmation_inputs;
                 }
-            } else if (raw==96) {
-                const auto plan=steam_human_residence_result_skin(session.state(),page->id,
+            } else if (raw==96||raw==67) {
+                const auto plan=raw==67?steam_human_effort_result_skin(session.state(),page->id,effort_result_options(font)):
+                    steam_human_residence_result_skin(session.state(),page->id,
                     residence_result_options(font,steam_human_shared_character_frame(session.state())));
                 const bool clicked=plan&&!pointer_consumed&&IsMouseButtonReleased(MOUSE_BUTTON_LEFT)&&
                     CheckCollisionPointRec(mouse,{0,0,float(width),float(height)});
@@ -4494,7 +4532,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
         } else if (const auto page = top_page()) {
             const bool steam_info=page->legacy_page==29;
             const bool steam_task=(page->legacy_page>=22&&page->legacy_page<=24)||page->legacy_page==30;
-            const bool steam_residence=page->legacy_page==96;
+            const bool steam_residence=page->legacy_page==96||page->legacy_page==67;
             const bool steam_magic=page->legacy_page>=41&&page->legacy_page<=47;
             const bool steam_commodity=page->legacy_page==72||page->legacy_page==79;
             const bool steam_reputation=page->legacy_page==82;
@@ -4532,7 +4570,8 @@ int run_startup_world_window(const std::filesystem::path &assets,
             if (page->legacy_page != 21&&!steam_info&&!steam_task&&!steam_residence&&!steam_magic&&!steam_reputation&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result)
                 font.text(title, 12, 177, ink, font.measure(title) > 208 ? 10 : 12);
             if(steam_residence) {
-                const auto plan=steam_human_residence_result_skin(state,page->id,
+                const auto plan=page->legacy_page==67?steam_human_effort_result_skin(state,page->id,effort_result_options(font)):
+                    steam_human_residence_result_skin(state,page->id,
                     residence_result_options(font,steam_human_shared_character_frame(state)));
                 if(plan)draw_facility_ceremony(*plan,sprites,font);
                 else if(page->lifecycle!=0)throw std::runtime_error("Residence completion drawing rejected");
@@ -4954,11 +4993,10 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 font.text("确定", 190, 272);
             } else if (page->legacy_page == 48 || page->legacy_page == 49 || page->legacy_page == 50 || page->legacy_page == 95) {
                 if(const auto plan=window_town_progress_plan(state,page->id,font))draw_facility_ceremony(*plan,sprites,font);
-            } else if (page->legacy_page == 67 || page->legacy_page == 88) {
+            } else if (page->legacy_page == 88) {
                 if (state.page_human_bindings.count(page->id))
                     font.text(human_name(state.page_human_bindings.at(page->id)), 17, 66);
-                font.text(page->legacy_page == 67 ? "能力上升" : "勋章授予",
-                          17, 90);
+                font.text("勋章授予",17,90);
                 for (int n = 0; n < 2; ++n)
                     font.text(std::string(n == 0 ? "满足 " : "努力 ") +
                                   std::to_string(state.reward_display[0][n]) + " > " +

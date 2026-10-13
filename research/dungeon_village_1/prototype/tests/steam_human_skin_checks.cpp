@@ -1082,6 +1082,77 @@ void profession_catalogue_checks(Checks &check) {
 }
 }
 namespace {
+void award_skin_checks(Checks &c,const std::filesystem::path &source_root) {
+    SteamHumanAwardInput in;in.frame=8;in.medals_left=2;in.cursor={4,0,0};
+    in.options.title_widths=std::array<int,2>{100,100};in.options.footer_widths=std::array<int,2>{24,24};
+    for(int n=0;n<7;++n){in.rank_order.push_back(n);in.humans.push_back({n,0,n%2,10+n,20+n,30+n,100+n,n%3,n,"成员条件"});}
+    for(const auto sample:std::array<std::array<int,9>,3>{{{0,0,0,1,0,0,0,6,2},{4,0,0,0,1,1,0,5,1},{4,0,2,1,1,1,1,4,0}}}) {
+        const auto v=steam_human_award_cursor({sample[0],sample[1],sample[2]},7,sample[3],sample[4],sample[5],sample[6]);
+        c(v&&v->selection==sample[7]&&v->first==sample[8]&&v->tab==(sample[5]&&!sample[6]?2:sample[2]),"87上后下修五行再左后右页签独立oracle");
+    }
+    auto plan=steam_human_award_skin(in);c(bool(plan),"87三页纯目录初态");
+    c(plan->soft_labels==std::array<int,2>{7,10},"87详细／终止，不能画普通返回或确认");
+    const auto touches=parts<SteamStartupTouch>(*plan);const auto arrows=parts<SteamFacilityArrowTouch>(*plan);
+    c(touches.size()==5&&touches[0].rectangle==std::optional<std::array<int,4>>{{3,95,231,16}}&&touches[0].option==0,
+      "87行Touch11全宽、无80 marker16，无末Touch2");
+    c(arrows.size()==2&&arrows[0].position==std::array<int,2>{23,55}&&arrows[1].position==std::array<int,2>{217,55},"87两侧箭头无条件按main模16摆动");
+    const auto percent=parts<SteamHumanImage>(*plan);
+    c(std::count_if(percent.begin(),percent.end(),[](const auto &v){return v.asset==SteamHumanAsset::contribution_unit&&v.frame==13;})==5,
+      "87贡献单位点为独立SEB13图块不是Font或普通数后缀");
+    c(std::any_of(percent.begin(),percent.end(),[](const auto &v){return v.asset==SteamHumanAsset::medal&&v.position==std::array<int,2>{82,198};}),"87非日文两次测宽24+24+28得到底章左82");
+    in.cursor.tab=1;plan=steam_human_award_skin(in);auto numbers=parts<SteamFacilityNumber>(*plan);
+    c(numbers.size()==10&&numbers[0].asset==SteamFacilityAsset::number11&&numbers[0].position==std::array<int,2>{158,98}&&
+      numbers[1].kind==SteamFacilityNumberKind::money&&numbers[1].position==std::array<int,2>{212,98},"87年取得SEB20与费用15各自锚点/单位");
+    in.options.japanese=true;plan=steam_human_award_skin(in);c(parts<SteamFacilityNumber>(*plan)[0].position[0]==154,"87日文取得列154，非日文158");
+    in.options.japanese=false;in.cursor={6,2,2};plan=steam_human_award_skin(in);c(bool(plan),"87末目录页，合法退休住宅标志2");
+    const auto icons=parts<SteamHumanImage>(*plan);
+    c(std::count_if(icons.begin(),icons.end(),[](const auto &v){return v.asset==SteamHumanAsset::residence_icon;})==1,"2..6只有home1一行画住宅，2不是已居住");
+    c(std::any_of(icons.begin(),icons.end(),[](const auto &v){return v.asset==SteamHumanAsset::number05&&v.frame==16;}),"五章以上沿原SEB12帧16乘号数字，不重复排五枚");
+    const auto count=plan->operations.size();for(int n=0;n<8;++n)c(steam_human_award_skin(in)->operations.size()==count,"87重复只读计划不增长输出");
+    auto bad=in;bad.rank_order[0]=999;c(!steam_human_award_skin(bad),"87屏外悬空人物拒绝");
+    bad=in;bad.rank_order[0]=bad.rank_order[1];c(!steam_human_award_skin(bad),"87冻结排名不能重复定义");
+    bad=in;bad.cursor.first=0;c(!steam_human_award_skin(bad),"87未规范五行首行拒绝");
+    bad=in;bad.options.footer_widths.reset();c(!steam_human_award_skin(bad),"87非日文底部不能猜测宽");
+    bad.options.japanese=true;c(bool(steam_human_award_skin(bad)),"87日文固定底位置无测宽依赖");
+    for(auto asset:{SteamHumanAsset::contribution_unit,SteamHumanAsset::residence_icon}) {
+        const auto r=steam_human_resource(asset);c(bool(r),"87两具名资源复用出版");const auto root=source_root.parent_path();
+        auto img=LoadImage((root/r->published_image).string().c_str());c(img.data!=nullptr,"87图片可解码");
+        if(asset==SteamHumanAsset::residence_icon)c(img.width>=96&&img.height>=16,"87住宅x80裁16在原图内");UnloadImage(img);
+        if(asset==SteamHumanAsset::contribution_unit)c(r->image==104&&r->sprite==13&&
+          dungeon_village_tools::parse_legacy_seb(bytes(root/r->published_sprite)).frame_count>13,"87点单位13真实帧存在");
+    }
+}
+void effort_skin_checks(Checks &c) {
+    SteamHumanEffortResultInput in{0,1,73,19,25,"能力条件",{{{50,10,8,5},{55,11,7,5},{5,1,-1,0}}}};
+    SteamHumanOverviewOptions o;o.title_widths=std::array<int,2>{48,48};
+    auto plan=steam_human_effort_result_skin(in,o);c(bool(plan),"67跨十门槛四战斗值");
+    c(plan->title=="努力奖励"&&plan->soft_labels==std::array<int,2>{0,0},"67真实标题与无软标签");
+    const auto people=parts<SteamHumanPortrait>(*plan);
+    c(people.size()==1&&!people[0].actor.weapon&&people[0].position==std::array<int,2>{38,89}&&
+      people[0].clip==std::optional<std::array<int,4>>{{30,68,15,14}},"67小像不同60/96锚和裁片，无武器");
+    const auto nums=parts<SteamFacilityNumber>(*plan);
+    c(std::any_of(nums.begin(),nums.end(),[](const auto &n){return n.value==110&&n.position==std::array<int,2>{126,200};})&&
+      std::any_of(nums.begin(),nums.end(),[](const auto &n){return n.value==120&&n.position==std::array<int,2>{190,200};}),"67旧19新25按十位显示110/120，不显示当前努力");
+    const auto texts=parts<SteamHumanOverviewText>(*plan);
+    c(std::any_of(texts.begin(),texts.end(),[](const auto &v){return v.value=="基础能力"&&v.font_size==9&&v.rectangle==std::array<int,4>{27,200,0,0};}),"67非JP基础文字字号9");
+    for(const auto sample:std::array<std::array<int,2>,4>{{{72,0},{73,1},{88,0},{98,1}}}) {
+        in.counter=sample[0];plan=steam_human_effort_result_skin(in,o);const auto images=parts<SteamHumanImage>(*plan);
+        c(std::count_if(images.begin(),images.end(),[](const auto &v){return v.asset==SteamHumanAsset::continue_cursor&&v.position==std::array<int,2>{208,187};})==sample[1],"67箭头以main−73模25而非main或住宅50");
+    }
+    in.counter=66;plan=steam_human_effort_result_skin(in,o);const auto early=parts<SteamFacilityNumber>(*plan);
+    c(std::any_of(early.begin(),early.end(),[](const auto &n){return n.parameter==1&&n.kind==SteamFacilityNumberKind::number&&n.value==10;})&&
+      std::any_of(early.begin(),early.end(),[](const auto &n){return n.parameter==2&&n.kind==SteamFacilityNumberKind::number&&n.value==8;}),"67共用countAnime：±1在67前保留旧值");
+    in.counter=67;plan=steam_human_effort_result_skin(in,o);const auto final=parts<SteamFacilityNumber>(*plan);
+    c(std::any_of(final.begin(),final.end(),[](const auto &n){return n.parameter==2&&n.kind==SteamFacilityNumberKind::number&&n.value==7;})&&
+      std::any_of(final.begin(),final.end(),[](const auto &n){return n.parameter==2&&n.kind==SteamFacilityNumberKind::minus_value&&n.asset==SteamFacilityAsset::number12&&n.value==1;}),"67终值下降与红色正幅减号请求");
+    auto bad=in;bad.new_effort=19;c(!steam_human_effort_result_skin(bad,o),"67不跨十门槛拒绝伪演出");
+    bad=in;bad.attributes[2][0]=6;c(!steam_human_effort_result_skin(bad,o),"67原三行差额关系拒绝");
+    auto s=test_support::page_fixture(67);const auto id=s.scripts.pages.back().id;s.scripts.pages.back().lifecycle=2;
+    s.scripts.pages.back().legacy_f=19;s.scripts.pages.back().legacy_g=25;s.page_human_bindings[id]=1;s.page_counters[id]=67;s.page_phases[id]=0;s.effort_display=in.attributes;
+    const auto digest=startup_world_state_digest(s);plan=steam_human_effort_result_skin(s,id,o);c(bool(plan),"67现Owner严格桥不借68 choice");
+    for(int n=0;n<8;++n)c(steam_human_effort_result_skin(s,id,o)->operations.size()==plan->operations.size()&&startup_world_state_digest(s)==digest,"67查询不重算属性或推进输出");
+    s.page_counters.erase(id);c(!steam_human_effort_result_skin(s,id,o),"67已初始化缺main拒绝");
+}
 void residence_result_checks(Checks &check,const std::filesystem::path &source_root) {
     const auto &facilities=startup_world_rules().facilities;
     const auto home=std::find_if(facilities.begin(),facilities.end(),[](const auto &d){return d.kind==12;});
@@ -1171,5 +1242,6 @@ int check_steam_human_skin(const std::filesystem::path &source_root) {
     Checks check;power_checks(check);medal_bubble_checks(check);resources(check,source_root);owner_checks(check);overview_checks(check);attributes_checks(check);equipment_magic_checks(check);equipment_detail_checks(check);gift_confirmation_checks(check);profession_skin_checks(check);gift_result_skin_checks(check);
     gift_catalogue_checks(check);profession_catalogue_checks(check);attribute_result_checks(check);shared_character_clock_checks(check);
     residence_result_checks(check,source_root);
+    award_skin_checks(check,source_root);effort_skin_checks(check);
     return check.count;
 }

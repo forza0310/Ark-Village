@@ -17,7 +17,7 @@ enum class SteamHumanAsset {
     equipment_background, weapon_icon, armour_icon, accessory_icon, magic_icon, catalogue_new, catalogue_get, gift_tab,
     ceremony_background, curtain, continue_cursor, result_icon,
     president, gift_box, gift_face, item_icon, gift_flash, recovery_effect, recovery_number,
-    residence_background, shadow
+    residence_background, shadow, contribution_unit, residence_icon
 };
 struct SteamHumanResource {
     int image{}, sprite{-1};
@@ -165,6 +165,40 @@ struct SteamHumanResidenceResultInput {
     int phase{},counter{},secondary{},mapchip{};
     SteamHumanRewardInput human;
 };
+struct SteamHumanEffortResultInput {
+    int profession{},sex{},counter{},old_effort{},new_effort{};
+    std::string name;
+    std::array<std::array<int,4>,3> attributes{};
+};
+// Draw_charaPutUpBonus的四战斗行：67/index0与68/index1共用，纯取数不要求礼物choice。
+std::optional<SteamHumanOverviewPlan> steam_human_combat_result_rows(
+    const std::array<std::array<int,4>,3> &,int counter);
+std::optional<SteamHumanOverviewPlan> steam_human_effort_result_skin(
+    const SteamHumanEffortResultInput &,const SteamHumanOverviewOptions &);
+std::optional<SteamHumanOverviewPlan> steam_human_effort_result_skin(
+    const StartupWorldRuntimeState &,std::uint64_t page,const SteamHumanOverviewOptions &);
+// raw87授勋名单的只读计划；确认询问与真正发奖仍由唯一Owner协调。
+struct SteamHumanAwardCursor { int selection{},first{},tab{}; };
+struct SteamHumanAwardHuman {
+    int identity{},profession{},sex{},contribution{},effort{},year_acquired{},year_spent{},residence{},medals{};
+    std::string name;
+};
+struct SteamHumanAwardOptions {
+    int view_y{},finger_frame{};
+    bool japanese{},scroll_first_touch{};
+    std::optional<std::array<int,2>> title_widths;
+    std::optional<std::array<int,2>> footer_widths; // 数量串／“还有”串的原StringWidth。
+};
+struct SteamHumanAwardInput {
+    SteamHumanAwardCursor cursor;
+    int frame{},medals_left{};
+    std::vector<int> rank_order;
+    std::vector<SteamHumanAwardHuman> humans;
+    SteamHumanAwardOptions options;
+};
+std::optional<SteamHumanAwardCursor> steam_human_award_cursor(
+    SteamHumanAwardCursor,int count,bool up,bool down,bool left,bool right);
+std::optional<SteamHumanOverviewPlan> steam_human_award_skin(const SteamHumanAwardInput &);
 // raw96上方身体不用武器；副钟跳跃，phase1底部mentalUp另读共享character_frame。
 std::optional<SteamHumanOverviewPlan> steam_human_residence_result_skin(
     const SteamHumanResidenceResultInput &,const SteamHumanOverviewOptions &);

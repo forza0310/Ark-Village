@@ -1,5 +1,7 @@
 # 产品侧小窗 UI 示例
 
+[努力奖励与授勋三页](steam-effort-award.png)（960×1280／74385字节），按左上67、右上87贡献、左下87年取得／消费、右下87住宅／勋章排列。四个480×640窗口原尺寸拼接；`effort-result`、`award-contribution`、`award-income`、`award-residents`各8帧、0世界更新。67人物1职业／性别取新局，旧努力19→25、四战斗值50/10/8/5→55/11/9/6及主73为显示条件；87六人目录／剩一枚勋章为条件，其余姓名、贡献、年取得／消费、住宅和奖章读取原初装零值，没有授勋或自然年度资格。贡献后原图是“点”，不是百分比；67底旧新基础能力才是百分数。87只交纯目录和游标helper，原问答及UI持久载荷未接；67严格Owner桥另经短验。Noto、中文／原日文图签、底软控件为研究适配，不认证原窗口／OS动态；[合同](../STEAM_HUMAN_DETAIL.md#human-reward-followups)和[授勋目录](../PAGES.md#steam住宅候选80与授勋目录87)分别维护。
+
 [住宅候选及完成两段](steam-residence.png)（1440×640／55268字节）由三个480×640研究窗口原尺寸并排。80六候选、selection3／first0明确是目录条件，真实初装姓名／职业／性别／入住费／5000G可负担判断逐行读取，未满足入住资格或扣款；96人物1和住宅取原定义，主50／77、副18及奖励20/30→40/40、请求20/10是局部显示条件，不声称自然住宅完成。`residence-candidates`、`residence-completed`、`residence-reward`各8帧、0世界更新，不加`--world`。96真实Owner桥另有短功能／恢复覆盖；80纯游标不冒充已持久化。Noto、绿色背景和条件字样为适配，满意标签原窄框仍截断，完整原字体／OS动态未验，见[合同](../STEAM_HUMAN_DETAIL.md#human-reward-followups)。
 
 [胜利两段](steam-task-victory.png)与[期限探索／继续／战斗](steam-task-deadline.png)为五张480×640窗口原尺寸拼接，共72132字节（胜利边框按原DrawRect含端点更新）。消费30／33正式只读计划及现素材；人物0–2的职业装备取新局，XP123／人气20、主50／副18、费用100／攻略35%及三只monster0是明确绘制条件，未任务结算或续费。33只提供纯计划，选择持久接线仍待设计确认；中文沿固定汉化APK、menuRT日文原图、Noto字体和绿色背景为标注的适配。五个无`--world`有界入口`task-victory`、`task-victory-reputation`、`task-deadline`、`task-deadline-continue`、`task-deadline-battle`各8帧，均0世界更新。原窗口动态、完整字体和自然取得不由例图认证；详见[后继合同](../PAGES.md#steam任务成果与期限的后继定位)。

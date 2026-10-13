@@ -1111,12 +1111,17 @@ std::optional<State> prepare_startup_world_residence_completion(const State &s, 
     next.reward_display = c.reward_display;
     next.effort_display = c.effort_display;
     for (const auto &p : c.page_bindings) {
-        next.page_human_bindings[p.first] = p.second.human;
+        if(!next.page_human_bindings.emplace(p.first,p.second.human).second)return {};
+        const auto inserted = std::find_if(next.scripts.pages.begin(), next.scripts.pages.end(),
+                                          [&](const auto &v) { return v.id == p.first; });
+        if(inserted==next.scripts.pages.end())return {};
+        if(inserted->kind==ref::WorldScriptPageKind::raw_page&&inserted->legacy_page==67) {
+            if(inserted->lifecycle!=0||!next.page_counters.emplace(inserted->id,0).second||
+               !next.page_phases.emplace(inserted->id,0).second||
+               !valid_startup_world_runtime_effort_result_page(next,*inserted))return {};
+        }
         if (p.second.facility_definition) {
-            const auto page = std::find_if(next.scripts.pages.begin(), next.scripts.pages.end(),
-                                           [&](const auto &v) { return v.id == p.first; });
-            if (page == next.scripts.pages.end())
-                return {};
+            const auto page = inserted;
             page->legacy_f = *p.second.facility_definition;
             if(page->kind==ref::WorldScriptPageKind::raw_page&&page->legacy_page==96) {
                 // 新住宅完成页的原构造钟；已存在的半载荷不能由producer补修。

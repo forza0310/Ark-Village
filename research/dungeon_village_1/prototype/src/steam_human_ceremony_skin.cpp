@@ -24,6 +24,46 @@ int jump(int tick) {
     volatile float total=float(curve)+float(linear);return static_cast<int>(total);
 }
 }
+std::optional<SteamHumanOverviewPlan> steam_human_effort_result_skin(
+    const SteamHumanEffortResultInput &in,const SteamHumanOverviewOptions &o) {
+    // 真正AddPutUp跨十门槛才创建67；显示冻结旧／新努力，不从现人物缓存重造。
+    if(!clock(in.counter)||in.old_effort<0||in.old_effort>100||in.new_effort<0||in.new_effort>100||
+       in.new_effort/10<=in.old_effort/10||in.name.empty()||in.name.size()>4096||!o.title_widths)return {};
+    const auto portrait=startup_title_actor_skin(in.profession,in.sex,-1,0,1,false);
+    const auto rows=steam_human_combat_result_rows(in.attributes,in.counter);if(!portrait||!rows)return {};
+    SteamHumanOverviewPlan out;out.title="努力奖励";out.soft_labels={0,0};
+    const auto window=steam_startup_window_skin({220,168,0,0,SteamStartupTextRole::message_title,0},o.view_y,o.title_widths);
+    const auto box=steam_startup_box_skin({17,74,219,184},o.view_y);if(!window||!box)return {};
+    for(const auto &d:window->draws)out.operations.emplace_back(d);
+    for(const auto &d:box->draws)out.operations.emplace_back(d);
+    out.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{{30,67,16,16},{196,236,169},false}});
+    out.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{{30,67,16,16},{204,204,204},true}});
+    out.operations.emplace_back(SteamHumanPortrait{*portrait,{38,89},std::array<int,4>{30,68,15,14},false});
+    out.operations.emplace_back(SteamHumanOverviewText{SteamHumanOverviewTextRole::result_message,
+        in.name+"的能力上升",{50,70,0,0},0,0,false,{92,51,31}});
+    out.operations.insert(out.operations.end(),rows->operations.begin(),rows->operations.end());
+    out.operations.emplace_back(SteamHumanOverviewText{SteamHumanOverviewTextRole::result_message,"基础能力",
+        {o.japanese?33:27,o.japanese?199:200,0,0},0,o.japanese?0:9,false,{92,51,31}});
+    for(int column=0;column<2;++column) {
+        if(column==1)out.operations.emplace_back(SteamHumanOverviewText{SteamHumanOverviewTextRole::result_message,
+            "→",{149,199,0,0},0,0,false,{92,51,31}});
+        const int value=((column?in.new_effort:in.old_effort)/10)*10+100,x=column?190:126;
+        out.operations.emplace_back(SteamFacilityNumber{SteamFacilityNumberKind::number,SteamFacilityAsset::number05,value,{x,200},0,4,-1});
+        out.operations.emplace_back(SteamFacilityImage{SteamFacilityAsset::inventory_unit,{x+1,200},0,{}});
+    }
+    out.operations.emplace_back(SteamStartupTouch{2,0,{},{},2});return out;
+}
+std::optional<SteamHumanOverviewPlan> steam_human_effort_result_skin(
+    const StartupWorldRuntimeState &s,std::uint64_t id,const SteamHumanOverviewOptions &o) {
+    const auto page=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[=](const auto &p){return p.id==id;});
+    if(page==s.scripts.pages.end()||page->lifecycle!=2||s.scripts.pages.empty()||s.scripts.pages.back().id!=id||
+       !valid_startup_world_runtime_effort_result_page(s,*page))return {};
+    const auto human_binding=s.page_human_bindings.find(id),counter=s.page_counters.find(id);
+    if(human_binding==s.page_human_bindings.end()||counter==s.page_counters.end())return {};
+    const auto h=startup_world_human_details(s,human_binding->second);if(!h)return {};
+    return steam_human_effort_result_skin(SteamHumanEffortResultInput{h->profession,h->sex,counter->second,
+        page->legacy_f,page->legacy_g,h->name,s.effort_display},o);
+}
 std::optional<SteamHumanOverviewPlan> steam_human_residence_result_skin(
     const SteamHumanResidenceResultInput &in,const SteamHumanOverviewOptions &o) {
     if(in.phase<0||in.phase>1||!clock(in.counter)||!clock(in.secondary)||!o.title_widths||

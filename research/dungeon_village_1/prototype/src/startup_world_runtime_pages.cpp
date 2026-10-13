@@ -218,6 +218,12 @@ bool award_reward(State &s, int human) {
         if (!page.candidate || !write_startup_world_runtime_scripts(s, page.candidate->state))
             return false;
         for (const auto &inserted : page.candidate->inserted_pages) {
+            if(raw==67) {
+                if(!s.page_human_bindings.emplace(inserted.id,human).second||
+                   !s.page_phases.emplace(inserted.id,0).second||!s.page_counters.emplace(inserted.id,0).second||
+                   !valid_startup_world_runtime_effort_result_page(s,inserted))return false;
+                continue;
+            }
             s.page_human_bindings[inserted.id] = human;
             s.page_phases[inserted.id] = s.page_counters[inserted.id] = 0;
         }
@@ -279,11 +285,13 @@ bool consume_award_display(State &s, std::uint64_t id, bool confirm, int raw) {
         return false;
     bool close{};
     if (raw == 67) {
+        const auto page=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[=](const auto &p){return p.id==id;});
+        if(page==s.scripts.pages.end()||page->lifecycle!=2||!valid_startup_world_runtime_effort_result_page(s,*page))return false;
         const auto r =
-            ref::prepare_world_effort_display(s.page_counters[id], confirm, s.effort_display[2]);
+            ref::prepare_world_effort_display(s.page_counters.at(id), confirm, s.effort_display[2]);
         if (!r)
             return false;
-        s.page_counters[id] = r->counter;
+        s.page_counters.at(id) = r->counter;
         close = r->closed;
     } else {
         const auto r = ref::prepare_world_award_display({s.page_counters[id], s.page_phases[id]},
@@ -318,6 +326,24 @@ bool consume_award_display(State &s, std::uint64_t id, bool confirm, int raw) {
     return true;
 }
 } // namespace
+
+bool valid_startup_world_runtime_effort_result_page(const State &s,const ref::WorldScriptPage &p) {
+    if(!s.rules||p.id==0||p.kind!=ref::WorldScriptPageKind::raw_page||p.legacy_page!=67||p.lifecycle<0||p.lifecycle>4||
+       p.legacy_f<0||p.legacy_f>100||p.legacy_g<0||p.legacy_g>100||p.legacy_g/10<=p.legacy_f/10)return false;
+    const auto count=s.page_counters.find(p.id),phase=s.page_phases.find(p.id);
+    const auto human=s.page_human_bindings.find(p.id);
+    if(count==s.page_counters.end()||phase==s.page_phases.end()||count->second<0||
+       count->second==std::numeric_limits<int>::max()||phase->second!=0||s.page_secondary_counters.count(p.id)||
+       human==s.page_human_bindings.end()||!s.human_calendar.count(human->second)||
+       !s.shop_humans.count(human->second)||!s.scene.world.world.ai.growth.count(human->second)||
+       std::none_of(s.rules->humans.begin(),s.rules->humans.end(),[&](const auto &h){return h.identity==human->second;}))return false;
+    if(p.lifecycle==0&&count->second!=0)return false;
+    // as[0]共享显示不重算人物当前值；原派生只上封9999，差额须在宽整数中核对。
+    for(std::size_t column=0;column<4;++column)
+        if(s.effort_display[0][column]>9999||s.effort_display[1][column]>9999||
+           static_cast<std::int64_t>(s.effort_display[1][column])-s.effort_display[0][column]!=s.effort_display[2][column])return false;
+    return true;
+}
 
 bool valid_startup_world_runtime_residence_result_page(const State &s,const ref::WorldScriptPage &p) {
     if(!s.rules||p.id==0||p.kind!=ref::WorldScriptPageKind::raw_page||p.legacy_page!=96||
@@ -457,6 +483,9 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
         return Error::missing_source;
     if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==96&&
        (top->lifecycle!=2||!valid_startup_world_runtime_residence_result_page(state,*top)))
+        return Error::missing_source;
+    if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==67&&
+       (top->lifecycle!=2||!valid_startup_world_runtime_effort_result_page(state,*top)))
         return Error::missing_source;
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 14)
         return act_startup_world_save_page(state,id);
@@ -803,6 +832,8 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
            page->legacy_page==30&&!valid_startup_world_runtime_task_victory_page(state,*page))return {};
         if(page!=state.scripts.pages.rend()&&page->kind==ref::WorldScriptPageKind::raw_page&&
            page->legacy_page==96&&!valid_startup_world_runtime_residence_result_page(state,*page))return {};
+        if(page!=state.scripts.pages.rend()&&page->kind==ref::WorldScriptPageKind::raw_page&&
+           page->legacy_page==67&&!valid_startup_world_runtime_effort_result_page(state,*page))return {};
         if (page != state.scripts.pages.rend() && page->kind == ref::WorldScriptPageKind::raw_page &&
             (page->legacy_page == 3 || page->legacy_page == 4 || page->legacy_page == 7 ||
              page->legacy_page == 10) && !valid_startup_world_menu_page(state, page->id))
@@ -817,6 +848,8 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
        (top->lifecycle!=2||!valid_startup_world_runtime_task_victory_page(state,*top)))return {};
     if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==96&&
        (top->lifecycle!=2||!valid_startup_world_runtime_residence_result_page(state,*top)))return {};
+    if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==67&&
+       (top->lifecycle!=2||!valid_startup_world_runtime_effort_result_page(state,*top)))return {};
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 14)
         return update_startup_world_save_page(state,top->id);
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 13)
@@ -889,6 +922,7 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
     if (counter == std::numeric_limits<int>::max())
         return {};
     ++counter;
+    if(top->legacy_page==67)counter%=std::numeric_limits<int>::max();
     if(top->legacy_page==50||top->legacy_page==30||top->legacy_page==96) {
         auto &secondary=next.page_secondary_counters.at(top->id);
         counter%=std::numeric_limits<int>::max();

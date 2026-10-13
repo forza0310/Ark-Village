@@ -1098,13 +1098,16 @@ StartupWorldRuntimeError StartupWorldRuntimeSession::input_rank_page(std::uint64
 StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
     if (!valid_startup_world_human_profiles(s))
         return {StartupWorldRuntimeError::invalid_initial_state, {}, {}, {}, {}};
-    // 原30/96载荷在producer已完整安装；在退休擦除之前拒绝损坏，不以清理掩盖缺副钟。
+    // 原30/67/96载荷在producer已完整安装；在退休擦除之前拒绝损坏，不以清理掩盖半载荷。
     for(const auto &page:s.scripts.pages) {
         if(page.kind==ref::WorldScriptPageKind::raw_page&&page.legacy_page==30&&
            !valid_startup_world_runtime_task_victory_page(s,page))
             return {StartupWorldRuntimeError::missing_source,{},ref::WorldSceneError::missing_consumer,{}, {}};
         if(page.kind==ref::WorldScriptPageKind::raw_page&&page.legacy_page==96&&
            !valid_startup_world_runtime_residence_result_page(s,page))
+            return {StartupWorldRuntimeError::missing_source,{},ref::WorldSceneError::missing_consumer,{}, {}};
+        if(page.kind==ref::WorldScriptPageKind::raw_page&&page.legacy_page==67&&
+           !valid_startup_world_runtime_effort_result_page(s,page))
             return {StartupWorldRuntimeError::missing_source,{},ref::WorldSceneError::missing_consumer,{}, {}};
     }
     auto admitted = s;
@@ -1194,7 +1197,7 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
     // 暂停不初始化菜单/信息页/人物详情，也不把缺载荷的生命周期0页改成已就绪2。
     const auto &pending = admitted.scripts.pages.back();
     if(admitted.scene.framework_paused&&pending.kind==ref::WorldScriptPageKind::raw_page&&
-       (pending.legacy_page==30||pending.legacy_page==96)) {
+       (pending.legacy_page==30||pending.legacy_page==67||pending.legacy_page==96)) {
         admitted.scripts.executing_page.reset();admitted.scene.top_is_main=false;
         return {StartupWorldRuntimeError::none,std::move(admitted),ref::WorldSceneError::none,
                 ref::WorldScheduleError::none,{}};

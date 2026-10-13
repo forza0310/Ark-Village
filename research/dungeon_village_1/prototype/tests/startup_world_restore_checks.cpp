@@ -14,6 +14,7 @@
 #include "dungeon_village_prototype/startup_world_facility_items.hpp"
 #include "dungeon_village_prototype/startup_world_village_activity.hpp"
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
+#include "support/world_fixture.hpp"
 
 #include <algorithm>
 
@@ -171,6 +172,54 @@ int check_startup_world_restore_contracts(
         require(!victory.page_secondary_counters.count(id)&&!victory.page_counters.count(id)&&
                 !victory.page_phases.count(id)&&!victory.exploration_summaries.count(id),"Finish retires all victory references");
         expect(victory,true,"retired30 no residual map entries");
+    }
+    {
+        // 年度授勋真实producer产生67；资格和88结束时点为定向夹具，不重跑一年。
+        using E=p::StartupWorldRuntimeError;
+        const auto require=[&](bool ok,const char *why){++checks;if(!ok)throw std::runtime_error(std::string("restore effort67: ")+why);};
+        auto effort=p::test_support::page_fixture(87);effort.human_presence.at(1)=1;
+        const auto parent=effort.scripts.pages.back().id;
+        const auto advance=[&](auto &s){const auto next=p::prepare_startup_world_runtime(s);require(next.candidate.has_value(),"admitted result update");s=*next.candidate;};
+        advance(effort);
+        require(p::act_startup_world_runtime_award_page(effort,parent,r::WorldAwardAction::request_award)==E::none&&
+                p::act_startup_world_runtime_award_page(effort,parent,r::WorldAwardAction::confirm_award)==E::none,"actual annual reward producer");
+        const auto page=std::find_if(effort.scripts.pages.begin(),effort.scripts.pages.end(),[](const auto &v){return v.legacy_page==67;});
+        require(page!=effort.scripts.pages.end(),"real67 queued");const auto id=page->id;
+        expect(effort,true,"actual award67 pending below88");
+        const auto reject=[&](const auto &source,const char *why,const auto &damage){auto bad=source;damage(bad);expect(bad,false,why);};
+        reject(effort,"pending67 cannot omit main",[&](auto &s){s.page_counters.erase(id);});
+        reject(effort,"pending67 cannot invent advanced clock",[&](auto &s){s.page_counters.at(id)=1;});
+        reject(effort,"pending67 cannot omit phase",[&](auto &s){s.page_phases.erase(id);});
+        const auto display=effort.scripts.pages.back().id;
+        require(effort.scripts.pages.back().legacy_page==88,"source88 covers67");
+        effort.page_phases.at(display)=1;effort.page_counters.at(display)=212;
+        require(p::acknowledge_startup_world_runtime_page(effort,display)==E::none,"qualified88 close through actual event");
+        for(int n=0;n<32&&!(effort.scripts.pages.back().id==id&&effort.scripts.pages.back().lifecycle==2);++n) {
+            advance(effort);
+            if(effort.scripts.pages.back().kind==r::WorldScriptPageKind::dialogue)
+                require(p::acknowledge_startup_world_runtime_page(effort,effort.scripts.pages.back().id)==E::none,"real award dialogue return");
+        }
+        require(effort.scripts.pages.back().id==id&&effort.scripts.pages.back().lifecycle==2,"source67 becomes admitted top");
+        const auto check_replay=[&](const auto &source,const auto &consume,const char *why) {
+            expect(source,true,why);const auto bytes=p::persistence_detail::encode_state(source);
+            auto restored=p::persistence_detail::decode_state(bytes,*source.rules),live=source;
+            require(p::persistence_detail::encode_state(restored)==bytes,"exact old/new effort and shared display restore");
+            consume(live);consume(restored);expect(live,true,why);expect(restored,true,why);
+            require(p::persistence_detail::encode_state(live)==p::persistence_detail::encode_state(restored),"same67 input preserves clocks, reward and random");
+        };
+        reject(effort,"initialized67 missing binding",[&](auto &s){s.page_human_bindings.erase(id);});
+        reject(effort,"initialized67 wrong phase",[&](auto &s){s.page_phases.at(id)=1;});
+        reject(effort,"67 does not accept invented secondary clock",[&](auto &s){s.page_secondary_counters.emplace(id,0);});
+        reject(effort,"67 shared delta inconsistent",[&](auto &s){s.effort_display[2][0]+=1;});
+        auto paused=effort;paused.scene.framework_paused=true;
+        check_replay(paused,advance,"initialized67 pause keeps main and payload");
+        const auto skip=[&](auto &s){require(p::acknowledge_startup_world_runtime_page(s,id)==E::none&&s.page_counters.at(id)==67,"source67 fast-forward");};
+        check_replay(effort,skip,"actual67 fast-forward restore");skip(effort);
+        const auto finish=[&](auto &s){for(int n=0;n<6;++n)advance(s);require(p::acknowledge_startup_world_runtime_page(s,id)==E::none,"73 confirmed close");};
+        check_replay(effort,finish,"actual67 six updates then confirmed close");finish(effort);
+        reject(effort,"closed67 missing main",[&](auto &s){s.page_counters.erase(id);});
+        reject(effort,"closed67 missing human",[&](auto &s){s.page_human_bindings.erase(id);});
+        check_replay(effort,advance,"actual67 Finish retires shared references once");
     }
     {
         // 96页面调用点夹具：定义引用来自真实原表；不以codec测试冒认自然入住。

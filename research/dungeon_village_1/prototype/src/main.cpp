@@ -131,7 +131,7 @@ Options parse_options(int argc, char **argv) {
         (options.frames == 0 || options.fixture || options.check ||
          (options.inspect_page != "roads" && options.inspect_page != "shops" &&
           options.inspect_page != "food" && options.inspect_page != "arrival" &&
-          options.inspect_page != "visitor" &&
+          options.inspect_page != "visitor" && options.inspect_page != "facility-reputation" && options.inspect_page != "facility-reputation-result" &&
           !(options.world &&
             (options.inspect_page == "world-month" || options.inspect_page == "world-active" ||
              options.inspect_page == "task-team" || options.inspect_page == "world-award" ||

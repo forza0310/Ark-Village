@@ -198,8 +198,9 @@ std::optional<SteamFacilityEffectPlan> steam_facility_effect_skin(
     if(page->legacy_page==75) {
         const auto list=s.facility_item_page_lists.find(id),end=s.facility_item_page_lists.end();
         const auto selected=s.facility_item_page_selections.find(id);
-        if(list==end||selected==s.facility_item_page_selections.end())return {};
-        SteamFacilityItemSkinInput in;in.cursor={selected->second,o.first};in.finger_frame=o.finger_frame;
+        const auto first=s.facility_item_page_scroll.find(id);
+        if(list==end||selected==s.facility_item_page_selections.end()||first==s.facility_item_page_scroll.end())return {};
+        SteamFacilityItemSkinInput in;in.cursor={selected->second,first->second};in.finger_frame=o.finger_frame;
         in.arrow_count=o.arrow_count;in.view_y=o.view_y;in.japanese=o.japanese;
         in.scroll_first_touch=o.scroll_first_touch;in.title_widths=o.title_widths;
         for(int item:list->second) {

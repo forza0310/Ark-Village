@@ -1038,12 +1038,12 @@ template<class Plan> void draw_facility_ceremony(const Plan &plan,SourceSprites 
     if(plan.soft_labels[1]==2)font.text("返回",188,272);
 }
 std::optional<SteamFacilityEffectPlan> window_facility_effect_plan(
-    const StartupWorldRuntimeState &s,std::uint64_t id,const ChineseFont &font,int first=0,bool first_touch=false) {
-    SteamFacilityEffectOptions o;o.view_y=23;o.first=first;o.scroll_first_touch=first_touch;
+    const StartupWorldRuntimeState &s,std::uint64_t id,const ChineseFont &font,bool first_touch=false) {
+    SteamFacilityEffectOptions o;o.view_y=23;o.scroll_first_touch=first_touch;
     o.title_widths=std::array<int,2>{int(font.measure("设施强化")),int(font.measure("设施强化"))};
     return steam_facility_effect_skin(s,id,o);
 }
-[[maybe_unused]] std::optional<SteamFacilityReputationPlan> window_facility_reputation_plan(
+std::optional<SteamFacilityReputationPlan> window_facility_reputation_plan(
     const StartupWorldRuntimeState &s,std::uint64_t id,const ChineseFont &font) {
     SteamFacilityReputationOptions o;o.view_y=23;
     o.title_widths=std::array<int,2>{int(font.measure("传说中的商店")),int(font.measure("传说中的商店"))};
@@ -1219,7 +1219,50 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
     Window window;
     Canvas canvas;
     SourceSprites sprites(assets / "original");
-    ChineseFont font(font_path);
+    const bool reputation_fixture=inspect_page=="facility-reputation"||inspect_page=="facility-reputation-result";
+    std::string reputation_glyphs;
+    if(reputation_fixture) {
+        reputation_glyphs="传说中的商店冒险者们中间的话题传了开来街道人气上升口碑绘制夹具条件载荷无自然触发认证";
+        for(const auto &d:startup_world_rules().facilities)if(d.id==33)reputation_glyphs+=d.name;
+    }
+    ChineseFont font(font_path,reputation_glyphs);
+    if(reputation_fixture) {
+        // 独立纯绘制条件载荷，不创建/安装世界Owner，也不伪造原自然36个月与五次使用前缀。
+        const auto &rules=startup_world_rules();
+        const auto facility=std::find_if(rules.facilities.begin(),rules.facilities.end(),[](const auto &d){return d.id==33;});
+        const auto human=std::find_if(rules.humans.begin(),rules.humans.end(),[](const auto &d){return d.identity==0;});
+        if(facility==rules.facilities.end()||human==rules.humans.end()||human->sex<0||human->sex>1||
+           human->definition.current_profession<0||human->definition.current_profession>=static_cast<int>(rules.jobs.size()))
+            throw std::runtime_error("口碑绘制夹具缺固定定义");
+        SteamFacilityReputationInput input;
+        input.definition=facility->id;input.mapchip=facility->display_id;input.name=facility->name;
+        input.phase=inspect_page=="facility-reputation-result"?1:0;input.frame=40;input.frame2=16;input.view_y=23;
+        input.participants.push_back({human->identity,rules.jobs[human->definition.current_profession].sprites[human->sex]});
+        input.title_widths=std::array<int,2>{int(font.measure("传说中的商店")),int(font.measure("传说中的商店"))};
+        input.increase_suffix_width=int(font.measure("上升!"));
+        const auto plan=steam_facility_reputation_skin(input);
+        if(!plan)throw std::runtime_error("口碑纯绘制夹具拒绝");
+        int count=0;
+        while(!WindowShouldClose()&&(frames==0||count<frames)) {
+            BeginTextureMode(canvas.value);ClearBackground(Color{83,141,77,255});
+            font.text("口碑 / 绘制夹具",8,10,WHITE,10);
+            draw_facility_ceremony(*plan,sprites,font);
+            font.text("条件载荷 / 无自然触发认证",8,260,WHITE,9);
+            EndTextureMode();BeginDrawing();ClearBackground(BLACK);
+            DrawTexturePro(canvas.value.texture,{0,0,width,-height},{0,0,width*scale,height*scale},{0,0},0,WHITE);
+            EndDrawing();++count;
+            if(count==frames&&screenshot) {
+                if(!screenshot->parent_path().empty())std::filesystem::create_directories(screenshot->parent_path());
+                auto image=LoadImageFromScreen();
+                if(!image.data)throw std::runtime_error("口碑夹具像素读取失败");
+                const bool saved=ExportImage(image,screenshot->string().c_str());UnloadImage(image);
+                if(!saved)throw std::runtime_error("口碑夹具截图导出失败");
+            }
+        }
+        std::cout<<"facility reputation drawing fixture closed: frames="<<count<<" phase="<<input.phase
+                 <<" world_updates=0 natural_trigger_verified=false\n";
+        return 0;
+    }
     StartupSession session;
     session.set_paused(paused);
     const auto &data = startup_evidence();
@@ -1517,6 +1560,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
     glyphs += "保存中保存完成保存失败本窗口仅预览保存页消息了解";
     glyphs += "体力力量灵活结实魔力运气";
     glyphs += "周围设施的奖励没有";
+    glyphs += "传说中的商店冒险者们中间的话题传了开来街道人气上升";
     glyphs += "南瓜商会购买出售持有剩余价格道具使用强化反应赠送多谢惠顾免费建设返回";
     glyphs += "道路移动撤除旋转请选择起点终点未开放不可操作街道内地域商品种类装饰信息口碑关闭继续";
     glyphs += "任务列表征集队伍征集费出发追加取消候选队伍评价休息成果商店追加"
@@ -2307,7 +2351,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
             current_top->kind==ref::WorldScriptPageKind::raw_page && current_top->legacy_page==17;
         if(human_scroll_drag&&(session.state().scene.framework_paused||
            current_top==session.state().scripts.pages.rend()||current_top->id!=human_scroll_drag->page||
-           (current_top->legacy_page!=60&&current_top->legacy_page!=61&&current_top->legacy_page!=64&&current_top->legacy_page!=79)))human_scroll_drag.reset();
+           (current_top->legacy_page!=60&&current_top->legacy_page!=61&&current_top->legacy_page!=64&&current_top->legacy_page!=75&&current_top->legacy_page!=79)))human_scroll_drag.reset();
         if(human_catalogue_marker&&(current_top==session.state().scripts.pages.rend()||
            current_top->id!=human_catalogue_marker->first))human_catalogue_marker.reset();
         if(facility_item_marker&&(session.state().scene.framework_paused||current_top==session.state().scripts.pages.rend()||
@@ -2529,8 +2573,9 @@ int run_startup_world_window(const std::filesystem::path &assets,
                         input.up=IsKeyPressed(KEY_UP);input.down=IsKeyPressed(KEY_DOWN);
                         input.confirm=IsKeyPressed(KEY_ENTER);
                         input.cancel=IsKeyPressed(KEY_ESCAPE)||hit({176,265,58,24});
-                        const int first=std::max(0,session.state().facility_item_page_selections.at(pid)-4);
-                        const auto plan=window_facility_effect_plan(session.state(),pid,font,first);
+                        const int first=session.state().facility_item_page_scroll.at(pid);
+                        const int count=static_cast<int>(session.state().facility_item_page_lists.at(pid).size());
+                        const auto plan=window_facility_effect_plan(session.state(),pid,font,human_scroll_drag&&human_scroll_drag->page==pid);
                         if(!plan)throw std::runtime_error("Facility item input plan rejected");
                         const auto point=[&](std::array<int,4> r) {return Rectangle{
                             human_overview_origin.x+r[0],human_overview_origin.y+r[1],float(r[2]),float(r[3])};};
@@ -2554,14 +2599,35 @@ int run_startup_world_window(const std::filesystem::path &assets,
                                 } else if(row->touch.component==23&&hit(point(r))) {
                                     input.up|=row->touch.value==17;input.down|=row->touch.value==19;
                                 }
+                            } else if(const auto *scroll=std::get_if<SteamFacilityEffectScroll>(&op)) {
+                                const auto &r=scroll->skin.rectangles[1].rect;
+                                auto expanded=r;expanded[0]-=3;expanded[2]+=23;
+                                if(count>5&&hit(point(expanded))) {
+                                    const float grid=std::max(float(110-(r[3]-1))/(count-5),1.F);
+                                    human_scroll_drag=FacilityScrollDrag{pid,mouse.y,first,grid};
+                                    human_scroll_gesture=true;pointer_consumed=true;facility_item_marker.reset();
+                                } else if(count>5&&scroll->track_touch.rectangle&&hit(point(*scroll->track_touch.rectangle))) {
+                                    input.scroll=StartupFacilityItemInput::Scroll{false,mouse.y<human_overview_origin.y+r[1]?-5:5};
+                                    pointer_consumed=true;facility_item_marker.reset();
+                                }
                             } else if(const auto *touch=std::get_if<SteamStartupTouch>(&op)) {
                                 if(touch->rectangle&&hit(point(*touch->rectangle))) {
                                     input.up|=(*touch->rectangle)[1]<100;input.down|=(*touch->rectangle)[1]>100;
                                 }
                             }
                         }
+                        const float wheel=GetMouseWheelMove();
+                        if(count>5&&wheel!=0) {
+                            input.scroll=StartupFacilityItemInput::Scroll{false,wheel>0?-1:1};
+                            facility_item_marker.reset();
+                        }
+                        if(human_scroll_drag&&human_scroll_drag->page==pid) {
+                            const double wanted=human_scroll_drag->first+std::trunc(double(mouse.y-human_scroll_drag->start_y)/human_scroll_drag->grid);
+                            input.scroll=StartupFacilityItemInput::Scroll{true,int(std::clamp(wanted,0.,double(std::max(count-5,0))))};
+                        }
+                        if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT))human_scroll_drag.reset();
                     }
-                    if(input.up||input.down||input.confirm||input.cancel||input.selection)
+                    if(input.up||input.down||input.confirm||input.cancel||input.selection||input.scroll)
                         if(session.input_facility_item_page(pid,input)!=StartupWorldRuntimeError::none)
                             throw std::runtime_error("Facility item input transaction failed");
                 }
@@ -3652,6 +3718,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
             if(!command_feedback.empty())font.text(command_feedback,12,282,ink,10);
         } else if (const auto page = top_page()) {
             const bool steam_commodity=page->legacy_page==72||page->legacy_page==79;
+            const bool steam_reputation=page->legacy_page==82;
             const bool steam_effect=page->legacy_page>=75&&page->legacy_page<=77;
             const bool steam_facility=page->legacy_page==74&&startup_world_facility_page_count(state,*page)==2;
             const auto human_view=page->legacy_page==60?inspect_startup_world_human_presentation(state,page->id):std::nullopt;
@@ -3662,7 +3729,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
             const bool steam_gift_result=page->legacy_page==66&&startup_world_human_page_ready(state,page->id);
             const bool steam_attribute_result=(page->legacy_page==68||page->legacy_page==69)&&startup_world_human_page_ready(state,page->id);
             const bool steam_profession=(page->legacy_page==62||page->legacy_page==63)&&startup_world_human_page_ready(state,page->id);
-            if (page->legacy_page != 21&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result) DrawRectangle(5, 170, 230, 119, paper);
+            if (page->legacy_page != 21&&!steam_reputation&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result) DrawRectangle(5, 170, 230, 119, paper);
             std::string title = page->title;
             if (title.empty() && page->kind == ref::WorldScriptPageKind::raw_page) {
                 if (page->legacy_page == 30 || page->legacy_page == 31 || page->legacy_page == 32)
@@ -3683,7 +3750,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                          page->monster_definition)
                     title = rules.monsters.at(*page->monster_definition).name;
             }
-            if (page->legacy_page != 21&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result)
+            if (page->legacy_page != 21&&!steam_reputation&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result)
                 font.text(title, 12, 177, ink, font.measure(title) > 208 ? 10 : 12);
             if (page->legacy_page >= 41 && page->legacy_page <= 47) {
                 DrawRectangle(8, 42, 224, 214, paper);
@@ -3737,15 +3804,10 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 const auto plan=window_commodity_plan(state,page->id,font,human_scroll_drag&&human_scroll_drag->page==page->id);
                 if(!plan)throw std::runtime_error("Steam commodity skin rejected its source");
                 draw_human_overview(*plan,sprites,font);
-            } else if (page->legacy_page == 82) {
-                const auto view=inspect_startup_world_facility_catalog_page(state,page->id);
-                if(view) {
-                        font.text(rules.facilities.at(view->binding).name, 16, 74);
-                        for (std::size_t n = 0; n < view->entries.size(); ++n)
-                            font.text(human_name(view->entries[n]), 16, 103 + n * 24);
-                        font.text(std::to_string(view->phase + 1) + "/2", 192, 48, ink, 10);
-                        font.text("确认继续", 164, 272, ink, 10);
-                }
+            } else if (steam_reputation) {
+                const auto plan=window_facility_reputation_plan(state,page->id,font);
+                if(!plan)throw std::runtime_error("Steam facility reputation source rejected");
+                draw_facility_ceremony(*plan,sprites,font);
             } else if ((page->legacy_page >= 83 && page->legacy_page <= 86) || page->legacy_page == 93) {
                 DrawRectangle(8, 42, 224, 214, paper);
                 const auto view = inspect_startup_world_commerce_page(state, page->id);
@@ -3822,8 +3884,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                         font.text("确定", 190, 272);
                 }
             } else if (steam_effect) {
-                const int first=page->legacy_page==75?std::max(0,state.facility_item_page_selections.at(page->id)-4):0;
-                const auto plan=window_facility_effect_plan(state,page->id,font,first);
+                const auto plan=window_facility_effect_plan(state,page->id,font,human_scroll_drag&&human_scroll_drag->page==page->id);
                 if(!plan)throw std::runtime_error("Steam facility effect source rejected");
                 draw_facility_ceremony(*plan,sprites,font);
             } else if (page->legacy_page == 95) {

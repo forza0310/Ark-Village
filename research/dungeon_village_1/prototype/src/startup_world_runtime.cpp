@@ -1100,6 +1100,7 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
             admitted.facility_item_page_items.erase(page.id);
             admitted.facility_item_page_lists.erase(page.id);
             admitted.facility_item_page_selections.erase(page.id);
+            admitted.facility_item_page_scroll.erase(page.id);
             admitted.facility_catalog_pages_initialized.erase(page.id);
             admitted.facility_catalog_page_data.erase(page.id);
             admitted.facility_catalog_page_lists.erase(page.id);

@@ -316,12 +316,14 @@ Steam完整局部链也已交叉：ChTenantStrenBonusWindow RVA`2C9560`只在定
 共同页更新计数1发声音4，输入两段分别快进／确认，最后只头插唯一I；已关闭或过期输入不重复排入。
 初始化、只读投影、Session、通用确认／返回、恢复及下一入口退休使用同一载荷合同；没有第二随机流或人气Owner。
 组合夹具已实际走75第五件→原100计数续体→82→一次I请求，保留原门槛断言；
-这不是自然36个月／五次获取或原APK演出认证。简化窗口可消费82，完整动画和绘制随机仍未接。
+这不是自然36个月／五次获取或原APK演出认证。研究窗口已接下面的82正式只读计划；原字体、完整人物scratch附加效果及原OS动态仍未认证。
 
 ### Steam口碑82只读皮肤
 
 2026-10-13具名`UserData.Draw_tenantStrenBonus`（RVA2D71A0）保留222×170窗及下框、三段mp_back裁片、mini背景与Mapchip2裁剪。三个人物按原序x62／44／80，独立frame2的26槽决定action0／6与8／16抛物线，阴影固定脚底143；灰框是180×82内描边，不能填满盖住背景。action6的SEB9／frame0／零偏移从Steam真实cctor独立核定。固定秘书／大臣沿frame2的8槽交替帧5／7。资源沿已核Steam同字节出版别名，不按PNG列数猜动作帧。
 
 phase计数5→40展开48高文本区，满40后继续箭头按25槽前15显示。Steam普通非JP先绘带双引号的设施名y188，再绘话题句y164；language8独立换位并在(19,188)用TextLayout宽202，APK非JP不同。第二段以`GetFig(20)×10+2+实际后缀测宽`居中，不能沿APK的字符测宽÷6。`SubForm.Update`（VA10321B63–B84）分别推进frame／frame2，phase切换1031A810–A827仅清frame。原helper虽无直接随机／SE／业务调用，仍写共享人物scratch并调用Draw_human；本基础身体计划不宣称完整scratch子树认证。
+
+维护82复用`page_secondary_counters`保留副钟，初始0、实际页面更新独立回卷，快进／切段／暂停保持，Finish释放。75的五行首行由`facility_item_page_scroll`保存，不再由绘制推导；同轮滚动、选择与消费一起提交，子返回保持历史窗，耗尽尾行沿维护策略归零。初始化缺键、预装半载荷、错误父／页型、越界与孤立键均拒绝，恢复不重Init／重付／重排声音。新增字段更新schema拒旧，不迁移；来源合同、原型策略及短恢复验收分开登记于[存取模块](../prototype/PERSISTENCE.md#设施经营窗口的滚动双计数)。
 
 [接口](../prototype/include/dungeon_village_prototype/steam_facility_reputation_skin.hpp)为有序无副作用计划，Owner桥要求既有`page_secondary_counters`，缺键明确拒绝。业务声音4及最终唯一I请求仍由原消费者负责。中文／Noto为维护适配，原字体／OS和原窗口完整动态独立补证；当前纯计划与后继Owner双计数／窗口接线验收分别登记，不将有接口称为整条已验。

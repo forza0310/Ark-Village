@@ -71,11 +71,11 @@ struct SteamFacilityImprovementSkinInput {
 };
 std::optional<SteamFacilityEffectPlan> steam_facility_improvement_skin(const SteamFacilityImprovementSkinInput &input);
 struct SteamFacilityEffectOptions {
-    int first{}, finger_frame{}, arrow_count{}, view_y{};
+    int finger_frame{}, arrow_count{}, view_y{};
     bool japanese{}, scroll_first_touch{};
     std::optional<std::array<int,2>> title_widths;
 };
-// 仅接受真实已初始化75/76/77，拒绝缺载荷/错误绑定。first暂由调用者显式提供，不写持久字段。
+// 仅接受真实已初始化75/76/77，拒绝缺载荷/错误绑定；75首行只读Owner。
 std::optional<SteamFacilityEffectPlan> steam_facility_effect_skin(
     const StartupWorldRuntimeState &state,std::uint64_t page,const SteamFacilityEffectOptions &options);
 } // namespace dungeon_village_prototype

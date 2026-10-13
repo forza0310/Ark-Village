@@ -8,9 +8,11 @@ enum class StartupFacilityItemAction { confirm, cancel, previous, next, select }
 struct StartupFacilityItemInput {
     bool up{},down{},confirm{},cancel{};
     std::optional<int> selection;
+    struct Scroll { bool absolute{}; int value{}; };
+    std::optional<Scroll> scroll;
 };
 // 同轮方向／选择合成后提交一次；确认不携带行号时消费Owner当前选择。
-// 此DTO不保存滚动或设备状态，不改变现持久化布局。
+// 首行由Owner持有；DTO仅传本轮滚动请求，不保存设备手势。
 StartupWorldRuntimeError input_startup_world_facility_item_page(StartupWorldRuntimeState &state,
     std::uint64_t page,const StartupFacilityItemInput &input);
 StartupWorldRuntimeError open_startup_world_facility_items(StartupWorldRuntimeState &state,

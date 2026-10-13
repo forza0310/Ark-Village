@@ -1,6 +1,8 @@
 # 产品侧小窗 UI 示例
 
-设施经营后继新增[道具75](steam-facility-items.png)、[投掷76](steam-facility-improvement.png)、[结果77](steam-facility-result.png)，三张480×640共319450字节。均从真实新局初装包子铺74确认进75，后两图实际消费初始马铃薯，到76计数25／77计数49后取图；世界更新0、人物0、5000G、随机0。演出Owner已产生共享品质+2并保留冻结前后值，不是手填显示。Steam根强化反馈图独立出版，日文图签／Noto中文／窗口背景仍按来源分流。75当前首行是显式适配，精确滚动恢复设计仍待确认；82纯计划已短验但独立计数Owner／窗口尚未交付，不能由这三图宣称整条主线完成。
+设施经营主线提供[道具75](steam-facility-items.png)、[投掷76](steam-facility-improvement.png)、[结果77](steam-facility-result.png)，三张480×640共319450字节。均从真实新局初装包子铺74确认进75，后两图实际消费初始马铃薯，到76计数25／77计数49后取图；世界更新0、人物0、5000G、随机0。演出Owner已产生共享品质+2并保留冻结前后值，不是手填显示。75现使用持久首行，返回／消费／恢复短验通过，本轮三窗口重拍与以上原图逐字节相同，不增加重复PNG。Steam根强化反馈图独立出版，日文图签／Noto中文／窗口背景仍按来源分流。
+
+[口碑82话题段](steam-facility-reputation.png)与[人气段](steam-facility-reputation-result.png)是两张480×640纯绘制条件例图，共88330字节：固定设施33／人物定义0、主计数40／副计数16，不创建Owner、不消费道具或入账。无`--world`的`--inspect-page facility-reputation`／`facility-reputation-result --frames 8`可复现，名称逐个传入；它们不是自然36个月／五次使用、原窗口或产品认证。真实opcode40→82的Owner桥及双计数另由功能／恢复短测验证；原字体、完整scratch与OS动态仍未验。
 
 2026-10-13设施经营主线第一批新增三张480×640研究窗口图：[商品价格79](steam-facility-goods.png)、[商品属性79](steam-facility-goods-attributes.png)、[商品详情72](steam-facility-equipment-info.png)。真实新局已有武器店经74打开79，再切属性页或查看72，没有注入库存、开放位或资金；8帧有界窗口均正常退出，世界更新0／人物0／5000G／随机0。三图共338296字节，复用已出版窗框／装备及数字，图签仍是原日文，中文／Noto与鼠标适配独立于原字体／OS认证。共享人物时钟后继改接已存`entry_updates`，旧人物截图仍保持当时窗口适配身份。[商品合同](../../rules/COMMERCE.md#steam商品79详情72只读皮肤)及[短测](../../VERIFICATION.md)分别登记业务与皮肤边界。
 

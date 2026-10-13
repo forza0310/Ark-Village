@@ -3,6 +3,7 @@
 #include "dungeon_village_prototype/startup_world_expansion.hpp"
 #include "dungeon_village_prototype/startup_world_facility_items.hpp"
 #include "dungeon_village_prototype/steam_facility_effect_skin.hpp"
+#include "dungeon_village_prototype/steam_facility_reputation_skin.hpp"
 #include "dungeon_village_prototype/startup_world_facility_catalog.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_inheritance.hpp"
@@ -838,6 +839,63 @@ void facility_item_pages() {
           "framework initializes75 in source item order using positive inventory only");
     s = *update.candidate;
     const auto original = s;
+    SteamFacilityEffectOptions skin_options;skin_options.title_widths=std::array<int,2>{80,80};
+    // 八项库存是滚动边界夹具；通过实际Owner输入进入/退出76/77，不声明自然取得。
+    {
+        auto scrolling=s;
+        auto &rows=scrolling.facility_item_page_lists.at(directory);rows.clear();
+        for(int item=0;item<8;++item) {
+            scrolling.items.at(item).inventory=2;
+            scrolling.catalog.at({0,item})=scrolling.items.at(item);rows.push_back(item);
+        }
+        StartupFacilityItemInput gesture;gesture.up=true;
+        check(input_startup_world_facility_item_page(scrolling,directory,gesture)==StartupWorldRuntimeError::none&&
+              scrolling.facility_item_page_selections.at(directory)==7&&scrolling.facility_item_page_scroll.at(directory)==3,
+              "75 up wraps to last row and persists five-row viewport");
+        gesture={};gesture.up=gesture.down=true;
+        check(input_startup_world_facility_item_page(scrolling,directory,gesture)==StartupWorldRuntimeError::none&&
+              scrolling.facility_item_page_scroll.at(directory)==3,"75 cancelling directions retain historical viewport");
+        gesture={};gesture.scroll=StartupFacilityItemInput::Scroll{true,1};
+        check(input_startup_world_facility_item_page(scrolling,directory,gesture)==StartupWorldRuntimeError::none&&
+              scrolling.facility_item_page_selections.at(directory)==5&&scrolling.facility_item_page_scroll.at(directory)==1,
+              "75 scrollbar synchronizes selection while preserving relative visible row");
+        gesture.scroll=StartupFacilityItemInput::Scroll{false,std::numeric_limits<int>::max()};
+        const auto before=startup_world_state_digest(scrolling);
+        check(input_startup_world_facility_item_page(scrolling,directory,gesture)==StartupWorldRuntimeError::invalid_page&&
+              startup_world_state_digest(scrolling)==before,"75 invalid scrollbar request leaves all state intact");
+        auto late_scroll=scrolling;late_scroll.scripts.next_page_id=std::numeric_limits<std::uint64_t>::max();
+        const auto late_before=startup_world_state_digest(late_scroll);
+        gesture={};gesture.scroll=StartupFacilityItemInput::Scroll{true,0};gesture.confirm=true;
+        check(input_startup_world_facility_item_page(late_scroll,directory,gesture)==StartupWorldRuntimeError::script_failed&&
+              startup_world_state_digest(late_scroll)==late_before,"75 late child insertion rolls back changed scroll/selection and inventory together");
+        gesture={};gesture.selection=7;gesture.confirm=true;
+        check(input_startup_world_facility_item_page(scrolling,directory,gesture)==StartupWorldRuntimeError::none&&
+              scrolling.items.at(7).inventory==1&&scrolling.facility_item_page_scroll.at(directory)==3,
+              "75 same-round off-window selection repairs viewport before actual consumption");
+        for(int frame=0;frame<50;++frame) {
+            const auto next=prepare_startup_world_runtime(scrolling);
+            check(next.candidate.has_value(),"75 covered scroll scenario advances actual76/77");scrolling=*next.candidate;
+        }
+        const auto feedback=scrolling.scripts.pages.back().id;
+        check(act_startup_world_facility_item_page(scrolling,feedback,Action::confirm)==StartupWorldRuntimeError::none,
+              "75 covered scroll scenario fast-forwards77");
+        for(int frame=0;frame<6;++frame) {
+            const auto next=prepare_startup_world_runtime(scrolling);
+            check(next.candidate.has_value(),"77 reaches actual return boundary");scrolling=*next.candidate;
+        }
+        check(act_startup_world_facility_item_page(scrolling,feedback,Action::confirm)==StartupWorldRuntimeError::none,
+              "77 returns to historical75");
+        const auto returned=prepare_startup_world_runtime(scrolling);
+        check(returned.candidate&&returned.candidate->facility_item_page_scroll.at(directory)==3&&
+              returned.candidate->facility_item_page_selections.at(directory)==7&&
+              steam_facility_effect_skin(*returned.candidate,directory,skin_options).has_value(),
+              "75 parent scroll/selection survive children and feed readonly skin");
+        scrolling=*returned.candidate;
+        check(act_startup_world_facility_item_page(scrolling,directory,Action::confirm)==StartupWorldRuntimeError::none&&
+              scrolling.items.at(7).inventory==0&&scrolling.facility_item_page_lists.at(directory).size()==7&&
+              scrolling.facility_item_page_scroll.at(directory)==0&&scrolling.facility_item_page_selections.at(directory)==0,
+              "75 exhausted last row applies confirmed selection and viewport reset together");
+    }
     // 两种正库存的定向目录，验证不带行号的确认使用Owner选择，非自然取得声明。
     auto selected_item=s;
     selected_item.items.at(0).inventory=2;selected_item.catalog.at({0,0})=selected_item.items.at(0);
@@ -879,6 +937,13 @@ void facility_item_pages() {
               act_startup_world_facility_item_page(broken, directory, Action::confirm) !=
                   StartupWorldRuntimeError::none,
           "initialized missing catalogue explicitly refuses update and input");
+    broken=s;broken.facility_item_page_scroll.erase(directory);
+    check(!prepare_startup_world_runtime(broken).candidate&&!steam_facility_effect_skin(broken,directory,skin_options),
+          "initialized75 missing first explicitly refuses update and readonly skin");
+    broken=s;broken.facility_item_page_scroll.at(directory)=1;
+    check(!prepare_startup_world_runtime(broken).candidate,"initialized75 off-window cursor refuses update");
+    broken=original;broken.facility_item_pages_initialized.erase(directory);
+    check(!prepare_startup_world_runtime(broken).candidate,"uninitialized75 preinstalled cursor explicitly refuses Init");
     broken = s;
     broken.facility_page_bindings.at(parent) = 4;
     check(!prepare_startup_world_runtime(broken).candidate,
@@ -918,7 +983,6 @@ void facility_item_pages() {
               s.scene.world.world.facilities.at(*second.created).price == other_price + 60 &&
               s.facility_item_response == 2 && s.facility_upgrade_display[2][1] == 8,
           "actual milk doubles33 improvement and refreshes both prices with actual initial jobs");
-    SteamFacilityEffectOptions skin_options;skin_options.title_widths=std::array<int,2>{80,80};
     const auto skin_before=startup_world_state_digest(s);
     const auto animated_skin=steam_facility_effect_skin(s,animation,skin_options);
     check(animated_skin&&!steam_facility_effect_skin(s,directory,skin_options),
@@ -975,6 +1039,7 @@ void facility_item_pages() {
     check(update.candidate && update.candidate->facility_item_page_lists.empty() &&
               update.candidate->facility_item_pages_initialized.empty() &&
               update.candidate->facility_item_page_selections.empty() &&
+              update.candidate->facility_item_page_scroll.empty() &&
               startup_world_resource_usage(*update.candidate).page_payloads ==
                   baseline.page_payloads,
           "item page payloads retire fully; only original74 binding and neighbour snapshot remain");
@@ -1051,6 +1116,7 @@ void facility_item_empty_and_legend() {
     s = *update.candidate;
     bool completed{};
     std::uint64_t animation{};
+    std::array<bool,2> rendered{};
     for (int step = 0; step < 600 && !completed; ++step) {
         const auto tick = prepare_startup_world_runtime(s);
         check(tick.candidate.has_value(), "legend integration actual framework continues");
@@ -1063,6 +1129,22 @@ void facility_item_empty_and_legend() {
             check(top->facility_definition == 33 && top->legacy_f == 0,
                   "actual75 continuation2033 creates82 bound to original bun shop definition");
             if (inspect_startup_world_facility_catalog_page(s, animation)) {
+                const int phase=s.page_phases.at(animation);
+                if(!rendered[phase]) {
+                    SteamFacilityReputationOptions options;
+                    options.title_widths=std::array<int,2>{84,84};options.increase_suffix_width=24;
+                    const auto before=startup_world_state_digest(s);
+                    const auto plan=steam_facility_reputation_skin(s,animation,options);
+                    check(plan.has_value(),"actual opcode40-created82 produces formal Owner skin");
+                    for(int repeat=0;repeat<12;++repeat) {
+                        const auto again=steam_facility_reputation_skin(s,animation,options);
+                        check(again&&again->operations.size()==plan->operations.size(),"82 repeated query output size remains stable");
+                    }
+                    check(startup_world_state_digest(s)==before,"82 rendering never advances either timer, random, sound or popularity queue");
+                    auto invalid=s;invalid.page_secondary_counters.erase(animation);
+                    check(!steam_facility_reputation_skin(invalid,animation,options),"82 Owner skin rejects missing independent clock");
+                    rendered[phase]=true;
+                }
                 const bool finishing = s.page_phases.at(animation) == 1 && s.page_counters.at(animation) >= 40;
                 check(acknowledge_startup_world_runtime_page(s, animation) == StartupWorldRuntimeError::none,
                       "actual legend82 uses the two phase confirmation consumer");
@@ -1080,7 +1162,7 @@ void facility_item_empty_and_legend() {
         }
         s.sound_requests.clear(); // 显式表现消费者领取本次输出，不留下积累声音。
     }
-    check(completed && s.scene.world.popularity_queue.front() == std::array<int, 3>{10, 20, 1} &&
+    check(completed && rendered[0] && rendered[1] && s.scene.world.popularity_queue.front() == std::array<int, 3>{10, 20, 1} &&
               s.facility_item_confirmations.at(source_facility(s, 33)) == 0,
           "condition fixture reaches actual75→100-delay→82→one deferred20 request without repeating gift");
     const auto retired = prepare_startup_world_runtime(s);

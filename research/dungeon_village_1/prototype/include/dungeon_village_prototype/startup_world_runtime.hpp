@@ -231,7 +231,7 @@ struct StartupWorldRuntimeState {
     std::map<std::uint64_t, std::vector<int>> task_extra_pages; // raw27 X，仅页面期间存在。
     std::map<std::uint64_t, int> task_page_predictions;         // raw28 f126f，只展示不影响胜负。
     std::map<std::uint64_t, bool> task_page_acceleration;       // raw28 g。
-    std::map<std::uint64_t, int> page_secondary_counters;       // 页24/81 f125e，与逻辑tick分开。
+    std::map<std::uint64_t, int> page_secondary_counters;       // 页24/81/82独立演出计数，与逻辑tick分开。
     std::array<std::array<std::int32_t, 9>, 8>
         task_display_table{};                         // 全局n.bd演出表，不创建战斗实体。
     std::set<std::uint64_t> task_display_initialized; // raw99/100按页初始化，不重复E抽取。
@@ -260,6 +260,7 @@ struct StartupWorldRuntimeState {
     std::map<std::uint64_t, int> facility_item_page_items;
     std::map<std::uint64_t, std::vector<int>> facility_item_page_lists;
     std::map<std::uint64_t, int> facility_item_page_selections;
+    std::map<std::uint64_t, int> facility_item_page_scroll; // 75五行首行，子页覆盖保持，Finish释放。
     int facility_item_response{};               // 原o.ar，最近设施道具的反应。
     std::map<int, bool> item_commerce_read;     // 原g.B，与商会A库存／持有z分开。
     std::map<int, bool> facility_commerce_read; // 原o.O，与募集M分开。

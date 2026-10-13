@@ -770,12 +770,16 @@ int check_steam_facility_skin(const std::filesystem::path &source_root) {
     for(const auto sample:std::array<std::array<int,2>,4>{{{5,0},{6,1},{39,46},{40,48}}}) {
         reputation.frame=sample[0];const auto p=steam_facility_reputation_skin(reputation);
         check(p.has_value(),"82有限计数文本展开计划");
-        bool clip=false,border=false;for(const auto &op:p->operations) {
+        bool clip=false,border=false,mini=false;for(const auto &op:p->operations) {
             if(const auto *c=std::get_if<SteamFacilityClip>(&op))clip|=c->kind==SteamFacilityClipKind::push_intersect&&c->rectangle==std::array<int,4>{0,158,240,sample[1]};
             if(const auto *f=std::get_if<SteamStartupFrameDraw>(&op))if(const auto *r=std::get_if<StartupSkinRect>(f))
                 border|=r->outline&&r->rect==std::array<int,4>{30,66,180,82};
+            if(const auto *image=std::get_if<SteamFacilityImage>(&op))
+                mini|=image->asset==A::mini_background&&image->position==std::array<int,2>{77,71}&&
+                      image->crop==std::optional<std::array<int,4>>{{0,0,86,70}};
         }
         check(clip&&border,"82源clip5/40边界，灰框是内描边不遮背景");
+        check(mini,"82 event16按原86x70整张PNG消费，不向无SEB资源请求帧");
     }
     for(const auto sample:std::array<std::array<int,3>,5>{{{9,1,143},{10,9,143},{17,9,135},{25,9,143},{26,1,143}}}) {
         reputation.frame2=sample[0];const auto p=steam_facility_reputation_skin(reputation);

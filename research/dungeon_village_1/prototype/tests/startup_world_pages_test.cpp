@@ -165,6 +165,26 @@ void facility_commodity_pages() {
 void facility_reputation_pages() {
     using A = StartupFacilityCatalogAction;
     using E = StartupWorldRuntimeError;
+    const auto check_paused = [](const StartupWorldRuntimeState &source, std::uint64_t id) {
+        auto paused = source;
+        paused.scene.framework_paused = true;
+        const auto primary = paused.page_counters;
+        const auto secondary = paused.page_secondary_counters;
+        const auto phases = paused.page_phases;
+        const auto draws = paused.scene.random.draws();
+        const auto sounds = paused.sound_requests;
+        const auto queue = paused.scene.world.popularity_queue;
+        page_tick(paused);
+        check(paused.page_counters == primary && paused.page_secondary_counters == secondary &&
+                  paused.page_phases == phases && paused.scene.random.draws() == draws &&
+                  paused.sound_requests == sounds && paused.scene.world.popularity_queue == queue,
+              "paused82 framework holds both clocks/phase/random and preserves pending sound output");
+        check(acknowledge_startup_world_runtime_page(paused, id) == E::invalid_page &&
+                  paused.page_counters == primary && paused.page_secondary_counters == secondary &&
+                  paused.page_phases == phases && paused.scene.random.draws() == draws &&
+                  paused.sound_requests == sounds && paused.scene.world.popularity_queue == queue,
+              "paused82 explicit confirmation rejects without fast-forward/phase/effect/output changes");
+    };
     for (int mode : {0, 1}) {
         auto s = fixture(82);
         s.scripts.pages.back().lifecycle = 0;
@@ -199,43 +219,81 @@ void facility_reputation_pages() {
         s.scene.world.popularity_queue = {{7, 3, 0}};
         check(!inspect_startup_world_facility_catalog_page(s, id),
               "82 query does not fabricate frozen members before initialization");
+        for (int preloaded : {0, 1}) {
+            auto broken = s;
+            broken.page_secondary_counters.emplace(id, preloaded);
+            check(!valid_startup_world_facility_catalog_page(broken, broken.scripts.pages.back()) &&
+                      !initialize_startup_world_facility_catalog_pages(broken) &&
+                      broken.page_secondary_counters.at(id) == preloaded &&
+                      !broken.facility_catalog_pages_initialized.count(id) &&
+                      !broken.facility_catalog_page_data.count(id) && broken.scene.random.draws() == random,
+                  "pending82 rejects even zero preloaded secondary payload without initializing or drawing");
+        }
         page_tick(s);
         auto view = inspect_startup_world_facility_catalog_page(s, id);
         check(view && view->entries == std::vector<int>({4, 2, 3}) && view->phase == 0 &&
-                  view->counter == 1 && view->binding == (mode == 0 ? 36 : 45) &&
+                  view->counter == 1 && s.page_secondary_counters.at(id) == 1 &&
+                  view->binding == (mode == 0 ? 36 : 45) &&
                   s.scene.world.world.ai.human_order.empty() && s.scene.random.draws() == random &&
                   test_support::audio_ids(s.sound_requests) == std::vector<int>{4} &&
                   s.sound_requests.front().operation == StartupAudioOperation::jingle,
               "82 first update freezes original-order first3 current-job definitions,sound4,no draw");
+        check_paused(s, id);
         s.sound_requests.clear(); // 消费已发声音，不把输出留为持久历史。
         page_tick(s);
-        check(s.sound_requests.empty(), "82 later phase0 update does not replay its count1 sound");
-        for (int fault = 0; fault < 5; ++fault) {
+        check(s.sound_requests.empty() && s.page_secondary_counters.at(id) == 2,
+              "82 later phase0 update advances independent secondary without repeating count1 sound");
+        for (int fault = 0; fault < 10; ++fault) {
             auto broken = s;
             if (fault == 0) broken.facility_catalog_page_data.erase(id);
             else if (fault == 1) broken.facility_catalog_page_lists.erase(id);
             else if (fault == 2) broken.scripts.pages.back().facility_definition.reset();
             else if (fault == 3) broken.page_phases.at(id) = 2;
-            else broken.facility_catalog_page_lists.at(id).push_back(1);
+            else if (fault == 4) broken.facility_catalog_page_lists.at(id).push_back(1);
+            else if (fault == 5) broken.page_secondary_counters.erase(id);
+            else if (fault == 6) broken.page_secondary_counters.at(id) = -1;
+            else if (fault == 7) broken.page_secondary_counters.at(id) = std::numeric_limits<int>::max();
+            else if (fault == 8) broken.page_counters.at(id) = -1;
+            else broken.page_counters.at(id) = std::numeric_limits<int>::max();
+            const auto counters = broken.page_counters;
+            const auto secondary = broken.page_secondary_counters;
             check(!prepare_startup_world_runtime(broken).candidate &&
+                      !update_startup_world_facility_catalog_page(broken, id) &&
                       act_startup_world_facility_catalog_page(broken, id, A::confirm) == E::missing_source &&
+                      broken.page_counters == counters && broken.page_secondary_counters == secondary &&
                       broken.popularity == popularity &&
                       broken.scene.world.popularity_queue == std::vector<std::array<int, 3>>{{7, 3, 0}} &&
                       broken.scene.random.draws() == random,
-                  "initialized82 rejects damaged binding/list/phase with no eager popularity or draw");
+                  "initialized82 rejects damaged payload or counter domain with no partial clocks/popularity/draw");
+        }
+        const int last_counter = std::numeric_limits<int>::max() - 1;
+        for (const auto clocks : std::array<std::array<int,4>,3>{{
+                 {last_counter,last_counter,0,0},{last_counter,2,0,3},{2,last_counter,3,0}}}) {
+            auto wrap = s;
+            wrap.page_counters.at(id) = clocks[0];
+            wrap.page_secondary_counters.at(id) = clocks[1];
+            const auto wrapped = update_startup_world_facility_catalog_page(wrap, id);
+            check(wrapped && wrapped->page_counters.at(id) == clocks[2] &&
+                      wrapped->page_secondary_counters.at(id) == clocks[3] && wrapped->sound_requests.empty() &&
+                      wrap.page_counters.at(id) == clocks[0] && wrap.page_secondary_counters.at(id) == clocks[1],
+                  "82 two admitted clocks wrap independently modulo INT_MAX in a private candidate");
         }
         check(cancel_startup_world_runtime_page(s, id) == E::none && s.page_counters.at(id) == 40 &&
+                  s.page_secondary_counters.at(id) == 2 &&
                   s.page_phases.at(id) == 0 && s.scripts.pages.back().lifecycle != 4,
               "82 early return is a fast-forward to40,not an effect-free cancellation");
         check(acknowledge_startup_world_runtime_page(s, id) == E::none &&
                   s.page_phases.at(id) == 1 && s.page_counters.at(id) == 0 &&
+                  s.page_secondary_counters.at(id) == 2 &&
                   s.scene.world.popularity_queue == std::vector<std::array<int, 3>>{{7, 3, 0}},
               "82 first40 confirmation starts second phase without awarding popularity");
         page_tick(s);
-        check(s.sound_requests.empty() && s.page_counters.at(id) == 1,
+        check(s.sound_requests.empty() && s.page_counters.at(id) == 1 && s.page_secondary_counters.at(id) == 3,
               "82 second-phase count1 does not replay phase0 sound4");
+        check_paused(s, id);
         check(acknowledge_startup_world_runtime_page(s, id) == E::none &&
                   s.page_phases.at(id) == 1 && s.page_counters.at(id) == 40 &&
+                  s.page_secondary_counters.at(id) == 3 &&
                   s.popularity == popularity,
               "82 second phase early confirmation only fast-forwards its own40 gate");
         auto late_failure = s;
@@ -255,6 +313,10 @@ void facility_reputation_pages() {
         check(acknowledge_startup_world_runtime_page(s, id) == E::invalid_page &&
                   s.scene.world.popularity_queue.size() == 2,
               "stale82 final confirm cannot repeat the20-point delayed request");
+        page_tick(s);
+        check(!s.page_secondary_counters.count(id) && !s.page_counters.count(id) &&
+                  !s.facility_catalog_page_data.count(id) && !s.facility_catalog_page_lists.count(id),
+              "82 framework retirement releases both clocks and frozen display references");
     }
     auto fallback = fixture(82);
     fallback.scripts.pages.back().lifecycle = 0;

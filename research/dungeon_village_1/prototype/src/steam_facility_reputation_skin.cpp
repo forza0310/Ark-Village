@@ -32,7 +32,8 @@ std::optional<SteamFacilityReputationPlan> steam_facility_reputation_skin(const 
     out.operations.emplace_back(SteamHumanImage{HA::portrait_background,{189,66},0,std::array<int,4>{1,0,20,82}});
     // DrawRect把源末像素差179/81扩为180×82；不能填实心灰块遮住三段背景。
     out.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{{30,66,180,82},{148,148,148},true}});
-    out.operations.emplace_back(SteamFacilityImage{SteamFacilityAsset::mini_background,{77,71},0,{}});
+    // event16是86×70整张PNG，没有SEB；显式全图裁剪沿现81资源消费方式。
+    out.operations.emplace_back(SteamFacilityImage{SteamFacilityAsset::mini_background,{77,71},0,std::array<int,4>{0,0,86,70}});
     out.operations.emplace_back(SteamFacilityClip{SteamFacilityClipKind::push_intersect,{80,74,80,64}});
     out.operations.emplace_back(SteamFacilityMapchip2{in.mapchip,{120,105},0});
     out.operations.emplace_back(SteamFacilityClip{SteamFacilityClipKind::pop,{}});

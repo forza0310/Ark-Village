@@ -4,6 +4,7 @@
 #include "../../scene/world_build_placement.hpp"
 #include "../common/layout.hpp"
 #include "ark/simulation/facilities/startup_world_facility_items.hpp"
+#include "ark/simulation/presentation/steam_facility_effect_skin.hpp"
 #include "ark/simulation/presentation/startup_world_visuals.hpp"
 #include "world_facility_input.hpp"
 #include <optional>

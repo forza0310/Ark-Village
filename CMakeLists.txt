@@ -70,6 +70,7 @@ if(ARK_BUILD_DESKTOP)
         src/desktop/ui/facilities/world_building_input.cpp src/desktop/ui/facilities/world_building_render.cpp
         src/desktop/ui/facilities/world_facility_upgrade.cpp src/desktop/ui/facilities/world_facility_detail.cpp
         src/desktop/ui/village/world_progression.cpp
+        src/desktop/ui/village/world_village_skin.cpp
         src/desktop/ui/actors/world_human.cpp src/desktop/ui/actors/world_human_detail.cpp
         src/desktop/ui/actors/world_human_skin.cpp src/desktop/ui/actors/world_human_input.cpp
         src/desktop/ui/village/world_tax.cpp

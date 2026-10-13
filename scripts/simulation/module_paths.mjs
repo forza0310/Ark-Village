@@ -42,7 +42,8 @@ export const simulationModules = {
   presentation: `startup_audio startup_skin startup_title_actor_skin startup_title_presentation
     startup_world_presentation startup_world_visuals steam_facility_skin steam_startup_skin
     steam_human_skin steam_information_skin steam_main_menu_skin steam_manual_skin
-    steam_facility_catalog_skin steam_facility_effect_skin steam_facility_reputation_skin`,
+    steam_facility_catalog_skin steam_facility_effect_skin steam_facility_reputation_skin
+    steam_town_progress_skin steam_village_activity_skin`,
 };
 
 const owners = new Map();

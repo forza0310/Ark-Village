@@ -375,4 +375,16 @@ void Sprites::image(const std::string &name, Rectangle source, Rectangle destina
     record_pick(value, {source, destination}, tint);
     DrawTexturePro(value, source, destination, {0, 0}, 0, tint);
 }
+void Sprites::full_image(const std::string &name, Vector2 position, Binding binding,
+                          std::optional<Rectangle> clip) {
+    if(std::filesystem::path(name).has_parent_path())throw std::invalid_argument("Unsafe whole-image path");
+    if(binding!=Binding::common&&binding!=Binding::event&&binding!=Binding::steam_common)
+        throw std::invalid_argument("Unsupported whole-image UI group");
+    const char *group=binding==Binding::event?"event":binding==Binding::steam_common?"steam_common":"common";
+    const auto &value=texture(root_/group/name);
+    SpriteBlit blit{{0,0,float(value.width),float(value.height)},
+                    {position.x,position.y,float(value.width),float(value.height)}};
+    if(clip){const auto clipped=clip_sprite_blit(blit,*clip);if(!clipped)return;blit=*clipped;}
+    image(name,blit.source,blit.destination,binding);
+}
 } // namespace ark::desktop

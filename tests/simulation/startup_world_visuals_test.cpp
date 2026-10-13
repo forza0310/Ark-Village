@@ -4,6 +4,8 @@
 #include "ark/assets/table.hpp"
 #include "support/world_fixture.hpp"
 #include "steam_facility_skin_example.hpp"
+int check_steam_village_activity_skins(const std::filesystem::path &);
+int check_steam_town_progress_skin(const std::filesystem::path &);
 
 #include <raylib.h>
 
@@ -920,6 +922,8 @@ int main(int argc, char **argv) {
         SetTraceLogLevel(LOG_WARNING);
         checks += check_startup_skin(argv[1], argc >= 3 ? std::filesystem::path(argv[2])
                                                       : std::filesystem::path{});
+        checks += check_steam_village_activity_skins(argv[1]);
+        checks += check_steam_town_progress_skin(argv[1]);
         owner_mapping();
         coin_effect_queries(argv[1]);
         cpu_portraits(argv[1]);

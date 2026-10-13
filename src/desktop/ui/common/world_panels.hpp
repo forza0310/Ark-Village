@@ -41,8 +41,6 @@ struct WorldPageLayout {
     Rectangle body; // Text inset, shared by wrapping, scrolling and drawing.
     Rectangle confirm;
 };
-void draw_world_script_reward(const WorldScriptRewardView &view, const WorldPageLayout &layout,
-                              const Skin &skin, bool enabled);
 WorldPageLayout world_page_layout(const simulation::rules::WorldScriptPage &page, Extent extent);
 void draw_world_page_chrome(const simulation::rules::WorldScriptPage &page,
                             const WorldPageLayout &layout, const Skin &skin, int paragraph_index);

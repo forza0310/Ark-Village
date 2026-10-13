@@ -1,4 +1,5 @@
 #include "world_facility_catalog.hpp"
+#include "world_facility_skin.hpp"
 #include "../actors/world_human_detail.hpp"
 #include "../common/skin.hpp"
 #include "ark/simulation/actors/startup_world_profile.hpp"

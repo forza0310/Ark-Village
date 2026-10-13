@@ -5,6 +5,13 @@
 
 namespace ark::simulation {
 enum class StartupVillageActivityAction { previous, next, select, confirm, cancel };
+// 本轮解析输入；首行和选择仅存Owner，不持久设备手势或热区。
+struct StartupVillageActivityInput {
+    bool up{},down{},confirm{},cancel{};
+    std::optional<int> selection;
+    struct Scroll { bool absolute{}; int value{}; };
+    std::optional<Scroll> scroll;
+};
 struct StartupVillageActivityView {
     int raw{};
     int selection{};
@@ -20,6 +27,10 @@ bool initialize_startup_world_village_activity_pages(StartupWorldRuntimeState &c
 std::optional<StartupVillageActivityView>
 inspect_startup_world_village_activity_page(const StartupWorldRuntimeState &state,
                                             std::uint64_t page);
+bool valid_startup_world_village_activity_page(const StartupWorldRuntimeState &state,
+                                               const ref::WorldScriptPage &page);
+StartupWorldRuntimeError input_startup_world_village_activity_page(
+    StartupWorldRuntimeState &state,std::uint64_t page,const StartupVillageActivityInput &input);
 StartupWorldRuntimeError
 act_startup_world_village_activity_page(StartupWorldRuntimeState &state, std::uint64_t page,
                                         StartupVillageActivityAction action, int selection = 0);

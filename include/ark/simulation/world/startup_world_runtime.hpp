@@ -31,6 +31,8 @@ struct StartupInformationInput;
 struct StartupHumanCatalogueInput;
 struct StartupFacilityCatalogInput;
 struct StartupFacilityItemInput;
+struct StartupVillageActivityInput;
+struct StartupTownRankInput;
 struct StartupWorldMenuInput;
 struct StartupManualInput;
 struct StartupManualPageData {
@@ -365,6 +367,15 @@ StartupWorldRuntimeError act_startup_world_runtime_award_page(StartupWorldRuntim
                                                               ref::WorldAwardAction action,
                                                               int selection = 0);
 bool refresh_startup_world_runtime_rank(StartupWorldRuntimeState &state);
+struct StartupTownRankInput {
+    bool up{},down{},confirm{},cancel{};
+    std::optional<int> selection;
+};
+// 48选择保存在现page_phases，50副钟复用现map；查询/恢复不重算或重抽。
+bool valid_startup_world_town_progress_page(const StartupWorldRuntimeState &state,const ref::WorldScriptPage &page);
+bool initialize_startup_world_town_progress_pages(StartupWorldRuntimeState &candidate);
+StartupWorldRuntimeError input_startup_world_runtime_rank_page(StartupWorldRuntimeState &state,
+    std::uint64_t page,const StartupTownRankInput &input);
 // raw48独立选择条件说明/晋级/返回；raw49仍只查看，不调用此消费者。
 StartupWorldRuntimeError act_startup_world_runtime_rank_page(StartupWorldRuntimeState &state,
                                                              std::uint64_t page, int selection = 0,
@@ -429,6 +440,7 @@ class StartupWorldRuntimeSession {
                                             int selection = 0);
     StartupWorldRuntimeError act_rank_page(std::uint64_t page, int selection = 0,
                                            bool cancel = false);
+    StartupWorldRuntimeError input_rank_page(std::uint64_t page,const StartupTownRankInput &input);
     StartupWorldRuntimeError open_task_menu();
     StartupWorldRuntimeError open_task_control_menu();
     StartupWorldRuntimeError open_village_activities();
@@ -457,6 +469,7 @@ class StartupWorldRuntimeSession {
     StartupWorldRuntimeError act_village_activity_page(std::uint64_t page,
                                                        StartupVillageActivityAction action,
                                                        int selection = 0);
+    StartupWorldRuntimeError input_village_activity_page(std::uint64_t page,const StartupVillageActivityInput &input);
     StartupWorldRuntimeError open_human_page(int human);
     StartupWorldRuntimeError act_human_page(std::uint64_t page, StartupHumanPageAction action,
                                             int selection = 0);

@@ -1,8 +1,8 @@
 // Read-only activity projection and input routing. Frozen source tests own cost/effect timing,
 // quarter resets, random draws, denial order and rollback; these fixtures do not recalculate them.
+#include "../../src/desktop/ui/village/world_village_activity.hpp"
 #include "../support/checks.hpp"
 #include "../support/world_fixture.hpp"
-#include "../../src/desktop/ui/village/world_village_activity.hpp"
 #include <algorithm>
 #include <iostream>
 
@@ -70,13 +70,38 @@ void world_village_activity() {
     check(view.portrait_images[0] && view.portrait_images[0] == view.portrait_images[1],
           "With-replacement display identities remain two portraits without deduplication");
     input = {};
-    input.click = center({layout.rows.x, layout.rows.y + 4 * layout.row_height, layout.rows.width,
-                          layout.row_height});
-    auto intent = ui::world_village_activity_input(view, layout, input, false);
-    check(intent && intent->action == Action::select && intent->selection == 5 &&
-              intent->page == page.id,
-          "Scrolled fifth row emits source position five, not activity definition six");
-    check(!ui::world_village_activity_input(view, layout, input, true),
+    ui::WorldFacilityPaintedControls painted;
+    const auto paint = [&](const ui::WorldVillageActivityView &v,
+                           const ui::WorldVillageActivityLayout &l) {
+        ui::WorldFacilityPaintedControls p;
+        p.page = v.page;
+        p.raw = v.raw;
+        p.selection = v.selection;
+        p.first = v.first_visible;
+        p.count = v.raw == 52 ? 2 : static_cast<int>(v.rows.size());
+        p.choice = v.activity;
+        p.extent = l.extent;
+        if (v.raw == 52) {
+            p.rows = {{0, 0, {l.panel.x + 35, l.panel.y + 120, 50, 16}},
+                      {1, 1, {l.panel.x + 135, l.panel.y + 120, 50, 16}}};
+        } else
+            for (int row = v.first_visible; row < int(v.rows.size()) && row < v.first_visible + 5;
+                 ++row)
+                p.rows.push_back(
+                    {row,
+                     v.rows[row].definition,
+                     {l.rows.x, l.rows.y + (row - v.first_visible) * 19, l.rows.width, 16}});
+        return p;
+    };
+    painted = paint(view, layout);
+    input.click = center(painted.rows.back().rectangle);
+    check(!ui::world_village_activity_input(view, layout, input, false),
+          "Activity mouse input requires last-painted geometry");
+    auto intent = ui::world_village_activity_input(view, layout, input, false, painted);
+    check(intent && intent->input && intent->input->confirm && intent->input->selection == 5 &&
+              intent->selection == 5 && intent->page == page.id,
+          "Scrolled fifth release selects position five and confirms, not definition six");
+    check(!ui::world_village_activity_input(view, layout, input, true, painted),
           "Pending or paused barrier blocks selection without changing source selection");
     input = {};
     input.up = true;
@@ -84,11 +109,13 @@ void world_village_activity() {
           "Previous action lets the source own wrapping and scroll updates");
     input = {};
     input.wheel_rows = 20;
-    check(ui::world_village_activity_input(view, layout, input, false)->selection == 5,
-          "Wheel clamps to final source list position");
+    check(ui::world_village_activity_input(view, layout, input, false)->input->scroll->value ==
+                  20 &&
+              !ui::world_village_activity_input(view, layout, input, false)->input->selection,
+          "Wheel forwards relative source scroll without predicting a new selection");
     input.wheel_rows = -20;
-    check(ui::world_village_activity_input(view, layout, input, false)->selection == 0,
-          "Wheel clamps to first source list position");
+    check(ui::world_village_activity_input(view, layout, input, false)->input->scroll->value == -20,
+          "Negative wheel keeps the source scroll delta and clamping owner");
     state.activity_page_selections[page.id] = 3;
     state.activity_page_scroll[page.id] = 0;
     view = ui::world_village_activity_view(state, page);
@@ -141,10 +168,12 @@ void world_village_activity() {
     check(view.initialized && view.name == "马拉松大会" && !view.detail.empty() && view.can_cancel,
           "Confirmation reads exact bound activity and published detail");
     input = {};
-    input.click = center(layout.choices[1]);
-    intent = ui::world_village_activity_input(view, layout, input, false);
-    check(intent && intent->action == Action::select && intent->selection == 1,
-          "Clicking Return choice selects source K1 choice without prematurely closing parent");
+    const auto child_layout = ui::world_village_activity_layout(layout.extent, 52);
+    painted = paint(view, child_layout);
+    input.click = center(painted.rows[1].rectangle);
+    intent = ui::world_village_activity_input(view, child_layout, input, false, painted);
+    check(intent && intent->input && intent->input->confirm && intent->input->selection == 1,
+          "Return button release selects and confirms K1; parent resumes through source consumer");
     confirmation.activity_page_selections[child.id] = 1;
     view = ui::world_village_activity_view(confirmation, child);
     input = {};
@@ -227,18 +256,14 @@ void world_village_activity() {
     for (const auto size :
          {desktop::Extent{240, 256}, desktop::Extent{540, 360}, desktop::Extent{960, 640}}) {
         const auto l = ui::world_village_activity_layout(size);
-        check(contains({0, 24, static_cast<float>(size.width), size.height - 53.F}, l.panel) &&
-                  contains(l.panel, l.rows) && contains(l.panel, l.description) &&
-                  contains(l.panel, l.confirm) && contains(l.panel, l.cancel) &&
-                  l.row_height >= 17 && !CheckCollisionRecs(l.rows, l.heading) &&
-                  !CheckCollisionRecs(l.rows, l.status) &&
-                  !CheckCollisionRecs(l.feedback, l.confirm),
-              "Minimum and desktop layouts preserve five readable rows, description and footer hit "
-              "targets");
-        for (const auto portrait : l.portraits)
-            check(contains(l.panel, portrait) && !CheckCollisionRecs(portrait, l.feedback) &&
-                      !CheckCollisionRecs(portrait, l.status),
-                  "Frozen display portraits do not cover status or feedback at any supported size");
+        const Rectangle viewport{0, 24, float(size.width), size.height - 24.F};
+        check(contains(viewport, l.panel) && contains(l.panel, l.rows) &&
+                  contains(viewport, l.confirm) && contains(viewport, l.cancel) &&
+                  l.row_height == 19 && l.rows.height == 95 &&
+                  !CheckCollisionRecs(l.rows, l.confirm) &&
+                  !CheckCollisionRecs(l.feedback, l.confirm) &&
+                  !CheckCollisionRecs(l.confirm, l.cancel),
+              "Five source19-pitch rows and distinct PC soft keys fit the supported viewport");
     }
     std::cout << "World village activity: " << check.count() << " checks\n";
 }

@@ -12,7 +12,7 @@ Rectangle row_box(std::array<int, 4> r, Vector2 origin, Rectangle panel) {
 }
 } // namespace
 Vector2 world_facility_skin_origin(Rectangle p) {
-    return {p.x - (120 - int(p.width) / 2), p.y - (131 - int(p.height) / 2)};
+    return world_list_skin_origin(p);
 }
 void draw_world_facility_effect(const sim::SteamFacilityEffectPlan &p, Vector2 origin,
                                 const Skin &skin) {

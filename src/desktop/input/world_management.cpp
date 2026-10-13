@@ -46,6 +46,8 @@ void WorldManagement::observe(const app::WorldFrame &frame) {
         facility_controls_.reset();
         facility_items_ = {};
         facility_catalog_gesture_ = {};
+        village_controls_.reset();
+        village_gesture_ = {};
     }
     if (!pending_)
         return;
@@ -80,7 +82,8 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
         facility_items_.scrolling = false;
         facility_catalog_gesture_.scrolling = false;
         award_ = {};
-        rank_ = 0;
+        village_controls_.reset();
+        village_gesture_.scrolling = false;
         feedback_.clear();
     }
     blocked = blocked || pending();
@@ -224,20 +227,18 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
     }
     if (ui::world_village_activity_page(page)) {
         const auto view = ui::world_village_activity_view(state, page);
-        const auto layout = ui::world_village_activity_layout(extent);
-        const ui::WorldVillageActivityInput input{
+        const auto layout = ui::world_village_activity_layout(extent, view.raw);
+        ui::WorldVillageActivityInput input{
             point,  up,
             down,   enter,
             escape, hit(mouse, layout.rows) ? -static_cast<int>(GetMouseWheelMove() * 2) : 0};
-        if (const auto intent = ui::world_village_activity_input(view, layout, input, blocked))
-            queued(session.act_village_activity(page.id, intent->action, intent->selection));
-        return true;
-    }
-    if (ui::world_script_reward_page(page)) {
-        const auto view = ui::world_script_reward_view(state, page);
-        if (!blocked && view.initialized &&
-            (enter || hit(point, ui::world_page_layout(page, extent).confirm)))
-            queued(session.ack_page(page.id));
+        input.pointer = mouse;
+        input.pointer_pressed = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+        input.pointer_down = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+        input.pointer_released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
+        if (const auto intent = ui::world_village_activity_input(view, layout, input, blocked,
+                                                                village_controls_, &village_gesture_))
+            queued(session.input_village_activity(page.id, *intent->input));
         return true;
     }
     if (ui::world_human_page(page)) {
@@ -350,11 +351,11 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
     }
     if (ui::world_progression_page(page)) {
         const auto view = ui::world_progression_view(state, page);
-        const auto layout = ui::world_progression_layout(extent);
+        const auto layout = ui::world_progression_layout(extent, view.raw);
         if (const auto intent = ui::world_progression_input(
-                view, layout, rank_, {point, enter, escape, up, down}, blocked))
-            queued(intent->rank_action
-                       ? session.act_rank(page.id, intent->selection, intent->cancel)
+                view, layout, {point, enter, escape, up, down}, blocked, village_controls_))
+            queued(intent->input
+                       ? session.input_rank(page.id, *intent->input)
                        : session.ack_page(page.id));
         return true;
     }
@@ -399,12 +400,10 @@ bool WorldManagement::draw_page(const State &state, const Page &page, Extent ext
         facility_controls_ = ui::draw_world_facility_items(
             view, ui::world_facility_items_layout(extent, view.raw), skin, enabled, feedback_);
     } else if (ui::world_village_activity_page(page)) {
-        ui::draw_world_village_activity(ui::world_village_activity_view(state, page),
-                                        ui::world_village_activity_layout(extent), skin, enabled,
-                                        feedback_);
-    } else if (ui::world_script_reward_page(page)) {
-        ui::draw_world_script_reward(ui::world_script_reward_view(state, page),
-                                     ui::world_page_layout(page, extent), skin, enabled);
+        auto view = ui::world_village_activity_view(state, page);
+        ui::prepare_world_village_activity(view, state, skin, village_gesture_.scrolling);
+        village_controls_ = ui::draw_world_village_activity(
+            view, ui::world_village_activity_layout(extent, view.raw), skin, enabled, feedback_);
     } else if (ui::world_human_page(page)) {
         const auto down_width =
             static_cast<int>(std::ceil(skin.text.width(ui::world_human_down_text)));
@@ -428,8 +427,10 @@ bool WorldManagement::draw_page(const State &state, const Page &page, Extent ext
             view, ui::world_award_layout(extent, view.termination_pending || view.pending_human),
             skin, award_, enabled);
     } else if (ui::world_progression_page(page)) {
-        ui::draw_world_progression(ui::world_progression_view(state, page),
-                                   ui::world_progression_layout(extent), skin, rank_, enabled);
+        auto view = ui::world_progression_view(state, page);
+        ui::prepare_world_progression(view, state, skin);
+        village_controls_ = ui::draw_world_progression(
+            view, ui::world_progression_layout(extent, view.raw), skin, enabled);
     } else {
         return false;
     }

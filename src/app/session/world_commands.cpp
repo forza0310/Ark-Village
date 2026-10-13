@@ -321,6 +321,14 @@ void apply_world_decision(WorldState &state, const WorldCommand &command,
                       state, command.page, command.village_activity_action, command.selection)
                 : Error::invalid_page;
         break;
+    case Kind::village_activity_input:
+        result.runtime_error = simulation::input_startup_world_village_activity_page(
+            state, command.page, command.village_activity_input);
+        break;
+    case Kind::rank_input:
+        result.runtime_error = simulation::input_startup_world_runtime_rank_page(
+            state, command.page, command.rank_input);
+        break;
     case Kind::open_menu_build:
     case Kind::open_build_menu:
         result.runtime_error = simulation::open_startup_world_build_menu(state);
@@ -766,6 +774,22 @@ std::uint64_t WorldSession::act_rank(std::uint64_t page, int selection, bool can
     command.page = page;
     command.selection = selection;
     command.cancel = cancel;
+    return submit(command);
+}
+std::uint64_t WorldSession::input_rank(std::uint64_t page,
+                                      const simulation::StartupTownRankInput &input) {
+    WorldCommand command;
+    command.kind = WorldCommandKind::rank_input;
+    command.page = page;
+    command.rank_input = input;
+    return submit(command);
+}
+std::uint64_t WorldSession::input_village_activity(
+    std::uint64_t page, const simulation::StartupVillageActivityInput &input) {
+    WorldCommand command;
+    command.kind = WorldCommandKind::village_activity_input;
+    command.page = page;
+    command.village_activity_input = input;
     return submit(command);
 }
 } // namespace ark::app

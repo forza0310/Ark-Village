@@ -1,9 +1,9 @@
 // Tests source identity/order and the actual click-to-action path without a window or fake award.
-#include "../support/checks.hpp"
-#include "../support/world_fixture.hpp"
 #include "../../src/desktop/ui/common/skin.hpp"
 #include "../../src/desktop/ui/village/world_award.hpp"
 #include "../../src/desktop/ui/village/world_progression.hpp"
+#include "../support/checks.hpp"
+#include "../support/world_fixture.hpp"
 #include <filesystem>
 #include <iostream>
 
@@ -188,44 +188,55 @@ void world_award_ui() {
 
     // These source-backed presentation pages share UI dependencies; test their decision gates
     // here instead of introducing another executable for the same fixture lifetime.
+    state = initial_world(); // The new rank bridge requires real definitions and complete Init.
     page.id = 321;
     page.legacy_page = 48;
+    page.kind = rules::WorldScriptPageKind::raw_page;
+    page.lifecycle = 0;
+    state.scripts.pages.push_back(page);
+    state.scripts.next_page_id = 322;
     state.rank = 1;
     auto progression = ui::world_progression_view(state, page);
     check(!progression.initialized && !ui::world_page_regular_confirmation(page),
           "Rank choice must wait for initialization and never become generic confirmation");
-    state.page_counters[321] = 0;
+    check(simulation::initialize_startup_world_town_progress_pages(state),
+          "Rank source initializes the actual selection and counter");
+    page = state.scripts.pages.back();
     state.rank_values = {123, 4, 5, 6};
     state.rank_met = {true, false, true, false};
     progression = ui::world_progression_view(state, page);
     const auto rank_layout = ui::world_progression_layout({540, 360});
-    int rank_selection = 0;
     ui::WorldProgressionInput rank_input;
     rank_input.down = true;
-    (void)ui::world_progression_input(progression, rank_layout, rank_selection, rank_input, false);
+    const auto moved = ui::world_progression_input(progression, rank_layout, rank_input, false);
+    check(moved && moved->input && moved->input->down &&
+              simulation::input_startup_world_runtime_rank_page(state, page.id, *moved->input) ==
+                  simulation::StartupWorldRuntimeError::none,
+          "Direction changes the source selection, not a desktop-only cursor");
+    progression = ui::world_progression_view(state, page);
     rank_input = {};
     rank_input.enter = true;
-    auto rank_intent =
-        ui::world_progression_input(progression, rank_layout, rank_selection, rank_input, false);
+    auto rank_intent = ui::world_progression_input(progression, rank_layout, rank_input, false);
     check(progression.rows.size() == 5 && rank_intent && rank_intent->rank_action &&
               rank_intent->selection == 1 && state.rank == 1,
           "Condition row requests source explanation, without promoting from rendering");
-    check(!ui::world_progression_input(progression, rank_layout, rank_selection, rank_input, true),
+    check(!ui::world_progression_input(progression, rank_layout, rank_input, true),
           "Pending or paused progression does not repeat a command");
     page.legacy_page = 49;
+    state.page_phases[321] = 0;
     progression = ui::world_progression_view(state, page);
-    rank_intent =
-        ui::world_progression_input(progression, rank_layout, rank_selection, rank_input, false);
+    rank_intent = ui::world_progression_input(progression, rank_layout, rank_input, false);
     check(progression.rows.size() == 4 && rank_intent && !rank_intent->rank_action,
           "Rank status49 remains acknowledgement only, never promotion");
     page.legacy_page = 50;
-    state.rank_celebration_participants[321] = {{42, 0, 0, 0, 0}, {7, 0, 0, 0, 0}};
+    state.rank_celebration_participants[321] = {{19, 0, 0, 0, 0}, {7, 0, 0, 0, 0}};
+    state.page_secondary_counters[321] = 0;
     state.page_phases[321] = 2;
     state.page_counters[321] = 139;
     progression = ui::world_progression_view(state, page);
-    check(progression.rows == std::vector<std::string>{"human-42", "human-7"} &&
-              !ui::world_progression_input(progression, rank_layout, rank_selection, rank_input,
-                                           false),
+    check(progression.rows == std::vector<std::string>{state.rules->humans.at(19).name,
+                                                       state.rules->humans.at(7).name} &&
+              !ui::world_progression_input(progression, rank_layout, rank_input, false),
           "Celebration uses source cast and cannot close before phase2 counter140");
     state.page_counters[321] = 140;
     check(ui::world_progression_view(state, page).confirm_enabled,
@@ -236,7 +247,7 @@ void world_award_ui() {
     state.reward_display[0] = {10, 20};
     state.reward_display[1] = {15, 25};
     progression = ui::world_progression_view(state, page);
-    check(progression.initialized && progression.human == "human-19" &&
+    check(progression.initialized && progression.human == state.rules->humans.at(19).name &&
               progression.rows[0] == "满足 10 > 15" && !progression.confirm_enabled,
           "Award display reads bound person/shared reward values, with phase0 input blocked");
     state.page_phases[321] = 1;
@@ -254,9 +265,12 @@ void world_award_ui() {
           "A script dialogue with the same legacy number is never treated as a raw page");
     for (const auto extent : {ark::desktop::Extent{240, 256}, ark::desktop::Extent{540, 360}}) {
         const auto boxes = ui::world_progression_layout(extent);
-        check(contains(boxes.panel, boxes.body) && contains(boxes.panel, boxes.cancel) &&
-                  contains(boxes.panel, boxes.confirm),
-              "Progression contents and commands remain in the supported viewport");
+        const Rectangle viewport{0, 24, float(extent.width), extent.height - 24.F};
+        check(contains(viewport, boxes.panel) && contains(boxes.panel, boxes.body) &&
+                  contains(viewport, boxes.cancel) && contains(viewport, boxes.confirm) &&
+                  !CheckCollisionRecs(boxes.panel, boxes.cancel) &&
+                  !CheckCollisionRecs(boxes.cancel, boxes.confirm),
+              "Source progress body and distinct PC soft keys fit without overlap");
     }
     std::cout << "PASS annual UI source projection and input contracts\n";
 }

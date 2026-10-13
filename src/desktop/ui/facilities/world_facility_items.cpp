@@ -1,4 +1,5 @@
 #include "world_facility_items.hpp"
+#include "world_facility_skin.hpp"
 #include "../../scene/world_overlay_render.hpp"
 #include "../common/skin.hpp"
 #include <algorithm>

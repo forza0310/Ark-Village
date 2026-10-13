@@ -68,7 +68,8 @@ class WorldManagement {
     mutable std::optional<ui::WorldManualLayout> manual_layout_; // Last painted controls only.
     mutable std::optional<ui::WorldHumanPaintedControls> human_controls_;
     ui::WorldHumanGesture human_gesture_;
-    int rank_{};
+    mutable std::optional<ui::WorldFacilityPaintedControls> village_controls_;
+    ui::WorldFacilityGesture village_gesture_;
     int edit_mode_{-1};
     std::optional<int> definition_;
     std::optional<simulation::rules::Position> anchor_;

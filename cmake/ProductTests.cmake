@@ -158,6 +158,7 @@ if(ARK_BUILD_DESKTOP)
             tests/desktop/world_human_test.cpp tests/desktop/world_human_render_fixture.cpp
             tests/desktop/world_combat_render_fixture.cpp
             tests/desktop/world_village_activity_test.cpp src/desktop/ui/village/world_village_activity.cpp
+            tests/desktop/world_village_render_fixture.cpp
             tests/desktop/world_commerce_test.cpp tests/desktop/world_facility_items_test.cpp
             src/desktop/ui/village/world_commerce.cpp src/desktop/ui/facilities/world_facility_items.cpp
             src/desktop/ui/facilities/world_facility_catalog.cpp
@@ -174,6 +175,7 @@ if(ARK_BUILD_DESKTOP)
         src/desktop/ui/facilities/world_building_input.cpp src/desktop/ui/facilities/world_building_render.cpp
         src/desktop/ui/facilities/world_facility_upgrade.cpp src/desktop/ui/facilities/world_facility_detail.cpp
         src/desktop/ui/village/world_progression.cpp
+        src/desktop/ui/village/world_village_skin.cpp
             src/desktop/scene/world_build_placement.cpp src/desktop/inspection/world_human_inspection.cpp
             src/desktop/scene/world_editing.cpp
             src/desktop/scene/world_scene.cpp src/desktop/scene/world_overlay_render.cpp

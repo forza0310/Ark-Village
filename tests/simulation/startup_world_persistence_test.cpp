@@ -1068,6 +1068,9 @@ std::array<std::filesystem::path, 4> create_application_action_entry_fixtures(
         const auto pushed = ref::prepare_world_script_page(startup_world_runtime_scripts(state), page);
         check(pushed.candidate && write_startup_world_runtime_scripts(state, pushed.candidate->state),
               "application action fixture uses actual page factory");
+        if(raw[i]==48)
+            check(initialize_startup_world_town_progress_pages(state),
+                  "rank action fixture uses complete source Init before its explicit input");
         if (i == 3) {
             // 原87首次初始化先增加一枚勋章；零勋关闭只可能检查已初始化后的耗尽条件。
             const auto id = state.scripts.pages.back().id;

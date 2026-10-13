@@ -2556,6 +2556,7 @@ void unlock_rewards() {
         page.legacy_r = kind;
         page.legacy_s = kind == 1 ? 100 : 0;
         next.page_counters[reward] = 40;
+        page.lifecycle = 2; // 完整已初始化奖励条件夹具，不把预装计数伪装成新页。
         next.village_points = 10;
         next.medal_count = 2;
         next.facility_free_builds[0] = 0;
@@ -2702,6 +2703,26 @@ void task_focus_and_introduction() {
           "raw89 next confirm closes without repeating monster introduction program");
 }
 void rank_conditions() {
+    for (int raw : {48, 49, 50, 95})
+        for (int fault = 0; fault < 3; ++fault) {
+            auto pending = fixture(raw);
+            const auto id = pending.scripts.pages.back().id;
+            if (raw == 95) {
+                pending.scripts.pages.back().legacy_r = 11;
+                pending.scripts.pages.back().legacy_s = 30;
+            }
+            if (fault == 0)
+                pending.page_counters[id] = 0;
+            if (fault == 1)
+                pending.page_phases[id] = 0;
+            if (fault == 2)
+                pending.page_secondary_counters[id] = 0;
+            const auto before = startup_world_state_digest(pending);
+            check(!prepare_startup_world_runtime(pending).candidate &&
+                      startup_world_state_digest(pending) == before,
+                  "pending town page refuses preinstalled counter/phase rather than accepting a "
+                  "partial initialization");
+        }
     for (int rank = 0; rank < 5; ++rank) {
         auto s = fixture(49);
         const auto id = s.scripts.pages.back().id;
@@ -2799,6 +2820,8 @@ void rank_promotion() {
     const auto ready_id = ready.scripts.pages.back().id;
     ready.scripts.pages.back().legacy_f = 1;
     ready.page_counters[ready_id] = 1;
+    ready.page_phases[ready_id] = 0;
+    ready.scripts.pages.back().lifecycle = 2;
     ready.rank_met.fill(true);
     ready.scene.calendar.year = 2;
     ready.scene.calendar.month = 7;
@@ -2834,6 +2857,8 @@ void rank_promotion() {
     auto denied = fixture(48);
     const auto denied_id = denied.scripts.pages.back().id;
     denied.page_counters[denied_id] = 1;
+    denied.page_phases[denied_id] = 0;
+    denied.scripts.pages.back().lifecycle = 2;
     denied.rank_met = {true, true, true, false};
     check(act_startup_world_runtime_rank_page(denied, denied_id) ==
                   StartupWorldRuntimeError::none &&
@@ -2843,6 +2868,8 @@ void rank_promotion() {
     auto broken = fixture(48);
     const auto bad_id = broken.scripts.pages.back().id;
     broken.page_counters[bad_id] = 1;
+    broken.page_phases[bad_id] = 0;
+    broken.scripts.pages.back().lifecycle = 2;
     broken.rank_met.fill(true);
     broken.scripts.next_page_id = std::numeric_limits<std::uint64_t>::max();
     check(
@@ -2868,17 +2895,54 @@ void rank_promotion() {
                   StartupAudioOperation::replace_bgm,
           "celebration initializes current p1 definitions, one shuffle draw and first music3");
     celebration = *tick.candidate;
+    check(celebration.page_secondary_counters.at(celebration_id) == 1,
+          "50 first admitted update advances its independent secondary clock");
+    for (int fault = 0; fault < 6; ++fault) {
+        auto bad = celebration;
+        if (fault == 0)
+            bad.page_counters.erase(celebration_id);
+        if (fault == 1)
+            bad.page_phases.erase(celebration_id);
+        if (fault == 2)
+            bad.page_secondary_counters.erase(celebration_id);
+        if (fault == 3)
+            bad.rank_celebration_participants.erase(celebration_id);
+        if (fault == 4)
+            bad.page_phases.at(celebration_id) = 3;
+        if (fault == 5)
+            bad.rank_celebration_participants.at(celebration_id).front()[3] = 4;
+        const auto before = startup_world_state_digest(bad);
+        check(!prepare_startup_world_runtime(bad).candidate &&
+                  acknowledge_startup_world_runtime_page(bad, celebration_id) !=
+                      StartupWorldRuntimeError::none &&
+                  startup_world_state_digest(bad) == before,
+              "initialized50 refuses incomplete clocks or cast before reinitialization, sound or "
+              "random");
+    }
+    auto paused_celebration = celebration;
+    paused_celebration.scene.framework_paused = true;
+    const auto paused_cast = paused_celebration.rank_celebration_participants;
+    const auto paused_draws = paused_celebration.scene.random.draws();
+    page_tick(paused_celebration);
+    check(paused_celebration.page_counters.at(celebration_id) == 1 &&
+              paused_celebration.page_secondary_counters.at(celebration_id) == 1 &&
+              paused_celebration.rank_celebration_participants == paused_cast &&
+              paused_celebration.scene.random.draws() == paused_draws,
+          "paused50 keeps both clocks and the frozen cast without reshuffling");
     check(acknowledge_startup_world_runtime_page(celebration, celebration_id) ==
                   StartupWorldRuntimeError::none &&
               celebration.page_counters.at(celebration_id) == 1 &&
               celebration.page_phases.at(celebration_id) == 0,
           "early celebration confirm does not fastforward or close");
     for (const auto threshold : {135, 20}) {
+        const auto secondary = celebration.page_secondary_counters.at(celebration_id);
         celebration.page_counters[celebration_id] = threshold - 1;
         tick = prepare_startup_world_runtime(celebration);
         check(tick.candidate && tick.candidate->page_counters.at(celebration_id) == 0,
               "source phase threshold automatically transitions and resets local counter");
         celebration = *tick.candidate;
+        check(celebration.page_secondary_counters.at(celebration_id) == secondary + 1,
+              "50 automatic phase change resets only the primary clock");
     }
     celebration.page_counters[celebration_id] = 139;
     check(acknowledge_startup_world_runtime_page(celebration, celebration_id) ==
@@ -2895,6 +2959,12 @@ void rank_promotion() {
               celebration.sound_requests.back().operation == StartupAudioOperation::replace_bgm &&
               celebration.scene.world.updates == 0 && celebration.scene.random.draws() == 1,
           "final confirm refreshes original music and closes, no repeat shuffle/world update");
+    page_tick(celebration);
+    check(!celebration.rank_celebration_participants.count(celebration_id) &&
+              !celebration.page_counters.count(celebration_id) &&
+              !celebration.page_secondary_counters.count(celebration_id) &&
+              !celebration.page_phases.count(celebration_id),
+          "50 actual framework retirement releases the cast and both clocks");
     auto exhausted = fixture(50);
     exhausted.human_presence.at(1) = 1;
     exhausted.scene.random = ref::WorldRandomStream::from_raw({});
@@ -3255,6 +3325,27 @@ StartupWorldRuntimeState village_fixture(int activity = 23) {
 void village_activity_initialization() {
     using A = StartupVillageActivityAction;
     using E = StartupWorldRuntimeError;
+    for (int fault = 0; fault < 6; ++fault) {
+        auto pending = fixture(51);
+        const auto id = pending.scripts.pages.back().id;
+        if (fault == 0)
+            pending.activity_page_selections[id] = 0;
+        if (fault == 1)
+            pending.activity_page_scroll[id] = 0;
+        if (fault == 2)
+            pending.activity_page_lists[id] = {23};
+        if (fault == 3)
+            pending.activity_page_display_humans[id] = {0, 0};
+        if (fault == 4)
+            pending.page_counters[id] = 0;
+        if (fault == 5)
+            pending.activity_page_answers[id] = 0;
+        const auto before = startup_world_state_digest(pending);
+        check(!prepare_startup_world_runtime(pending).candidate &&
+                  startup_world_state_digest(pending) == before,
+              "pending51 rejects preinstalled partial payload without consuming first-entry random "
+              "or tutorial");
+    }
     for (int fault = 0; fault < 3; ++fault) {
         auto s = fixture(51);
         const auto id = s.scripts.pages.back().id;
@@ -3312,6 +3403,46 @@ void village_activity_pages() {
     using A = StartupVillageActivityAction;
     using E = StartupWorldRuntimeError;
     auto s = village_fixture();
+    {
+        auto scrolling = fixture(51);
+        scrolling.scripts.event_calls[100] = 1;
+        scrolling.village_points = 999;
+        scrolling.quarter_counter = 3;
+        for (int n = 0; n < 8; ++n)
+            scrolling.scripts.activities.at(n).status = 1; // 多行历史条件，非自然开放。
+        page_tick(scrolling);
+        const auto id = scrolling.scripts.pages.back().id;
+        const int count = static_cast<int>(scrolling.activity_page_lists.at(id).size());
+        StartupVillageActivityInput input;
+        input.up = true;
+        check(input_startup_world_village_activity_page(scrolling, id, input) == E::none &&
+                  scrolling.activity_page_selections.at(id) == count - 1 &&
+                  scrolling.activity_page_scroll.at(id) == count - 5,
+              "51 wraps into a persistent five-row tail window");
+        // 目录缩短可保留不足五行的合法尾窗；抵消方向不得先后修窗改变历史first。
+        scrolling.activity_page_scroll.at(id) = count - 1;
+        input.down = true;
+        check(input_startup_world_village_activity_page(scrolling, id, input) == E::none &&
+                  scrolling.activity_page_selections.at(id) == count - 1 &&
+                  scrolling.activity_page_scroll.at(id) == count - 1,
+              "51 combines opposite directions before repairing its legal short tail viewport");
+        auto blocked = scrolling;
+        blocked.scripts.next_page_id = std::numeric_limits<std::uint64_t>::max();
+        const auto before = startup_world_state_digest(blocked);
+        input = {};
+        input.selection = 0;
+        input.confirm = true;
+        check(input_startup_world_village_activity_page(blocked, id, input) != E::none &&
+                  startup_world_state_digest(blocked) == before,
+              "51 combined selection and late child insertion failure roll back selection and "
+              "scroll too");
+        auto paused = scrolling;
+        paused.scene.framework_paused = true;
+        const auto paused_before = startup_world_state_digest(paused);
+        check(input_startup_world_village_activity_page(paused, id, input) == E::invalid_page &&
+                  startup_world_state_digest(paused) == paused_before,
+              "paused51 rejects the whole input batch");
+    }
     const auto parent = s.scripts.pages.back().id;
     const auto cash = s.scene.world.world.ai.accounting.funds();
     check(s.activity_page_lists.at(parent) == std::vector<int>{23} && s.scene.random.draws() == 2 &&
@@ -4778,6 +4909,8 @@ void second_rank_magic_pot_unlock_chain() {
     s.rank = 1;
     s.rank_met.fill(true);
     s.page_counters[rank_page] = 1;
+    s.page_phases[rank_page] = 0;
+    s.scripts.pages.back().lifecycle = 2;
     s.village_points = 200;
     s.quarter_counter = 3;
     check(s.scripts.activities.at(30).status == 0 && s.activity_counts.at(30) == 0 &&

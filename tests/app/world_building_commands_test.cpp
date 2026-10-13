@@ -284,7 +284,10 @@ void facility_and_rank_commands() {
     promotion.id = rank.scripts.next_page_id++;
     promotion.kind = rules::WorldScriptPageKind::raw_page;
     promotion.legacy_page = 48;
+    promotion.lifecycle = 0;
     rank.scripts.pages.push_back(promotion);
+    check(sim::initialize_startup_world_town_progress_pages(rank),
+          "Source promotion fixture initializes its counter and Owner selection before input");
     auto expected = rank;
     check(sim::act_startup_world_runtime_rank_page(expected, promotion.id, 1) ==
               sim::StartupWorldRuntimeError::none,

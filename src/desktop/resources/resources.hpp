@@ -65,6 +65,9 @@ class Sprites {
     // Raw published PNG rectangles for tiled bars and nine-slice window components.
     void image(const std::string &name, Rectangle source, Rectangle destination,
                Binding binding = Binding::common, Color tint = WHITE);
+    // Only explicitly requested whole-image UI nodes use their loaded PNG dimensions.
+    void full_image(const std::string &name, Vector2 position, Binding binding,
+                    std::optional<Rectangle> clip = {});
     // Source SEB geometry for UI placement; this reads metadata without loading a texture.
     Rectangle frame_bounds(const std::string &sprite, int frame, Binding binding = Binding::common);
     // Fit the actual SEB frame bounds; the map anchor is not the image's visual center.

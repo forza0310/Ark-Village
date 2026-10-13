@@ -13,6 +13,7 @@
 #include "ark/simulation/actors/startup_world_human.hpp"
 #include "ark/simulation/facilities/startup_world_commerce.hpp"
 #include "ark/simulation/facilities/startup_world_facility_items.hpp"
+#include "ark/simulation/village/startup_world_village_activity.hpp"
 
 #include <algorithm>
 
@@ -1575,6 +1576,161 @@ int check_domain_restore(
         reject(retired, "retired magic data map", [&](auto &v) { v.magic_pot_page_data[stale] = {0, 0, -1}; });
         reject(retired, "retired magic list map", [&](auto &v) { v.magic_pot_page_lists[stale] = {}; });
         reject(retired, "retired magic parent map", [&](auto &v) { v.magic_pot_page_parents[stale] = root; });
+    }
+    {
+        using E=p::StartupWorldRuntimeError;
+        using A=p::StartupVillageActivityAction;
+        const auto require=[&](bool value,const char *message) {
+            ++checks;if(!value)throw std::runtime_error(std::string("restore town progression: ")+message);
+        };
+        const auto tick=[&](auto &state) {
+            auto next=p::prepare_startup_world_runtime(state);
+            require(next.candidate.has_value(),"framework update rejected");state=std::move(*next.candidate);
+        };
+        const auto top=[](const auto &state) -> const r::WorldScriptPage & {
+            const auto found=std::find_if(state.scripts.pages.rbegin(),state.scripts.pages.rend(),
+                [](const auto &page){return page.lifecycle!=4;});
+            if(found==state.scripts.pages.rend())throw std::runtime_error("town replay missing active page");
+            return *found;
+        };
+        // 同输入／下一获准更新比较完整编码，连同随机及待消费输出，不重新生成世界前缀。
+        const auto replay=[&](auto &state,const auto &action) {
+            expect(state,true,"town source before short replay");
+            const auto wire=p::persistence_detail::encode_state(state);
+            auto restored=p::persistence_detail::decode_state(wire,*state.rules);
+            expect(restored,true,"town decoded before short replay");
+            require(p::persistence_detail::encode_state(restored)==wire,"decode changed cached page state");
+            action(state);action(restored);tick(state);tick(restored);
+            require(p::persistence_detail::encode_state(state)==p::persistence_detail::encode_state(restored),
+                    "same input/update diverged in state, random or output");
+        };
+        const auto choose=[&](auto &state,int tag) {
+            const auto id=top(state).id;const auto view=p::inspect_startup_world_menu_page(state,id);
+            require(view.has_value(),"menu source missing");
+            const auto row=std::find(view->tags.begin(),view->tags.end(),tag);
+            require(row!=view->tags.end(),"menu tag missing");
+            p::StartupWorldMenuInput input;input.select_row=static_cast<int>(row-view->tags.begin());
+            require(p::input_startup_world_menu_page(state,id,input)==E::none,"menu selection rejected");
+            input={};input.confirm=true;
+            require(p::input_startup_world_menu_page(state,id,input)==E::none,"menu confirmation rejected");
+        };
+        const auto enter=[&](auto &state,int tag) {
+            require(p::open_startup_world_main_menu(state)==E::none,"open actual main menu");
+            tick(state);choose(state,2);tick(state);choose(state,tag);
+        };
+        auto village=baseline;
+        // 解锁／预算仅为多行条件；菜单、确认、效果及后继均走实际Owner。
+        village.village_points=999;village.quarter_counter=3;village.scripts.event_calls[100]=1;
+        for(int n=0;n<8;++n)village.scripts.activities.at(n).status=1;
+        enter(village,12);const auto directory=top(village).id;
+        expect(village,true,"actual menu-to51 pending state");
+        for(int fault=0;fault<4;++fault) {
+            auto bad=village;
+            if(fault==0)bad.activity_page_scroll[directory]=0;
+            if(fault==1)bad.activity_page_selections[directory]=0;
+            if(fault==2)bad.activity_page_lists[directory]={0};
+            if(fault==3)bad.page_counters[directory]=0;
+            expect(bad,false,"pending51 refuses half-installed directory");
+        }
+        replay(village,[](auto &){});
+        p::StartupVillageActivityInput navigation;navigation.up=true;
+        replay(village,[&](auto &v){require(p::input_startup_world_village_activity_page(v,directory,navigation)==E::none,"51 tail selection");});
+        const auto first=village.activity_page_scroll.at(directory);
+        const auto draws=village.scene.random.draws();
+        replay(village,[&](auto &v){require(p::act_startup_world_village_activity_page(v,directory,A::confirm)==E::none,"51 opens52");});
+        const auto question=top(village).id;
+        for(int fault=0;fault<3;++fault) {
+            auto bad=village;
+            if(fault==0)bad.activity_page_parents.erase(question);
+            if(fault==1)bad.activity_page_parents.at(question)=bad.scripts.pages.front().id;
+            if(fault==2)bad.activity_page_selections.at(question)=2;
+            expect(bad,false,"52 rejects missing/wrong parent or invalid answer selection");
+        }
+        replay(village,[&](auto &v){require(p::act_startup_world_village_activity_page(v,question,A::cancel)==E::none,"52 actual cancellation");});
+        require(top(village).id==directory&&village.activity_page_scroll.at(directory)==first&&
+                    village.scene.random.draws()==draws&&!village.activity_page_parents.count(question),
+                "cancel52 must restore historical51 viewport without reshuffling");
+        const auto row=std::find(village.activity_page_lists.at(directory).begin(),village.activity_page_lists.at(directory).end(),0);
+        require(row!=village.activity_page_lists.at(directory).end(),"type0 activity exists");
+        navigation={};navigation.selection=static_cast<int>(row-village.activity_page_lists.at(directory).begin());navigation.confirm=true;
+        replay(village,[&](auto &v){require(p::input_startup_world_village_activity_page(v,directory,navigation)==E::none,"select and open type0");});
+        const auto offer=top(village).id;
+        replay(village,[&](auto &v){require(p::act_startup_world_village_activity_page(v,offer,A::confirm)==E::none,"52 pays and creates53");});
+        const auto animation=top(village).id;
+        require(top(village).legacy_page==53,"actual53 follows payment");
+        auto bad=village;bad.page_counters.erase(animation);expect(bad,false,"initialized53 counter missing");
+        village.page_counters.at(animation)=119; // 相位门槛条件，不等待世界日期。
+        replay(village,[](auto &){});
+        replay(village,[&](auto &v){require(p::act_startup_world_village_activity_page(v,animation,A::confirm)==E::none,"53 submits at120");});
+        const auto result=top(village).id;
+        require(top(village).legacy_page==54,"type0 completion creates54 with producer-owned display pair");
+        bad=village;bad.activity_page_display_humans.erase(result);expect(bad,false,"54 frozen display pair missing");
+        replay(village,[&](auto &v){require(p::act_startup_world_village_activity_page(v,result,A::cancel)==E::none,"54 closes without reapplying effects");});
+        require(top(village).id==directory&&!village.activity_page_lists.count(result)&&
+                    !village.activity_page_display_humans.count(result),"54 retirement frees frozen references");
+        replay(village,[&](auto &v){require(p::act_startup_world_village_activity_page(v,directory,A::cancel)==E::none,"close51");});
+        require(village.activity_pages_initialized.empty()&&village.activity_page_scroll.empty(),"village chain retires all page payloads");
+
+        auto rank=baseline;rank.rank=1;rank.scripts.user_flags|=8U; // 晋级目录开放条件；不伪称自然取得。
+        enter(rank,10);tick(rank);const auto rank_id=top(rank).id;
+        p::StartupTownRankInput select;select.selection=2;
+        replay(rank,[&](auto &v){require(p::input_startup_world_runtime_rank_page(v,rank_id,select)==E::none,"48 stores condition selection");});
+        require(rank.page_phases.at(rank_id)==2,"48 selection survives same-input restore");
+        select={};select.confirm=true;
+        replay(rank,[&](auto &v){require(p::input_startup_world_runtime_rank_page(v,rank_id,select)==E::none,"48 opens selected condition explanation");});
+        for(int n=0;n<16&&top(rank).id!=rank_id;++n) {
+            const auto explanation=top(rank);
+            require(explanation.kind==r::WorldScriptPageKind::dialogue||
+                        explanation.kind==r::WorldScriptPageKind::simple_message,
+                    "48 condition explanation uses a real script message");
+            require(p::acknowledge_startup_world_runtime_page(rank,explanation.id)==E::none,
+                    "48 explanation returns through actual confirmation");tick(rank);
+        }
+        require(top(rank).id==rank_id&&rank.page_phases.at(rank_id)==2,
+                "48 condition explanation preserves the parent selection");
+        for(int fault=0;fault<3;++fault) {
+            bad=rank;if(fault==0)bad.page_phases.erase(rank_id);
+            if(fault==1)bad.page_counters.erase(rank_id);
+            if(fault==2)bad.page_phases.at(rank_id)=5;
+            expect(bad,false,"48 missing or invalid selection rejects");
+        }
+        // 复用真实晋级→95活动30后继；只设置已满足的晋级显示缓存。
+        rank.rank_met.fill(true);select={};select.selection=0;select.confirm=true;
+        replay(rank,[&](auto &v){require(p::input_startup_world_runtime_rank_page(v,rank_id,select)==E::none,"48 promotes from condition fixture");});
+        const auto advance_to=[&](int raw) {
+            for(int n=0;n<600;++n) {
+                const auto page=top(rank);
+                if(page.kind==r::WorldScriptPageKind::raw_page&&page.legacy_page==raw&&page.lifecycle!=0)return page.id;
+                if(page.kind==r::WorldScriptPageKind::dialogue||page.kind==r::WorldScriptPageKind::simple_message||
+                   page.kind==r::WorldScriptPageKind::newspaper||
+                   (page.kind==r::WorldScriptPageKind::raw_page&&(page.legacy_page==50||page.legacy_page==11)))
+                    require(p::acknowledge_startup_world_runtime_page(rank,page.id)==E::none,"actual promotion message confirmation");
+                tick(rank);
+            }
+            throw std::runtime_error("town replay promotion exceeded bounded callbacks");
+        };
+        const auto ceremony=advance_to(50);
+        for(int phase=0;phase<3;++phase) {
+            require(rank.page_phases.at(ceremony)==phase,"50 phase expected");
+            const int secondary=rank.page_secondary_counters.at(ceremony);
+            rank.page_counters.at(ceremony)=phase==0?134:phase==1?19:139;
+            replay(rank,[](auto &){});
+            require(rank.page_secondary_counters.at(ceremony)==secondary+1,"50 boundary preserves independent clock");
+        }
+        bad=rank;bad.rank_celebration_participants.erase(ceremony);expect(bad,false,"50 missing cast cannot silently reshuffle");
+        bad=rank;bad.page_secondary_counters.erase(ceremony);expect(bad,false,"50 missing independent clock");
+        replay(rank,[&](auto &v){require(p::acknowledge_startup_world_runtime_page(v,ceremony)==E::none,"50 final confirmation");});
+        const auto reward=advance_to(95);
+        require(top(rank).legacy_r==11&&top(rank).legacy_s==30&&rank.scripts.activities.at(30).status==0,
+                "real delayed rank reward keeps activity30 locked until claim");
+        bad=rank;bad.page_counters.erase(reward);expect(bad,false,"95 waiting claim missing counter rejects");
+        replay(rank,[&](auto &v){require(p::acknowledge_startup_world_runtime_page(v,reward)==E::none,"95 early confirmation");});
+        require(rank.scripts.activities.at(30).status==0,"95 early confirmation cannot grant");
+        replay(rank,[&](auto &v){require(p::acknowledge_startup_world_runtime_page(v,reward)==E::none,"95 final claim");});
+        require(rank.scripts.activities.at(30).status==1&&rank.activity_counts.at(30)==0&&
+                    (rank.scripts.user_flags&3U)==0&&!rank.page_counters.count(reward)&&
+                    p::acknowledge_startup_world_runtime_page(rank,reward)!=E::none,
+                "95 grants activity once, retires and leaves actual holding/pot introduction to existing owner chain");
     }
     return checks;
 }

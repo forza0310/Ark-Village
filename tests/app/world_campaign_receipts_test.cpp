@@ -237,6 +237,8 @@ void rank_promotion_receipt_contract(const CampaignCommandConsumer &apply) {
     require(created.candidate &&
                 sim::write_startup_world_runtime_scripts(qualified, created.candidate->state),
             "Rank fixture cannot install its actual confirmation page");
+    require(sim::initialize_startup_world_town_progress_pages(qualified),
+            "Rank fixture admits its complete source selection before update");
     const auto initialized = sim::update_startup_world_runtime_page(qualified);
     require(initialized.has_value(), "Source rank Init failed");
     qualified = *initialized;

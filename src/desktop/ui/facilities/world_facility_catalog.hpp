@@ -5,6 +5,7 @@
 #include "../common/layout.hpp"
 #include "ark/simulation/facilities/startup_world_facility_catalog.hpp"
 #include "ark/simulation/presentation/steam_facility_catalog_skin.hpp"
+#include "ark/simulation/presentation/steam_facility_reputation_skin.hpp"
 #include "world_facility_input.hpp"
 #include <optional>
 #include <string>

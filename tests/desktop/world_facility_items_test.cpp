@@ -1,6 +1,7 @@
 // Presentation owns page bindings and source display bins; source suites own shared improvement
 // math.
 #include "../../src/desktop/ui/facilities/world_facility_items.hpp"
+#include "../../src/desktop/ui/facilities/world_facility_skin.hpp"
 #include "../support/checks.hpp"
 #include "../support/world_fixture.hpp"
 #include <algorithm>

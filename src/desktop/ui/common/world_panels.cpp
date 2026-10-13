@@ -121,19 +121,6 @@ WorldScriptRewardView world_script_reward_view(const simulation::StartupWorldRun
     out.initialized = true;
     return out;
 }
-void draw_world_script_reward(const WorldScriptRewardView &view, const WorldPageLayout &layout,
-                              const Skin &skin, bool enabled) {
-    skin.window(layout.panel, "获得奖励");
-    skin.content(layout.body);
-    if (view.initialized) {
-        const auto lines = wrap_plain_text(view.label, layout.body.width - 12,
-                                           [&](const auto &text) { return skin.text.width(text); });
-        for (std::size_t n = 0; n < lines.size() && (n + 1) * 16 <= layout.body.height; ++n)
-            skin.text.draw(lines[n], layout.body.x + 6, layout.body.y + 6 + n * 16, blue);
-    }
-    // Early input only requests the source's jump to40; only a later qualifying input claims.
-    skin.button(layout.confirm, view.ready_to_claim ? "领取" : "继续", enabled && view.initialized);
-}
 
 WorldDateView world_date_view(const simulation::rules::WorldCalendarState &calendar) {
     if (calendar.units < 0 || calendar.units >= 10800)

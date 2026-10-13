@@ -129,6 +129,8 @@ set(ARK_WORLD_RUNTIME_SOURCES
     "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_facility_catalog_skin.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_facility_effect_skin.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_facility_reputation_skin.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_town_progress_skin.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_village_activity_skin.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_human_skin.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_information_skin.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_main_menu_skin.cpp"
@@ -271,6 +273,8 @@ set(ARK_STARTUP_SKIN_TEST_SOURCES
     "${ARK_WORLD_ROOT}/tests/simulation/startup_skin_checks.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/steam_facility_skin_checks.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/steam_human_skin_checks.cpp"
+    "${ARK_WORLD_ROOT}/tests/simulation/steam_town_progress_skin_checks.cpp"
+    "${ARK_WORLD_ROOT}/tests/simulation/steam_village_skin_checks.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/steam_startup_skin_checks.cpp"
 )
 set(ARK_WORLD_HASH_SOURCES

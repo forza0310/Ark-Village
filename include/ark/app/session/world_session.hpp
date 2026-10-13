@@ -78,7 +78,9 @@ enum class WorldCommandKind {
     manual_input,
     human_input,
     facility_catalog_input,
-    facility_item_input
+    facility_item_input,
+    village_activity_input,
+    rank_input
 };
 enum class WorldCommandOutcome { applied, rejected };
 struct WorldCommandResult {
@@ -147,6 +149,8 @@ struct WorldCommand {
     simulation::StartupHumanCatalogueInput human_input; // One source input frame, no device state.
     simulation::StartupFacilityCatalogInput facility_catalog_input;
     simulation::StartupFacilityItemInput facility_item_input;
+    simulation::StartupVillageActivityInput village_activity_input;
+    simulation::StartupTownRankInput rank_input;
     simulation::StartupFacilityItemAction facility_item_action{
         simulation::StartupFacilityItemAction::confirm};
     simulation::StartupFacilityCatalogAction facility_catalog_action{
@@ -188,6 +192,9 @@ class WorldSession {
     std::uint64_t act_award(std::uint64_t page, simulation::rules::WorldAwardAction action,
                             int selection = 0);
     std::uint64_t act_rank(std::uint64_t page, int selection = 0, bool cancel = false);
+    std::uint64_t input_rank(std::uint64_t page, const simulation::StartupTownRankInput &input);
+    std::uint64_t input_village_activity(std::uint64_t page,
+                                        const simulation::StartupVillageActivityInput &input);
     // Navigation belongs to the source Owner; the frame only exposes derived visibility.
     std::uint64_t open_main_menu();
     std::uint64_t close_main_menu();

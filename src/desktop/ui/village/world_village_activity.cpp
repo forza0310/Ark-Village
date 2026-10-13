@@ -1,8 +1,9 @@
 #include "world_village_activity.hpp"
+#include "../common/skin.hpp"
+#include "ark/presentation/script_text.hpp"
 #include "ark/simulation/actors/startup_world_human.hpp"
 #include "ark/simulation/presentation/startup_world_visuals.hpp"
-#include "ark/presentation/script_text.hpp"
-#include "../common/skin.hpp"
+#include "world_village_skin.hpp"
 #include <algorithm>
 #include <stdexcept>
 
@@ -18,23 +19,6 @@ const simulation::StartupWorldActivity &definition(const State &state, int id) {
     if (found == state.rules->activities.end())
         throw std::invalid_argument("Village activity view lost its source definition");
     return *found;
-}
-bool hit(const WorldVillageActivityInput &input, Rectangle box) {
-    return input.click && CheckCollisionPointRec(*input.click, box);
-}
-void fitted(const Skin &skin, const std::string &value, Rectangle box, Color color = ink,
-            float size = 11) {
-    skin.text.draw(value, box.x, box.y, color,
-                   std::min(size, 12.F * box.width / std::max(1.F, skin.text.width(value))));
-}
-void paragraph(const Skin &skin, const std::string &value, Rectangle box) {
-    const auto decoded = decode_script_text(value);
-    const auto lines = wrap_plain_text(decoded.text, box.width,
-                                       [&](const auto &line) { return skin.text.width(line, 10); });
-    const int visible =
-        std::min(static_cast<int>(lines.size()), std::max(0, static_cast<int>(box.height / 13)));
-    for (int line = 0; line < visible; ++line)
-        skin.text.draw(lines[line], box.x, box.y + line * 13.F, ink, 10);
 }
 } // namespace
 bool world_village_activity_page(const Page &page) {
@@ -65,6 +49,9 @@ WorldVillageActivityView world_village_activity_view(const State &state, const P
     out.quarter_slots = state.quarter_counter;
     if (source->activity) {
         const auto &activity = definition(state, *source->activity);
+        out.activity = activity.identity;
+        out.kind = activity.parameters[2];
+        out.attribute = activity.parameters[3];
         out.name = activity.name;
         out.detail = activity.detail;
         out.description = activity.description;
@@ -121,122 +108,139 @@ WorldVillageActivityView world_village_activity_view(const State &state, const P
     if (out.raw == 51 && !out.rows.empty() && !out.rows.at(out.selection).supported)
         out.status = "此活动尚未接入";
     out.initialized = true;
+    out.interactive = page.lifecycle != 0 && page.lifecycle != 4;
     return out;
 }
-WorldVillageActivityLayout world_village_activity_layout(Extent extent) {
+WorldVillageActivityLayout world_village_activity_layout(Extent extent, int raw) {
     if (extent.width < 240 || extent.height < 256)
-        throw std::invalid_argument("Village activity requires supported logical viewport");
-    const float width = std::min(340.F, extent.width - 16.F);
-    const float height = std::min(296.F, extent.height - 60.F);
+        throw std::invalid_argument("Unsupported village viewport");
     WorldVillageActivityLayout out;
+    out.extent = extent;
+    const float width = raw == 51 || raw == 54 ? 220.F : 222.F,
+                height = raw == 51 || raw == 54 ? 168.F : 170.F;
     out.panel = {(extent.width - width) / 2, (extent.height - height) / 2, width, height};
-    const auto p = out.panel;
-    out.heading = {p.x + 10, p.y + 28, width - 20, 14};
-    out.rows = {p.x + 10, p.y + 44, width - 20, height - 111};
-    out.row_height = out.rows.height / 5;
-    for (int n = 0; n < 2; ++n) {
-        out.choices[n] = {out.rows.x, out.rows.y + n * 24, out.rows.width, 22};
-        out.portraits[n] = {p.x + width / 2 - 49 + n * 66, p.y + height - 54, 32, 18};
-    }
-    out.description = {out.rows.x + 3, out.rows.y + 52, out.rows.width - 6, out.rows.height - 52};
-    out.phase_label = {p.x + 10, p.y + height - 91, width - 20, 12};
-    out.status = {p.x + 10, p.y + height - 67, width - 20, 12};
-    out.feedback = {p.x + 10, p.y + height - 35, width - 20, 10};
-    out.cancel = {p.x + 10, p.y + height - 24, 48, 20};
-    out.confirm = {p.x + width - 58, p.y + height - 24, 48, 20};
+    const auto origin = world_list_skin_origin(out.panel);
+    out.rows = {origin.x + 23, origin.y + 95, 191, 95};
+    out.row_height = 19;
+    out.cancel = {out.panel.x + width - 50, out.panel.y + height + 4, 50, 18};
+    out.confirm = {out.panel.x, out.panel.y + height + 4, 50, 18};
+    out.feedback = {out.panel.x, out.panel.y + height + 24, width, 12};
     return out;
+}
+void prepare_world_village_activity(WorldVillageActivityView &v, const State &s, const Skin &skin,
+                                    bool scrolling) {
+    v.skin.reset();
+    if (!v.initialized)
+        return;
+    simulation::SteamVillageActivityOptions o;
+    o.view_y = 23;
+    o.scroll_first_touch = scrolling;
+    const std::string title = v.raw == 51 ? "开展活动" : v.raw == 54 ? "活动结束" : v.name;
+    o.title_widths = std::array<int, 2>{int(skin.text.width(title)), int(skin.text.width(title))};
+    o.description_width = int(skin.text.width(v.description));
+    const bool execute = v.activity >= 0 && (s.activity_flags.at(v.activity) & 8U);
+    o.button_widths = {int(skin.text.width(execute ? "实施" : "开展")),
+                       int(skin.text.width(execute ? "不实施" : "不开展"))};
+    o.increase_suffix_width = int(skin.text.width("上升了!"));
+    if (v.raw == 53 && v.kind == 1) {
+        constexpr const char *names[]{"体力", "力", "器用", "丈夫", "魔力", "运"};
+        if (v.attribute < 0 || v.attribute >= 6)
+            throw std::invalid_argument("Invalid activity attribute");
+        o.attribute_widths = {int(skin.text.width("冒险者们的")),
+                              int(skin.text.width(names[v.attribute])), 0};
+    }
+    v.skin = simulation::steam_village_activity_skin(s, v.page, o);
+    if (!v.skin)
+        throw std::invalid_argument("Invalid bound village activity plan");
 }
 std::optional<WorldVillageActivityIntent>
-world_village_activity_input(const WorldVillageActivityView &view,
-                             const WorldVillageActivityLayout &layout,
-                             const WorldVillageActivityInput &input, bool blocked) {
-    if (blocked || !view.initialized)
+world_village_activity_input(const WorldVillageActivityView &v, const WorldVillageActivityLayout &l,
+                             const WorldVillageActivityInput &i, bool blocked,
+                             const std::optional<WorldFacilityPaintedControls> &painted,
+                             WorldFacilityGesture *gesture) {
+    const bool fresh = painted && painted->page == v.page && painted->raw == v.raw &&
+                       painted->selection == v.selection && painted->first == v.first_visible &&
+                       painted->count == (v.raw == 52 ? 2 : int(v.rows.size())) &&
+                       painted->choice == v.activity && painted->extent.width == l.extent.width &&
+                       painted->extent.height == l.extent.height;
+    if (gesture && gesture->page != v.page) {
+        gesture->page = v.page;
+        gesture->marked_row.reset();
+        gesture->scrolling = false;
+    }
+    const auto drag = gesture
+                          ? world_facility_scroll_input(
+                                *gesture, fresh ? &*painted : nullptr,
+                                fresh && !blocked && v.initialized && v.interactive &&
+                                    (v.raw == 51 || v.raw == 54),
+                                i.pointer, i.pointer_pressed, i.pointer_down, i.pointer_released)
+                          : WorldFacilityScrollInput{};
+    if (blocked || !v.initialized || !v.interactive)
         return {};
-    const auto intent = [&](Action action, int selection = 0) {
-        return WorldVillageActivityIntent{action, view.page, selection};
-    };
-    if (view.can_cancel && (input.escape || hit(input, layout.cancel)))
-        return intent(Action::cancel);
-    const int count = view.raw == 52 ? 2 : static_cast<int>(view.rows.size());
-    if (view.raw != 53 && count > 0) {
-        if (input.up || input.down)
-            return intent(input.up ? Action::previous : Action::next);
-        if (input.wheel_rows)
-            return intent(Action::select,
-                          std::clamp(view.selection + input.wheel_rows, 0, count - 1));
-        if (view.raw == 52) {
-            for (int n = 0; n < 2; ++n)
-                if (hit(input, layout.choices[n]))
-                    return intent(Action::select, n);
-        } else
-            for (int row = 0; row < 5 && view.first_visible + row < count; ++row)
-                if (hit(input, {layout.rows.x, layout.rows.y + row * layout.row_height,
-                                layout.rows.width, layout.row_height}))
-                    return intent(Action::select, view.first_visible + row);
+    simulation::StartupVillageActivityInput f;
+    f.up = v.raw != 53 && i.up;
+    f.down = v.raw != 53 && i.down;
+    f.confirm = v.can_confirm && i.enter;
+    f.cancel = v.can_cancel && i.escape;
+    if ((v.raw == 51 || v.raw == 54) && i.wheel_rows)
+        f.scroll = simulation::StartupVillageActivityInput::Scroll{false, i.wheel_rows};
+    if (drag.absolute)
+        f.scroll = simulation::StartupVillageActivityInput::Scroll{true, *drag.absolute};
+    if (fresh && !drag.consume_click) {
+        f.confirm |= v.can_confirm && world_facility_hit(i.click, painted->confirm);
+        f.cancel |= v.can_cancel && world_facility_hit(i.click, painted->cancel);
+        for (const auto &row : painted->rows)
+            if (world_facility_hit(i.click, row.rectangle) && row.index >= 0 &&
+                row.index < (v.raw == 52 ? 2 : int(v.rows.size())) &&
+                row.identity == (v.raw == 52 ? row.index : v.rows[row.index].definition)) {
+                f.selection = row.index;
+                // Original list/button components have no marker16; one release confirms.
+                f.confirm = v.raw != 51 || v.rows[row.index].supported;
+            }
     }
-    if (view.can_confirm && (input.enter || hit(input, layout.confirm)))
-        return intent(Action::confirm);
-    return {};
+    if (!f.up && !f.down && !f.confirm && !f.cancel && !f.selection && !f.scroll)
+        return {};
+    return WorldVillageActivityIntent{f.confirm     ? Action::confirm
+                                      : f.cancel    ? Action::cancel
+                                      : f.selection ? Action::select
+                                      : f.up        ? Action::previous
+                                                    : Action::next,
+                                      v.page, f.selection.value_or(0), f};
 }
-void draw_world_village_activity(const WorldVillageActivityView &view,
-                                 const WorldVillageActivityLayout &layout, const Skin &skin,
-                                 bool enabled, const std::string &feedback) {
-    skin.window(layout.panel, view.title);
-    skin.content(layout.rows);
-    if (view.initialized) {
-        fitted(skin,
-               view.raw == 51 ? "村子点 " + std::to_string(view.points) + "  季度剩余 " +
-                                    std::to_string(view.quarter_slots)
-                              : view.name,
-               layout.heading, blue, 10);
-        if (view.raw == 51 || view.raw == 54) {
-            for (int n = view.first_visible;
-                 n < static_cast<int>(view.rows.size()) && n < view.first_visible + 5; ++n) {
-                const auto &row = view.rows[n];
-                Rectangle box{layout.rows.x,
-                              layout.rows.y + (n - view.first_visible) * layout.row_height,
-                              layout.rows.width, layout.row_height};
-                if (n == view.selection)
-                    DrawRectangleRec(box, {255, 236, 174, 255});
-                const float name_width = box.width * .62F;
-                fitted(skin, (row.fresh ? "* " : "") + row.name,
-                       {box.x + 3, box.y + 2, name_width - 6, box.height},
-                       row.supported ? ink : GRAY, 10);
-                const auto value = view.raw == 51 ? std::to_string(row.points) + "点"
-                                                  : std::to_string(row.before) + " > " +
-                                                        std::to_string(row.current);
-                fitted(skin, value,
-                       {box.x + name_width, box.y + 2, box.width - name_width - 3, box.height},
-                       blue, 10);
-            }
-            for (std::size_t n = 0; n < view.portrait_images.size(); ++n)
-                if (view.portrait_images[n])
-                    skin.sprites.actor_thumbnail(false, 0, *view.portrait_images[n],
-                                                 layout.portraits[n]);
-            fitted(skin, view.raw == 54 ? view.result_attribute : view.status, layout.status,
-                   view.raw == 54 ? ink : MAROON, 10);
-        } else if (view.raw == 52) {
-            for (int n = 0; n < 2; ++n) {
-                if (n == view.selection)
-                    DrawRectangleRec(layout.choices[n], {255, 236, 174, 255});
-                fitted(skin, n == 0 ? "开展活动" : "返回",
-                       {layout.choices[n].x + 3, layout.choices[n].y + 4,
-                        layout.choices[n].width - 6, 14});
-            }
-            paragraph(skin, view.detail, layout.description);
-        } else {
-            paragraph(skin, view.description,
-                      {layout.rows.x + 3, layout.rows.y + 3, layout.rows.width - 6,
-                       layout.phase_label.y - layout.rows.y - 8});
-            skin.centered(view.counter < 120 ? "活动进行中" : "活动完成", layout.phase_label, blue,
-                          10);
-        }
+std::optional<WorldFacilityPaintedControls>
+draw_world_village_activity(const WorldVillageActivityView &v, const WorldVillageActivityLayout &l,
+                            const Skin &skin, bool enabled, const std::string &feedback) {
+    if (!v.initialized) {
+        skin.window(l.panel, v.title);
+        return {};
     }
-    if (view.can_cancel)
-        skin.button(layout.cancel, "返回", enabled && view.initialized);
-    skin.button(layout.confirm, view.raw == 54 ? "关闭" : "确定",
-                enabled && view.initialized && view.can_confirm);
+    if (!v.skin)
+        throw std::invalid_argument("Village rendering requires measured source plan");
+    WorldFacilityPaintedControls out;
+    out.page = v.page;
+    out.raw = v.raw;
+    out.selection = v.selection;
+    out.first = v.first_visible;
+    out.count = v.raw == 52 ? 2 : int(v.rows.size());
+    out.choice = v.activity;
+    out.extent = l.extent;
+    std::vector<int> ids;
+    if (v.raw == 52)
+        ids = {0, 1};
+    else
+        for (const auto &row : v.rows)
+            ids.push_back(row.definition);
+    out = draw_world_village_skin(*v.skin, l.panel, skin, std::move(out), ids);
+    if (v.can_cancel) {
+        out.cancel = l.cancel;
+        skin.choice(l.cancel, "返回", enabled);
+    }
+    if (v.raw != 52) {
+        out.confirm = l.confirm;
+        skin.choice(l.confirm, v.raw == 54 ? "关闭" : "确定", enabled && v.can_confirm);
+    }
     if (!feedback.empty())
-        fitted(skin, feedback, layout.feedback, MAROON, 10);
+        skin.text.draw(feedback, l.feedback.x, l.feedback.y, MAROON, 9);
+    return out;
 }
 } // namespace ark::desktop::ui

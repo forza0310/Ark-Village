@@ -5167,6 +5167,26 @@
       "purpose": "Steam77 improvement response, image136/SEB92; distinct from APK same-name pixels",
       "width": 229,
       "height": 17
+    },
+    {
+      "file": "event/event_medelCelemony_back.png",
+      "source": "research/dungeon_village_1/assets/original/event/event_medelCelemony_back.png",
+      "source_revision": "fd69d44",
+      "sha256": "720c1dd53504ff63bcb00a0a26c72eba6fc05a822d6ff5258016015a762deb69",
+      "bytes": 26301,
+      "width": 180,
+      "height": 80,
+      "purpose": "Steam50 named celebration background image11; distinct from existing event_medelCelemony_back2"
+    },
+    {
+      "file": "event/event_BackMini01.png",
+      "source": "research/dungeon_village_1/assets/original/event/event_BackMini01.png",
+      "source_revision": "fd69d44",
+      "sha256": "bfc6d89eb7459dfcf76a3b8b46f087a6a8b82d438450b337851417bce2652e12",
+      "bytes": 362,
+      "width": 48,
+      "height": 49,
+      "purpose": "Steam95 compact background for profession/medal reward, event image15; preserve distinct mini2 background"
     }
   ]
 }

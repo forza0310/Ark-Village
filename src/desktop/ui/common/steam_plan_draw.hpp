@@ -3,6 +3,7 @@
 // Short-lived GPU/font execution for maintained ordered plans; no Owner or animation clock.
 #include "ark/simulation/presentation/steam_human_skin.hpp"
 #include "ark/simulation/presentation/steam_manual_skin.hpp"
+#include "ark/presentation/script_text.hpp"
 #include "skin.hpp"
 #include <algorithm>
 #include <filesystem>
@@ -90,6 +91,16 @@ class SteamPlanDraw {
     void finish() const {
         if (!clips_.empty())
             throw std::invalid_argument("Unclosed source clip");
+    }
+    // SetClip replaces the current bounds; its matching pop restores the previous bounds.
+    void replace_clip(const std::array<int, 4> &r) {
+        clips_.push_back({origin_.x + r[0], origin_.y + r[1], float(r[2]), float(r[3])});
+    }
+    void whole_image(const char *png,std::array<int,2> position) const {
+        const std::string source=png;
+        const auto group=source.rfind("original/event/",0)==0?Sprites::Binding::event:
+            source.rfind("original/common/",0)==0?Sprites::Binding::common:Sprites::Binding::steam_common;
+        skin_.sprites.full_image(std::filesystem::path(png).filename().string(),point(position),group,active_clip());
     }
     void mapchip(const sim::SteamFacilityMapchip2 &p) const {
         const auto pieces = sim::steam_facility_mapchip2_draws(p);
@@ -214,11 +225,14 @@ class SteamPlanDraw {
         plain(value, x, y, steam_plan_color(p.rgb), size);
     }
     void literal(const std::string &value, const std::array<int, 4> &r, int anchor, int font_size,
-                 bool layout, const std::array<int, 3> &rgb, float available_width) const {
+                 bool layout, const std::array<int, 3> &rgb, float available_width,
+                 bool rich = false) const {
+        const auto decoded = rich ? decode_script_text(value) : ScriptText{};
+        const auto &visible = rich ? decoded.text : value;
         float size = font_size ? float(font_size) : 12.F;
         const float width = r[2] > 0 ? float(r[2]) : available_width;
-        size *= std::min(1.F, width / std::max(1.F, skin_.text.width(value, size)));
-        const float measured = skin_.text.width(value, size);
+        size *= std::min(1.F, width / std::max(1.F, skin_.text.width(visible, size)));
+        const float measured = skin_.text.width(visible, size);
         float x = origin_.x + r[0], y = origin_.y + r[1];
         if (layout) {
             if (anchor & 2)
@@ -235,7 +249,19 @@ class SteamPlanDraw {
             if (anchor & 0x20)
                 y -= size / 2;
         }
-        plain(value, x, y, steam_plan_color(rgb), size);
+        if (!rich) {
+            plain(value, x, y, steam_plan_color(rgb), size);
+            return;
+        }
+        for (const auto &run : decoded.runs) {
+            const Color color = run.rgb
+                ? Color{static_cast<unsigned char>(*run.rgb >> 16),
+                        static_cast<unsigned char>(*run.rgb >> 8),
+                        static_cast<unsigned char>(*run.rgb), 255}
+                : steam_plan_color(rgb);
+            plain(run.text, x, y, color, size);
+            x += skin_.text.width(run.text, size);
+        }
     }
     void learning(const sim::SteamHumanLearningText &p) const {
         const std::string name =

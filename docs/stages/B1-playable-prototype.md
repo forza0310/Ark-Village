@@ -15,6 +15,10 @@ Release22张条件详情图通过，覆盖普通两页/五行/长名和数值、
 
 新有效前缀为build/validation/business-liquidity/month-048b282-2b2916fd-82fe-4831-9dab-56cc86da1477/checkpoints/month-107：四星84800G/两月预算38820G、75点、人气3318、收入纪录39540G、50/50布局和25目标营业。冷载home状态核得0–9/11/13共12名既有住户保持；策略residents=8只表示本路线累计入住操作，不当当前总人数。五星差182人气/30460G收入，继续取得任务库存强化新店并验首次营业；全部775、自然通关/继续继承、完整原字体和OS输入仍待。证据为同根business-observe-result.json、month107-result.json及原回执日志，验收进程已退出，goal保持active、不推送。
 
+048批代码checkpoint为991e9f9。便携ZIP17210939字节（16.41MiB），解压28325943字节（27.01MiB）/755文件/15个必要DLL；独立解压、仅Windows系统PATH与无关cwd下--check及真实普通详情八帧通过，字体/26音频正常，进程已退出。包与记录位于同根release-package-f17122a419f9446f86d7f7012db7c874；本地三个月/完整Release标准/CI仍未运行。
+
+收口时正式d6b546c已交付正常89纯皮肤及共享scratch前提；下一批在613已准备16目标上补两份纯皮肤/两项显式源登记，共20维护目标、493→495，不再将正常89皮肤列作研究缺口。公共副钟/SEB、字体/物理输入仍分开，92只有静态合同。详见[下一批计划](../MILESTONES.md#research-613f45c-tax-introduction)，产品尚未落盘这些后继。
+
 <a id="research-68acd7c-commerce-successors"></a>
 ## 2026-10-14：设施图纸目录与交易反馈原序计划
 

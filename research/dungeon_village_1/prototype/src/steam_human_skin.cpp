@@ -863,12 +863,12 @@ std::optional<SteamHumanOverviewPlan> steam_human_attribute_result_skin(
         int value=before;
         if(frame>=move_end)value=after;
         else if(frame>=move_start&&delta) {
-            // RateConvert_countAnime先迈一步，signed余差决定终点；下降终点夹到起点，保留源特殊行为。
+            // RateConvert_countAnime先迈一步；余差为零或终点夹回起点时，原helper返回before。
             const auto first=std::int64_t(before)+(delta>0?1:-1),remaining=std::int64_t(after)-first;
             const auto proposed=move_start+3*remaining;
             if(!fits(first)||!fits(proposed))return {};
             const auto end=std::clamp(proposed,std::int64_t(move_start),std::int64_t(move_end));
-            if(!remaining||end==move_start)value=static_cast<int>(first);
+            if(!remaining||end==move_start)value=before;
             else if(frame>=end)value=after;
             else {
                 const auto scaled=remaining*(frame-move_start);

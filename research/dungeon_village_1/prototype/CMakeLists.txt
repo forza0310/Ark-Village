@@ -93,6 +93,7 @@ add_library(dungeon_village_startup_application src/startup_application.cpp src/
     src/steam_facility_skin.cpp src/steam_facility_catalog_skin.cpp src/steam_human_skin.cpp src/steam_information_skin.cpp
     src/steam_facility_effect_skin.cpp src/steam_facility_reputation_skin.cpp
     src/steam_village_activity_skin.cpp src/steam_town_progress_skin.cpp
+    src/steam_magic_pot_skin.cpp src/steam_magic_pot_effect_skin.cpp
     src/steam_main_menu_skin.cpp)
 dungeon_village_library(dungeon_village_startup_application)
 target_link_libraries(dungeon_village_startup_application PUBLIC dungeon_village_startup_world
@@ -168,6 +169,7 @@ endif()
 add_executable(dungeon_village_startup_world_visuals_tests tests/startup_world_visuals_test.cpp
     tests/startup_skin_checks.cpp tests/steam_startup_skin_checks.cpp tests/steam_facility_skin_checks.cpp
     tests/steam_village_skin_checks.cpp tests/steam_town_progress_skin_checks.cpp
+    tests/steam_magic_pot_skin_checks.cpp
     tests/steam_human_skin_checks.cpp
     ../tools/src/sprite.cpp ../tools/src/table.cpp)
 target_include_directories(dungeon_village_startup_world_visuals_tests PRIVATE ../tools/include)

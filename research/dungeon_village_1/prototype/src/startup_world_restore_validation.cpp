@@ -720,7 +720,7 @@ struct Validation {
             if (!counter(n))
                 return fail("page: 计数非法");
         for (const auto &[id, n] : s.page_secondary_counters)
-            if (!counter(n)||!page_kind(id,{24,50,81,82})||
+            if (!counter(n)||!page_kind(id,{24,44,50,81,82})||
                 (page_kind(id,{82})&&(!s.facility_catalog_pages_initialized.count(id)||n==std::numeric_limits<int>::max())))
                 return fail("page: 独立计数非法");
         for (const auto &[id, n] : s.page_phases)
@@ -1053,6 +1053,9 @@ struct Validation {
                (p.legacy_page==48||p.legacy_page==49||p.legacy_page==50||p.legacy_page==95)&&
                !valid_startup_world_town_progress_page(s,p))
                 return fail("town progress: 缺完整初始化/退休载荷");
+            if (p.kind == ref::WorldScriptPageKind::raw_page && p.legacy_page >= 41 && p.legacy_page <= 47 &&
+                !valid_startup_world_magic_pot_page(s, p))
+                return fail("magic pot page: 初始化/关闭待退休载荷非法");
             if (p.lifecycle == 4 || p.kind == ref::WorldScriptPageKind::scene)
                 continue;
             const auto id = p.id;
@@ -1098,9 +1101,6 @@ struct Validation {
             } else if (raw >= 51 && raw <= 54) {
                 if (!activity_page(p))
                     return false;
-            } else if (raw >= 41 && raw <= 47) {
-                if (!valid_startup_world_magic_pot_page(s, p))
-                    return fail("magic pot page: 初始化/绑定/选择载荷非法");
             } else if (raw == 83 || raw == 84 || raw == 85 || raw == 86 || raw == 93) {
                 if (!commerce_page(p))
                     return false;

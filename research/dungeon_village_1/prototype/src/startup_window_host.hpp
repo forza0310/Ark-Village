@@ -166,6 +166,9 @@ class StartupWindowHost {
     StartupWorldRuntimeError act_magic_pot_page(std::uint64_t page, StartupMagicPotAction action, int selection = 0) {
         return command([&](auto &owner) { return owner.act_magic_pot_page(page, action, selection); });
     }
+    StartupWorldRuntimeError input_magic_pot_page(std::uint64_t page, const StartupMagicPotInput &input) {
+        return command([&](auto &owner) { return owner.input_magic_pot_page(page, input); });
+    }
     StartupWorldRuntimeError act_commerce_page(std::uint64_t page, StartupCommerceAction action, int selection = 0) {
         return command([&](auto &owner) { return owner.act_commerce_page(page, action, selection); });
     }

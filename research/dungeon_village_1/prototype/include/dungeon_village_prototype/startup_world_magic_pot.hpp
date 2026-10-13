@@ -8,6 +8,14 @@ enum class StartupMagicPotEntry { main_menu, development_menu };
 enum class StartupMagicPotAction {
     confirm, cancel, previous, next, select, previous_tab, next_tab
 };
+// 已解析的一轮输入；方向、选择／滚动和确认由同一Owner候选提交。
+// 41左右；42上下；43上下后左右。设备marker与手势不写入业务状态。
+struct StartupMagicPotInput {
+    bool up{}, down{}, left{}, right{}, confirm{}, cancel{};
+    std::optional<int> selection;
+    struct Scroll { bool absolute{}; int value{}; };
+    std::optional<Scroll> scroll;
+};
 struct StartupMagicPotView {
     int raw{};
     int phase{}; // 43两页，其他页0。
@@ -36,6 +44,8 @@ inspect_startup_world_magic_pot_page(const StartupWorldRuntimeState &state, std:
 StartupWorldRuntimeError act_startup_world_magic_pot_page(
     StartupWorldRuntimeState &state, std::uint64_t page, StartupMagicPotAction action,
     int selection = 0);
+StartupWorldRuntimeError input_startup_world_magic_pot_page(
+    StartupWorldRuntimeState &state, std::uint64_t page, const StartupMagicPotInput &input);
 std::optional<StartupWorldRuntimeState>
 update_startup_world_magic_pot_page(const StartupWorldRuntimeState &state, std::uint64_t page);
 // 只供村办53的私有候选使用：先扣q的共同顺序由村办Owner维护。

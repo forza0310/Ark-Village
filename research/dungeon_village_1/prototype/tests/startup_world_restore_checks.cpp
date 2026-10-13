@@ -1445,6 +1445,7 @@ int check_startup_world_restore_contracts(
             p.kind = r::WorldScriptPageKind::raw_page;
             p.legacy_page = raw;
             p.legacy_g = binding;
+            p.lifecycle = 0; // 对齐真实prepare_world_script_page producer，默认Page并非待Init态。
             state.scripts.pages.push_back(p);
             if (parent) state.magic_pot_page_parents.emplace(p.id, *parent);
             return p.id;
@@ -1479,6 +1480,10 @@ int check_startup_world_restore_contracts(
         reject(pot, "magic future processing timestamp", [&](auto &v) { v.legacy_n[12] = std::numeric_limits<int>::max(); });
         reject(pot, "magic display negative", [&](auto &v) { v.magic_pot_display[2][0] = -1; });
         reject(pot, "magic output negative", [&](auto &v) { v.magic_pot_output[0] = -1; });
+        auto history = pot;
+        history.magic_pot_display[0][0] = 1000;
+        history.magic_pot_display[1][0] = 1;
+        expect(history, true, "without44/45 consumer historical scratch has no active triple invariant");
         auto deposit = pot;
         const auto second = add(deposit, 42, -1, root);
         if (!p::initialize_startup_world_magic_pot_pages(deposit))
@@ -1487,7 +1492,9 @@ int check_startup_world_restore_contracts(
         expect(deposit, true, "magic42 inventory source and real parent41");
         reject(deposit, "magic42 missing parent", [&](auto &v) { v.magic_pot_page_parents.erase(second); });
         reject(deposit, "magic42 wrong parent", [&](auto &v) { v.magic_pot_page_parents.at(second) = v.scripts.pages.front().id; });
-        const auto animation = add(deposit, 44, 0, second);
+        if (p::act_startup_world_magic_pot_page(deposit, second, p::StartupMagicPotAction::confirm) != p::StartupWorldRuntimeError::none)
+            throw std::runtime_error("restore fixture cannot produce44 through actual42 deposit");
+        const auto animation = deposit.scripts.pages.back().id;
         if (!p::initialize_startup_world_magic_pot_pages(deposit))
             throw std::runtime_error("restore fixture cannot initialize44 binding");
         deposit.scripts.pages.back().lifecycle = 2;
@@ -1496,6 +1503,90 @@ int check_startup_world_restore_contracts(
             v.scripts.pages.back().legacy_g = std::numeric_limits<int>::max();
             v.magic_pot_page_data.at(animation)[2] = std::numeric_limits<int>::max();
         });
+        reject(deposit, "magic44 missing independent clock", [&](auto &v) { v.page_secondary_counters.erase(animation); });
+        reject(deposit, "magic44 negative independent clock", [&](auto &v) { v.page_secondary_counters.at(animation) = -1; });
+        reject(deposit, "magic44 overflowing independent clock", [&](auto &v) {
+            v.page_secondary_counters.at(animation) = std::numeric_limits<int>::max();
+        });
+        reject(deposit, "magic44 missing frozen comment", [&](auto &v) { v.magic_pot_comment.clear(); });
+        reject(deposit, "magic44 old value outside cap", [&](auto &v) { v.magic_pot_display[0][0] = 1000; });
+        reject(deposit, "magic44 new value outside cap", [&](auto &v) { v.magic_pot_display[1][0] = 1000; });
+        reject(deposit, "magic44 frozen result does not match request", [&](auto &v) { ++v.magic_pot_display[1][0]; });
+        auto saturated44 = deposit;
+        saturated44.magic_pot_display[0][0] = 998;
+        saturated44.magic_pot_display[1][0] = 999;
+        saturated44.magic_pot_display[2][0] = 4;
+        expect(saturated44, true, "44 saturation retains original requested4 rather than actual difference1");
+        saturated44.magic_pot_display[2][0] = std::numeric_limits<int>::max();
+        expect(saturated44, true, "44 frozen saturation addition uses int64 without overflow");
+        saturated44.magic_pot_display[0][4] = 1000;
+        expect(saturated44, true, "44 does not consume the historical fifth knowledge scratch column");
+        const auto replay = [&](const auto &source, std::uint64_t id, const p::StartupMagicPotInput &input) {
+            expect(source, true, "magic complete replay source");
+            const auto bytes = p::persistence_detail::encode_state(source);
+            auto restored = p::persistence_detail::decode_state(bytes, *source.rules), live = source;
+            expect(restored, true, "magic exact restored state");
+            ++checks;
+            if (p::persistence_detail::encode_state(restored) != bytes)
+                throw std::runtime_error("magic restore changed existing page/global payload");
+            const auto a = p::input_startup_world_magic_pot_page(live, id, input);
+            const auto b = p::input_startup_world_magic_pot_page(restored, id, input);
+            ++checks;
+            if (a != p::StartupWorldRuntimeError::none || a != b ||
+                p::persistence_detail::encode_state(live) != p::persistence_detail::encode_state(restored))
+                throw std::runtime_error("magic replay input differs including common random/output");
+            const auto next_live = p::prepare_startup_world_runtime(live);
+            const auto next_restored = p::prepare_startup_world_runtime(restored);
+            ++checks;
+            if (!next_live.candidate || !next_restored.candidate ||
+                p::persistence_detail::encode_state(*next_live.candidate) !=
+                    p::persistence_detail::encode_state(*next_restored.candidate))
+                throw std::runtime_error("magic replay update/retirement/output differs");
+        };
+        auto animated = deposit;
+        animated.page_counters.at(animation) = 34;
+        animated.page_secondary_counters.at(animation) = 17;
+        animated.magic_pot_display[0] = {1, 2, 3, 4, 5};
+        animated.magic_pot_display[1] = {3, 4, 5, 6, 5};
+        animated.magic_pot_display[2] = {2, 2, 2, 2, 0};
+        animated.magic_pot_comment = "就那样吧";
+        replay(animated, animation, {}); // 下一获准轮35排一次SE8，副钟及冻结展示不重置。
+        animated.page_counters.at(animation) = 36;
+        p::StartupMagicPotInput magic_input; magic_input.confirm = true;
+        replay(animated, animation, magic_input);
+        auto closing44 = animated;
+        magic_input = {}; magic_input.cancel = true;
+        if (p::input_startup_world_magic_pot_page(closing44, animation, magic_input) != p::StartupWorldRuntimeError::none)
+            throw std::runtime_error("magic44 actual close rejected");
+        expect(closing44, true, "closed44 retains valid bound parent and complete clocks until Finish");
+        reject(closing44, "closed44 missing secondary payload", [&](auto &v) { v.page_secondary_counters.erase(animation); });
+        reject(closing44, "closed44 missing frozen binding payload", [&](auto &v) { v.magic_pot_page_data.erase(animation); });
+        reject(closing44, "closed44 forged parent", [&](auto &v) { v.magic_pot_page_parents.at(animation) = root; });
+        reject(closing44, "closed44 still requires frozen comment", [&](auto &v) { v.magic_pot_comment.clear(); });
+        reject(closing44, "closed44 still requires valid result", [&](auto &v) { v.magic_pot_display[1][0] = 900; });
+        const auto finished44 = p::prepare_startup_world_runtime(closing44);
+        if (!finished44.candidate) throw std::runtime_error("closed44 actual Finish failed");
+        expect(*finished44.candidate, true, "Finish releases44 page maps and its second clock");
+        ++checks;
+        if (finished44.candidate->magic_pot_pages_initialized.count(animation) ||
+            finished44.candidate->magic_pot_page_data.count(animation) ||
+            finished44.candidate->magic_pot_page_lists.count(animation) ||
+            finished44.candidate->magic_pot_page_parents.count(animation) ||
+            finished44.candidate->page_secondary_counters.count(animation))
+            throw std::runtime_error("magic44 Finish retained transient payload");
+        auto inputs42 = pot;
+        for (std::size_t row = 0; row < inputs42.rules->items.size(); ++row) {
+            const auto definition = inputs42.rules->items[row].identity;
+            inputs42.items.at(definition).inventory = row < 7 ? 2 : 0;
+            inputs42.catalog.at({0, definition}) = inputs42.items.at(definition);
+        }
+        const auto inputs42_id = add(inputs42, 42, -1, root);
+        if (!p::initialize_startup_world_magic_pot_pages(inputs42))
+            throw std::runtime_error("magic42 replay Init failed");
+        inputs42.scripts.pages.back().lifecycle = 2;
+        inputs42.magic_pot_page_data.at(inputs42_id) = {6, 6, -1};
+        magic_input = {}; magic_input.up = magic_input.down = magic_input.confirm = true;
+        replay(inputs42, inputs42_id, magic_input); // 同一随机评语、投入结果和实际尾首行。
         auto recipes = pot;
         recipes.magic_pot_recipes.at(1).status = 1; // 47只绑定已发现的配方条件夹具。
         const auto third = add(recipes, 43, -1, root);
@@ -1512,6 +1603,46 @@ int check_startup_world_restore_contracts(
             v.scripts.pages.back().legacy_g = std::numeric_limits<int>::max();
             v.magic_pot_page_data.at(confirmation)[2] = std::numeric_limits<int>::max();
         });
+        auto closing47 = recipes;
+        magic_input = {}; magic_input.cancel = true;
+        if (p::input_startup_world_magic_pot_page(closing47, confirmation, magic_input) != p::StartupWorldRuntimeError::none)
+            throw std::runtime_error("magic47 actual cancel failed");
+        expect(closing47, true, "closed47 retains real selected43 parent until Finish");
+        reject(closing47, "closed47 missing list", [&](auto &v) { v.magic_pot_page_lists.erase(confirmation); });
+        reject(closing47, "closed47 missing counter", [&](auto &v) { v.page_counters.erase(confirmation); });
+        reject(closing47, "closed47 wrong parent", [&](auto &v) { v.magic_pot_page_parents.at(confirmation) = root; });
+        for (const int definition : {7, 35}) {
+            auto rewarding = recipes;
+            const auto row = std::find(rewarding.magic_pot_page_lists.at(third).begin(),
+                rewarding.magic_pot_page_lists.at(third).end(), definition);
+            if (row == rewarding.magic_pot_page_lists.at(third).end())
+                throw std::runtime_error("magic47 reward fixture needs real catalogue recipe");
+            rewarding.magic_pot_recipes.at(definition).status = 1;
+            rewarding.scripts.pages.back().legacy_g = definition;
+            rewarding.magic_pot_page_data.at(confirmation)[2] = definition;
+            const auto selected = static_cast<int>(row - rewarding.magic_pot_page_lists.at(third).begin());
+            rewarding.magic_pot_page_data.at(third) = {selected, selected, -1};
+            for (int col = 3; col < 7; ++col) rewarding.legacy_n[col] = 999;
+            rewarding.page_counters.at(confirmation) = 7;
+            magic_input = {}; magic_input.confirm = true;
+            replay(rewarding, confirmation, magic_input);
+            if (p::input_startup_world_magic_pot_page(rewarding, confirmation, magic_input) != p::StartupWorldRuntimeError::none)
+                throw std::runtime_error("magic47 actual reward confirmation failed");
+            expect(rewarding, true, "closed47 with real107/item-or-facility reward preserves parent anchor");
+            reject(rewarding, "rewarded47 still requires closed phase", [&](auto &v) { v.page_phases.erase(confirmation); });
+        }
+        auto rows = pot;
+        const auto rows_id = add(rows, 43, -1, root);
+        if (!p::initialize_startup_world_magic_pot_pages(rows))
+            throw std::runtime_error("magic replay43 actual Init failed");
+        rows.scripts.pages.back().lifecycle = 2;
+        const auto final_row = static_cast<int>(rows.magic_pot_page_lists.at(rows_id).size()) - 1;
+        rows.magic_pot_page_data.at(rows_id) = {final_row, final_row, -1};
+        rows.page_phases.at(rows_id) = 1;
+        magic_input = {}; magic_input.up = magic_input.down = magic_input.left = magic_input.right = true;
+        replay(rows, rows_id, magic_input); // 合法短尾窗与页签往返后同输入不变。
+        reject(rows, "magic43 offscreen selected row", [&](auto &v) { v.magic_pot_page_data.at(rows_id)[0] = 0; });
+        reject(rows, "magic43 unowned second clock", [&](auto &v) { v.page_secondary_counters[rows_id] = 0; });
         for (int raw : {45, 46}) {
             auto result = baseline;
             const auto id = add(result, raw, raw == 46 ? 1 : -1);
@@ -1519,6 +1650,19 @@ int check_startup_world_restore_contracts(
                 throw std::runtime_error("restore fixture cannot initialize45/46 result");
             result.scripts.pages.back().lifecycle = 2;
             expect(result, true, raw == 45 ? "magic45 queued result" : "magic46 undiscovered recipe");
+            if (raw == 45) {
+                reject(result, "45 knowledge old value outside cap", [&](auto &v) { v.magic_pot_display[0][4] = 1000; });
+                reject(result, "45 knowledge frozen result mismatch", [&](auto &v) { v.magic_pot_display[1][4] = 1; });
+                reject(result, "45 recent processed above original capacity", [&](auto &v) { v.legacy_n[2] = 11; });
+                result.page_counters.at(id) = 76;
+                magic_input = {}; magic_input.confirm = true;
+                replay(result, id, magic_input);
+                auto closing45 = result;closing45.page_counters.at(id) = 83;
+                if (p::input_startup_world_magic_pot_page(closing45, id, magic_input) != p::StartupWorldRuntimeError::none)
+                    throw std::runtime_error("45 actual close failed");
+                expect(closing45, true, "closed45 retains complete result until Finish");
+                reject(closing45, "closed45 knowledge mismatch rejects", [&](auto &v) { v.magic_pot_display[1][4] = 1; });
+            }
             reject(result, "magic result page cannot acquire fake parent", [&](auto &v) {
                 v.magic_pot_page_parents[id] = v.scripts.pages.front().id;
             });

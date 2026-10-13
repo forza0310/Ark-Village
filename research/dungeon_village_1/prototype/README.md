@@ -10,6 +10,7 @@
 | `startup_world_human`、`steam_human_skin` | 60详情、职业／赠礼目录和演出；[人物合同](../ui/STEAM_HUMAN_DETAIL.md) |
 | `startup_world_building`／`facility_catalog`／`facility_items`、`steam_facility_*_skin` | 74详情、79／72商品、75／76／77改良、82口碑；[设施皮肤](STEAM_FACILITY_SKIN.md)、[商品](../rules/COMMERCE.md)、[效果](../rules/FACILITY_EFFECTS.md) |
 | `startup_world_village_activity`／runtime_pages、`steam_village_activity_skin`／`steam_town_progress_skin` | 51–54村办、48／49／50晋级及95领取；[规则与皮肤](../ui/PAGES.md#steam-village-progress) |
+| `startup_world_magic_pot`、`steam_magic_pot_skin`／`steam_magic_pot_effect_skin` | 41–47壶目录、投入／处理演出、配方发现／制作确认；[操作与表现](../ui/STEAM_MAGIC_POT.md) |
 | `startup_world_menu`／`information`／`manual`／`save`、`steam_information_skin` | 菜单、34–39信息、13说明及14保存；[信息合同](../ui/INFORMATION_MENU.md)、[菜单](../ui/PAGES.md) |
 | `startup_application`、应用存储／标题／回放模块 | [应用](STARTUP_APPLICATION.md)、[存储事务](APPLICATION_STORAGE.md)、[标题](TITLE_MENU.md)、[完整回放](APPLICATION_REPLAY.md) |
 | `startup_world_persistence`／codec／restore_validation | [正常文件、精确回放及字段政策](PERSISTENCE.md) |

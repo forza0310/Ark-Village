@@ -8,6 +8,8 @@
 #include "dungeon_village_prototype/startup_world_facility_items.hpp"
 #include "dungeon_village_prototype/startup_world_facility_catalog.hpp"
 #include "dungeon_village_prototype/startup_world_magic_pot.hpp"
+#include "dungeon_village_prototype/steam_magic_pot_skin.hpp"
+#include "dungeon_village_prototype/steam_magic_pot_effect_skin.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 #include "dungeon_village_prototype/startup_world_persistence.hpp"
@@ -276,6 +278,12 @@ class SourceSprites {
     void facility_image(const SteamFacilityImage &request,Vector2 origin) {
         const auto resource=steam_facility_resource(request.asset);
         if(!resource)throw std::runtime_error("设施Steam资源映射缺失");
+        if(request.asset==SteamFacilityAsset::level_label&&!request.crop) {
+            // DrawImage(wnd_lv)是具名整图调用，不虚构SEB。
+            image(std::filesystem::path(resource->published_image).lexically_relative("original"),
+                {origin.x+request.position[0],origin.y+request.position[1]});
+            return;
+        }
         published_sprite(resource->image,resource->published_image,resource->published_sprite,
                          request.position,request.frame,request.crop,origin);
     }
@@ -930,6 +938,13 @@ void draw_human_overview(const SteamHumanOverviewPlan &plan,SourceSprites &sprit
         if(const auto *frame=std::get_if<SteamStartupFrameDraw>(&op)) {
             if(const auto *r=std::get_if<StartupSkinRect>(frame))rectangle(*r);
             else if(const auto *image=std::get_if<StartupSkinDraw>(frame)) {
+                if(image->image==121&&image->sprite==6) {
+                    StartupVisualDraw small_corner;
+                    small_corner.resource=StartupVisualResource::common;small_corner.image=121;
+                    small_corner.sprite=6;small_corner.frame=image->frame;small_corner.offset=image->offset;
+                    sprites.visual(small_corner,human_overview_origin);
+                    continue;
+                }
                 const auto asset=image->image==74?SteamFacilityAsset::title_arrows:image->image==28?SteamFacilityAsset::wood:
                     image->image==29?SteamFacilityAsset::title_bar:SteamFacilityAsset::corner;
                 if(image->image!=28&&image->image!=29&&image->image!=30&&image->image!=74)
@@ -1003,19 +1018,21 @@ template<class Plan> void draw_facility_ceremony(const Plan &plan,SourceSprites 
     };
     for(const auto &op:plan.operations)std::visit([&](const auto &value) {
         using T=std::decay_t<decltype(value)>;
-        if constexpr(std::is_same_v<T,SteamTownClip>) {
-            if(value.kind==SteamTownClipKind::push_intersect) {
+        if constexpr(std::is_same_v<T,SteamTownClip>||std::is_same_v<T,SteamMagicPotClip>) {
+            using Kind=decltype(value.kind);
+            if(value.kind==Kind::push_intersect) {
                 clips.push_back(clips.empty()?value.rectangle:intersect(clips.back(),value.rectangle));apply_clip();
-            } else if(value.kind==SteamTownClipKind::replace) {
+            } else if(value.kind==Kind::replace) {
                 if(clips.empty())clips.push_back(value.rectangle);else clips.back()=value.rectangle;
                 EndScissorMode();apply_clip();
             } else {
                 if(clips.empty())throw std::runtime_error("城镇演出裁剪下溢");
                 clips.pop_back();EndScissorMode();apply_clip();
             }
-        } else if constexpr(std::is_same_v<T,SteamVillageActivityImage>||std::is_same_v<T,SteamTownImage>) {
+        } else if constexpr(std::is_same_v<T,SteamVillageActivityImage>||std::is_same_v<T,SteamTownImage>||std::is_same_v<T,SteamMagicPotImage>) {
             const auto resource=[&] {
                 if constexpr(std::is_same_v<T,SteamVillageActivityImage>)return steam_village_activity_resource(value.asset);
+                else if constexpr(std::is_same_v<T,SteamMagicPotImage>)return steam_magic_pot_resource(value.asset);
                 else return steam_town_resource(value.asset);
             }();
             if(!resource)throw std::runtime_error("城镇活动资源映射缺失");
@@ -1025,7 +1042,7 @@ template<class Plan> void draw_facility_ceremony(const Plan &plan,SourceSprites 
                 sprites.image(relative,{human_overview_origin.x+value.position[0],human_overview_origin.y+value.position[1]});
             } else sprites.published_sprite(resource->image,resource->published_image,resource->published_sprite,
                 value.position,value.frame,value.crop,human_overview_origin);
-        } else if constexpr(std::is_same_v<T,SteamVillageActivityText>||std::is_same_v<T,SteamTownText>) {
+        } else if constexpr(std::is_same_v<T,SteamVillageActivityText>||std::is_same_v<T,SteamTownText>||std::is_same_v<T,SteamMagicPotText>) {
             std::string visible=value.value;
             if(value.rich)for(std::size_t at=0;(at=visible.find('<',at))!=std::string::npos;) {
                 const auto end=visible.find('>',at);if(end==std::string::npos)throw std::runtime_error("活动富文本标签未闭合");
@@ -1138,11 +1155,110 @@ std::optional<SteamTownProgressPlan> window_town_progress_plan(
     return {};
 }
 // 从已绘制的正式组件展开PC热区；设备只产生DTO，不保存第二份业务选择。
+std::optional<SteamMagicPotPlan> window_magic_pot_plan(
+    const StartupWorldRuntimeState &s,std::uint64_t id,const ChineseFont &font,bool first_touch=false) {
+    const auto view=inspect_startup_world_magic_pot_page(s,id);
+    if(!view||!s.rules)return {};
+    SteamMagicPotOptions o;o.view_y=23;o.scroll_first_touch=first_touch;
+    const std::string title=view->raw==43?"选择调和书 "+std::to_string(view->phase+1)+"/2":
+        view->raw==45?"研究报告":view->raw>=46?"调和":"魔法壶";
+    o.title_widths=std::array<int,2>{int(font.measure(title)),int(font.measure(title))};
+    if(view->raw<=43) {
+        o.button_widths={int(font.measure("放入道具")),int(font.measure("查看调和书"))};
+        o.hint_width=int(font.measure(view->selection?"使用魔法点数生成道具":"放入道具获得魔法点数"));
+        return steam_magic_pot_skin(s,id,o);
+    }
+    SteamMagicPotEffectOptions effect;effect.common=o;
+    if(view->raw==44)effect.comment_width=int(font.measure(s.magic_pot_comment));
+    if(view->raw==45)effect.report_header_widths=std::array<int,4>{int(font.measure(std::to_string(s.legacy_n[2]))),
+        int(font.measure("素材",11)),int(font.measure("消费",11)),int(font.measure("素材",11))};
+    if(view->raw>=46) {
+        const auto r=std::find_if(s.rules->magic_pot_recipes.begin(),s.rules->magic_pot_recipes.end(),
+            [&](const auto &v){return v.identity==view->binding;});
+        if(r==s.rules->magic_pot_recipes.end())return {};
+        std::string name;bool affordable=true;
+        for(int i=0;i<4;++i)affordable&=s.legacy_n[i+3]>=r->costs[i];
+        if(r->reward_kind==0) {
+            const auto d=std::find_if(s.rules->items.begin(),s.rules->items.end(),[&](const auto &v){return v.identity==r->reward_definition;});
+            if(d==s.rules->items.end())return {};name=d->name;
+        } else if(r->reward_kind<4) {
+            const auto d=std::find_if(s.rules->equipment.begin(),s.rules->equipment.end(),[&](const auto &v){return v.shop.kind==r->reward_kind&&v.shop.id==r->reward_definition;});
+            if(d==s.rules->equipment.end())return {};name=d->name;
+        } else {
+            const auto d=std::find_if(s.rules->facilities.begin(),s.rules->facilities.end(),[&](const auto &v){return v.id==r->reward_definition;});
+            if(d==s.rules->facilities.end())return {};name=d->name;
+        }
+        effect.reward_name_width=int(font.measure(name));
+        effect.confirm_width=int(font.measure(view->raw==47&&affordable?"制作!":"了解"));
+    }
+    return steam_magic_pot_effect_skin(s,id,effect);
+}
+// 仅有界参考图：明确条件Owner，借实际菜单／投入消费者取得载荷，不安装运行Session。
+StartupWorldRuntimeState magic_pot_example(const std::string &name) {
+    StartupSession initial;StartupWorldRuntimeSession session(initial.state(),ref::WorldRandomStream::from_java_seed(1));
+    auto s=session.state();s.scripts.pages.front().lifecycle=3;s.scripts.executing_page.reset();
+    s.scripts.user_flags|=3U;s.scripts.event_calls[101]=1;
+    const auto ready=[&] {
+        if(!initialize_startup_world_magic_pot_pages(s))throw std::runtime_error("Magic example initialization rejected");
+        auto &page=s.scripts.pages.back();page.lifecycle=2;
+        if(!inspect_startup_world_magic_pot_page(s,page.id))throw std::runtime_error("Magic example payload rejected");
+        return page.id;
+    };
+    if(open_startup_world_magic_pot(s,StartupMagicPotEntry::main_menu)!=StartupWorldRuntimeError::none)
+        throw std::runtime_error("Magic example entry rejected");
+    const auto root=ready();
+    if(name=="magic-pot-main")return s;
+    const auto act=[&](std::uint64_t id,StartupMagicPotAction action,int value=0) {
+        if(act_startup_world_magic_pot_page(s,id,action,value)!=StartupWorldRuntimeError::none)
+            throw std::runtime_error("Magic example actual action rejected");
+    };
+    if(name=="magic-pot-items"||name=="magic-pot-deposit") {
+        act(root,StartupMagicPotAction::confirm);const auto list=ready();
+        if(name=="magic-pot-items")return s;
+        act(list,StartupMagicPotAction::confirm);const auto animation=ready();
+        s.page_counters.at(animation)=97;s.page_secondary_counters.at(animation)=17;return s;
+    }
+    if(name=="magic-pot-report") {
+        // 原满容量但零待元素的补1分支；输入条件与自然经营分开。
+        auto pot=s.legacy_n;pot[1]=*ref::world_magic_pot_capacity(pot[11]);
+        const ref::WorldMagicPotDate date{s.scene.calendar.year,s.scene.calendar.month,s.scene.calendar.subperiod};
+        pot[12]=*ref::world_magic_pot_date(date).value-pot[1];
+        const auto result=ref::prepare_world_magic_pot_processing(pot,date);
+        if(!result.candidate||!result.candidate->changed)throw std::runtime_error("Magic report fixture rejected");
+        s.legacy_n=result.candidate->state;s.magic_pot_display=result.candidate->display;s.magic_pot_output=result.candidate->produced;
+        ref::WorldScriptPage page;page.id=s.scripts.next_page_id++;page.kind=ref::WorldScriptPageKind::raw_page;
+        page.legacy_page=45;page.lifecycle=0;s.scripts.pages.push_back(page);
+        const auto id=ready();s.page_counters.at(id)=83;return s;
+    }
+    const auto recipe=std::find_if(s.rules->magic_pot_recipes.begin(),s.rules->magic_pot_recipes.end(),
+        [](const auto &r){return (r.flags&2U)&&r.reward_kind==0;});
+    if(recipe==s.rules->magic_pot_recipes.end())throw std::runtime_error("Magic recipe fixture source missing");
+    if(name=="magic-pot-discovery") {
+        s.magic_pot_recipes.at(recipe->identity).status=0;
+        ref::WorldScriptPage page;page.id=s.scripts.next_page_id++;page.kind=ref::WorldScriptPageKind::raw_page;
+        page.legacy_page=46;page.legacy_g=recipe->identity;page.lifecycle=0;s.scripts.pages.push_back(page);
+        const auto id=ready();s.page_counters.at(id)=7;return s;
+    }
+    act(root,StartupMagicPotAction::select,1);act(root,StartupMagicPotAction::confirm);const auto catalogue=ready();
+    if(name=="magic-pot-recipes")return s;
+    if(name=="magic-pot-recipe-costs"){act(catalogue,StartupMagicPotAction::next_tab);return s;}
+    if(name!="magic-pot-confirm")throw std::runtime_error("Unknown magic example");
+    s.magic_pot_recipes.at(recipe->identity).status=1;
+    for(int i=0;i<4;++i)s.legacy_n[3+i]=recipe->costs[i];
+    const auto &list=s.magic_pot_page_lists.at(catalogue);const auto row=std::find(list.begin(),list.end(),recipe->identity);
+    if(row==list.end())throw std::runtime_error("Magic recipe not in actual catalogue");
+    act(catalogue,StartupMagicPotAction::select,int(row-list.begin()));act(catalogue,StartupMagicPotAction::confirm);
+    const auto id=ready();s.page_counters.at(id)=7;return s;
+}
 template<class Plan> std::vector<SteamStartupTouch> management_touches(const Plan &plan,SourceSprites &sprites) {
     std::vector<SteamStartupTouch> result;
     for(const auto &op:plan.operations)std::visit([&](const auto &value) {
         using T=std::decay_t<decltype(value)>;
         if constexpr(std::is_same_v<T,SteamStartupTouch>)result.push_back(value);
+        else if constexpr(std::is_same_v<T,SteamFacilityArrowTouch>) {
+            const auto arrow=facility_detail_arrow(value,sprites);
+            result.push_back({1,value.value,arrow.touch_rectangle,{},0});
+        }
         else if constexpr(std::is_same_v<T,SteamHumanEquipmentRow>||std::is_same_v<T,SteamFacilityEffectTouch>) {
             auto touch=value.touch;
             if(!touch.rectangle&&touch.image_draw&&*touch.image_draw<plan.operations.size()) {
@@ -1328,6 +1444,7 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
     Window window;
     Canvas canvas;
     SourceSprites sprites(assets / "original");
+    const bool magic_fixture=inspect_page.rfind("magic-pot-",0)==0;
     const bool management_fixture=inspect_page.rfind("village-",0)==0||inspect_page.rfind("town-",0)==0;
     const bool reputation_fixture=inspect_page=="facility-reputation"||inspect_page=="facility-reputation-result";
     std::string reputation_glyphs;
@@ -1341,7 +1458,34 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
         for(const auto &d:startup_world_rules().facilities)reputation_glyphs+=d.name;
         for(const auto &h:startup_world_rules().humans)reputation_glyphs+=h.name;
     }
+    if(magic_fixture) {
+        reputation_glyphs+="选择调和书放入道具查看使用魔法点数生成获得作成物持有数研究报告素材消费好好煮一煮可以制作了要制作吗不足了解知识火冰雷暗相性似乎不错成功感觉就那样吧嗯魔法壶姓名剩余未获得研究绘制夹具无自然触发认证？？？？？";
+        for(const auto &d:startup_world_rules().items)reputation_glyphs+=d.name;
+        for(const auto &d:startup_world_rules().equipment)reputation_glyphs+=d.name;
+        for(const auto &d:startup_world_rules().facilities)reputation_glyphs+=d.name;
+    }
     ChineseFont font(font_path,reputation_glyphs);
+    if(magic_fixture) {
+        const auto source=magic_pot_example(inspect_page);
+        const auto plan=window_magic_pot_plan(source,source.scripts.pages.back().id,font);
+        if(!plan)throw std::runtime_error("Magic example plan rejected");
+        int count{};
+        while(!WindowShouldClose()&&count<frames) {
+            BeginTextureMode(canvas.value);ClearBackground(Color{83,141,77,255});
+            font.text("研究绘制夹具",8,10,WHITE,10);draw_facility_ceremony(*plan,sprites,font);
+            font.text("无自然触发认证",8,260,WHITE,9);EndTextureMode();BeginDrawing();ClearBackground(BLACK);
+            DrawTexturePro(canvas.value.texture,{0,0,width,-height},{0,0,width*scale,height*scale},{0,0},0,WHITE);
+            EndDrawing();++count;
+            if(count==frames&&screenshot) {
+                if(!screenshot->parent_path().empty())std::filesystem::create_directories(screenshot->parent_path());
+                auto pixels=LoadImageFromScreen();if(!pixels.data)throw std::runtime_error("Magic screenshot missing");
+                const bool saved=ExportImage(pixels,screenshot->string().c_str());UnloadImage(pixels);
+                if(!saved)throw std::runtime_error("Magic screenshot refused");
+            }
+        }
+        std::cout<<"magic drawing fixture closed: page="<<inspect_page<<" frames="<<count<<" world_updates=0 natural_trigger_verified=false\n";
+        return 0;
+    }
     if(management_fixture) {
         // 仅例图的条件载荷，原定义和初值来自固定表；不安装世界或宣称自然经营。
         StartupSession original;
@@ -1755,6 +1899,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
     for (const auto &recipe : rules.magic_pot_recipes)
         glyphs += recipe.name;
     glyphs += "魔法壶投入配方开发暗相性似乎不错成功感觉就那样吧嗯";
+    glyphs += "选择调和书放入道具查看使用魔法点数生成获得作成物持有数研究报告素材消费好好煮一煮可以制作了要制作吗不足了解知识？？？？？";
     glyphs += "菜单冒险情报系统任务进度中止任务赠送礼物保存设置变更游戏方法排行榜结束游戏输入未接入"
               "研究适配页签设施列表持有物品装备一览村情报";
     glyphs += "村办季度剩余次数村子点开展活动完成等待尚未接入获得奖励金币配置更替确认领取设备一般";
@@ -2536,6 +2681,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
     std::optional<FacilityScrollDrag> human_scroll_drag; // 只保存平台拖动手势，目录游标在唯一Owner。
     std::optional<std::pair<std::uint64_t,int>> human_catalogue_marker;
     std::optional<std::pair<std::uint64_t,int>> facility_item_marker; // raw75 marker16，同页同绝对行的第二次UP。
+    std::optional<std::pair<std::uint64_t,int>> magic_item_marker; // raw42 marker16，跨页／拖动／暂停清除。
     bool human_scroll_gesture{};
     bool facility_scroll_gesture{}; // 即使切页清引用，仍吞掉本次拖动的最终release。
     auto build_orientation = ref::FacilityOrientation::first;
@@ -2552,7 +2698,9 @@ int run_startup_world_window(const std::filesystem::path &assets,
             current_top->kind==ref::WorldScriptPageKind::raw_page && current_top->legacy_page==17;
         if(human_scroll_drag&&(session.state().scene.framework_paused||
            current_top==session.state().scripts.pages.rend()||current_top->id!=human_scroll_drag->page||
-           (current_top->legacy_page!=60&&current_top->legacy_page!=61&&current_top->legacy_page!=64&&current_top->legacy_page!=75&&current_top->legacy_page!=79)))human_scroll_drag.reset();
+           (current_top->legacy_page!=42&&current_top->legacy_page!=43&&current_top->legacy_page!=51&&current_top->legacy_page!=54&&current_top->legacy_page!=60&&current_top->legacy_page!=61&&current_top->legacy_page!=64&&current_top->legacy_page!=75&&current_top->legacy_page!=79)))human_scroll_drag.reset();
+        if(magic_item_marker&&(session.state().scene.framework_paused||current_top==session.state().scripts.pages.rend()||
+           current_top->id!=magic_item_marker->first||current_top->legacy_page!=42||!IsWindowFocused()))magic_item_marker.reset();
         if(human_catalogue_marker&&(current_top==session.state().scripts.pages.rend()||
            current_top->id!=human_catalogue_marker->first))human_catalogue_marker.reset();
         if(facility_item_marker&&(session.state().scene.framework_paused||current_top==session.state().scripts.pages.rend()||
@@ -2649,29 +2797,59 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     }
                 }
             } else if (raw >= 41 && raw <= 47) {
-                const auto view = inspect_startup_world_magic_pot_page(session.state(), page->id);
-                if (view) {
-                    using A = StartupMagicPotAction;
-                    std::optional<A> action;
-                    int selected{};
-                    if (raw <= 43) {
-                        if (IsKeyPressed(KEY_UP)) action = A::previous;
-                        if (IsKeyPressed(KEY_DOWN)) action = A::next;
-                        const int count = raw == 41 ? 2 : static_cast<int>(view->entries.size());
-                        for (int n = view->first_visible; n < std::min(count, view->first_visible + 5); ++n)
-                            if (hit({12, 74.F + (n - view->first_visible) * 27, 216, 26})) {
-                                action = A::select;
-                                selected = n;
+                const auto view=inspect_startup_world_magic_pot_page(session.state(),page->id);
+                if(view) {
+                    const auto pid=page->id;
+                    const auto plan=window_magic_pot_plan(session.state(),pid,font,human_scroll_drag&&human_scroll_drag->page==pid);
+                    if(!plan)throw std::runtime_error("Magic pot input plan rejected");
+                    StartupMagicPotInput input;
+                    input.confirm=IsKeyPressed(KEY_ENTER);
+                    input.cancel=raw!=45&&(IsKeyPressed(KEY_ESCAPE)||hit({176,265,58,24}));
+                    input.up=(raw==42||raw==43)&&IsKeyPressed(KEY_UP);
+                    input.down=(raw==42||raw==43)&&IsKeyPressed(KEY_DOWN);
+                    input.left=(raw==41||raw==43)&&IsKeyPressed(KEY_LEFT);
+                    input.right=(raw==41||raw==43)&&IsKeyPressed(KEY_RIGHT);
+                    const auto point=[&](std::array<int,4> r){return Rectangle{human_overview_origin.x+r[0],human_overview_origin.y+r[1],float(r[2]),float(r[3])};};
+                    for(const auto &touch:management_touches(*plan,sprites)) {
+                        if(!touch.rectangle) {
+                            if(touch.component==2&&touch.option==2&&!pointer_consumed&&IsMouseButtonReleased(MOUSE_BUTTON_LEFT))input.confirm=true;
+                            continue;
+                        }
+                        if(!input.cancel&&!pointer_consumed&&IsMouseButtonReleased(MOUSE_BUTTON_LEFT)&&CheckCollisionPointRec(mouse,point(*touch.rectangle))) {
+                            if(touch.component==3||touch.component==11) {
+                                const int chosen=touch.value&0xffff;input.selection=chosen;
+                                input.confirm|=touch.option==0||magic_item_marker==std::make_pair(pid,chosen);
+                                if(raw==42)magic_item_marker=std::make_pair(pid,chosen);
+                            } else if(touch.component==4)input.confirm=true;
+                            else if(touch.component==1){input.left|=touch.value==16;input.right|=touch.value==18;}
+                            else if(touch.component==23){input.up|=touch.value==17;input.down|=touch.value==19;}
+                            else if(touch.component==2&&raw==42){input.up|=(*touch.rectangle)[1]<100;input.down|=(*touch.rectangle)[1]>=100;}
+                        }
+                    }
+                    if(raw==42||raw==43) {
+                        const int count=static_cast<int>(view->entries.size());
+                        for(const auto &op:plan->operations)if(const auto *bar=std::get_if<SteamHumanCatalogueScroll>(&op)) {
+                            const auto &r=bar->rectangles[1].rect;auto area=r;area[0]-=3;area[2]+=23;
+                            if(count>5&&hit(point(area))) {
+                                const float grid=std::max(float(111-(r[3]-1))/(count-5),1.F);
+                                human_scroll_drag=FacilityScrollDrag{pid,mouse.y,view->first_visible,grid};
+                                human_scroll_gesture=true;pointer_consumed=true;magic_item_marker.reset();
+                            } else if(count>5&&bar->track_touch.rectangle&&hit(point(*bar->track_touch.rectangle))) {
+                                input.scroll=StartupMagicPotInput::Scroll{false,mouse.y<human_overview_origin.y+r[1]?-5:5};
+                                pointer_consumed=true;magic_item_marker.reset();
                             }
+                        }
+                        const float wheel=GetMouseWheelMove();
+                        if(count>5&&wheel!=0){input.scroll=StartupMagicPotInput::Scroll{false,wheel>0?-1:1};magic_item_marker.reset();}
+                        if(human_scroll_drag&&human_scroll_drag->page==pid) {
+                            const double wanted=human_scroll_drag->first+std::trunc(double(mouse.y-human_scroll_drag->start_y)/human_scroll_drag->grid);
+                            input.scroll=StartupMagicPotInput::Scroll{true,int(std::clamp(wanted,0.,double(std::max(count-5,0))))};
+                        }
+                        if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT))human_scroll_drag.reset();
                     }
-                    if (raw == 43) {
-                        if (IsKeyPressed(KEY_LEFT)) action = A::previous_tab;
-                        if (IsKeyPressed(KEY_RIGHT)) action = A::next_tab;
-                    }
-                    if (raw != 45 && (IsKeyPressed(KEY_ESCAPE) || hit({8, 265, 58, 24}))) action = A::cancel;
-                    if (IsKeyPressed(KEY_ENTER) || hit({176, 265, 58, 24})) action = A::confirm;
-                    if (action && session.act_magic_pot_page(page->id, *action, selected) != StartupWorldRuntimeError::none)
-                        throw std::runtime_error("魔法壶输入事务失败");
+                    if(input.up||input.down||input.left||input.right||input.cancel)magic_item_marker.reset();
+                    if(input.up||input.down||input.left||input.right||input.confirm||input.cancel||input.selection||input.scroll)
+                        if(session.input_magic_pot_page(pid,input)!=StartupWorldRuntimeError::none)throw std::runtime_error("Magic pot input transaction rejected");
                 }
             } else if (raw == 72 || raw == 79 || raw == 82) {
                 const auto view=inspect_startup_world_facility_catalog_page(session.state(),page->id);
@@ -3940,6 +4118,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
             font.text("返回 Esc",12,263,ink,10);font.text("确定 Enter",170,263,ink,10);
             if(!command_feedback.empty())font.text(command_feedback,12,282,ink,10);
         } else if (const auto page = top_page()) {
+            const bool steam_magic=page->legacy_page>=41&&page->legacy_page<=47;
             const bool steam_commodity=page->legacy_page==72||page->legacy_page==79;
             const bool steam_reputation=page->legacy_page==82;
             const bool steam_effect=page->legacy_page>=75&&page->legacy_page<=77;
@@ -3952,7 +4131,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
             const bool steam_gift_result=page->legacy_page==66&&startup_world_human_page_ready(state,page->id);
             const bool steam_attribute_result=(page->legacy_page==68||page->legacy_page==69)&&startup_world_human_page_ready(state,page->id);
             const bool steam_profession=(page->legacy_page==62||page->legacy_page==63)&&startup_world_human_page_ready(state,page->id);
-            if (page->legacy_page != 21&&!steam_reputation&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result) DrawRectangle(5, 170, 230, 119, paper);
+            if (page->legacy_page != 21&&!steam_magic&&!steam_reputation&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result) DrawRectangle(5, 170, 230, 119, paper);
             std::string title = page->title;
             if (title.empty() && page->kind == ref::WorldScriptPageKind::raw_page) {
                 if (page->legacy_page == 30 || page->legacy_page == 31 || page->legacy_page == 32)
@@ -3973,56 +4152,12 @@ int run_startup_world_window(const std::filesystem::path &assets,
                          page->monster_definition)
                     title = rules.monsters.at(*page->monster_definition).name;
             }
-            if (page->legacy_page != 21&&!steam_reputation&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result)
+            if (page->legacy_page != 21&&!steam_magic&&!steam_reputation&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result)
                 font.text(title, 12, 177, ink, font.measure(title) > 208 ? 10 : 12);
-            if (page->legacy_page >= 41 && page->legacy_page <= 47) {
-                DrawRectangle(8, 42, 224, 214, paper);
-                const auto view = inspect_startup_world_magic_pot_page(state, page->id);
-                font.text("魔法壶", 16, 48);
-                if (view) {
-                    const int raw = view->raw;
-                    constexpr const char *elements[]{"火", "冰", "雷", "暗", "经验"};
-                    if (raw <= 43) {
-                        const int count = raw == 41 ? 2 : static_cast<int>(view->entries.size());
-                        for (int n = view->first_visible; n < std::min(count, view->first_visible + 5); ++n) {
-                            const int y = 74 + (n - view->first_visible) * 27;
-                            if (n == view->selection) DrawRectangle(12, y, 216, 26, {219, 232, 204, 255});
-                            std::string label, value;
-                            if (raw == 41) label = n == 0 ? "投入道具" : "开发";
-                            else {
-                                const int id = view->entries[n];
-                                if (raw == 42) {
-                                    label = rules.items.at(id).name;
-                                    value = "持有 " + std::to_string(state.items.at(id).inventory);
-                                } else {
-                                    const auto &r = rules.magic_pot_recipes.at(id);
-                                    label = state.magic_pot_recipes.at(id).status == 0 ? "????" : r.name;
-                                    value = view->phase == 0 ? std::to_string(r.experience_required) + "经验"
-                                        : std::to_string(r.costs[0]) + "/" + std::to_string(r.costs[1]);
-                                }
-                            }
-                            font.text(label, 16, y + 3, ink, 10);
-                            font.text(value, 222 - font.measure(value, 9), y + 3, ink, 9);
-                        }
-                        font.text("等级 " + std::to_string(state.legacy_n[11]) + "  投入 " + std::to_string(state.legacy_n[1]), 16, 216, ink, 10);
-                    } else if (raw == 44 || raw == 45) {
-                        const int cols = raw == 44 ? 4 : 5;
-                        for (int n = 0; n < cols; ++n) {
-                            const auto value = std::to_string(state.magic_pot_display[0][n]) + " > " + std::to_string(state.magic_pot_display[1][n]);
-                            font.text(elements[n], 16, 78 + n * 24, ink, 10);
-                            font.text(value, 94, 78 + n * 24, ink, 10);
-                        }
-                        if (raw == 44) font.text(state.magic_pot_comment, 16, 207, ink, 9);
-                    } else {
-                        const auto &r = rules.magic_pot_recipes.at(view->binding);
-                        font.text(raw == 46 ? "新配方" : "开发", 16, 74);
-                        font.text(r.name, 16, 103);
-                        if (raw == 47) for (int n = 0; n < 4; ++n)
-                            font.text(std::string(elements[n]) + " " + std::to_string(r.costs[n]), 16, 134 + n * 22, ink, 10);
-                    }
-                    if (view->raw != 45) font.text("返回", 16, 272, ink, 10);
-                    font.text("确定", 184, 272, ink, 10);
-                }
+            if (steam_magic) {
+                if(const auto plan=window_magic_pot_plan(state,page->id,font,human_scroll_drag&&human_scroll_drag->page==page->id))
+                    draw_facility_ceremony(*plan,sprites,font);
+                else if(page->lifecycle!=0)throw std::runtime_error("Magic pot drawing source rejected");
             } else if (steam_commodity) {
                 const auto plan=window_commodity_plan(state,page->id,font,human_scroll_drag&&human_scroll_drag->page==page->id);
                 if(!plan)throw std::runtime_error("Steam commodity skin rejected its source");

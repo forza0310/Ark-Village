@@ -431,6 +431,9 @@ std::string StartupApplication::act_magic_pot_page(std::uint64_t page,
         return world.act_magic_pot_page(page, action, selection);
     });
 }
+std::string StartupApplication::input_magic_pot_page(std::uint64_t page,const StartupMagicPotInput &input) {
+    return apply_world_action([&](auto &world) { return world.input_magic_pot_page(page,input); });
+}
 std::string StartupApplication::open_task_control_menu() {
     return apply_world_action([](auto &world) { return world.open_task_control_menu(); });
 }

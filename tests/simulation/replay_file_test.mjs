@@ -359,6 +359,7 @@ try {
         const referenceTrace = path.join(appRoot, 'reference.trace');
         const referenceWork = path.join(appRoot, 'reference');
         await fs.mkdir(referenceWork);
+        // 保留现持久化主程序的CLI入口别名v3；快照/Driver持久身份已是v4，二者不是同一版本字段。
         const referenceOutput = await run(['application-clear-conditions-v3', '--work-dir', referenceWork,
             '--save-directory', captures, '--trace-file', referenceTrace], applicationExecutable, 120000);
         const reference = await fs.readFile(referenceTrace);
@@ -373,7 +374,7 @@ try {
             throw new Error('应用条件reference必须含连续完整应用/Session/Driver/声音/事件/系统七字段');
         const summary = output => output.split(/\r?\n/).filter(s => s.startsWith('application replay summary ')).join('\n');
         const terminal = summary(referenceOutput);
-        if (!/^application replay summary frame=\d+ score=\d+ failures=[01] sounds=1 activation_sounds=2 checks=\d+$/.test(terminal))
+        if (!/^application replay summary frame=\d+ score=\d+ failures=[01] sounds=2 activation_sounds=2 checks=\d+$/.test(terminal))
             throw new Error('应用计分缺少真实完成/输出消费终点');
         const found = new Map();
         for (const line of referenceOutput.split(/\r?\n/)) {
@@ -416,7 +417,7 @@ try {
             refused = true;
         }
         if (!refused) throw new Error('应用非法CLI没有显式拒绝');
-        applicationCertificate = { controller: 'application-clear-conditions-v3', qualification: 'conditional_raw17_application_replay',
+        applicationCertificate = { controller: 'application-clear-conditions-v4', qualification: 'conditional_raw17_application_replay',
             captures: certificates, terminal_output: terminal, process_timeout_seconds: 120,
             comparison: '完整应用/Session历史/规范Driver/实际有序声音/事件4、5、6/隔离系统字节摘要三路相同',
             boundary: '合法raw17条件入口；不认证自然十六年、原标题人物或原版存档兼容' };

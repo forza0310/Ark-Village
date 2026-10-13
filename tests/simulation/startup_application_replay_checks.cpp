@@ -3,6 +3,9 @@
 #include "startup_application_replay_wire.hpp"
 #include "../../src/simulation/application/startup_application_replay_paths.hpp"
 #include "../../src/simulation/persistence/startup_world_file_io.hpp"
+#include "../../src/simulation/persistence/startup_world_codec.hpp"
+#include "../../src/simulation/persistence/startup_world_restore_validation.hpp"
+#include "ark/simulation/presentation/steam_clear_score_skin.hpp"
 
 #include <algorithm>
 #include <array>
@@ -25,7 +28,7 @@ std::filesystem::path create_application_clear_entry_fixture(const std::filesyst
 namespace {
 using Bytes = std::vector<std::uint8_t>;
 using Metadata = StartupApplicationReplayMetadata;
-constexpr const char *controller = "application-clear-conditions-v3";
+constexpr const char *controller = "application-clear-conditions-v4";
 constexpr const char *entry_controller = "application-clear-entry-fixture-v1";
 constexpr std::uint64_t limit = 4000;
 enum class Phase : std::uint64_t { advancing, row44, row45, final64, failure_observed, finished };
@@ -110,7 +113,7 @@ struct Driver {
     bool inject_failure{}, outputs_consumed{true};
 };
 Bytes encode(const Driver &d) {
-    Bytes b; text(b, "AVACDRV3"); text(b, "conditional_raw17");
+    Bytes b; text(b, "AVACDRV4"); text(b, "conditional_raw17");
     u64(b, 1); u64(b, 0); // 固定seed1/speed0，不是外推原版新局资格。
     for (auto n : {d.scenario, d.next_frame, d.next_command, d.clear_id, static_cast<std::uint64_t>(d.phase),
                    d.entry_high, d.entry_trophy, d.total, d.random, d.entry_steps, d.entry_history, d.entry_revision}) u64(b, n);
@@ -128,7 +131,7 @@ Bytes encode(const Driver &d) {
 }
 Driver decode(const Bytes &bytes) {
     require(bytes.size() <= 8192, "driver budget"); Reader r{bytes};
-    require(r.string() == "AVACDRV3" && r.string() == "conditional_raw17" &&
+    require(r.string() == "AVACDRV4" && r.string() == "conditional_raw17" &&
                 r.number() == 1 && r.number() == 0, "driver identity/seed/speed");
     Driver d;
     d.scenario = r.number(); d.next_frame = r.number(); d.next_command = r.number(); d.clear_id = r.number();
@@ -147,11 +150,11 @@ Driver decode(const Bytes &bytes) {
     }
     for (auto &n : d.event_base) n = r.number();
     for (auto &n : d.event_seen) n = r.number();
-    const auto count = r.number(); require(count <= 1, "driver sound count");
+    const auto count = r.number(); require(count <= 2, "driver clear Init/finish sound count");
     for (std::uint64_t i = 0; i < count; ++i) {
         require(r.number() == static_cast<std::uint64_t>(StartupAudioOperation::replace_bgm),
-                "fixture resumes main track with actual BGM replacement operation");
-        const auto sound = r.number(); require(sound == 1, "fixture only resumes BGM1"); d.sounds.push_back(1);
+                "clear Init/finish use actual BGM replacement operation");
+        const auto sound = r.number(); require(sound == i, "clear Init BGM0 precedes once-only finish BGM1"); d.sounds.push_back(static_cast<int>(sound));
     }
     d.failures = r.number(); d.successful = r.number(); d.checks = r.number();
     const auto inject = r.number(), consumed = r.number();
@@ -198,7 +201,8 @@ std::string validate(const StartupApplication &app, const Metadata &metadata) {
             require(page && page->id == d.clear_id && page->legacy_page == 17, "driver live clear binding");
             require(app.records().high_score == static_cast<std::int64_t>(d.entry_high) &&
                         app.records().score_village == d.entry_village && app.records().trophy == static_cast<int>(d.entry_trophy) &&
-                        d.event_seen == d.event_base && d.sounds.empty(), "private score before completion");
+                        d.event_seen == d.event_base && d.sounds==(d.next_frame==1?std::vector<int>{}:std::vector<int>{0}),
+                    "private score before completion; Init BGM0 is separate from title activation");
             if (d.next_frame == 1) require(!app.clear_page() && d.phase == Phase::advancing, "unadvanced entry");
             else require(app.clear_page().has_value(), "missing active clear controller");
             if (app.clear_page()) {
@@ -212,7 +216,7 @@ std::string validate(const StartupApplication &app, const Metadata &metadata) {
             }
             require(d.failures == (d.phase == Phase::failure_observed ? 1U : 0U), "failure only at preserved final64");
         } else {
-            require(!app.clear_page() && !app.clear_rows() && (!page || page->id != d.clear_id) && d.sounds == std::vector<int>{1},
+            require(!app.clear_page() && !app.clear_rows() && (!page || page->id != d.clear_id) && d.sounds == std::vector<int>({0,1}),
                     "completed clear retired and actual sound consumed");
             auto expected = d.event_base; ++expected[2]; ++expected[d.scenario == 0 ? 0 : 1];
             require(d.event_seen == expected && d.failures == std::uint64_t(d.inject_failure), "single actual finish events/failure");
@@ -277,6 +281,9 @@ std::string step(StartupApplication &app, Metadata &metadata, const std::filesys
     good(validate(app, metadata)); auto d = decode(metadata.controller_state);
     require(d.phase != Phase::finished && d.next_frame < limit, "bounded nonterminal update");
     const bool failing = d.phase == Phase::final64 && d.inject_failure;
+    const bool initializing=!app.clear_page();
+    const auto &clock=app.world()->state().page_secondary_counters;
+    const int previous_main=initializing?0:clock.at(d.clear_id);
     const auto before = failing ? digest(app, metadata) : std::string{};
     const auto system_before = failing ? read(system) : Bytes{};
     d.outputs_consumed = false;
@@ -301,9 +308,10 @@ std::string step(StartupApplication &app, Metadata &metadata, const std::filesys
     const bool finished = !app.clear_page();
     std::vector<int> sound_ids;
     for (const auto &sound : sounds) sound_ids.push_back(sound.id);
-    check(sound_ids == (finished && !failing ? std::vector<int>{1} : std::vector<int>{}), "exact once-only actual BGM output");
+    check(sound_ids == (finished && !failing ? std::vector<int>{1} : initializing?std::vector<int>{0}:std::vector<int>{}), "exact once-only clear Init and finish BGM outputs");
     check(sounds == (finished && !failing ?
               std::vector<StartupAudioRequest>{{StartupAudioOperation::replace_bgm, 1}} :
+              initializing?std::vector<StartupAudioRequest>{{StartupAudioOperation::replace_bgm,0}}:
               std::vector<StartupAudioRequest>{}) && app.take_sound_requests().empty(),
           "BGM operation survives conditional replay and both sinks share once-only consumption");
     auto expected_events = d.event_base;
@@ -312,7 +320,9 @@ std::string step(StartupApplication &app, Metadata &metadata, const std::filesys
     check(d.event_seen == expected_events, "events6 then4/5 commit once");
     check(app.world()->state().scene.random.draws() == d.random &&
               app.world()->state().simulation_steps == d.entry_steps && app.world()->checkpoints().size() == d.entry_history &&
-              app.records().revision==d.entry_revision+(finished && !failing?1U:0U),
+              app.records().revision==d.entry_revision+(finished && !failing?1U:0U)&&
+              app.world()->state().page_secondary_counters.at(d.clear_id)==
+                  (failing?previous_main:(std::int64_t(previous_main)+2)%std::numeric_limits<int>::max()),
           "clear preserves world/random/history and commits system revision exactly once");
     if (failing) ++d.failures; else ++d.successful;
     d.sounds.insert(d.sounds.end(), sound_ids.begin(), sound_ids.end()); d.outputs_consumed = true;
@@ -345,9 +355,68 @@ const char *boundary(Phase phase) {
     }
 }
 Metadata initial_metadata(const Driver &driver) {
-    Metadata m; m.controller_id = controller; m.producer_revision = "conditional-raw17-system2-audio-v3";
+    Metadata m; m.controller_id = controller; m.producer_revision = "conditional-raw17-independent-main-v4";
     m.next_frame = driver.next_frame; m.next_command = driver.next_command; m.controller_state = encode(driver);
     m.extensions = {{1024, 3, {0, 255, 1}}}; return m;
+}
+// 应用内嵌世界沿公开容器分区替换，仅准备字段损坏/回卷条件，不借业务计算制造期望。
+Bytes replace_nested_owner(const Bytes &original,const StartupWorldRuntimeState &state) {
+    namespace wire=application_replay_fixture;
+    std::size_t at=20;(void)wire::text(original,at);(void)wire::text(original,at);
+    const auto count=wire::number(original,at,4);
+    Bytes result(original.begin(),original.begin()+static_cast<std::ptrdiff_t>(at));
+    for(std::uint64_t i=0;i<count;++i) {
+        const auto start=at;const auto id=wire::number(original,at,4),version=wire::number(original,at,4),required=wire::number(original,at,4),length=wire::number(original,at,8);
+        (void)wire::text(original,at);require(at<=original.size()-64&&length<=original.size()-64-at,"nested Owner section bound");
+        at+=static_cast<std::size_t>(length);
+        if(id!=2)result.insert(result.end(),original.begin()+static_cast<std::ptrdiff_t>(start),original.begin()+static_cast<std::ptrdiff_t>(at));
+        else {
+            const auto payload=persistence_detail::encode_state(state);const auto hash=ark::assets::sha256_hex(payload);
+            wire::u32(result,2);wire::u32(result,static_cast<std::uint32_t>(version));wire::u32(result,static_cast<std::uint32_t>(required));
+            wire::u64(result,payload.size());wire::u32(result,static_cast<std::uint32_t>(hash.size()));result.insert(result.end(),hash.begin(),hash.end());
+            result.insert(result.end(),payload.begin(),payload.end());
+        }
+    }
+    require(at==original.size()-64,"nested Owner full sections consumed");
+    const auto hash=ark::assets::sha256_hex(result);result.insert(result.end(),hash.begin(),hash.end());return result;
+}
+int clear_clock_relationships(const std::filesystem::path &root,const std::filesystem::path &source,
+                             StartupApplication &app,Metadata &metadata) {
+    namespace wire=application_replay_fixture;
+    int checks{};const auto id=decode(metadata.controller_state).clear_id;
+    const auto image=read(source),driver=metadata.controller_state;const auto before=digest(app,metadata);
+    const auto input=steam_clear_score_input(app,id);
+    require(input&&input->stage_counter==45&&input->main_counter==app.world()->state().page_secondary_counters.at(id)&&
+            input->main_counter!=input->stage_counter&&!steam_clear_score_input(app,id+1),"real clear skin bridge reads two clocks and refuses stale ID");++checks;
+    for(int fault=0;fault<5;++fault) {
+        auto state=app.world()->state();
+        if(fault==0)state.page_secondary_counters.erase(id);
+        if(fault==1)state.page_secondary_counters.at(id)=std::numeric_limits<int>::max();
+        if(fault==2)state.page_secondary_counters.at(id)=-1;
+        if(fault==3)state.page_counters.erase(id);
+        if(fault==4)state.scripts.pages.back().lifecycle=0;
+        auto changed=wire::unpack(image);auto &world=wire::section(changed,4).bytes;world=replace_nested_owner(world,state);
+        const auto damaged=root/("bad-clear-clock-"+std::to_string(fault)+".avra"),target=root/("bad-clear-clock-target-"+std::to_string(fault));
+        const auto bytes=wire::pack(changed);{std::ofstream out(damaged,std::ios::binary);out.write(reinterpret_cast<const char*>(bytes.data()),static_cast<std::streamsize>(bytes.size()));require(bool(out),"write bad main fixture");}
+        const auto error=restore_startup_application_replay(damaged,target,controller,app,metadata,validate);
+        require(!error.empty()&&!std::filesystem::exists(target)&&digest(app,metadata)==before&&metadata.controller_state==driver&&read(source)==image,
+                "bad raw17 clock rejects before publication and preserves whole old application/driver");++checks;
+    }
+    for(int distance:{1,2}) {
+        auto state=app.world()->state();state.page_secondary_counters.at(id)=std::numeric_limits<int>::max()-distance;
+        auto changed=wire::unpack(image);auto &world=wire::section(changed,4).bytes;world=replace_nested_owner(world,state);
+        const auto file=root/("clear-clock-wrap-"+std::to_string(distance)+".avra"),target=root/("clear-clock-wrap-target-"+std::to_string(distance));
+        const auto bytes=wire::pack(changed);{std::ofstream out(file,std::ios::binary);out.write(reinterpret_cast<const char*>(bytes.data()),static_cast<std::streamsize>(bytes.size()));require(bool(out),"write main wrap fixture");}
+        auto replay=app;auto driver_copy=metadata;
+        good(restore_startup_application_replay(file,target,controller,replay,driver_copy,validate));
+        require(replay.take_audio_requests().empty()&&steam_clear_score_input(replay,id)->main_counter==std::numeric_limits<int>::max()-distance,
+                "restored initialized raw17 keeps main and never replays Init BGM0");++checks;
+        (void)step(replay,driver_copy,target/"system.avr");
+        const auto after=steam_clear_score_input(replay,id);
+        require(after&&after->main_counter==2-distance&&after->stage==5&&after->stage_counter==0,
+                "two sequential modulo advances survive stage reset without conflating bp");++checks;
+    }
+    return checks;
 }
 // 六个恢复关系场景共用另一应用套件的独立Wire工具，不使用被测control encoder造错档。
 int corrupted_clear_relationships(const std::filesystem::path &root, const std::filesystem::path &system,
@@ -457,10 +526,32 @@ int run_startup_application_replay_checks(const std::filesystem::path &root) {
         const auto live = owned.path / ("live" + std::to_string(scenario)); std::filesystem::create_directory(live);
         StartupApplication app(paths(live), ref::WorldRandomStream::from_java_seed(1));
         auto metadata = initial_metadata(initialize(app, entry, live, scenario));
+        require(!steam_clear_score_input(app,top(app)->id)&&top(app)->lifecycle==0,
+                "raw17 pending Init has no renderable clock or plan");++checks;
+        if(scenario==0) {
+            // 仅日期边界条件；实际共同更新/月变producer必须能提交新17，不跑16年前缀。
+            auto edge=app.world()->state();const auto old_id=top(app)->id;
+            edge.scripts.pages.erase(std::remove_if(edge.scripts.pages.begin(),edge.scripts.pages.end(),[=](const auto &p){return p.id==old_id;}),edge.scripts.pages.end());
+            edge.scripts.pages.back().lifecycle=2;edge.scene.top_is_main=true;
+            edge.completion_mode=edge.system_completion_mode=0;edge.scene.calendar={15,2,3,10799,10799,0};
+            const auto next=prepare_startup_world_runtime(edge);
+            require(next.candidate.has_value(),"calendar month boundary can commit actual raw17 producer");++checks;
+            const auto clear=std::find_if(next.candidate->scripts.pages.begin(),next.candidate->scripts.pages.end(),[](const auto &p){return p.kind==ref::WorldScriptPageKind::raw_page&&p.legacy_page==17;});
+            require(clear!=next.candidate->scripts.pages.end()&&clear->lifecycle==0&&valid_startup_world_clear_page(*next.candidate,*clear),
+                    "actual calendar-created17 remains pending with no inferred clocks");++checks;
+        }
+        {
+            auto world=*app.world();const auto before=startup_world_session_digest(world);
+            require(!world.update().candidate&&world.acknowledge_page(top(app)->id)!=StartupWorldRuntimeError::none&&
+                    startup_world_session_digest(world)==before,"world-only path cannot bypass application raw17 controller");++checks;
+        }
         const auto saved = owned.path / ("score" + std::to_string(scenario) + ".avra");
         while (decode(metadata.controller_state).phase != Phase::row45) step(app, metadata, (live / "system.avr"));
         good(save_startup_application_replay(owned.path, saved, app, metadata, validate));
-        if (scenario == 0) checks += corrupted_clear_relationships(owned.path, (live / "system.avr"), saved, app, metadata);
+        if (scenario == 0) {
+            checks += corrupted_clear_relationships(owned.path, (live / "system.avr"), saved, app, metadata);
+            checks += clear_clock_relationships(owned.path,saved,app,metadata);
+        }
         const auto before = digest(app, metadata);
         const auto bytes = read(saved);
         auto invalid = metadata; invalid.controller_state.push_back(0);
@@ -497,6 +588,14 @@ int run_startup_application_replay_checks(const std::filesystem::path &root) {
         }
         require(read(saved) == bytes && summary(app, metadata) == summary(restored, restored_metadata), "source unchanged and terminal summary equal"); ++checks;
         require(!restored.acknowledge_page(decode(restored_metadata.controller_state).clear_id).empty(), "retired clear cannot award twice"); ++checks;
+        const auto clear_id=decode(restored_metadata.controller_state).clear_id;
+        require(!steam_clear_score_input(restored,clear_id),"closed raw17 has no stale render plan");++checks;
+        auto closed=restored.world()->state();auto damaged=closed;damaged.page_secondary_counters.erase(clear_id);
+        require(!prepare_startup_world_runtime(damaged).candidate,"closed raw17 missing main rejects before Finish erases evidence");++checks;
+        const auto retired=prepare_startup_world_runtime(closed);
+        require(retired.candidate&&!retired.candidate->page_secondary_counters.count(clear_id)&&
+                !retired.candidate->page_counters.count(clear_id)&&!retired.candidate->page_phases.count(clear_id),
+                "actual next framework Finish retires both clocks and phase");++checks;
     }
     std::cout << "application replay checks=" << checks << '\n'; return checks;
 }

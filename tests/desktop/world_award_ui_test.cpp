@@ -333,10 +333,16 @@ void world_award_ui() {
     check(ui::world_progression_view(state, page).confirm_enabled,
           "Celebration enables confirmation exactly at source close threshold");
     page.legacy_page = 88;
+    page.lifecycle = 2; // This is the started ceremony, rather than raw48's Init-only page.
+    state.scripts.pages.back() = page;
+    state.rank_celebration_participants.erase(321);
+    state.page_secondary_counters.erase(321);
+    state.page_counters[321] = 0;
     state.page_human_bindings[321] = 19;
     state.page_phases[321] = 0;
     state.reward_display[0] = {10, 20};
     state.reward_display[1] = {15, 25};
+    state.reward_display[2] = {5, 5};
     progression = ui::world_progression_view(state, page);
     check(progression.initialized && progression.human == state.rules->humans.at(19).name &&
               progression.rows[0] == "满足 10 > 15" && !progression.confirm_enabled,
@@ -345,6 +351,10 @@ void world_award_ui() {
     check(ui::world_progression_view(state, page).confirm_enabled,
           "Award phase1 confirmation delegates skip/close to the simulation");
     page.legacy_page = 67;
+    page.legacy_f = 19;
+    page.legacy_g = 25;
+    state.scripts.pages.back() = page;
+    state.effort_display = {{{40, 50, 60, 70}, {42, 51, 59, 80}, {2, 1, -1, 10}}};
     for (const auto &[counter, accepted] :
          std::vector<std::pair<int, bool>>{{66, true}, {67, false}, {72, false}, {73, true}}) {
         state.page_counters[321] = counter;

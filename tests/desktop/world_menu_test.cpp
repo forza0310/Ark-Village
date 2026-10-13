@@ -1,13 +1,15 @@
 // Menu input owns desktop navigation only; freeze/atomic task opening belongs to session tests.
 #include "../../src/desktop/application/world_title.hpp"
 #include "../../src/desktop/input/world_save_menu.hpp"
+#include "../../src/desktop/ui/common/skin.hpp"
 #include "../../src/desktop/ui/information/world_information.hpp"
 #include "../../src/desktop/ui/system/world_manual.hpp"
 #include "../../src/desktop/ui/system/world_menu.hpp"
-#include "../../src/desktop/ui/system/world_startup.hpp"
+#include "../../src/desktop/ui/system/world_new_game.hpp"
 #include "../support/checks.hpp"
 #include "../support/world_fixture.hpp"
 #include "ark/simulation/world/startup_world_save.hpp"
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <fstream>
@@ -287,6 +289,7 @@ void world_menu() {
     manual_ui(check);
     namespace ui = desktop::ui;
     const auto middle = [](Rectangle r) { return Vector2{r.x + r.width / 2, r.y + r.height / 2}; };
+    desktop::Sprites sprites(ARK_TEST_ASSETS); // SEB metadata only, without a window/texture.
     // Title/slot navigation shares this menu suite. Rule and codec combinations remain in
     // world_save; this verifies the new cold-entry boundary and its actual file re-read.
     for (const auto extent :
@@ -295,6 +298,30 @@ void world_menu() {
         using Action = desktop::WorldTitleAction;
         auto boxes = desktop::world_title_layout(extent);
         desktop::WorldTitleSelection selection;
+        const auto source = ui::world_new_game_plan(selection.draft, 0, 0, 0, {48, 48}, 48);
+        check(source.has_value(), "Title input fixture supplies the actual raw91 source plan");
+        std::array<simulation::SteamManualArrowPlan, 2> arrows;
+        for (const auto &operation : source->operations)
+            if (const auto *arrow = std::get_if<simulation::SteamNewGameArrow>(&operation)) {
+                const auto bounds = sprites.frame_bounds("arrow02.seb", arrow->source.bounds_frame);
+                const auto plan = simulation::steam_manual_arrow_skin(
+                    arrow->source,
+                    {int(bounds.x), int(bounds.y), int(bounds.width), int(bounds.height)}, 128);
+                check(plan.has_value(), "Title arrow geometry resolves the real source SEB bounds");
+                arrows[arrow->value == 16 ? 0 : 1] = *plan;
+            }
+        const auto configuration = ui::world_new_game_layout(*source, extent, arrows);
+        boxes.fields = configuration.fields;
+        boxes.sex_arrows = configuration.arrows;
+        check(configuration.origin.x == (extent.width - 240) / 2 &&
+                  configuration.origin.y == (extent.height - 256) / 2 &&
+                  boxes.fields[0].x == configuration.origin.x + 106 &&
+                  boxes.fields[0].width == 114 && boxes.fields[3].height == 56,
+              "Raw91 Touch uses one integer-centred origin and keeps source-expanded start bounds");
+        for (const auto &arrow : boxes.sex_arrows)
+            check(arrow.x >= 0 && arrow.y >= 0 && arrow.x + arrow.width <= extent.width &&
+                      arrow.y + arrow.height <= extent.height,
+                  "New-game arrow margins stay inside the current viewport");
         std::array<app::WorldSaveSlotInfo, 2> slots{};
         desktop::WorldTitleInput input;
         check(boxes.background.width == 600 && boxes.background.height == 380 &&
@@ -350,18 +377,54 @@ void world_menu() {
         check(!desktop::world_title_input(selection, boxes, slots, input) &&
                   selection.page == Page::configure && selection.slot == 1,
               "An empty slot enters the four-field configuration");
+        input = {};
+        input.click = Vector2{boxes.sex_arrows[0].x + boxes.sex_arrows[0].width - 1,
+                              boxes.sex_arrows[0].y + boxes.sex_arrows[0].height - 2};
+        check(CheckCollisionPointRec(*input.click, boxes.fields[2]) &&
+                  !desktop::world_title_input(selection, boxes, slots, input) &&
+                  selection.field == 2 && selection.draft.human.sex == 1 &&
+                  selection.page == Page::configure,
+              "One overlapping gender-arrow release changes sex once before the wider field Touch");
+        input.click = middle(boxes.sex_arrows[1]);
+        desktop::world_title_input(selection, boxes, slots, input);
+        check(selection.draft.human.sex == 0 && selection.draft.human.name == "冒险太郎",
+              "The other source AddTouch arrow returns to the male default draft");
+        input.click = Vector2{boxes.fields[2].x + boxes.fields[2].width / 2,
+                              boxes.fields[2].y + boxes.fields[2].height - 2};
+        check(CheckCollisionPointRec(*input.click, boxes.fields[2]) &&
+                  CheckCollisionPointRec(*input.click, boxes.fields[3]) &&
+                  !CheckCollisionPointRec(*input.click, boxes.sex_arrows[0]) &&
+                  !CheckCollisionPointRec(*input.click, boxes.sex_arrows[1]),
+              "Source gender/start Touch overlap is separate from either AddTouch arrow");
+        check(!desktop::world_title_input(selection, boxes, slots, input) &&
+                  selection.page == Page::configure && selection.field == 2 &&
+                  selection.draft.human.sex == 1,
+              "A gender-field release in the start margin cannot install a new world");
+        input.click = middle(boxes.sex_arrows[1]);
+        desktop::world_title_input(selection, boxes, slots, input);
+        check(selection.draft.human.sex == 0,
+              "Return to the male draft before the independent gender-field click");
         input.click = middle(boxes.fields[2]);
         desktop::world_title_input(selection, boxes, slots, input);
         check(selection.draft.human.sex == 1 && selection.draft.human.name == "冒险花子",
               "Default name follows sex");
-        const auto &main_definition = simulation::startup_world_rules().humans.front();
-        const auto preview = ui::world_configuration_actor(selection.draft);
-        check(main_definition.identity == 0 && preview && !preview->shadow &&
-                  preview->body.image == simulation::startup_world_rules()
-                                             .jobs.at(main_definition.definition.current_profession)
-                                             .sprites[1] &&
-                  preview->body.sprite == 2 && preview->body.frame == 0,
-              "Configuration previews definition0 and draft sex without a live actor or clock");
+        const auto &jobs = simulation::startup_world_rules().jobs;
+        const auto adventure = std::find_if(jobs.begin(), jobs.end(),
+                                            [](const auto &job) { return (job.flags & 4U) != 0; });
+        const auto preview =
+            ui::world_new_game_plan(selection.draft, selection.field, 0, 0, {48, 48}, 48);
+        check(
+            adventure != jobs.end() && preview.has_value(),
+            "Configuration binds the published adventure profession and an explicit static frame");
+        const auto portrait = std::find_if(
+            preview->operations.begin(), preview->operations.end(), [](const auto &op) {
+                return std::holds_alternative<simulation::SteamHumanPortrait>(op);
+            });
+        check(portrait != preview->operations.end(), "New-game plan supplies its actor request");
+        const auto &actor = std::get<simulation::SteamHumanPortrait>(*portrait).actor;
+        check(!actor.shadow && actor.weapon && actor.body.image == adventure->sprites[1] &&
+                  actor.body.sprite == 2 && actor.body.frame == 0,
+              "Configuration reads draft sex and source weapon0 without creating a live actor");
         input.click = middle(boxes.fields[1]);
         desktop::world_title_input(selection, boxes, slots, input);
         selection.edit_text = "UI测试甲乙";
@@ -378,12 +441,44 @@ void world_menu() {
         check(selection.draft.human.sex == 0 && selection.draft.human.name == "UI测试甲" &&
                   selection.draft.human.custom_name,
               "Custom name survives sex switch");
-        const auto male_preview = ui::world_configuration_actor(selection.draft);
-        check(male_preview && male_preview->body.image ==
-                                  simulation::startup_world_rules()
-                                      .jobs.at(main_definition.definition.current_profession)
-                                      .sprites[0],
+        const auto male_preview =
+            ui::world_new_game_plan(selection.draft, selection.field, 0, 0, {48, 48}, 48);
+        check(male_preview.has_value(), "Committed male draft retains a valid source skin");
+        const auto male_portrait = std::find_if(
+            male_preview->operations.begin(), male_preview->operations.end(), [](const auto &op) {
+                return std::holds_alternative<simulation::SteamHumanPortrait>(op);
+            });
+        check(male_portrait != male_preview->operations.end() &&
+                  std::get<simulation::SteamHumanPortrait>(*male_portrait).actor.body.image ==
+                      adventure->sprites[0],
               "The committed draft sex change also updates the static character preview");
+        {
+            auto empty_selection = selection;
+            empty_selection.page = Page::text_edit;
+            empty_selection.field = 1;
+            empty_selection.edit_text.clear();
+            input = {};
+            input.confirm = true;
+            desktop::world_title_input(empty_selection, boxes, slots, input);
+            check(empty_selection.page == Page::configure &&
+                      empty_selection.draft.human.name.empty() &&
+                      empty_selection.draft.human.custom_name,
+                  "The approved PC editor can still commit an empty custom name");
+            empty_selection.draft.village.clear();
+            const auto empty =
+                ui::world_new_game_plan(empty_selection.draft, 1, 0, 0, {48, 48}, 48);
+            check(empty.has_value(), "Legal empty draft values do not crash new-game drawing");
+            int empty_values{};
+            for (const auto &operation : empty->operations)
+                if (const auto *text = std::get_if<simulation::SteamHumanOverviewText>(&operation))
+                    if (text->rectangle[0] == 163 &&
+                        (text->rectangle[1] == 135 || text->rectangle[1] == 157) &&
+                        text->value.empty())
+                        ++empty_values;
+            check(empty_values == 2 && empty_selection.draft.village.empty() &&
+                      empty_selection.draft.human.name.empty(),
+                  "Drawing-only placeholders are invisible and never written back to the draft");
+        }
         input = {};
         input.back = true;
         desktop::world_title_input(selection, boxes, slots, input);
@@ -581,5 +676,83 @@ void world_menu() {
           "Pending confirmation blocks duplicate Enter and Escape before acknowledgement");
     session.stop();
     std::cout << "World menu: " << check.count() << " checks\n";
+}
+// Optional actual-window raw91 snapshots; no new world, save, original OS input or page clock.
+void world_new_game_render_fixture() {
+    namespace ui = desktop::ui;
+    Checks check{"world_new_game_render_fixture"};
+    const auto output = std::filesystem::path(ARK_TEST_OUTPUT) / "new-game";
+    std::filesystem::create_directories(output);
+    struct Window {
+        Window() {
+            InitWindow(720, 600, "Ark-Village UI fixture / new-game draft");
+            if (!IsWindowReady())
+                throw std::runtime_error("New-game fixture could not create a window");
+            SetTargetFPS(60);
+        }
+        ~Window() { CloseWindow(); }
+    } window;
+    desktop::Sprites sprites(ARK_TEST_ASSETS);
+    desktop::Text text(ARK_TEST_FONT, "UI测试甲乙村城镇冒险者姓名比较长");
+    ui::Skin skin(sprites, text);
+    struct Sample {
+        const char *name;
+        int selected, sex;
+        bool long_name{}, empty{};
+    };
+    constexpr Sample samples[]{{"village-male", 0, 0},    {"name-male", 1, 0},
+                               {"sex-male", 2, 0},        {"start-male", 3, 0},
+                               {"village-female", 0, 1},  {"name-female", 1, 1},
+                               {"sex-female", 2, 1},      {"start-female", 3, 1},
+                               {"long-name", 1, 1, true}, {"empty-values", 0, 0, false, true}};
+    for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{720, 600}}) {
+        SetWindowSize(extent.width, extent.height);
+        for (const auto &sample : samples) {
+            app::WorldNewGameDraft draft;
+            app::change_world_draft_sex(draft, sample.sex);
+            if (sample.long_name) {
+                draft.village = "UI测试城镇名称比较长";
+                draft.human.name = "UI测试冒险者姓名比较长";
+                draft.human.custom_name = true;
+            } else if (sample.empty) {
+                draft.village.clear();
+                draft.human.name.clear();
+                draft.human.custom_name = true;
+            }
+            const auto before = draft;
+            const auto paint =
+                ui::prepare_world_new_game(draft, sample.selected, extent, skin, 0, 0);
+            for (const auto &field : paint.layout.fields)
+                check(field.width > 0 && field.height > 0 && field.x >= 0 && field.y >= 0 &&
+                          field.x + field.width <= extent.width &&
+                          field.y + field.height <= extent.height,
+                      "Actual measured raw91 Touch fits the displayed viewport");
+            for (int frame = 0; frame < 8; ++frame) {
+                check(!WindowShouldClose(), "New-game fixture remains open until capture");
+                BeginDrawing();
+                ClearBackground({145, 211, 247, 255});
+                DrawText("CONDITIONAL draft UI", 4, 4, 12, BLACK);
+                ui::draw_world_new_game(paint, skin);
+                text.flush(1, {});
+                EndDrawing();
+            }
+            const auto file =
+                output / ("raw91-" + std::to_string(extent.width) + "-" + sample.name + ".png");
+            auto image = LoadImageFromScreen();
+            const bool exported = image.data && ExportImage(image, file.string().c_str());
+            UnloadImage(image);
+            check(exported && std::filesystem::file_size(file) > 0,
+                  "Actual new-game rendering exports a nonempty PNG");
+            check(draft.village == before.village && draft.human.name == before.human.name &&
+                      draft.human.sex == before.human.sex &&
+                      draft.human.custom_name == before.human.custom_name &&
+                      draft.slot == before.slot,
+                  "Repeated source drawing preserves every approved draft field");
+            std::cout << "UI fixture / conditional raw91 sample=" << sample.name
+                      << " extent=" << extent.width << "x" << extent.height
+                      << " frames=8 screenshot=" << file.string() << '\n';
+        }
+    }
+    std::cout << "New-game rendering: " << check.count() << " checks\n";
 }
 } // namespace ark::test

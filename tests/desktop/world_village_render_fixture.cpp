@@ -2,13 +2,16 @@
 #include "../../src/desktop/scene/projection.hpp"
 #include "../../src/desktop/scene/world_canvas.hpp"
 #include "../../src/desktop/ui/common/skin.hpp"
+#include "../../src/desktop/ui/system/world_clear_score.hpp"
 #include "../../src/desktop/ui/village/world_commerce.hpp"
 #include "../../src/desktop/ui/village/world_progression.hpp"
 #include "../../src/desktop/ui/village/world_village_activity.hpp"
+#include "../support/checks.hpp"
 #include "../support/world_fixture.hpp"
 #include <algorithm>
 #include <filesystem>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 
 namespace ark::test {
@@ -270,5 +273,213 @@ void world_village_render_fixture() {
                     "Village drawing changed clocks, money, events or random");
             std::cout << "Village conditional render: screenshot=" << file.string() << '\n';
         }
+}
+
+namespace {
+// Explicit raw17 application callsite; this exercises the source bridge, not natural completion.
+std::pair<State, app::WorldSystemState> clear_callsite() {
+    auto state = initial_world();
+    state.scripts.pages.front().lifecycle = 3;
+    Page page;
+    page.kind = sim::rules::WorldScriptPageKind::raw_page;
+    page.legacy_page = 17;
+    page.lifecycle = 0; // The factory also enforces the natural pending Init state.
+    const auto opened =
+        sim::rules::prepare_world_script_page(sim::startup_world_runtime_scripts(state), page);
+    require(opened.candidate &&
+                sim::write_startup_world_runtime_scripts(state, opened.candidate->state),
+            "Clear-score application callsite failed");
+    app::WorldSystemState system;
+    require(app::advance_world_clear(state, system, false).empty() && system.clear.has_value(),
+            "Clear-score source initialization failed");
+    return {std::move(state), std::move(system)};
+}
+} // namespace
+void world_clear_score_ui() {
+    namespace ui = desktop::ui;
+    Checks check("World clear-score UI");
+    const auto [state, system] = clear_callsite();
+    const auto &clear = *system.clear;
+    const auto input = ui::world_clear_score_input(state, clear);
+    check(input && input->main_counter == 2 && input->stage_counter == 1 &&
+              input->captured_high_score == clear.score.captured_high_score,
+          "Clear bridge uses independent Owner clocks and frozen previous record");
+    auto changed = state;
+    changed.page_secondary_counters.at(clear.page) = 40;
+    const auto changed_clock = ui::world_clear_score_input(changed, clear);
+    check(changed_clock && changed_clock->main_counter == 40 && changed_clock->stage_counter == 1,
+          "Changing the real main-clock mirror never replaces the stage clock");
+    changed = state;
+    changed.page_secondary_counters.erase(clear.page);
+    check(!ui::world_clear_score_input(changed, clear),
+          "Missing main clock cannot be repaired by a presentation fallback");
+    changed = state;
+    ++changed.page_counters.at(clear.page);
+    check(!ui::world_clear_score_input(changed, clear),
+          "Stale application stage clock refuses a mixed publication");
+    changed = state;
+    ++changed.page_phases.at(clear.page);
+    check(!ui::world_clear_score_input(changed, clear),
+          "Stale application stage mirror refuses a mixed publication");
+    changed = state;
+    changed.page_secondary_counters.at(clear.page) = std::numeric_limits<int>::max();
+    check(!ui::world_clear_score_input(changed, clear),
+          "Unwrapped main clock is invalid instead of becoming a desktop animation clock");
+    changed = state;
+    changed.scripts.pages.back().lifecycle = 3;
+    check(!ui::world_clear_score_input(changed, clear),
+          "Suspended clear page cannot use active-page paint qualification");
+    changed.scripts.pages.back().lifecycle = 4;
+    check(!ui::world_clear_score_input(changed, clear),
+          "Retired page cannot paint an old clear controller");
+    auto stale = clear;
+    ++stale.page;
+    check(!ui::world_clear_score_input(state, stale),
+          "Application controller identity must match the actual top page");
+    stale = clear;
+    ++stale.score.sum;
+    check(!ui::world_clear_score_input(state, stale),
+          "Score-row association is checked without re-running the score consumer");
+    changed = state;
+    changed.scene.framework_paused = true;
+    check(ui::world_clear_score_input(changed, clear).has_value(),
+          "Paused rendering can read its unchanged initialized Owner payload");
+    const auto before_draws = state.scene.random.draws();
+    const auto before_sound = state.sound_requests;
+    for (int query = 0; query < 8; ++query)
+        check(ui::world_clear_score_input(state, clear).has_value(),
+              "Repeated clear-score bridge remains read-only");
+    check(state.scene.random.draws() == before_draws && state.sound_requests == before_sound &&
+              state.page_secondary_counters.at(clear.page) == 2 && clear.score.counter == 1,
+          "Bridge does not advance clocks, random or audio outputs");
+    std::cout << "World clear-score UI: " << check.count() << " checks\n";
+}
+void world_clear_score_render_fixture() {
+    using namespace desktop;
+    namespace ui = desktop::ui;
+    auto [owner, system] = clear_callsite();
+    std::vector<std::pair<std::string, sim::SteamClearScoreInput>> samples;
+    std::optional<sim::SteamClearScoreInput> first, last;
+    for (int update = 0; update < 3000 && system.clear; ++update) {
+        const auto input = ui::world_clear_score_input(owner, *system.clear);
+        require(input.has_value(), "Clear render application binding failed");
+        const int stage = input->stage, count = input->stage_counter;
+        if (!first)
+            first = input;
+        last = input;
+        const bool selected =
+            (stage == 0 && (count == 1 || count == 14 || count == 15 || count == 44 ||
+                            count == 45 || count == 75)) ||
+            (stage == 1 &&
+             ((input->row == 0 && (count == 14 || count == 15 || count == 44)) || count == 45)) ||
+            (stage == 2 && input->row == 0 && (count == 14 || count == 15)) ||
+            (stage == 3 && ((input->row == 0 && (count == 14 || count == 45)) || count == 15)) ||
+            (stage == 4 && count == 0) ||
+            (stage == 5 && input->row == 1 && (count == 14 || count == 15)) ||
+            (stage == 6 &&
+             (count == 14 || count == 15 || count == 39 || count == 40 || count == 64));
+        if (selected)
+            samples.emplace_back("score17-stage" + std::to_string(stage) + "-row" +
+                                     std::to_string(input->row) + "-phase" + std::to_string(count),
+                                 *input);
+        require(app::advance_world_clear(owner, system, count == 75 || (stage == 3 && count == 45))
+                    .empty(),
+                "Clear conditional source progression failed");
+    }
+    require(!system.clear && first && last && last->stage == 6,
+            "Clear callsite must complete once through the application consumer");
+    // Actor/blink boundary conditions are explicit paint inputs, never synthetic world updates.
+    for (int stage : {0, 3, 6})
+        for (int main : {20, 21}) {
+            auto input = stage == 0 ? *first : *last;
+            input.stage = stage;
+            input.stage_counter = stage == 0 ? 75 : stage == 3 ? 45 : 65;
+            input.row = stage == 6 ? 6 : 0;
+            input.main_counter = main;
+            samples.emplace_back("score17-arrow-stage" + std::to_string(stage) + "-main" +
+                                     std::to_string(main),
+                                 std::move(input));
+        }
+    for (int main : {0, 4}) {
+        auto input = *last;
+        input.stage = 4;
+        input.main_counter = main;
+        samples.emplace_back("score17-celebration-main" + std::to_string(main), std::move(input));
+    }
+    auto terminal = *last;
+    terminal.stage = 7;
+    terminal.stage_counter = 0;
+    terminal.rows.reset();
+    samples.emplace_back("score17-terminal7-no-seventh-row", terminal);
+    auto large = *first;
+    large.stage = 3;
+    large.stage_counter = 15;
+    large.sum = large.captured_high_score = std::numeric_limits<std::int64_t>::max();
+    (*large.rows)[0].count = (*large.rows)[0].score = large.sum;
+    samples.emplace_back("score17-conditional-long-number", std::move(large));
+    auto count = *first;
+    count.stage = 1;
+    count.stage_counter = 45;
+    (*count.rows)[0].count = 1234567;
+    samples.emplace_back("score17-conditional-comma-count", std::move(count));
+
+    InitWindow(480, 512, "Ark-Village clear-score / explicit application callsites");
+    struct WindowScope {
+        ~WindowScope() { CloseWindow(); }
+    } window;
+    Sprites sprites(ARK_TEST_ASSETS);
+    Text text(ARK_TEST_FONT,
+              "通关点数发表那么赶紧开始计算吧街道人气任务完成设施发现冒险者全员LV合计自宅努力度总和"
+              "追加排行榜更新接下来就是这样当前最高分0123456789,!…:");
+    ui::Skin skin(sprites, text);
+    WorldCanvas canvas;
+    const auto output = std::filesystem::path(ARK_TEST_OUTPUT) / "clear-score";
+    std::filesystem::create_directories(output);
+    const auto before = owner;
+    for (const auto extent : {Extent{240, 256}, Extent{720, 600}})
+        for (const auto &[name, input] : samples) {
+            SetWindowSize(extent.width, extent.height);
+            for (int frame = 0; frame < 4; ++frame) {
+                canvas.resize({GetRenderWidth(), GetRenderHeight()});
+                const auto raster =
+                    canvas_camera(viewport(canvas.size.width, canvas.size.height, extent), extent);
+                text.prepare(raster.zoom);
+                const auto plan = ui::prepare_world_clear_score(input, skin);
+                require(plan.has_value(), "Measured clear-score plan failed");
+                require(plan->soft_labels == std::array<int, 2>{0, 0} &&
+                            std::holds_alternative<sim::SteamStartupTouch>(plan->operations.back()),
+                        "Clear-score skin must keep empty soft labels and the global source touch");
+                BeginTextureMode(canvas.texture);
+                ClearBackground({145, 211, 247, 255});
+                BeginMode2D(raster);
+                ui::draw_world_clear_score(*plan, extent, skin);
+                EndMode2D();
+                text.flush(raster.zoom, raster.offset);
+                EndTextureMode();
+                BeginDrawing();
+                ClearBackground(BLACK);
+                DrawTexturePro(canvas.texture.texture,
+                               {0, 0, float(canvas.size.width), -float(canvas.size.height)},
+                               {0, 0, float(GetScreenWidth()), float(GetScreenHeight())}, {0, 0}, 0,
+                               WHITE);
+                EndDrawing();
+            }
+            const auto file = output / (name + "-" + std::to_string(extent.width) + ".png");
+            auto image = LoadImageFromScreen();
+            const bool saved = image.data && ExportImage(image, file.string().c_str());
+            if (image.data)
+                UnloadImage(image);
+            require(saved, "Clear-score callsite screenshot failed");
+            std::cout << "Clear-score conditional render: screenshot=" << file.string() << '\n';
+        }
+    require(same_world_clock(owner, before) && owner.page_counters == before.page_counters &&
+                owner.page_phases == before.page_phases &&
+                owner.page_secondary_counters == before.page_secondary_counters &&
+                owner.scene.random.draws() == before.scene.random.draws() &&
+                owner.sound_requests == before.sound_requests &&
+                owner.scene.world.world.ai.accounting.funds() ==
+                    before.scene.world.world.ai.accounting.funds(),
+            "Score drawing changed source clocks, funds, random or sound outputs");
+    std::cout << "PASS clear-score conditional painting; no natural completion or OS-input claim\n";
 }
 } // namespace ark::test

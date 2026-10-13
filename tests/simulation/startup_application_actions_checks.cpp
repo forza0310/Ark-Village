@@ -822,13 +822,25 @@ int run_startup_application_actions_checks(const std::filesystem::path &parent) 
     StartupWindowHost clear_host(std::move(clear_app));
     const auto clear_business=save_business(*clear_host.application());
     const auto clear_system=bytes(clear_files.root/"system.avr");
+    const auto clear_id=top(*clear_host.application()->world())->id;
     require(clear_host.update(true).committed && clear_host.application()->clear_page() &&
                 clear_host.application()->clear_page()->stage==0 &&
-                clear_host.application()->clear_page()->counter==1,
+                clear_host.application()->clear_page()->counter==1 &&
+                top(*clear_host.application()->world())->lifecycle==2 &&
+                clear_host.application()->world()->state().page_phases.at(clear_id)==0 &&
+                clear_host.application()->world()->state().page_counters.at(clear_id)==1 &&
+                clear_host.application()->world()->state().page_secondary_counters.at(clear_id)==2,
             "one early window confirmation enters application score exactly once without skipping its gate");
+    require(clear_host.take_audio_requests()==
+                std::vector<StartupAudioRequest>{{StartupAudioOperation::replace_bgm,0}} &&
+                clear_host.take_audio_requests().empty(),
+            "clear Init hands off typed BGM0 exactly once before the next window update");
     require(clear_host.update().committed && clear_host.application()->clear_page()->counter==2 &&
                 save_business(*clear_host.application())==clear_business &&
-                bytes(clear_files.root/"system.avr")==clear_system && clear_host.take_audio_requests().empty(),
+                bytes(clear_files.root/"system.avr")==clear_system && clear_host.take_audio_requests().empty() &&
+                clear_host.application()->world()->state().page_phases.at(clear_id)==0 &&
+                clear_host.application()->world()->state().page_counters.at(clear_id)==2 &&
+                clear_host.application()->world()->state().page_secondary_counters.at(clear_id)==4,
             "next score update advances once while preserving world money date random and system file");
     const auto entries = create_application_action_entry_fixtures(root);
     StartupApplication empty(paths(root, "empty"), ref::WorldRandomStream::from_java_seed(1));

@@ -2,9 +2,9 @@
 
 // No worker exists on the title screen. Loading prepares a private player-save candidate
 // before the one successful transfer to WorldSession; title input never advances the world.
+#include "../ui/common/layout.hpp"
 #include "ark/app/bootstrap/launch_options.hpp"
 #include "ark/app/session/world_system.hpp"
-#include "../ui/common/layout.hpp"
 
 namespace ark::desktop {
 class WorldAudio;
@@ -29,6 +29,7 @@ struct WorldTitleLayout {
     std::array<Rectangle, 2> slots;
     std::array<Rectangle, 3> actions;
     std::array<Rectangle, 4> fields;
+    std::array<Rectangle, 2> sex_arrows{}; // Only installed from the actual raw91 paint plan.
     Rectangle previous, next, accept;
 };
 struct WorldTitleInput {

@@ -393,6 +393,8 @@ bool initialize_startup_world_town_progress_pages(StartupWorldRuntimeState &cand
 // raw94赠予人及主钟生命周期；奖励定义仍按原领取时点读取，不提前发奖。
 bool valid_startup_world_gift_notice_page(const StartupWorldRuntimeState &state,const ref::WorldScriptPage &page);
 bool initialize_startup_world_gift_notice_pages(StartupWorldRuntimeState &candidate);
+// raw17由应用Owner推进。page_counters是阶段钟bp，secondary保存独立frame主钟。
+bool valid_startup_world_clear_page(const StartupWorldRuntimeState &state,const ref::WorldScriptPage &page);
 StartupWorldRuntimeError input_startup_world_runtime_rank_page(StartupWorldRuntimeState &state,
     std::uint64_t page,const StartupTownRankInput &input);
 // raw48独立选择条件说明/晋级/返回；raw49仍只查看，不调用此消费者。

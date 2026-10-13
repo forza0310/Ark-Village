@@ -14,6 +14,9 @@ void world_human();
 void world_tax();
 void world_village_activity();
 void world_village_render_fixture();
+void world_clear_score_render_fixture();
+void world_clear_score_ui();
+void world_new_game_render_fixture();
 void world_commerce();
 void world_facility_items();
 void world_human_render_fixture();
@@ -39,6 +42,9 @@ int main(int argc, char **argv) {
          {"world_tax", ark::test::world_tax},
          {"world_village_activity", ark::test::world_village_activity},
          {"world_village_render_fixture", ark::test::world_village_render_fixture},
+         {"world_clear_score_render_fixture", ark::test::world_clear_score_render_fixture},
+         {"world_clear_score_ui", ark::test::world_clear_score_ui},
+         {"world_new_game_render_fixture", ark::test::world_new_game_render_fixture},
          {"world_commerce", ark::test::world_commerce},
          {"world_facility_items", ark::test::world_facility_items},
          {"world_human_render_fixture", ark::test::world_human_render_fixture},

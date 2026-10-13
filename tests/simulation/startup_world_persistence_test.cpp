@@ -593,10 +593,14 @@ void application_clear_roundtrip(const StartupWorldRuntimeSession &baseline, con
     check(!error.empty() && app.clear_page() && app.clear_page()->counter == 64 &&
           startup_world_session_digest(*app.world()) == before && read(system) == original &&
           app.records().high_score == 0 && app.records().save_directory == original_directory &&
-          app.take_audio_requests().empty(),
+          app.take_audio_requests() ==
+              std::vector<StartupAudioRequest>{{StartupAudioOperation::replace_bgm, 0}},
           "failed clear commit preserves page, events, random, directories and pending outputs");
 #else
     (void)before; (void)original;
+    check(app.take_audio_requests() ==
+              std::vector<StartupAudioRequest>{{StartupAudioOperation::replace_bgm, 0}},
+          "clear retains exactly its earlier Init BGM0 before the final commit");
 #endif
     check(app.update().empty(), "clear final transaction retry");
     check(!app.clear_page() && !app.clear_rows() && app.records().high_score == total &&

@@ -1,15 +1,23 @@
 #include "../support/world_fixture.hpp"
-#include "ark/simulation/world/startup_world_save.hpp"
 #include "ark/assets/sha256.hpp"
+#include "ark/simulation/world/startup_world_save.hpp"
 #include "world_session_test_support.hpp"
 #include <filesystem>
 #include <fstream>
+#include <limits>
 
 namespace ark::test::world_session {
 namespace {
 std::string file_bytes(const std::filesystem::path &path) {
     std::ifstream in(path, std::ios::binary);
     return {std::istreambuf_iterator<char>(in), {}};
+}
+void same_clear_state(const app::WorldState &left, const app::WorldState &right) {
+    same_world(left, right);
+    check(left.page_phases == right.page_phases &&
+              left.page_secondary_counters == right.page_secondary_counters &&
+              left.sound_requests == right.sound_requests,
+          "Rejected raw17 transaction changed stage, independent main clock or audio");
 }
 void source_save_bridge() {
     const auto directory = std::filesystem::current_path() / "world-source-save-session-test";
@@ -121,20 +129,26 @@ void system_command_transactions() {
     retained.opaque_sections.push_back({1024, 2, {1, 2, 3}});
     std::filesystem::create_directories(directory);
     const auto system_path = app::world_system_path(directory);
-    check(sim::save_startup_system_file(system_path, retained, app::world_system_data_identity()).empty(),
+    check(sim::save_startup_system_file(system_path, retained, app::world_system_data_identity())
+              .empty(),
           "Canonical system2 fixture is written with its existing independent identity");
     const auto original_system = file_bytes(system_path);
     const auto compatible = app::read_world_system(directory);
     check(compatible.records && !compatible.missing && compatible.error.empty() &&
               compatible.records->high_score == retained.high_score &&
-              compatible.records->cash_peak == retained.cash_peak && compatible.records->trophy == 3 &&
+              compatible.records->cash_peak == retained.cash_peak &&
+              compatible.records->trophy == 3 &&
               compatible.records->facility_levels == retained.facility_levels &&
               compatible.records->profession_status == retained.profession_status &&
-              compatible.records->opaque_sections.front().bytes == retained.opaque_sections.front().bytes &&
-              compatible.records->revision == retained.revision && file_bytes(system_path) == original_system,
-          "Same-semantic pre-manual system2 file loads read-only with records and inheritance intact");
-    check(!sim::load_startup_system_file(system_path).records,
-          "Default maintenance loader rejects product identity instead of silently changing policy");
+              compatible.records->opaque_sections.front().bytes ==
+                  retained.opaque_sections.front().bytes &&
+              compatible.records->revision == retained.revision &&
+              file_bytes(system_path) == original_system,
+          "Same-semantic pre-manual system2 file loads read-only with records and inheritance "
+          "intact");
+    check(
+        !sim::load_startup_system_file(system_path).records,
+        "Default maintenance loader rejects product identity instead of silently changing policy");
     check(sim::save_startup_system_file(system_path, retained).empty() &&
               !app::read_world_system(directory).records,
           "Product loader rejects maintenance identity instead of falling back");
@@ -153,9 +167,11 @@ void system_command_transactions() {
     auto old_version = original_system;
     old_version.at(8) = 1;
     old_version.resize(old_version.size() - 64);
-    old_version += ark::assets::sha256_hex(std::vector<std::uint8_t>(old_version.begin(), old_version.end()));
+    old_version +=
+        ark::assets::sha256_hex(std::vector<std::uint8_t>(old_version.begin(), old_version.end()));
     rewrite(old_version);
-    check(!app::read_world_system(directory).records, "Old system version with a valid checksum remains rejected");
+    check(!app::read_world_system(directory).records,
+          "Old system version with a valid checksum remains rejected");
     rewrite(original_system);
     auto invalid_records = retained;
     invalid_records.trophy = 5;
@@ -221,38 +237,148 @@ void system_command_transactions() {
     page.id = state.scripts.next_page_id++;
     page.kind = rules::WorldScriptPageKind::raw_page;
     page.legacy_page = 17;
+    page.lifecycle = 0; // Natural clear producer publishes a pending page without clocks.
     state.scripts.pages.push_back(page);
     system = {};
+    // Reject a half-initialized natural entry before it can capture rows or emit Init audio.
+    for (int fault = 0; fault < 4; ++fault) {
+        auto bad = state;
+        auto bad_system = system;
+        if (fault == 0)
+            bad.page_counters.emplace(page.id, 0);
+        if (fault == 1)
+            bad.page_phases.emplace(page.id, 0);
+        if (fault == 2)
+            bad.page_secondary_counters.emplace(page.id, 0);
+        if (fault == 3)
+            bad.scene.framework_paused = true;
+        const auto unchanged = bad;
+        check(!app::advance_world_clear(bad, bad_system, true).empty() && !bad_system.clear,
+              "Pending or paused raw17 rejects extra clocks without capturing rows or audio");
+        same_clear_state(bad, unchanged);
+    }
+    const auto clear_random = state.scene.random.draws();
+    const auto clear_steps = state.simulation_steps;
     check(app::advance_world_clear(state, system, false).empty(),
           "Initialize source six-category projection");
+    check(
+        system.clear && system.clear->page == page.id && task_top(state).lifecycle == 2 &&
+            state.page_phases.at(page.id) == 0 && state.page_counters.at(page.id) == 1 &&
+            state.page_secondary_counters.at(page.id) == 2 &&
+            state.sound_requests ==
+                std::vector<sim::StartupAudioRequest>{{sim::StartupAudioOperation::replace_bgm, 0}},
+        "First raw17 update installs three clocks and emits exactly one typed BGM0 request");
+    // Consumption belongs to the application output bridge, never to querying or scoring.
+    state.sound_requests.clear();
+    for (int fault = 0; fault < 11; ++fault) {
+        auto bad = state;
+        auto bad_system = system;
+        if (fault == 0)
+            bad.page_counters.erase(page.id);
+        if (fault == 1)
+            bad.page_phases.erase(page.id);
+        if (fault == 2)
+            bad.page_secondary_counters.erase(page.id);
+        if (fault == 3)
+            bad.page_secondary_counters.at(page.id) = -1;
+        if (fault == 4)
+            bad.page_secondary_counters.at(page.id) = std::numeric_limits<int>::max();
+        if (fault == 5)
+            ++bad.page_counters.at(page.id);
+        if (fault == 6)
+            ++bad.page_phases.at(page.id);
+        if (fault == 7)
+            bad.scripts.pages.back().lifecycle = 0;
+        if (fault == 8)
+            bad_system.clear.reset();
+        if (fault == 9)
+            ++bad_system.clear->page;
+        if (fault == 10)
+            bad.scene.framework_paused = true;
+        const auto unchanged = bad;
+        const auto control_page = bad_system.clear ? bad_system.clear->page : 0;
+        check(
+            !app::advance_world_clear(bad, bad_system, true).empty() &&
+                (bad_system.clear ? bad_system.clear->page : 0) == control_page &&
+                (!bad_system.clear ||
+                 (bad_system.clear->score.stage == 0 && bad_system.clear->score.counter == 1 &&
+                  bad_system.clear->score.sum == 0)),
+            "Live raw17 rejects missing or mismatched clocks, controller and pause before writes");
+        same_clear_state(bad, unchanged);
+    }
+    // These are main-clock conditions, not changes to the source stage thresholds or date.
+    for (int distance : {1, 2}) {
+        auto wrap = state;
+        auto wrap_system = system;
+        wrap.page_secondary_counters.at(page.id) = std::numeric_limits<int>::max() - distance;
+        wrap.page_phases.at(page.id) = wrap_system.clear->score.stage = 1;
+        wrap.page_counters.at(page.id) = wrap_system.clear->score.counter = 74;
+        check(app::advance_world_clear(wrap, wrap_system, false).empty() &&
+                  wrap.page_secondary_counters.at(page.id) == 2 - distance &&
+                  wrap.page_phases.at(page.id) == 2 && wrap.page_counters.at(page.id) == 0 &&
+                  wrap_system.clear->score.stage == 2 && wrap_system.clear->score.counter == 0 &&
+                  wrap.sound_requests.empty(),
+              "Two sequential main-clock modulo advances survive stage reset without Init replay");
+    }
     std::int64_t expected{};
     for (const auto &row : system.clear->rows)
         expected += row.score;
     for (int n = 0; n < 3000 && system.clear &&
                     !(system.clear->score.stage == 6 && system.clear->score.counter == 64);
-         ++n)
+         ++n) {
+        const auto main = state.page_secondary_counters.at(page.id);
         check(app::advance_world_clear(state, system, true).empty(),
               "Advance one maintained scoring update");
+        check(system.clear &&
+                  state.page_secondary_counters.at(page.id) ==
+                      (std::int64_t(main) + 2) % std::numeric_limits<int>::max() &&
+                  state.page_counters.at(page.id) == system.clear->score.counter &&
+                  state.page_phases.at(page.id) == system.clear->score.stage &&
+                  state.sound_requests.empty() && state.scene.random.draws() == clear_random &&
+                  state.simulation_steps == clear_steps,
+              "Scoring updates preserve stage mirrors, random and world while not replaying BGM0");
+    }
     check(system.clear && system.clear->score.stage == 6 && system.clear->score.counter == 64 &&
               system.clear->score.sum == expected,
           "Every category has accumulated once before retirement");
     const auto before = state;
     const auto before_system = system;
+    const auto before_main = before.page_secondary_counters.at(page.id);
     auto candidate = state;
     auto next = system;
     check(app::advance_world_clear(candidate, next, false).empty() && !next.clear,
           "Finish through source events");
+    const std::vector<sim::StartupAudioRequest> finish_audio{
+        {sim::StartupAudioOperation::replace_bgm, 1}};
+    check(candidate.page_phases.at(page.id) == 7 && candidate.page_counters.at(page.id) == 0 &&
+              candidate.page_secondary_counters.at(page.id) ==
+                  (std::int64_t(before_main) + 2) % std::numeric_limits<int>::max() &&
+              candidate.sound_requests == finish_audio &&
+              candidate.scene.random.draws() == clear_random &&
+              candidate.simulation_steps == clear_steps,
+          "Prepared finish keeps both clocks until retirement and queues one typed BGM1 request");
+    const auto prepared = candidate;
     std::filesystem::remove(target);
     std::filesystem::create_directory(target);
     check(!app::commit_world_system(directory, before, candidate, next, true).empty() &&
               system.clear->score.counter == before_system.clear->score.counter &&
-              state.scripts.event_calls == before.scripts.event_calls,
+              state.scripts.event_calls == before.scripts.event_calls &&
+              state.sound_requests.empty() && candidate.sound_requests == finish_audio &&
+              std::filesystem::is_directory(target),
           "Failed tail cannot install score or events");
+    same_clear_state(state, before);
+    same_clear_state(candidate, prepared);
     std::filesystem::remove(target);
     check(app::commit_world_system(directory, before, candidate, next, true).empty() &&
               event_count(candidate, 6) == event_count(before, 6) + 1 &&
-              app::read_world_system(directory).records->high_score == expected,
+              app::read_world_system(directory).records->high_score == expected &&
+              candidate.sound_requests == finish_audio && state.sound_requests.empty(),
           "Retry tail writes one six-category record with one event6");
+    same_clear_state(candidate, prepared);
+    check(!app::advance_world_clear(candidate, next, true).empty() &&
+              candidate.sound_requests == finish_audio && !next.clear,
+          "Retired raw17 cannot repeat scoring, events or the pending finish audio on retry");
+    same_clear_state(candidate, prepared);
     std::filesystem::remove_all(directory);
 }
 void save_command_transactions() {

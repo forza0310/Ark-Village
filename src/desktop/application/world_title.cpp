@@ -2,12 +2,14 @@
 // Logo language fallback and title animation remain unbound; the existing static logo and
 // two manual Ark slots keep their approved product mapping, with deletion disabled.
 #include "world_title.hpp"
-#include "../resources/resources.hpp"
-#include "../ui/common/skin.hpp"
-#include "../ui/system/world_startup.hpp"
-#include "../platform/world_audio.hpp"
-#include "../scene/world_canvas.hpp"
 #include "../input/world_pointer.hpp"
+#include "../platform/world_audio.hpp"
+#include "../resources/resources.hpp"
+#include "../scene/world_canvas.hpp"
+#include "../ui/common/skin.hpp"
+#include "../ui/system/world_clear_score.hpp"
+#include "../ui/system/world_new_game.hpp"
+#include "../ui/system/world_startup.hpp"
 #include <algorithm>
 #include <iostream>
 #include <stdexcept>
@@ -59,8 +61,12 @@ void draw(const WorldTitleSelection &selection, const WorldTitleLayout &layout,
     }
     if (selection.page == WorldTitlePage::configure ||
         selection.page == WorldTitlePage::text_edit) {
-        ui::draw_world_configuration(selection.draft, selection.field, layout.fields, layout.panel,
-                                     skin);
+        const Extent extent{static_cast<int>(layout.viewport.width),
+                            static_cast<int>(layout.viewport.height)};
+        // No published raw91 Owner clock yet: explicit static PC presentation, never title FPS.
+        const auto paint =
+            ui::prepare_world_new_game(selection.draft, selection.field, extent, skin, 0, 0);
+        ui::draw_world_new_game(paint, skin);
         skin.button(layout.back, "返回");
         if (selection.page == WorldTitlePage::text_edit) {
             EndMode2D();
@@ -236,6 +242,12 @@ world_title_input(WorldTitleSelection &selection, const WorldTitleLayout &layout
         return {};
     }
     if (selection.page == WorldTitlePage::configure) {
+        // AddTouch arrows precede the larger field regions in the approved PC mapping.
+        if (hit(input, layout.sex_arrows[0]) || hit(input, layout.sex_arrows[1])) {
+            selection.field = 2;
+            app::change_world_draft_sex(selection.draft, 1 - selection.draft.human.sex);
+            return {};
+        }
         if (input.up)
             selection.field = (selection.field + 3) % 4;
         if (input.down)
@@ -247,6 +259,7 @@ world_title_input(WorldTitleSelection &selection, const WorldTitleLayout &layout
             if (hit(input, layout.fields[n])) {
                 selection.field = n;
                 activate = true;
+                break; // Earlier source fields own overlaps with the larger start touch margin.
             }
         if (!activate)
             return {};
@@ -364,29 +377,31 @@ bool run_world_title(const app::LaunchOptions &options, const std::filesystem::p
         if (options.inspect_page == "world-title-configure-female")
             app::change_world_draft_sex(selection.draft, 1);
     }
-    std::optional<app::WorldClearPage> clear_inspection;
+    std::optional<simulation::SteamClearScoreInput> clear_inspection;
     if (options.inspect_page == "world-title-clear") {
         const auto rows = simulation::startup_world_clear_score(initial);
         if (!rows.candidate)
             throw std::runtime_error("Clear inspection projection failed");
-        clear_inspection = app::WorldClearPage{*rows.candidate, {}, {}, 0};
+        simulation::StartupClearScorePageState score;
         // Explicit bounded presentation fixture from the real new world's counts, not a natural
         // clear.
-        while (clear_inspection->score.stage != 3 || clear_inspection->score.counter != 45) {
-            const auto next = simulation::prepare_startup_clear_score_page(
-                clear_inspection->rows, clear_inspection->score, true);
+        int main{};
+        while (score.stage != 3 || score.counter != 45) {
+            const auto next =
+                simulation::prepare_startup_clear_score_page(*rows.candidate, score, true);
             if (!next.candidate)
                 throw std::runtime_error("Clear inspection stage failed");
-            clear_inspection->score = *next.candidate;
-            ++clear_inspection->animation_counter;
-            if (clear_inspection->score.stage == 3 && clear_inspection->score.counter == 44) {
-                clear_inspection->score =
-                    *simulation::prepare_startup_clear_score_page(clear_inspection->rows,
-                                                                  clear_inspection->score, false)
-                         .candidate;
-                ++clear_inspection->animation_counter;
+            score = *next.candidate;
+            main += 2;
+            if (score.stage == 3 && score.counter == 44) {
+                score = *simulation::prepare_startup_clear_score_page(*rows.candidate, score, false)
+                             .candidate;
+                main += 2;
             }
         }
+        clear_inspection = simulation::SteamClearScoreInput{
+            score.stage,    score.counter, main, score.row, score.sum, score.captured_high_score,
+            *rows.candidate};
     }
     SetTargetFPS(60);
     int frames{};
@@ -395,7 +410,15 @@ bool run_world_title(const app::LaunchOptions &options, const std::filesystem::p
     while (!WindowShouldClose() && (!options.frames || frames < options.frames)) {
         audio.update(GetTime());
         const auto extent = canvas_extent(GetScreenWidth(), GetScreenHeight());
-        const auto layout = world_title_layout(extent);
+        auto layout = world_title_layout(extent);
+        if (selection.page == WorldTitlePage::configure ||
+            selection.page == WorldTitlePage::text_edit) {
+            const auto paint =
+                ui::prepare_world_new_game(selection.draft, selection.field, extent, skin, 0, 0);
+            layout.panel = paint.layout.panel;
+            layout.fields = paint.layout.fields;
+            layout.sex_arrows = paint.layout.arrows;
+        }
         const auto destination = viewport(GetScreenWidth(), GetScreenHeight(), extent);
         canvas.resize({GetRenderWidth(), GetRenderHeight()});
         const auto camera =
@@ -470,9 +493,12 @@ bool run_world_title(const app::LaunchOptions &options, const std::filesystem::p
         BeginTextureMode(canvas.texture);
         ClearBackground(BLACK);
         BeginMode2D(camera);
-        if (clear_inspection)
-            ui::draw_world_clear(*clear_inspection, extent, skin);
-        else
+        if (clear_inspection) {
+            const auto plan = ui::prepare_world_clear_score(*clear_inspection, skin);
+            if (!plan)
+                throw std::runtime_error("Clear presentation rejected");
+            ui::draw_world_clear_score(*plan, extent, skin);
+        } else
             draw(selection, layout, slots, skin, camera, system);
         EndMode2D();
         text.flush(camera.zoom, camera.offset);

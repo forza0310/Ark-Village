@@ -57,7 +57,9 @@ if(ARK_BUILD_DESKTOP)
         src/desktop/resources/sprites.cpp src/desktop/resources/text.cpp
         src/desktop/resources/asset_check.cpp src/desktop/resources/resource_metadata.cpp src/desktop/scene/sprite_picking.cpp src/desktop/scene/projection.cpp
         src/desktop/application/world_view.cpp src/desktop/inspection/world_inspection.cpp
-        src/desktop/input/world_save_menu.cpp src/desktop/application/world_title.cpp src/desktop/platform/world_audio.cpp src/desktop/ui/system/world_startup.cpp src/desktop/scene/world_scene.cpp
+        src/desktop/input/world_save_menu.cpp src/desktop/application/world_title.cpp src/desktop/platform/world_audio.cpp src/desktop/ui/system/world_startup.cpp
+        src/desktop/ui/system/world_new_game.cpp src/desktop/ui/system/world_clear_score.cpp
+        src/desktop/scene/world_scene.cpp
         src/presentation/world_rank.cpp src/desktop/scene/world_overlay_render.cpp src/desktop/inspection/world_task_inspection.cpp
         src/desktop/input/world_management.cpp src/desktop/inspection/world_management_inspection.cpp
         src/desktop/inspection/world_human_inspection.cpp

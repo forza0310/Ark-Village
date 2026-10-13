@@ -10,7 +10,6 @@ struct WorldClearPage {
     simulation::StartupClearScoreRows rows;
     simulation::StartupClearScorePageState score;
     std::uint64_t page{};
-    int animation_counter{}; // Whole presentation updates, separate from stage counter.
 };
 struct WorldSystemState {
     simulation::StartupSystemRecords records;

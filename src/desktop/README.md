@@ -1,5 +1,7 @@
 # desktop
 
+`ui/system/world_new_game`只准备和执行正式91有序计划，PC草稿/文本编辑/开始由`application/world_title`控制。字段和性别箭头热区来自同次计划及实际SEB bounds；显式静态钟与空串表现占位保持已确认适配。`ui/system/world_clear_score`严格绑定同一世界与应用计分控制器的双钟/六行，实际字体双测宽后有序绘制；不推进计分、不写纪录或发声音。`world_startup`仅保留标题纪录显示，旧手写新局/计分路径已撤。
+
 `ui/tasks/world_task_result`执行30胜利的主钟裁剪/经验/人气、独立副钟跳跃和当前职业/性别/主武器。`ui/actors/world_human_ceremony`执行67努力奖励、88授勋、96住宅完成的严格Owner计划，经village进程页面适配接入正常绘制，复用人物GPU末端的富文本、clip和Mapchip2。`ui/village/world_award`负责87三页名单及PC选中/询问，不重新排序或授奖。绘制不更新计数或重发奖励，确认仍经Session提交；80候选与33期限仅冻结纯接口，完整输入桥单列。
 
 `ui/tasks/world_task_selection`共用有序图元末端；`world_task_tracking`准备scene4/raw29信息计划并记录实际按钮/箭头热区，scene5只移动镜头。热区绑定冻结任务目录、当前目录规模、选择与窗口尺寸，换代/过期/pending拒绝命中；确认仍通过Session交唯一Owner。2112dd7的31/32纯计划已冻结，完整冻结f/g与游标桥另待，不能从实时队伍补造。文字队列每帧flush清理是本产品生命周期；未实现原Image文字缓存及重复重放，不把它混成GLText退休。

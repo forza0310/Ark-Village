@@ -15,8 +15,8 @@
 #include "../ui/common/skin.hpp"
 #include "../ui/common/world_panels.hpp"
 #include "../ui/common/world_reports.hpp"
+#include "../ui/system/world_clear_score.hpp"
 #include "../ui/system/world_menu.hpp"
-#include "../ui/system/world_startup.hpp"
 #include "../ui/tasks/world_tasks.hpp"
 #include "../ui/village/world_award.hpp"
 #include "ark/app/session/world_report.hpp"
@@ -588,8 +588,16 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                            pending_menu != 0, active_page(current));
         if (const auto *page = active_page(current)) {
             if (page->legacy_page == 17) {
-                if (publication->system.clear)
-                    ui::draw_world_clear(*publication->system.clear, extent, skin);
+                if (publication->system.clear) {
+                    const auto input =
+                        ui::world_clear_score_input(current, *publication->system.clear);
+                    if (!input)
+                        throw std::runtime_error("Clear presentation Owner mismatch");
+                    const auto plan = ui::prepare_world_clear_score(*input, skin);
+                    if (!plan)
+                        throw std::runtime_error("Clear presentation rejected");
+                    ui::draw_world_clear_score(*plan, extent, skin);
+                }
             } else if (management.draw_page(current, *page, extent, skin,
                                             !desired_pause && !failed && !pending_ack &&
                                                 !pending_task)) {
@@ -609,8 +617,8 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                     task_controls = ui::draw_world_task_selection(
                         task, box, skin, !desired_pause && !failed && !pending_task, task_feedback);
                 else if (task.raw >= 25)
-                    task_controls = ui::draw_world_task_followup(task, box, skin,
-                        !desired_pause && !failed && !pending_task, task_feedback);
+                    task_controls = ui::draw_world_task_followup(
+                        task, box, skin, !desired_pause && !failed && !pending_task, task_feedback);
                 else
                     ui::draw_world_task(task, box, skin, task_selection,
                                         !desired_pause && !failed && !pending_task, task_feedback);

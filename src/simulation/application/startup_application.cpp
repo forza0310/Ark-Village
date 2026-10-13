@@ -533,10 +533,7 @@ std::string StartupApplication::install_loaded(StartupWorldLoadResult loaded, in
     auto candidate = std::move(loaded.snapshot->session);
     const auto *p = top(candidate.state_);
     if (is_clear(p)) {
-        const auto n = candidate.state_.page_counters.find(p->id);
-        const auto phase = candidate.state_.page_phases.find(p->id);
-        if ((n != candidate.state_.page_counters.end() && n->second != 0) ||
-            (phase != candidate.state_.page_phases.end() && phase->second != 0))
+        if (!valid_startup_world_clear_page(candidate.state_,*p)||p->lifecycle!=0)
             return "世界回放不含已推进的应用计分控制器";
     }
     candidate.state_.cash_peak = storage_.records.cash_peak;
@@ -575,31 +572,47 @@ std::string StartupApplication::load_world_replay(const std::filesystem::path &p
 std::string StartupApplication::update_clear(bool confirm) {
     const auto &state = world_->state();
     const auto *p = top(state);
-    if (!is_clear(p) || state.scene.framework_paused || (clear_id_ && *clear_id_ != p->id))
+    if (!is_clear(p) || state.scene.framework_paused || (clear_id_ && *clear_id_ != p->id)||
+        !valid_startup_world_clear_page(state,*p)||clear_.has_value()!=clear_rows_.has_value()||
+        clear_.has_value()!=clear_id_.has_value())
         return "计分页无资格或引用失效";
+    const auto id=p->id;
+    if(clear_&&(p->lifecycle!=2||state.page_counters.at(id)!=clear_->counter||state.page_phases.at(id)!=clear_->stage))
+        return "世界计分页与应用计数阶段不同";
+    if(!clear_&&p->lifecycle!=0)return "已初始化计分页缺应用控制器";
     auto rows = clear_rows_;
     auto page = clear_;
+    auto candidate = *world_;
+    auto &s=candidate.state_;
+    auto current=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[=](const auto &v){return v.id==id;});
     if (!rows) {
         const auto score = startup_world_clear_score(state);
         if (!score.candidate) return "通关计分输入拒绝";
         rows = score.candidate;
         page = StartupClearScorePageState{};
         page->captured_high_score = storage_.records.high_score;
+        // 自然producer的wait为0；Init主钟归零、捕获六行及旧纪录，切换BGM0只发一次。
+        s.page_counters.emplace(id,0);s.page_phases.emplace(id,0);s.page_secondary_counters.emplace(id,0);
+        current->lifecycle=2;
+        s.sound_requests.push_back({StartupAudioOperation::replace_bgm,0});
     }
+    // 原通用Update及Update_clearPoint各推进一次frame，均独立取模；bp继续由阶段消费者持有。
+    auto &main=s.page_secondary_counters.at(id);
+    main=(main+1)%std::numeric_limits<int>::max();
+    main=(main+1)%std::numeric_limits<int>::max();
     const auto result = prepare_startup_clear_score_page(*rows, *page, confirm);
     if (!result.candidate) return "通关演出状态拒绝";
+    s.page_counters.at(id)=result.candidate->counter;s.page_phases.at(id)=result.candidate->stage;
     if (!result.finished_pulse) {
-        auto candidate = *world_;
-        candidate.state_.page_counters[p->id] = result.candidate->counter;
-        candidate.state_.page_phases[p->id] = result.candidate->stage;
-        clear_rows_ = std::move(rows); clear_ = result.candidate; clear_id_ = p->id;
+        auto audio=audio_requests_;auto output=candidate.take_audio_requests();
+        audio.insert(audio.end(),output.begin(),output.end());
+        clear_rows_ = std::move(rows); clear_ = result.candidate; clear_id_ = id;
+        audio_requests_=std::move(audio);
         world_ = std::move(candidate);
         return {};
     }
-    auto candidate = *world_;
-    auto &s = candidate.state_;
-    s.scripts.executing_page = p->id;
-    const auto closed = ref::prepare_world_script_close_page(startup_world_runtime_scripts(s), p->id);
+    s.scripts.executing_page = id;
+    const auto closed = ref::prepare_world_script_close_page(startup_world_runtime_scripts(s), id);
     if (!closed.candidate || !write_startup_world_runtime_scripts(s, closed.candidate->state))
         return "计分页关闭失败";
     s.sound_requests.push_back({StartupAudioOperation::replace_bgm, s.active_task && s.task.encounter ? 2 : 1});

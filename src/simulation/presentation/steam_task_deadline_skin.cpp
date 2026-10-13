@@ -1,5 +1,9 @@
 // Steam SubForm._draw1_2 VA10336228–103375CC；固定APK b/g.java:1457–1662交叉。
 #include "ark/simulation/presentation/steam_task_deadline_skin.hpp"
+#include "ark/simulation/presentation/steam_task_result_skin.hpp"
+#include "ark/simulation/actors/startup_world_human.hpp"
+#include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
+#include "ark/simulation/combat/rules/world_encounters.hpp"
 #include <algorithm>
 #include <limits>
 #include <set>
@@ -184,5 +188,88 @@ std::optional<Plan> steam_task_deadline_skin(const SteamTaskDeadlineInput &in) {
     // phase1仍绘制并注册；是否接受方向／确认由Owner Update决定，纯绘制不提前退休。
     for(int i=0;i<2;++i)p.operations.emplace_back(SteamStartupTouch{3,0x20000|i,std::array<int,4>{31+90*i,175,98,56},{},0});
     return p;
+}
+std::optional<SteamTaskDeadlineInput> steam_task_deadline_input(const StartupWorldRuntimeState &s,
+    std::uint64_t id) {
+    const auto page=std::find_if(s.scripts.pages.rbegin(),s.scripts.pages.rend(),
+        [](const auto &v){return v.lifecycle!=4;});
+    if(!s.rules||page==s.scripts.pages.rend()||page->id!=id||page->lifecycle!=2||page->legacy_page!=33||
+       !valid_startup_world_runtime_task_summary_ui_page(s,*page)||!page->task_definition)return {};
+    const auto ui=s.task_page_ui.find(id),end=s.task_page_ui.end();
+    const auto phase=s.page_phases.find(id),clock=s.page_counters.find(id),grade=s.deadline_grades.find(id),
+        answer=s.deadline_returns.find(id);
+    if(ui==end||phase==s.page_phases.end()||clock==s.page_counters.end()||grade==s.deadline_grades.end()||
+       answer==s.deadline_returns.end())return {};
+    const auto definition=std::find_if(s.rules->tasks.begin(),s.rules->tasks.end(),
+        [&](const auto &v){return v.factory.identity==*page->task_definition;});
+    if(definition==s.rules->tasks.end())return {};
+    const auto name=steam_task_display_name(s,*definition,false);if(!name)return {};
+    SteamTaskDeadlineInput in;in.phase=phase->second;in.selection=ui->second.selection;in.counter=clock->second;
+    in.grade=grade->second;in.fee=page->legacy_f;in.affordable=s.scene.world.world.ai.accounting.funds()>=in.fee;
+    in.task_name=*name;in.kind=definition->factory.kind;if(in.phase==1)in.answer=answer->second;
+    const ref::DungeonFinishTask *task=nullptr;
+    if(page->task_identity) {
+        const auto found=s.tasks.find(*page->task_identity);
+        if(found==s.tasks.end()||found->second.definition!=*page->task_definition)return {};
+        task=&found->second;
+    }
+    in.participants=s.participants;std::set<int> seen;
+    for(int identity:in.participants)if(seen.insert(identity).second) {
+        const auto h=startup_world_human_details(s,identity);
+        const auto b=s.scene.world.world.ai.battle.humans.find(identity);
+        if(!h||!h->equipment[0]||b==s.scene.world.world.ai.battle.humans.end())return {};
+        in.humans.push_back({identity,h->profession,*h->equipment[0],b->second.participant_downs});
+    }
+    // bl原序，仅查询其首同定义实例；不把活跃实例改为定义map排序。
+    for(const auto actor_id:s.scene.world.world.ai.human_order) {
+        const auto a=s.scene.world.world.ai.battle.actors.find(actor_id);
+        if(a==s.scene.world.world.ai.battle.actors.end())return {};
+        if(seen.count(a->second.definition))in.active_humans.push_back({a->second.definition,
+            a->second.control.action,a->second.hp.target,a->second.capacity});
+    }
+    if(in.kind==0) {
+        if(!definition->factory.facilities.empty()) {
+            const auto f=std::find_if(s.rules->facilities.begin(),s.rules->facilities.end(),
+                [&](const auto &v){return v.id==definition->factory.facilities.front();});
+            if(f==s.rules->facilities.end())return {};in.mapchip=f->display_id;
+        }
+        if(!task)in.progress=70; // 原aa为空的明确展示分支，不用于修补悬空绑定。
+        else {
+            if(!task->facility)return {};
+            const auto f=s.dungeon_facilities.find(*task->facility);
+            if(f==s.dungeon_facilities.end())return {};
+            // Dungeon消费者维护的原g→extent百分比；绘制不再次推进设施进度。
+            if(f->second.percent<0||f->second.percent>100)return {};in.progress=f->second.percent;
+        }
+    } else if(in.kind==1) {
+        const auto progress=s.task_progress.definitions.find(*page->task_definition);
+        if(progress==s.task_progress.definitions.end())return {};
+        const auto quota=ref::prepare_task_encounter_quota(definition->encounter_quota,
+            progress->second.completed,progress->second.flags);if(!quota)return {};
+        std::int64_t remaining=task?*quota:std::min(3,*quota);
+        if(task&&s.task.encounter) {
+            const auto event=s.scene.world.world.ai.encounters.find(*s.task.encounter);
+            if(event==s.scene.world.world.ai.encounters.end())return {};
+            remaining-=std::int64_t(event->second.runtime.spawned)-event->second.linked_monsters;
+        }
+        if(remaining<0||remaining>std::numeric_limits<int>::max())return {};
+        in.remaining=static_cast<int>(remaining);in.main_monster=definition->factory.monster;
+        in.encounter_monsters=definition->encounter_monsters;seen.clear();
+        const auto monster=[&](int identity)->bool {
+            if(!seen.insert(identity).second)return true;
+            const auto d=std::find_if(s.rules->monsters.begin(),s.rules->monsters.end(),
+                [&](const auto &v){return v.identity==identity;});
+            if(d==s.rules->monsters.end())return false;
+            in.monsters.push_back({identity,d->initial.body,d->initial.sprite_variant,d->shadow});return true;
+        };
+        if(!monster(*in.main_monster))return {};
+        for(int identity:in.encounter_monsters)if(!monster(identity))return {};
+    } else return {};
+    return in;
+}
+std::optional<SteamTaskDeadlinePlan> steam_task_deadline_skin(const StartupWorldRuntimeState &s,
+    std::uint64_t id,const SteamTaskDeadlineOptions &options) {
+    auto in=steam_task_deadline_input(s,id);if(!in)return {};in->options=options;
+    return steam_task_deadline_skin(*in);
 }
 } // namespace ark::simulation

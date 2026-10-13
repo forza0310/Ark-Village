@@ -434,8 +434,9 @@ TaskCommandResult prepare_world_task_departure(const State &s, TaskCommandInput 
     Candidate c;
     c.state = s;
     auto &next = c.state;
-    if (!increment(next.page_counter) || !increment(next.secondary_counter))
-        return fail(CommandError::numeric_overflow);
+    // 原SubForm.Update的主／副钟先(+1)%INT_MAX，再进入28；入场延迟和人数不是此钟。
+    next.page_counter=(next.page_counter+1)%std::numeric_limits<int>::max();
+    next.secondary_counter=(next.secondary_counter+1)%std::numeric_limits<int>::max();
     if (next.accelerate_departure && next.page_counter < 90) {
         if (next.page_counter > std::numeric_limits<int>::max() - 5)
             return fail(CommandError::numeric_overflow);

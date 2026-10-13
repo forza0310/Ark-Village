@@ -55,4 +55,7 @@ struct SteamTaskRosterInput {
 };
 // 坏名单、游标、依赖和测宽显式拒绝；不补报名、收费、页面或随机。
 std::optional<SteamTaskRosterPlan> steam_task_roster_skin(const SteamTaskRosterInput &);
+// 只读已初始化真实栈顶25–28；冻结X／候选／选择读取Owner，不由绘制补字段或刷新名单。
+std::optional<SteamTaskRosterPlan> steam_task_roster_skin(
+    const StartupWorldRuntimeState &,std::uint64_t page,const SteamTaskRosterOptions &);
 } // namespace ark::simulation

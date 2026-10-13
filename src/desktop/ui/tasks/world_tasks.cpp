@@ -1,7 +1,7 @@
-// Frozen researche8f66d9 task input/data contract; responsive windows and list scrolling are
-// desktop adaptations. All counters below are source-page counters, never render-frame timers.
+// Read-only task projection and logical layouts; all cursors/counters belong to the Owner.
 #include "world_tasks.hpp"
 #include "../common/skin.hpp"
+#include "world_crew_summary.hpp"
 #include <algorithm>
 #include <stdexcept>
 
@@ -10,10 +10,6 @@ namespace {
 using State = simulation::StartupWorldRuntimeState;
 using Page = simulation::rules::WorldScriptPage;
 using Action = simulation::StartupWorldTaskAction;
-bool hit(std::optional<Vector2> point, Rectangle box) {
-    return point && point->x >= box.x && point->y >= box.y && point->x < box.x + box.width &&
-           point->y < box.y + box.height;
-}
 const simulation::StartupWorldHuman &human(const State &s, int id) {
     const auto it = std::find_if(s.rules->humans.begin(), s.rules->humans.end(),
                                  [id](const auto &value) { return value.identity == id; });
@@ -42,13 +38,16 @@ std::string title(int raw) {
     case 24:
         return "征集队员";
     case 25:
-        return "冒险队伍";
+        return "参加者名单";
     case 27:
-        return "追加队员";
+        return "参加委托";
     case 28:
-        return "准备出发";
+        return "任务开始";
+    case 31:
+    case 32:
+        return "成果";
     case 33:
-        return "任务期限";
+        return "任务继续确认";
     default:
         throw std::invalid_argument("Unsupported task page presentation");
     }
@@ -64,7 +63,7 @@ bool world_task_page(const Page &page) {
         return false;
     const int raw = page.legacy_page;
     return raw == 4 || raw == 22 || raw == 23 || raw == 24 || raw == 25 || raw == 26 || raw == 27 ||
-           raw == 28 || raw == 33;
+           raw == 28 || raw == 31 || raw == 32 || raw == 33;
 }
 bool world_task_page(const State &s, const Page &page) {
     return world_task_page(page) ||
@@ -86,8 +85,9 @@ WorldTaskView world_task_view(const State &s, const Page &page) {
     if (counter != s.page_counters.end())
         view.counter = counter->second;
     const auto phase = s.page_phases.find(page.id);
-    view.animating = phase != s.page_phases.end() && phase->second == 1;
-    if (view.raw >= 22 && view.raw <= 24 && page.lifecycle != 2)
+    view.phase = phase == s.page_phases.end() ? 0 : phase->second;
+    view.animating = view.phase == 1;
+    if (view.raw >= 22 && page.lifecycle != 2)
         return view;
     if (view.raw == 22 || view.raw == 23) {
         const auto selected = s.page_phases.find(page.id);
@@ -100,6 +100,14 @@ WorldTaskView world_task_view(const State &s, const Page &page) {
                 return view;
             view.first = first->second;
         }
+    }
+    if ((view.raw >= 25 && view.raw <= 28) || (view.raw >= 31 && view.raw <= 33)) {
+        const auto ui = s.task_page_ui.find(page.id);
+        if (ui == s.task_page_ui.end())
+            return view;
+        view.selected = ui->second.selection;
+        view.first = ui->second.first;
+        view.tab = ui->second.tab;
     }
     if (view.raw == 1) {
         view.abort_question = true;
@@ -135,9 +143,12 @@ WorldTaskView world_task_view(const State &s, const Page &page) {
     } else if ((view.raw == 25 || view.raw == 26)) {
         if (!page.task_identity)
             return view;
-        for (const int id : s.participants)
-            view.rows.push_back({{}, id, human(s, id).name, {}, false});
-        view.rows.push_back({{}, {}, "追加队员", {}, true});
+        for (const int id : s.task_page_ui.at(page.id).member_rows) {
+            if (id == -1)
+                view.rows.push_back({{}, {}, "追加队员", {}, true});
+            else
+                view.rows.push_back({{}, id, human(s, id).name, {}, false});
+        }
     } else if (view.raw == 27) {
         const auto extra = s.task_extra_pages.find(page.id);
         if (extra == s.task_extra_pages.end())
@@ -151,6 +162,18 @@ WorldTaskView world_task_view(const State &s, const Page &page) {
             return view;
         view.prediction = prediction->second;
         view.extent = 96;
+    } else if (view.raw == 31) {
+        const auto summary = world_crew_summary_view(s, page.id);
+        if (!summary.initialized)
+            return view;
+        for (const auto &h : summary.rows)
+            view.rows.push_back({{}, h.definition, h.name, {}, false});
+    } else if (view.raw == 32) {
+        const auto summary = s.exploration_summaries.find(page.id);
+        if (summary == s.exploration_summaries.end())
+            return view;
+        view.reward_ids = summary->second.rewards;
+        view.rows.resize(view.reward_ids.size());
     } else if (view.raw == 33) {
         const auto grade = s.deadline_grades.find(page.id);
         if (!s.deadline_initialized.count(page.id) || grade == s.deadline_grades.end())
@@ -171,8 +194,9 @@ WorldTaskLayout world_task_layout(Extent extent, int raw) {
     const float height = std::min(250.F, extent.height - 68.F);
     WorldTaskLayout layout;
     layout.viewport = extent;
-    if (raw >= 22 && raw <= 24) {
-        const float w = raw == 22 ? 220.F : 222.F, h = raw == 22 ? 168.F : 170.F;
+    if ((raw >= 22 && raw <= 28) || (raw >= 31 && raw <= 33)) {
+        const bool large = raw == 23 || raw == 24 || raw == 28;
+        const float w = large ? 222.F : 220.F, h = large ? 170.F : 168.F;
         layout.panel = {(extent.width - w) / 2, (extent.height - h) / 2, w, h};
         const auto o = world_list_skin_origin(layout.panel);
         layout.rows = {o.x + 23, o.y + 95, 191, 95};
@@ -204,168 +228,34 @@ Rectangle world_task_menu_button(Extent extent) {
     return {62, extent.height - 25.F, 40, 22};
 }
 int world_task_visible_rows(const WorldTaskLayout &layout) {
-    return std::clamp(static_cast<int>(layout.rows.height / 20), 1, 5);
+    return std::clamp(static_cast<int>(layout.rows.height / 19), 1, 5);
 }
-std::optional<WorldTaskIntent>
-world_task_input(const WorldTaskView &view, const WorldTaskLayout &layout,
-                 WorldTaskSelection &selection, const WorldTaskInput &input, bool blocked,
-                 const std::optional<WorldTaskPaintedControls> &painted) {
-    if (view.raw >= 22 && view.raw <= 24)
-        return world_task_selection_input(view, layout, selection, input, blocked, painted);
-    if (blocked || !view.initialized)
-        return {};
-    if (view.abort_question) {
-        selection.prompt = std::clamp(selection.prompt, 0, 1);
-        if (input.left || input.right)
-            selection.prompt = 1 - selection.prompt;
-        if (hit(input.click, layout.continue_choice))
-            selection.prompt = 0;
-        if (hit(input.click, layout.stop_choice))
-            selection.prompt = 1;
-        if (input.enter || hit(input.click, layout.confirm))
-            return WorldTaskIntent{Action::confirm, selection.prompt};
-        return {}; // The source question has no Back/cancel action.
-    }
-    const int count = static_cast<int>(view.rows.size());
-    const int visible = world_task_visible_rows(layout);
-    if (count) {
-        selection.selected = std::clamp(selection.selected, 0, count - 1);
-        selection.first_row =
-            std::clamp(selection.first_row + input.wheel_rows, 0, std::max(0, count - visible));
-        if (input.up)
-            selection.selected = (selection.selected + count - 1) % count;
-        if (input.down)
-            selection.selected = (selection.selected + 1) % count;
-        if (input.up || input.down)
-            selection.first_row =
-                std::clamp(selection.first_row, std::max(0, selection.selected - visible + 1),
-                           std::min(selection.selected, std::max(0, count - visible)));
-        for (int row = 0; row < visible && selection.first_row + row < count; ++row)
-            if (hit(input.click, {layout.rows.x, layout.rows.y + row * 20, layout.rows.width, 20}))
-                selection.selected = selection.first_row + row;
-    }
-    if (view.raw == 33 && !view.animating) {
-        selection.selected = std::clamp(selection.selected, 0, 1);
-        if (input.left || input.right)
-            selection.selected = 1 - selection.selected;
-        if (hit(input.click, layout.continue_choice))
-            selection.selected = 0;
-        if (hit(input.click, layout.stop_choice))
-            selection.selected = 1;
-    }
-    // Source33 has no Back branch. Source28 cannot cancel after departure animation begins.
-    if (view.raw != 33 && !(view.raw == 28 && view.animating) &&
-        (input.escape || hit(input.click, layout.cancel)))
-        return WorldTaskIntent{Action::cancel, 0};
-    if ((view.raw == 25 || view.raw == 26) && count &&
-        !view.rows.at(selection.selected).add_member && hit(input.click, layout.inspect))
-        return WorldTaskIntent{Action::inspect, selection.selected};
-    if (!input.enter && !hit(input.click, layout.confirm))
-        return {};
-    if ((view.raw == 22 || view.raw == 25 || view.raw == 26 || view.raw == 27) && count == 0)
-        return {};
-    if (view.raw == 4)
-        return WorldTaskIntent{Action::request_abort, 0};
-    if (view.raw == 25 || view.raw == 26)
-        return WorldTaskIntent{view.rows.at(selection.selected).add_member ? Action::add_member
-                               : view.raw == 25                            ? Action::depart
-                                                                           : Action::confirm,
-                               selection.selected};
-    if (view.raw == 27)
-        return WorldTaskIntent{Action::hire, *view.rows.at(selection.selected).human};
-    return WorldTaskIntent{Action::confirm, view.raw == 28 ? 0 : selection.selected};
-}
-void draw_world_task(const WorldTaskView &view, const WorldTaskLayout &layout, const Skin &skin,
-                     const WorldTaskSelection &selection, bool enabled,
-                     const std::string &feedback) {
-    if (view.raw >= 22 && view.raw <= 24) {
-        draw_world_task_selection(view, layout, skin, enabled, feedback);
+void draw_world_task(const WorldTaskView &v, const WorldTaskLayout &l, const Skin &skin,
+                     const WorldTaskSelection &device, bool enabled, const std::string &feedback) {
+    if (v.raw >= 22 && v.raw <= 24) {
+        draw_world_task_selection(v, l, skin, enabled, feedback);
         return;
     }
-    skin.window(layout.panel, view.title);
-    skin.content(
-        {layout.body.x - 5, layout.body.y - 5, layout.body.width + 10, layout.body.height + 10});
-    const auto &body = layout.body;
-    const bool interactive = enabled && view.initialized;
-    if (!view.rows.empty()) {
-        const int visible = world_task_visible_rows(layout);
-        const int first = std::clamp(selection.first_row, 0,
-                                     std::max(0, static_cast<int>(view.rows.size()) - visible));
-        for (int row = first; row < static_cast<int>(view.rows.size()) && row < first + visible;
-             ++row) {
-            Rectangle box{body.x, body.y + (row - first) * 20, body.width, 19};
-            if (row == selection.selected)
-                DrawRectangleRec(box, Color{219, 232, 204, 255});
-            const auto &entry = view.rows[row];
-            fitted(skin, entry.name,
-                   {box.x + 3, box.y + 3, box.width - (entry.fee ? 70.F : 6.F), 14});
-            if (entry.fee)
-                skin.right(std::to_string(*entry.fee) + "G", box.x + box.width - 3, box.y + 3);
-        }
-        if (static_cast<int>(view.rows.size()) > visible)
-            skin.text.draw(
-                std::to_string(first + 1) + "-" +
-                    std::to_string(std::min(first + visible, static_cast<int>(view.rows.size()))) +
-                    "/" + std::to_string(view.rows.size()),
-                body.x, layout.panel.y + layout.panel.height - 44, ink, 9);
-    } else if (view.initialized) {
-        fitted(skin, view.task_name, {body.x, body.y, body.width, 17});
-        for (std::size_t n = 0; n < view.details.size(); ++n)
-            fitted(skin, view.details[n], {body.x, body.y + 22 + n * 20.F, body.width, 17});
-        if (view.abort_question)
-            fitted(skin, "要终止任务吗？", {body.x, body.y + 24, body.width, 17});
-        if (view.fee)
-            skin.text.draw(std::string(view.raw == 33 ? "延长费用 " : "征集费 ") +
-                               std::to_string(*view.fee) + "G",
-                           body.x, body.y + 24);
-        if (view.prediction)
-            skin.text.draw("队伍评价 " + std::to_string(*view.prediction), body.x, body.y + 24);
-        if (view.deadline_grade) {
-            static constexpr const char *grades[]{"再加把劲!!", "再加加油!!", "需要补充战力!",
-                                                  "重新来过比较好", "应该撤退…"};
-            fitted(skin, grades[*view.deadline_grade], {body.x, body.y + 45, body.width, 17});
-        }
+    if (v.raw >= 25) {
+        draw_world_task_followup(v, l, skin, enabled, feedback);
+        return;
     }
-    if (view.initialized && view.animating) {
-        const float ratio =
-            view.extent > 0 ? std::clamp(view.counter / static_cast<float>(view.extent), 0.F, 1.F)
-                            : 0.F;
-        DrawRectangleRec(layout.progress, GRAY);
-        auto fill = layout.progress;
-        fill.width *= ratio;
-        DrawRectangleRec(fill, Color{97, 174, 68, 255});
+    skin.window(l.panel, v.title);
+    skin.content(l.body);
+    const bool interactive = enabled && v.initialized;
+    if (v.abort_question) {
+        fitted(skin, "要终止任务吗？", {l.body.x, l.body.y + 24, l.body.width, 17});
+        skin.button(l.continue_choice, "是", interactive);
+        skin.button(l.stop_choice, "否", interactive);
+        DrawRectangleLinesEx(device.prompt == 0 ? l.continue_choice : l.stop_choice, 1, blue);
+    } else {
+        for (std::size_t n = 0; n < v.details.size(); ++n)
+            fitted(skin, v.details[n], {l.body.x, l.body.y + 22 + n * 20.F, l.body.width, 17});
+        skin.button(l.cancel, "取消", interactive);
     }
-    if ((view.raw == 33 && !view.animating) || view.abort_question) {
-        skin.button(layout.continue_choice, view.abort_question ? "是" : "继续", interactive);
-        skin.button(layout.stop_choice, view.abort_question ? "否" : "中止", interactive);
-        DrawRectangleLinesEx((view.abort_question ? selection.prompt : selection.selected) == 0
-                                 ? layout.continue_choice
-                                 : layout.stop_choice,
-                             1, blue);
-    }
-    if (!view.abort_question && view.raw != 24 && view.raw != 33 &&
-        !(view.raw == 28 && view.animating))
-        skin.button(layout.cancel, "取消", interactive);
-    std::string confirm = "确定";
-    if ((view.raw == 25 || view.raw == 26) && !view.rows.empty())
-        confirm =
-            view.rows.at(std::clamp(selection.selected, 0, static_cast<int>(view.rows.size()) - 1))
-                    .add_member
-                ? "追加"
-            : view.raw == 25 ? "出发"
-                             : "确定";
-    if (view.raw == 4)
-        confirm = "中止";
-    skin.button(layout.confirm, confirm, interactive);
-    if ((view.raw == 25 || view.raw == 26) && !view.rows.empty())
-        skin.button(layout.inspect, "详情",
-                    interactive && !view.rows
-                                        .at(std::clamp(selection.selected, 0,
-                                                       static_cast<int>(view.rows.size()) - 1))
-                                        .add_member);
+    skin.button(l.confirm, v.abort_question ? "确定" : "中止", interactive);
     if (!feedback.empty())
-        fitted(skin, feedback, {body.x, layout.panel.y + layout.panel.height - 44, body.width, 13},
-               MAROON);
+        fitted(skin, feedback, {l.body.x, l.confirm.y - 16, l.body.width, 13}, MAROON);
 }
 bool world_task_related_confirmation(const State &s, const Page &page) {
     if (page.kind != simulation::rules::WorldScriptPageKind::raw_page)

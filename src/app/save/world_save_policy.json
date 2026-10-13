@@ -388,6 +388,7 @@
             ["information_page_data", "std::map<std::uint64_t, StartupInformationPageData>"],
             ["manual_page_data", "std::map<std::uint64_t, StartupManualPageData>"],
             ["task_page_lists", "std::map<std::uint64_t, std::vector<std::uint64_t>>"],
+            ["task_page_ui", "std::map<std::uint64_t, StartupTaskPageUi>"],
             ["task_recruitment_pages", "std::map<std::uint64_t, ref::TaskRecruitmentAnimation>"],
             ["task_extra_pages", "std::map<std::uint64_t, std::vector<int>>"],
             ["task_page_predictions", "std::map<std::uint64_t, int>"],
@@ -2945,6 +2946,43 @@
             ["tags", "std::vector<int>"],
             ["selection", "int"],
             ["parent", "std::optional<std::uint64_t>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::StartupTaskPageUi",
+      "reason": "Task roster, summary and deadline cursors are modal state owned only during the source page lifetime.",
+      "wire_fields": [],
+      "groups": [
+        {
+          "action": "discard",
+          "reason": "Stable player cold restore clears task_page_ui; complete maintenance replay alone retains frozen rows and parent answers.",
+          "fields": [
+            [
+              "selection",
+              "int"
+            ],
+            [
+              "first",
+              "int"
+            ],
+            [
+              "tab",
+              "int"
+            ],
+            [
+              "member_rows",
+              "std::vector<int>"
+            ],
+            [
+              "parent",
+              "std::optional<std::uint64_t>"
+            ],
+            [
+              "answer",
+              "std::optional<int>"
+            ]
           ]
         }
       ]

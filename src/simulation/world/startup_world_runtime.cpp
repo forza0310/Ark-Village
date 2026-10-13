@@ -1277,6 +1277,12 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
         return {StartupWorldRuntimeError::invalid_initial_state, {}, {}, {}, {}};
     // 原30/67/88/96载荷在producer已完整安装；退休前拒绝损坏，不以清理掩盖半载荷。
     for(const auto &page:s.scripts.pages) {
+        if(page.kind==ref::WorldScriptPageKind::raw_page&&page.legacy_page>=25&&page.legacy_page<=28&&
+           !valid_startup_world_runtime_task_page(s,page))
+            return {StartupWorldRuntimeError::missing_source,{},ref::WorldSceneError::missing_consumer,{}, {}};
+        if(page.kind==ref::WorldScriptPageKind::raw_page&&page.legacy_page>=31&&page.legacy_page<=33&&
+           !valid_startup_world_runtime_task_summary_ui_page(s,page))
+            return {StartupWorldRuntimeError::missing_source,{},ref::WorldSceneError::missing_consumer,{}, {}};
         if(page.kind==ref::WorldScriptPageKind::raw_page&&page.legacy_page==30&&
            !valid_startup_world_runtime_task_victory_page(s,page))
             return {StartupWorldRuntimeError::missing_source,{},ref::WorldSceneError::missing_consumer,{}, {}};
@@ -1297,6 +1303,7 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
             admitted.exploration_summaries.erase(page.id);
             admitted.crew_summaries.erase(page.id);
             admitted.task_page_lists.erase(page.id);
+            admitted.task_page_ui.erase(page.id);
             admitted.task_recruitment_pages.erase(page.id);
             admitted.task_extra_pages.erase(page.id);
             admitted.task_page_predictions.erase(page.id);
@@ -1377,6 +1384,11 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
     // 暂停不初始化菜单/信息页/人物详情，也不把缺载荷的生命周期0页改成已就绪2。
     const auto &pending = admitted.scripts.pages.back();
     if(admitted.scene.framework_paused&&pending.kind==ref::WorldScriptPageKind::raw_page&&
+       ((pending.legacy_page>=25&&pending.legacy_page<=28)||(pending.legacy_page>=31&&pending.legacy_page<=33))) {
+        admitted.scripts.executing_page.reset();admitted.scene.top_is_main=false;
+        return {StartupWorldRuntimeError::none,std::move(admitted),ref::WorldSceneError::none,ref::WorldScheduleError::none,{}};
+    }
+    if(admitted.scene.framework_paused&&pending.kind==ref::WorldScriptPageKind::raw_page&&
        (pending.legacy_page==30||pending.legacy_page==67||pending.legacy_page==88||pending.legacy_page==96)) {
         admitted.scripts.executing_page.reset();admitted.scene.top_is_main=false;
         return {StartupWorldRuntimeError::none,std::move(admitted),ref::WorldSceneError::none,
@@ -1426,8 +1438,9 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
         return {StartupWorldRuntimeError::missing_source,{},ref::WorldSceneError::missing_consumer,ref::WorldScheduleError::none,{}};
     admitted.scripts.executing_page = admitted.scripts.pages.back().id;
     const auto &top = admitted.scripts.pages.back();
-    if (top.kind == ref::WorldScriptPageKind::raw_page && top.legacy_page == 31 &&
-        !initialize_startup_world_runtime_task_result_page(admitted, top.id))
+    if (top.kind == ref::WorldScriptPageKind::raw_page &&
+        (((top.legacy_page>=25&&top.legacy_page<=28)&&!initialize_startup_world_runtime_task_ui_page(admitted,top.id))||
+         ((top.legacy_page>=31&&top.legacy_page<=33)&&!initialize_startup_world_runtime_task_summary_ui_page(admitted,top.id))))
         return {StartupWorldRuntimeError::missing_source,
                 {},
                 ref::WorldSceneError::missing_consumer,

@@ -587,6 +587,7 @@ struct Validation {
         PAGE_MAP(activity_page_scroll);
         PAGE_MAP(crew_summaries);
         PAGE_MAP(task_page_lists);
+        PAGE_MAP(task_page_ui);
         PAGE_MAP(task_recruitment_pages);
         PAGE_MAP(task_extra_pages);
         PAGE_MAP(task_page_predictions);
@@ -797,6 +798,15 @@ struct Validation {
         for (const auto &[id, list] : s.crew_summaries)
             if (!page_kind(id, {31}) || !every(list, [&](int n) { return human(n); }))
                 return fail("task page: 结果队伍定义非法");
+        for(const auto &[id,ui]:s.task_page_ui) {
+            (void)ui;const auto p=page(id);
+            if(!p||p->kind!=ref::WorldScriptPageKind::raw_page||
+               !((p->legacy_page>=25&&p->legacy_page<=28)||(p->legacy_page>=31&&p->legacy_page<=33)))
+                return fail("task UI: 游标附在错误页型");
+            if(!(p->legacy_page<=28?valid_startup_world_runtime_task_ui_page(s,*p):
+                                   valid_startup_world_runtime_task_summary_ui_page(s,*p)))
+                return fail("task UI: 游标/冻结名单/父答案载荷非法");
+        }
         for (const auto &[id, list] : s.residence_page_candidates)
             if (!page_kind(id, {80}) || !unique_references(list, [&](int n) { return human(n); }))
                 return fail("residence page: 候选名单非法");
@@ -1080,6 +1090,12 @@ struct Validation {
             if(p.kind==ref::WorldScriptPageKind::raw_page&&p.legacy_page==88&&
                !valid_startup_world_runtime_award_result_page(s,p))
                 return fail("award result page: 人物/主计数/阶段/共享奖励及关闭待退休载荷非法");
+            if(p.kind==ref::WorldScriptPageKind::raw_page&&p.legacy_page>=25&&p.legacy_page<=28&&
+               !valid_startup_world_runtime_task_ui_page(s,p))
+                return fail("task roster UI: 初始化/冻结名单/父答案/退休载荷非法");
+            if(p.kind==ref::WorldScriptPageKind::raw_page&&p.legacy_page>=31&&p.legacy_page<=33&&
+               !valid_startup_world_runtime_task_summary_ui_page(s,p))
+                return fail("task summary UI: 初始化/摘要/期限/退休载荷非法");
             if (p.lifecycle == 4 || p.kind == ref::WorldScriptPageKind::scene)
                 continue;
             const auto id = p.id;

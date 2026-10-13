@@ -113,6 +113,13 @@ class SteamPlanDraw {
             skin_.sprites.draw(piece.sprite, piece.frame, point(piece.position), WHITE,
                                Sprites::Binding::map, 1, -1, active_clip());
     }
+    void mapchip(const sim::SteamFacilityMapchipDraw &p) const {
+        skin_.sprites.draw(p.sprite, p.frame, point(p.position), WHITE,
+                           Sprites::Binding::map, 1, -1, active_clip());
+    }
+    void monster(int sprite, int image, int frame, std::array<int, 2> position) const {
+        skin_.sprites.actor(true, sprite, image, frame, point(position), 1, active_clip());
+    }
     void number(const sim::SteamFacilityNumber &p) const {
         const auto resource = sim::steam_facility_resource(p.asset);
         if (!resource || !resource->published_sprite)

@@ -83,6 +83,8 @@ ref::WorldTaskDeadlinePageState page_state(const State &s, std::uint64_t id) {
     };
     p.phase = get(s.page_phases, 0);
     p.counter = get(s.page_counters, 0);
+    const auto ui=s.task_page_ui.find(id);
+    if(ui!=s.task_page_ui.end())p.cursor=ui->second.selection;
     p.returned = get(s.deadline_returns, -1);
     p.grade = get(s.deadline_grades, 0);
     return p;
@@ -279,12 +281,28 @@ bool abort_task(State &s) {
 
 bool abort_startup_world_runtime_task_entities(State &s) { return abort_task(s); }
 
+bool initialize_startup_world_runtime_deadline_page(State &s,std::uint64_t id) {
+    const auto p=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[=](const auto &v){return v.id==id;});
+    if(p==s.scripts.pages.end()||!valid_startup_world_runtime_task_summary_ui_page(s,*p))return false;
+    if(s.task_page_ui.count(id))return true;
+    if(p->lifecycle!=0)return false;
+    auto next=s;next.task_page_ui.emplace(id,StartupTaskPageUi{});
+    bool denied{};
+    if(!page(next,*p,ref::WorldTaskDeadlinePageAction::initialize,0,denied)||denied||
+       !valid_startup_world_runtime_task_summary_ui_page(next,*p))return false;
+    s=std::move(next);return true;
+}
+
 StartupWorldTaskPageResult act_startup_world_runtime_deadline_page(State &state, std::uint64_t id,
                                                                    int selection) {
     const auto p = top(state);
-    if (!state.rules || state.scene.framework_paused || !p || p->id != id || p->legacy_page != 33)
+    if (!state.rules || state.scene.framework_paused || !p || p->id != id || p->legacy_page != 33||
+        (p->lifecycle!=0&&p->lifecycle!=2)||selection<0||selection>1)
         return {Error::invalid_page};
     auto next = state;
+    if(!initialize_startup_world_runtime_deadline_page(next,id))return {Error::missing_source};
+    std::find_if(next.scripts.pages.begin(),next.scripts.pages.end(),[=](const auto &v){return v.id==id;})->lifecycle=2;
+    if(next.page_phases.at(id)==0)next.task_page_ui.at(id).selection=selection;
     next.scripts.executing_page = id;
     bool denied{};
     if (!page(next, *p, ref::WorldTaskDeadlinePageAction::confirm, selection, denied))
@@ -300,6 +318,8 @@ std::optional<State> update_startup_world_runtime_deadline_page(const State &sta
     if (!state.rules || state.scene.framework_paused || !p || p->id != id || p->legacy_page != 33)
         return {};
     auto next = state;
+    if(!initialize_startup_world_runtime_deadline_page(next,id))return {};
+    std::find_if(next.scripts.pages.begin(),next.scripts.pages.end(),[=](const auto &v){return v.id==id;})->lifecycle=2;
     next.scripts.executing_page = id;
     bool denied{};
     if (!page(next, *p, ref::WorldTaskDeadlinePageAction::update, 0, denied))

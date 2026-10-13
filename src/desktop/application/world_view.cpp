@@ -17,7 +17,6 @@
 #include "../ui/common/world_reports.hpp"
 #include "../ui/system/world_menu.hpp"
 #include "../ui/system/world_startup.hpp"
-#include "../ui/tasks/world_crew_summary.hpp"
 #include "../ui/tasks/world_tasks.hpp"
 #include "../ui/village/world_award.hpp"
 #include "ark/app/session/world_report.hpp"
@@ -454,6 +453,9 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                 input.pointer_pressed = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
                 input.pointer_down = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
                 input.pointer_released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
+                input.depart = IsKeyPressed(KEY_S);
+                input.inspect = IsKeyPressed(KEY_I);
+                input.focus_lost = !IsWindowFocused();
                 if (mouse && CheckCollisionPointRec(*mouse, task_layout.rows))
                     input.wheel_rows = -static_cast<int>(GetMouseWheelMove() * 2);
                 const auto intent =
@@ -471,23 +473,6 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                 const Rectangle cancel{box.panel.x + 10, box.confirm.y, 58, 20};
                 if (!desired_pause && !failed && !pending_task && (hit(cancel) || back))
                     pending_task = session.cancel_page(page->id);
-            } else if (page->kind == rules::WorldScriptPageKind::raw_page &&
-                       page->legacy_page == 31) {
-                const auto crew = ui::world_crew_summary_view(current, page->id);
-                const auto crew_layout = ui::world_crew_summary_layout(extent);
-                if (crew.initialized && !desired_pause && !failed && !pending_ack &&
-                    (hit(crew_layout.confirm) || IsKeyPressed(KEY_ENTER)))
-                    pending_ack = session.ack_page(page->id);
-                if (mouse && CheckCollisionPointRec(*mouse, crew_layout.rows))
-                    scroll = std::max(0, scroll - static_cast<int>(GetMouseWheelMove() * 2));
-                const int visible = ui::world_crew_summary_visible_rows(crew_layout);
-                scroll = std::clamp(scroll, 0,
-                                    std::max(0, static_cast<int>(crew.rows.size()) - visible));
-            } else if (page->legacy_page == 96) {
-                if (page->lifecycle == 2 && !desired_pause && !failed && !pending_ack &&
-                    (hit(ui::world_victory_layout(extent).confirm) || IsKeyPressed(KEY_ENTER) ||
-                     back))
-                    pending_ack = session.ack_page(page->id);
             } else if (page->legacy_page == 30) {
                 const auto victory = ui::world_victory_view(current, *page);
                 if (page->lifecycle == 2 && victory.initialized && !desired_pause && !failed &&
@@ -623,15 +608,12 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                 if (task.raw >= 22 && task.raw <= 24)
                     task_controls = ui::draw_world_task_selection(
                         task, box, skin, !desired_pause && !failed && !pending_task, task_feedback);
+                else if (task.raw >= 25)
+                    task_controls = ui::draw_world_task_followup(task, box, skin,
+                        !desired_pause && !failed && !pending_task, task_feedback);
                 else
                     ui::draw_world_task(task, box, skin, task_selection,
                                         !desired_pause && !failed && !pending_task, task_feedback);
-            } else if (page->kind == rules::WorldScriptPageKind::raw_page &&
-                       page->legacy_page == 31) {
-                const auto crew = ui::world_crew_summary_view(current, page->id);
-                const auto crew_layout = ui::world_crew_summary_layout(extent);
-                ui::draw_world_crew_summary(crew, crew_layout, skin, scroll,
-                                            !desired_pause && !failed && !pending_ack);
             } else if (page->legacy_page == 30) {
                 auto victory = ui::world_victory_view(current, *page);
                 ui::prepare_world_victory(victory, current, skin);

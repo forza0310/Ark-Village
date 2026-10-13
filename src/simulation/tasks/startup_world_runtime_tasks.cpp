@@ -527,7 +527,9 @@ bool initialize_startup_world_runtime_task_result_page(State &s, std::uint64_t p
         s.tasks.at(*page->task_identity).definition != *page->task_definition)
         return false;
     if (s.crew_summaries.count(page_id))
-        return true;
+        return valid_startup_world_runtime_task_summary_ui_page(s,*page);
+    if(page->lifecycle!=0||s.task_page_ui.count(page_id)||s.page_counters.count(page_id)||
+       s.page_phases.count(page_id)||s.page_secondary_counters.count(page_id))return false;
     const auto progress = s.task_progress.definitions.find(*page->task_definition);
     if (progress == s.task_progress.definitions.end())
         return false;
@@ -549,6 +551,9 @@ bool initialize_startup_world_runtime_task_result_page(State &s, std::uint64_t p
                 h = 0;
         }
     }
+    next.task_page_ui.emplace(page_id,StartupTaskPageUi{});
+    next.page_counters.emplace(page_id,0);next.page_phases.emplace(page_id,0);
+    if(!valid_startup_world_runtime_task_summary_ui_page(next,*page))return false;
     s = std::move(next);
     return true;
 }

@@ -224,6 +224,7 @@ void clear_presentation(State &s) {
         s.facility_build_present.emplace(definition.id, false);
     s.build_category_new = {};
     s.task_page_lists.clear();
+    s.task_page_ui.clear();
     s.task_recruitment_pages.clear();
     s.task_extra_pages.clear();
     s.task_page_predictions.clear();

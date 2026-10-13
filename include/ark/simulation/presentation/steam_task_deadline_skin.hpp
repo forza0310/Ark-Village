@@ -61,4 +61,9 @@ struct SteamTaskDeadlineInput {
 };
 // 不修改Owner／scratch／页面／随机。坏定义、实例、测宽及依赖显式拒绝。
 std::optional<SteamTaskDeadlinePlan> steam_task_deadline_skin(const SteamTaskDeadlineInput &);
+// 严格Owner只读投影；字体测宽由后端填入options，不由查询安装缺失载荷。
+std::optional<SteamTaskDeadlineInput> steam_task_deadline_input(
+    const StartupWorldRuntimeState &,std::uint64_t page);
+std::optional<SteamTaskDeadlinePlan> steam_task_deadline_skin(
+    const StartupWorldRuntimeState &,std::uint64_t page,const SteamTaskDeadlineOptions &);
 } // namespace ark::simulation

@@ -119,6 +119,35 @@
       ]
     },
     {
+      "name": "dungeon_village_prototype::StartupTaskPageUi",
+      "fields": [
+        {
+          "name": "selection",
+          "type": "int"
+        },
+        {
+          "name": "first",
+          "type": "int"
+        },
+        {
+          "name": "tab",
+          "type": "int"
+        },
+        {
+          "name": "member_rows",
+          "type": "std::vector<int>"
+        },
+        {
+          "name": "parent",
+          "type": "std::optional<std::uint64_t>"
+        },
+        {
+          "name": "answer",
+          "type": "std::optional<int>"
+        }
+      ]
+    },
+    {
       "name": "dungeon_village_prototype::StartupWorldActorMetadata",
       "fields": [
         {
@@ -793,6 +822,10 @@
         {
           "name": "task_page_lists",
           "type": "std::map<std::uint64_t, std::vector<std::uint64_t>>"
+        },
+        {
+          "name": "task_page_ui",
+          "type": "std::map<std::uint64_t, StartupTaskPageUi>"
         },
         {
           "name": "task_recruitment_pages",

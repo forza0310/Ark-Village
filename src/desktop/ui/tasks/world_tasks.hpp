@@ -1,8 +1,10 @@
 #pragma once
 
-// Task pages read the sole Owner.22/23 cursor and scroll belong to it; legacy later pages
-// retain their existing device cursor until research delivers the frozen roster payload.
+// Task pages read Owner cursor/scroll/frozen rows. Device state holds gestures only.
 #include "../common/world_list_input.hpp"
+#include "ark/simulation/presentation/steam_task_deadline_skin.hpp"
+#include "ark/simulation/presentation/steam_task_result_skin.hpp"
+#include "ark/simulation/presentation/steam_task_roster_skin.hpp"
 #include "ark/simulation/presentation/steam_task_selection_skin.hpp"
 #include "ark/simulation/world/startup_world_runtime.hpp"
 #include <optional>
@@ -11,6 +13,9 @@
 
 namespace ark::desktop::ui {
 class Skin;
+using WorldTaskFollowupPlan =
+    std::variant<simulation::SteamTaskRosterPlan, simulation::SteamTaskResultPlan,
+                 simulation::SteamTaskDeadlinePlan>;
 struct WorldTaskRow {
     std::optional<std::uint64_t> task; // Real instance identity, independent from row/definition.
     std::optional<int> human;
@@ -23,7 +28,7 @@ struct WorldTaskRecruitmentActor {
 };
 struct WorldTaskView {
     std::uint64_t page{};
-    int selected{}, first{};
+    int selected{}, first{}, tab{}, phase{};
     bool interactive{};
     int raw{};
     bool abort_question{};
@@ -38,7 +43,9 @@ struct WorldTaskView {
     // arrivals.
     std::optional<WorldTaskRecruitmentActor> recruitment_actor;
     std::vector<WorldTaskRow> rows;
+    std::vector<std::array<int, 2>> reward_ids;
     std::optional<simulation::SteamTaskSelectionPlan> skin;
+    std::optional<WorldTaskFollowupPlan> followup;
 };
 struct WorldTaskLayout {
     Extent viewport;
@@ -46,7 +53,6 @@ struct WorldTaskLayout {
     Rectangle recruitment_name, recruitment_actor, inspect;
 };
 struct WorldTaskSelection {
-    int selected{}, first_row{};
     int prompt{1}; // Source task-abort questions default to No.
     WorldFacilityGesture gesture{};
 };
@@ -57,20 +63,25 @@ struct WorldTaskInput {
     bool track{};
     std::optional<Vector2> pointer{};
     bool pointer_pressed{}, pointer_down{}, pointer_released{};
+    bool depart{}, inspect{}, focus_lost{};
 };
 struct WorldTaskIntent {
     simulation::StartupWorldTaskAction action{simulation::StartupWorldTaskAction::confirm};
-    int selection{}; // Row index for22, actual human definition for27, choice for33.
+    int selection{}; // Maintained pages use Owner row/choice; raw1 retains its answer.
     std::optional<simulation::StartupTaskPageInput> input{};
 };
 struct WorldTaskPaintedControls {
     WorldFacilityPaintedControls geometry;
     std::vector<std::uint64_t> tasks; // Preserve real64-bit instance identities and duplicates.
+    std::optional<std::uint64_t> task;
+    std::vector<int> humans; // Frozen rows, including the -1 add-member row and duplicates.
+    std::vector<std::array<int, 2>> reward_ids;
+    int tab{};
 };
 std::optional<WorldTaskIntent>
-world_task_selection_input(const WorldTaskView &, const WorldTaskLayout &, WorldTaskSelection &,
-                           const WorldTaskInput &, bool blocked,
-                           const std::optional<WorldTaskPaintedControls> &);
+world_task_plan_input(const WorldTaskView &, const WorldTaskLayout &, WorldTaskSelection &,
+                      const WorldTaskInput &, bool blocked,
+                      const std::optional<WorldTaskPaintedControls> &);
 bool world_task_page(const simulation::rules::WorldScriptPage &page);
 // raw1/raw60 belong here only with an explicit runtime binding, never by number alone.
 bool world_task_page(const simulation::StartupWorldRuntimeState &state,
@@ -80,6 +91,8 @@ WorldTaskView world_task_view(const simulation::StartupWorldRuntimeState &state,
 WorldTaskLayout world_task_layout(Extent extent, int raw = 0);
 void prepare_world_task(WorldTaskView &view, const simulation::StartupWorldRuntimeState &state,
                         const Skin &skin, bool scrolling = false);
+void prepare_world_task_followup(WorldTaskView &, const simulation::StartupWorldRuntimeState &,
+                                 const Skin &, bool scrolling);
 std::optional<WorldTaskPaintedControls> draw_world_task_selection(const WorldTaskView &view,
                                                                   const WorldTaskLayout &layout,
                                                                   const Skin &skin, bool enabled,
@@ -88,6 +101,16 @@ Rectangle world_task_menu_button(Extent extent);
 // Shared ordered GPU execution; returns only the geometry actually painted this frame.
 WorldFacilityPaintedControls draw_world_task_plan(const simulation::SteamTaskSelectionPlan &,
                                                   Vector2 origin, const Skin &);
+WorldFacilityPaintedControls draw_world_task_plan(const simulation::SteamTaskRosterPlan &,
+                                                  Vector2 origin, const Skin &);
+WorldFacilityPaintedControls draw_world_task_plan(const simulation::SteamTaskResultPlan &,
+                                                  Vector2 origin, const Skin &);
+WorldFacilityPaintedControls draw_world_task_plan(const simulation::SteamTaskDeadlinePlan &,
+                                                  Vector2 origin, const Skin &);
+std::optional<WorldTaskPaintedControls> draw_world_task_followup(const WorldTaskView &,
+                                                                 const WorldTaskLayout &,
+                                                                 const Skin &, bool,
+                                                                 const std::string &);
 int world_task_visible_rows(const WorldTaskLayout &layout);
 std::optional<WorldTaskIntent>
 world_task_input(const WorldTaskView &view, const WorldTaskLayout &layout,

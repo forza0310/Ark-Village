@@ -9,6 +9,16 @@ namespace ark::simulation {
 std::optional<bool> startup_world_has_new_tasks(const StartupWorldRuntimeState &state);
 bool valid_startup_world_runtime_task_page(const StartupWorldRuntimeState &state,
                                           const ref::WorldScriptPage &page);
+// 25–28独立游标/冻结名单/父答案；生命周期0准入与已初始化缺载荷严格区分。
+bool initialize_startup_world_runtime_task_ui_page(StartupWorldRuntimeState &state,std::uint64_t page);
+bool valid_startup_world_runtime_task_ui_page(const StartupWorldRuntimeState &state,const ref::WorldScriptPage &page);
+std::optional<StartupWorldRuntimeState> update_startup_world_runtime_task_roster_page(
+    const StartupWorldRuntimeState &state,std::uint64_t page);
+// 31–33沿既有摘要/期限业务，只增加获准UI选择；29/30不创建UI字段。
+bool initialize_startup_world_runtime_task_summary_ui_page(StartupWorldRuntimeState &state,std::uint64_t page);
+bool valid_startup_world_runtime_task_summary_ui_page(const StartupWorldRuntimeState &state,const ref::WorldScriptPage &page);
+StartupWorldTaskPageResult input_startup_world_runtime_task_summary_page(
+    StartupWorldRuntimeState &state,std::uint64_t page,const StartupTaskPageInput &input);
 bool valid_startup_world_runtime_task_tracking_scene(const StartupWorldRuntimeState &state);
 StartupWorldTaskPageResult input_startup_world_runtime_task_page(
     StartupWorldRuntimeState &state, std::uint64_t page, const StartupTaskPageInput &input);
@@ -45,6 +55,7 @@ StartupWorldTaskPageResult act_startup_world_runtime_deadline_page(StartupWorldR
 std::optional<StartupWorldRuntimeState>
 update_startup_world_runtime_deadline_page(const StartupWorldRuntimeState &state,
                                            std::uint64_t page);
+bool initialize_startup_world_runtime_deadline_page(StartupWorldRuntimeState &state,std::uint64_t page);
 // raw33实际关闭后，首次获准main b()入口才合计费用/续费或完整中止。
 std::optional<StartupWorldRuntimeState>
 prepare_startup_world_runtime_deadline_result(const StartupWorldRuntimeState &state);

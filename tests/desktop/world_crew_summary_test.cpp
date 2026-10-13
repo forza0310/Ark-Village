@@ -1,6 +1,7 @@
 // Page31 must preserve initialized X and read actual H/I without replaying its initializer.
-#include "../support/checks.hpp"
 #include "../../src/desktop/ui/tasks/world_crew_summary.hpp"
+#include "../../src/desktop/ui/tasks/world_tasks.hpp"
+#include "../support/checks.hpp"
 #include <iostream>
 #include <stdexcept>
 
@@ -57,12 +58,13 @@ void world_crew_summary() {
     }
     check(rejected, "Unknown definitions must not be replaced with invented names or rows");
     for (const auto extent : {ark::desktop::Extent{240, 256}, ark::desktop::Extent{540, 360}}) {
-        const auto layout = ui::world_crew_summary_layout(extent);
+        const auto layout = ui::world_task_layout(extent, 31);
         check(contains({0, 24, static_cast<float>(extent.width), extent.height - 53.F},
                        layout.panel) &&
-                  contains(layout.panel, layout.rows) && contains(layout.panel, layout.confirm),
+                  contains(layout.panel, layout.rows) &&
+                  contains({0, 24, float(extent.width), extent.height - 24.F}, layout.confirm),
               "Crew panel and commands must fit the supported viewport");
-        check(ui::world_crew_summary_visible_rows(layout) == 5 &&
+        check(ui::world_task_visible_rows(layout) == 5 &&
                   layout.rows.y + layout.rows.height + 5 < layout.confirm.y,
               "Five source rows must fit without covering confirmation");
     }

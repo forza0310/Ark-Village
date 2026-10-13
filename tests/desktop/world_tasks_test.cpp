@@ -66,7 +66,8 @@ void world_tasks() {
     ui::WorldTaskInput input;
     input.down = true;
     const auto move = ui::world_task_input(view, layout, selection, input, false);
-    check(move && move->input && move->input->down && selection.selected == 0,
+    check(move && move->input && move->input->down && view.selected == 0 &&
+              state.page_phases.at(page.id) == 0,
           "22 forwards direction without keeping a second desktop cursor");
     state.page_phases.at(page.id) = 1; // Published Owner acknowledgement, not UI mutation.
     view = ui::world_task_view(state, page);
@@ -147,48 +148,112 @@ void world_tasks() {
 
     page.legacy_page = 25;
     state.participants = {7, 42, 7};
+    state.task_page_ui[page.id].member_rows = {7, 42, 7, -1};
     view = ui::world_task_view(state, page);
     check(view.rows.size() == 4 && view.rows[0].human == 7 && view.rows[2].human == 7 &&
               view.rows.back().add_member && !view.rows.back().human,
           "Team preserves participant definitions and has a separate non-person add row");
-    selection = {3, 0};
+    selection = {};
+    state.task_page_ui.at(page.id).selection = 3;
+    view = ui::world_task_view(state, page);
     intent = ui::world_task_input(view, layout, selection, input, false);
     check(intent && intent->action == Action::add_member,
           "Add row opens extra recruitment, not departure");
-    selection.selected = 1;
+    state.task_page_ui.at(page.id).selection = 1;
+    view = ui::world_task_view(state, page);
     intent = ui::world_task_input(view, layout, selection, input, false);
     check(intent && intent->action == Action::depart,
           "Participant selection opens the source departure prompt");
 
     page.legacy_page = 27;
     state.task_extra_pages[page.id] = {66, 14, 3, 42, 19, 5, 7};
+    state.task_page_ui.at(page.id).member_rows.clear();
     view = ui::world_task_view(state, page);
     check(view.rows[0].human == 66 && view.rows[0].fee == 660,
           "Extra row uses actual definition and initialized extra fee");
     selection = {};
     input = {};
     input.up = true;
-    (void)ui::world_task_input(view, layout, selection, input, false);
-    check(selection.selected == 6 && selection.first_row == 2,
-          "Keyboard wrap scrolls final actual source row into view");
+    const auto up_request = ui::world_task_input(view, layout, selection, input, false);
+    check(up_request && up_request->input && up_request->input->up &&
+              state.task_page_ui.at(page.id).selection == 1,
+          "Keyboard wrap is delegated to Owner without mutating a device cursor");
+    // Source seven-row up-wrap acknowledgement; the rule suite owns the calculation.
+    state.task_page_ui.at(page.id).selection = 6;
+    state.task_page_ui.at(page.id).first = 2;
+    view = ui::world_task_view(state, page);
+    check(view.selected == 6 && view.first == 2,
+          "Published Owner tail cursor is read without reinterpretation");
     input = {};
     input.enter = true;
     intent = ui::world_task_input(view, layout, selection, input, false);
-    check(intent && intent->action == Action::hire && intent->selection == 7,
-          "Hire sends human definition identity, never visible row number");
+    check(intent && intent->action == Action::hire && intent->input && intent->selection == 6 &&
+              view.rows.at(intent->selection).human == 7,
+          "Hire binds Owner row to the actual sparse human identity; it never sends a definition "
+          "as a row");
     input = {};
     input.wheel_rows = -2;
-    (void)ui::world_task_input(view, layout, selection, input, false);
-    check(selection.first_row == 0 && selection.selected == 6,
-          "Mouse scroll does not silently alter selected source identity");
+    const auto wheel = ui::world_task_input(view, layout, selection, input, false);
+    check(wheel && wheel->input && wheel->input->scroll && wheel->input->scroll->value == -2 &&
+              state.task_page_ui.at(page.id).first == 2 && view.selected == 6,
+          "Wheel sends one source scroll and leaves the published Owner untouched");
+    state.task_page_ui.at(page.id).first = 0;
+    state.task_page_ui.at(page.id).selection = 4;
+    view = ui::world_task_view(state, page);
     input = {};
-    input.click = Vector2{layout.rows.x + 2, layout.rows.y + 21};
-    (void)ui::world_task_input(view, layout, selection, input, false);
-    check(selection.selected == 1, "Mouse picking shares the source-row layout");
+    const auto extra_layout = ui::world_task_layout({540, 360}, 27);
+    ui::WorldTaskPaintedControls extra;
+    extra.geometry.page = view.page;
+    extra.geometry.raw = view.raw;
+    extra.geometry.phase = view.phase;
+    extra.geometry.selection = view.selected;
+    extra.geometry.first = view.first;
+    extra.geometry.count = int(view.rows.size());
+    extra.geometry.extent = extra_layout.viewport;
+    extra.task = view.task;
+    extra.tab = view.tab;
+    for (const auto &row : view.rows)
+        extra.humans.push_back(*row.human);
+    extra.geometry.rows = {{1, 16, {extra_layout.rows.x, extra_layout.rows.y + 19, 191, 16}}};
+    input.click = middle(extra.geometry.rows.front().rectangle);
+    const auto picked = ui::world_task_input(view, extra_layout, selection, input, false, extra);
+    check(picked && picked->input && picked->input->selection == 1 && !picked->input->confirm &&
+              state.task_page_ui.at(page.id).selection == 4,
+          "First marker16 release selects the painted absolute row without paying");
+    state.task_page_ui.at(page.id).selection = 1;
+    view = ui::world_task_view(state, page);
+    extra.geometry.selection = 1;
+    check(!ui::world_task_input(view, extra_layout, selection, input, true, extra),
+          "Pending extra recruitment rejects a duplicate release");
+    const auto second = ui::world_task_input(view, extra_layout, selection, input, false, extra);
+    check(second && second->input && second->input->confirm && second->input->selection == 1,
+          "Second release on the committed marked row sends one source hire transaction");
+    auto stale = extra;
+    stale.humans[1] = 999;
+    check(!ui::world_task_input(view, extra_layout, selection, input, false, stale),
+          "A changed frozen human binding rejects stale painted recruitment geometry");
+    input = {};
+    input.focus_lost = true;
+    check(!ui::world_task_input(view, extra_layout, selection, input, false, extra),
+          "Loss of focus releases a pending recruitment marker without submitting input");
+    input = {};
+    input.click = middle(extra.geometry.rows.front().rectangle);
+    const auto after_focus =
+        ui::world_task_input(view, extra_layout, selection, input, false, extra);
+    check(after_focus && after_focus->input && !after_focus->input->confirm,
+          "A marked recruitment row requires a new first release after focus is lost");
+    for (int raw : {31, 32}) {
+        auto result = page;
+        result.legacy_page = raw;
+        check(
+            ui::world_task_page(result) && !ui::world_page_regular_confirmation(result),
+            "Task summaries use their own Owner input and never a second generic acknowledgement");
+    }
 
     page.legacy_page = 28;
     state.task_page_predictions[page.id] = 4;
     state.page_phases[page.id] = 0;
+    state.task_page_ui.at(page.id) = {};
     view = ui::world_task_view(state, page);
     check(view.prediction == 4 && !view.animating && view.extent == 96,
           "Departure rating is display data; source animation extent is96");
@@ -215,8 +280,13 @@ void world_tasks() {
     check(!ui::world_task_input(view, layout, selection, input, false),
           "Deadline Esc must not invent a Back branch");
     input = {};
-    input.click = middle(layout.stop_choice);
-    (void)ui::world_task_input(view, layout, selection, input, false);
+    input.right = true;
+    const auto choice = ui::world_task_input(view, layout, selection, input, false);
+    check(choice && choice->input && choice->input->right &&
+              state.task_page_ui.at(page.id).selection == 0,
+          "Deadline choice is a source direction transaction, not a desktop cursor");
+    state.task_page_ui.at(page.id).selection = 1;
+    view = ui::world_task_view(state, page);
     input = {};
     input.enter = true;
     intent = ui::world_task_input(view, layout, selection, input, false);
@@ -227,7 +297,8 @@ void world_tasks() {
     input = {};
     input.left = true;
     (void)ui::world_task_input(view, layout, selection, input, false);
-    check(selection.selected == 1, "Deadline choice cannot change after source animation starts");
+    check(state.task_page_ui.at(page.id).selection == 1,
+          "Deadline direction cannot mutate published choice after animation starts");
 
     {
         auto owner = initial_world();
@@ -351,6 +422,7 @@ void world_tasks() {
               "Initialized task display uses its source confirmation consumer");
     }
     page.legacy_page = 26;
+    state.task_page_ui.at(page.id) = {0, 0, 0, {7, 42, 7, -1}, {}, {}};
     view = ui::world_task_view(state, page);
     input = {};
     input.escape = true;
@@ -387,10 +459,11 @@ void world_tasks() {
     }
     page.kind = rules::WorldScriptPageKind::raw_page;
     page.legacy_page = 26;
+    state.task_page_ui.at(page.id) = {0, 0, 0, {7, 42, 7, -1}, {}, {}};
     view = ui::world_task_view(state, page);
     selection = {};
     input = {};
-    input.click = middle(layout.inspect);
+    input.inspect = true;
     intent = ui::world_task_input(view, layout, selection, input, false);
     check(view.rows.size() == 4 && intent && intent->action == Action::inspect &&
               intent->selection == 0,
@@ -400,7 +473,9 @@ void world_tasks() {
     intent = ui::world_task_input(view, layout, selection, input, false);
     check(intent && intent->action == Action::confirm,
           "Active team confirm closes its page instead of starting a second departure");
-    selection.selected = 3;
+    state.task_page_ui.at(page.id).selection = 3;
+    state.task_page_ui.at(page.id).member_rows = {7, 42, 7, -1};
+    view = ui::world_task_view(state, page);
     intent = ui::world_task_input(view, layout, selection, input, false);
     check(intent && intent->action == Action::add_member,
           "Active team retains real extra recruitment action");

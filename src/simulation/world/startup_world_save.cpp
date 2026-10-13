@@ -33,7 +33,7 @@ bool extra_payload(const State &s,std::uint64_t id) {
     EXTRA(human_detail_contexts);EXTRA(human_pages_initialized);EXTRA(human_page_catalogs);
     EXTRA(equipment_page_catalogs);EXTRA(human_page_selections);EXTRA(human_page_parents);
     EXTRA(human_page_answers);EXTRA(human_equipment_choices);EXTRA(human_gift_scores);EXTRA(human_gift_messages);
-    EXTRA(task_abort_questions);EXTRA(task_abort_answers);EXTRA(task_page_lists);EXTRA(task_recruitment_pages);
+    EXTRA(task_abort_questions);EXTRA(task_abort_answers);EXTRA(task_page_lists);EXTRA(task_page_ui);EXTRA(task_recruitment_pages);
     EXTRA(task_extra_pages);EXTRA(task_page_predictions);EXTRA(task_page_acceleration);EXTRA(task_display_initialized);
     EXTRA(deadline_initialized);EXTRA(deadline_grades);EXTRA(deadline_returns);
     EXTRA(crew_summaries);EXTRA(exploration_summaries);EXTRA(facility_page_bindings);

@@ -1,5 +1,6 @@
 #include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
 #include "ark/simulation/world/startup_world_menu.hpp"
+#include "ark/simulation/actors/startup_world_human.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -28,6 +29,21 @@ const ref::WorldScriptPage *top(const State &s) {
                                 [](const auto &v) { return v.lifecycle != 4; });
     return p == s.scripts.pages.rend() ? nullptr : &*p;
 }
+bool restore_roster_answer(State &next,std::uint64_t id) {
+    const auto found=next.task_page_ui.find(id);if(found==next.task_page_ui.end())return false;
+    auto &ui=found->second;
+    if(ui.answer) {
+        if(*ui.answer<0||*ui.answer>1)return false;
+        if(*ui.answer==0) {
+            ui.member_rows=next.participants;ui.member_rows.push_back(-1);
+            ui.selection=static_cast<int>(ui.member_rows.size())-1;
+            if(ui.first>ui.selection)ui.first=ui.selection;
+            else if(ui.selection-ui.first>=5)ui.first=ui.selection-4;
+        }
+        ui.answer.reset();
+    }
+    return true;
+}
 bool close(State &s, std::uint64_t page) {
     const auto r = ref::prepare_world_script_close_page(startup_world_runtime_scripts(s), page);
     return r.candidate && write_startup_world_runtime_scripts(s, r.candidate->state);
@@ -54,7 +70,20 @@ std::optional<std::uint64_t> open(State &s, int raw, std::optional<std::uint64_t
         s.page_phases.emplace(id, 0);
         s.page_secondary_counters.emplace(id, 0); // 原bJ首行，不是演出副钟。
     } else if (raw == 23) s.page_phases.emplace(id, 0);
+    else if (raw == 25 || raw == 26) {
+        StartupTaskPageUi ui;ui.member_rows=s.participants;ui.member_rows.push_back(-1);
+        s.task_page_ui.emplace(id,std::move(ui));
+    } else if (raw == 28) s.task_page_ui.emplace(id,StartupTaskPageUi{});
     return id;
+}
+bool inspect_task_human(State &s,int human) {
+    // 人物通用append入口只接受scene／35追踪；任务25–27的原source0另走真实页生产者。
+    const auto parent=top(s);if(!parent||!startup_world_human_details(s,human))return false;
+    const auto parent_id=parent->id;
+    const auto detail=open(s,60,{});if(!detail)return false;
+    for(auto &p:s.scripts.pages)if(p.id==parent_id)p.lifecycle=3;
+    return s.page_human_bindings.emplace(*detail,human).second&&
+        s.human_detail_contexts.emplace(*detail,StartupHumanDetailContext{}).second;
 }
 Command project(const State &s, const ref::WorldScriptPage &page) {
     Command c;
@@ -150,6 +179,20 @@ ref::TaskCommandConsumer consumer(State &s, std::uint64_t source, std::uint64_t 
             if (!id)
                 return {};
             target = *id;
+            if(e.first==27||e.first==28) {
+                const auto parent=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),
+                    [&](const auto &v){return v.id==source;});
+                if(parent==s.scripts.pages.end()||(parent->legacy_page!=25&&parent->legacy_page!=26))return {};
+                parent->lifecycle=3; // 原Push挂起父，真实框架恢复获准后才接受设备输入。
+            }
+            if(e.first==27) {
+                const auto parent=s.task_page_ui.find(source);
+                const auto p=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),
+                    [&](const auto &v){return v.id==source;});
+                if(parent==s.task_page_ui.end()||parent->second.answer||p==s.scripts.pages.end()||
+                   (p->legacy_page!=25&&p->legacy_page!=26))return {};
+                StartupTaskPageUi ui;ui.parent=source;s.task_page_ui.emplace(*id,std::move(ui));
+            }
         } else if (e.kind == Kind::close_page) {
             // 页27无候选时先关刚插入页；其余关闭实际执行的原页面。
             const auto p =
@@ -215,6 +258,15 @@ StartupWorldTaskPageResult commit(State &state, State &next, std::uint64_t targe
         next.task_page_predictions[target] = c.predicted_result;
         next.task_page_acceleration[target] = c.accelerate_departure;
     }
+    if(owner->legacy_page==27&&owner->lifecycle==4) {
+        const auto ui=next.task_page_ui.find(target);
+        if(ui==next.task_page_ui.end()||!ui->second.parent)return {Error::missing_source};
+        const auto parent=next.task_page_ui.find(*ui->second.parent);
+        if(parent==next.task_page_ui.end()||parent->second.answer)return {Error::missing_source};
+        parent->second.answer=r.candidate->accepted?0:1;
+    }
+    if(owner->legacy_page>=25&&owner->legacy_page<=28&&
+       !valid_startup_world_runtime_task_page(next,*owner))return {Error::missing_source};
     next.scripts.executing_page.reset();
     state = std::move(next);
     return {Error::none, r.candidate->denial, r.candidate->accepted, r.candidate->departed};
@@ -234,7 +286,8 @@ bool valid_startup_world_runtime_task_page(const State &s, const ref::WorldScrip
     if (p.lifecycle == 4 && count == s.page_counters.end() && phase == s.page_phases.end() &&
         second == s.page_secondary_counters.end() && list == s.task_page_lists.end() &&
         extra == s.task_extra_pages.end() && recruitment == s.task_recruitment_pages.end() &&
-        prediction == s.task_page_predictions.end() && acceleration == s.task_page_acceleration.end()) return true;
+        prediction == s.task_page_predictions.end() && acceleration == s.task_page_acceleration.end()&&
+        !s.task_page_ui.count(id)) return true;
     if (count == s.page_counters.end() || count->second < 0 || count->second == std::numeric_limits<int>::max()) return false;
     if (raw == 22) {
         if (p.task_identity || p.task_definition || list == s.task_page_lists.end() ||
@@ -274,7 +327,78 @@ bool valid_startup_world_runtime_task_page(const State &s, const ref::WorldScrip
         std::set<int> seen;
         for (const auto human : extra->second) if (!s.human_presence.count(human) || !seen.insert(human).second) return false;
     } else if (extra != s.task_extra_pages.end()) return false;
+    if(raw>=25&&!valid_startup_world_runtime_task_ui_page(s,p))return false;
+    if(raw<25&&s.task_page_ui.count(id))return false;
     return raw == 28 || (prediction == s.task_page_predictions.end() && acceleration == s.task_page_acceleration.end());
+}
+
+bool valid_startup_world_runtime_task_ui_page(const State &s,const ref::WorldScriptPage &p) {
+    const int raw=p.legacy_page;const auto id=p.id;
+    if(!s.rules||p.kind!=ref::WorldScriptPageKind::raw_page||raw<25||raw>28||p.lifecycle<0||p.lifecycle>4)return false;
+    const auto found=s.task_page_ui.find(id);
+    // 构造的新页等待真实Init；清除后的退休页无需保留无消费者游标。
+    if(found==s.task_page_ui.end()) {
+        if(p.lifecycle==0)return true;
+        return p.lifecycle==4&&!s.page_counters.count(id)&&!s.page_phases.count(id)&&
+            !s.page_secondary_counters.count(id)&&!s.task_page_lists.count(id)&&!s.task_extra_pages.count(id)&&
+            !s.task_recruitment_pages.count(id)&&!s.task_page_predictions.count(id)&&!s.task_page_acceleration.count(id);
+    }
+    const auto &ui=found->second;
+    if(ui.selection<0||ui.first<0||ui.tab<0||ui.tab>(raw==27?1:0))return false;
+    // 原producer仅预装零游标；新页未经过Update，不能恢复成已浏览或待答状态。
+    if(p.lifecycle==0&&(ui.selection||ui.first||ui.tab||ui.answer))return false;
+    if(raw<=26) {
+        if(ui.parent||ui.member_rows.empty()||ui.member_rows.size()>10||ui.member_rows.back()!=-1||
+           ui.selection>=static_cast<int>(ui.member_rows.size())||ui.first>ui.selection||ui.selection-ui.first>=5||
+           (ui.answer&&(*ui.answer<0||*ui.answer>1)))return false;
+        std::set<int> seen;
+        for(std::size_t n=0;n+1<ui.member_rows.size();++n) {
+            const int h=ui.member_rows[n];
+            if(h<0||!s.human_presence.count(h)||!seen.insert(h).second)return false;
+        }
+        return true;
+    }
+    if(!ui.member_rows.empty()||ui.answer)return false;
+    if(raw==28)return !ui.parent&&ui.selection<=1&&ui.first==0&&ui.tab==0;
+    if(!ui.parent||*ui.parent==id)return false;
+    const auto parent=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),
+        [&](const auto &v){return v.id==*ui.parent;});
+    const auto child=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),
+        [&](const auto &v){return v.id==id;});
+    const auto parent_ui=s.task_page_ui.find(*ui.parent);const auto extra=s.task_extra_pages.find(id);
+    if(parent==s.scripts.pages.end()||child==s.scripts.pages.end()||parent>=child||
+       (parent->legacy_page!=25&&parent->legacy_page!=26)||parent->lifecycle==4||
+       !parent->task_identity||p.task_identity!=parent->task_identity||p.task_definition!=parent->task_definition||
+       parent_ui==s.task_page_ui.end()||!valid_startup_world_runtime_task_page(s,*parent)||
+       (parent_ui->second.answer&&p.lifecycle!=4))return false;
+    for(const auto &entry:s.task_page_ui) {
+        const auto other=entry.first;const auto &other_ui=entry.second;
+        if(other==id||other_ui.parent!=ui.parent)continue;
+        const auto live=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),
+            [&](const auto &v){return v.id==other&&v.lifecycle!=4;});
+        if(live!=s.scripts.pages.end()&&p.lifecycle!=4)return false;
+    }
+    if(extra==s.task_extra_pages.end())return p.lifecycle==0&&ui.selection==0&&ui.first==0&&ui.tab==0;
+    const int count=static_cast<int>(extra->second.size());
+    return count==0?p.lifecycle==4&&ui.selection==0&&ui.first==0:
+        ui.selection<count&&ui.first<=ui.selection&&ui.selection-ui.first<5;
+}
+bool initialize_startup_world_runtime_task_ui_page(State &s,std::uint64_t id) {
+    const auto p=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[=](const auto &v){return v.id==id;});
+    if(p==s.scripts.pages.end()||p->legacy_page<25||p->legacy_page>28)return false;
+    if(s.task_page_ui.count(id))return valid_startup_world_runtime_task_ui_page(s,*p);
+    if(p->lifecycle!=0||p->legacy_page==27)return false; // 27必须由父producer预装真实parent。
+    StartupTaskPageUi ui;
+    if(p->legacy_page<=26){ui.member_rows=s.participants;ui.member_rows.push_back(-1);}
+    s.task_page_ui.emplace(id,std::move(ui));return valid_startup_world_runtime_task_ui_page(s,*p);
+}
+std::optional<State> update_startup_world_runtime_task_roster_page(const State &s,std::uint64_t id) {
+    const auto p=top(s);if(!p||p->id!=id||(p->legacy_page!=25&&p->legacy_page!=26)||s.scene.framework_paused||
+        !valid_startup_world_runtime_task_page(s,*p)||!s.task_page_ui.count(id))return {};
+    auto next=s;if(!restore_roster_answer(next,id))return {};
+    next.page_counters.find(id)->second=(next.page_counters.find(id)->second+1)%std::numeric_limits<int>::max();
+    if(!valid_startup_world_runtime_task_page(next,*p))return {};
+    return next;
 }
 
 bool valid_startup_world_runtime_task_tracking_scene(const State &s) {
@@ -417,6 +541,13 @@ StartupWorldTaskPageResult act_startup_world_runtime_task_page(State &state, std
     const int raw = p->legacy_page;
     if (raw >= 22 && raw <= 28 && !valid_startup_world_runtime_task_page(state, *p))
         return {Error::missing_source};
+    if(raw>=25&&raw<=28) {
+        // 显式域动作兼容真实producer已安装完整载荷的构造页；设备整轮入口仍仅life2。
+        if((p->lifecycle!=0&&p->lifecycle!=2)||!next.task_page_ui.count(id))return {Error::invalid_page};
+        for(const auto &h:next.rules->humans)
+            if(!next.scene.world.world.ai.growth.count(h.identity)||!next.human_calendar.count(h.identity)||
+               !next.human_presence.count(h.identity)||!next.human_definition_state.count(h.identity))return {Error::missing_source};
+    }
     if (raw == 60 && next.page_human_bindings.count(id)) {
         if (action != StartupWorldTaskAction::cancel || !close(next, id))
             return {Error::invalid_page};
@@ -491,22 +622,26 @@ StartupWorldTaskPageResult act_startup_world_runtime_task_page(State &state, std
             auto target = id;
             const auto c = project(next, *p);
             const auto consume = consumer(next, id, target);
-            if (action == StartupWorldTaskAction::confirm &&
-                (selection < 0 || selection > static_cast<int>(state.participants.size())))
+            auto &ui=next.task_page_ui.find(id)->second;
+            if ((action == StartupWorldTaskAction::confirm||action==StartupWorldTaskAction::inspect) &&
+                (selection < 0 || selection >= static_cast<int>(ui.member_rows.size())))
                 return {Error::invalid_page};
+            if(action==StartupWorldTaskAction::confirm||action==StartupWorldTaskAction::inspect) {
+                ui.selection=selection;
+                if(ui.first>selection)ui.first=selection;else if(selection-ui.first>=5)ui.first=selection-4;
+            }
             if (action == StartupWorldTaskAction::add_member ||
                 (action == StartupWorldTaskAction::confirm &&
-                 selection == static_cast<int>(state.participants.size()))) {
+                 ui.member_rows[selection] == -1)) {
                 const auto r = ref::prepare_world_task_extra_candidates(c, consume);
                 return commit(state, next, target, r);
             }
             if (action == StartupWorldTaskAction::inspect && selection >= 0 &&
-                selection < static_cast<int>(state.participants.size())) {
-                const auto detail = open(next, 60, {});
-                if (!detail)
+                ui.member_rows[selection]!=-1) {
+                if (!inspect_task_human(next,ui.member_rows[selection]))
                     return {Error::script_failed};
-                next.page_human_bindings[*detail] = state.participants.at(selection);
-                next.human_detail_contexts.emplace(*detail, StartupHumanDetailContext{});
+            } else if(action==StartupWorldTaskAction::inspect) {
+                // 末尾追加行上的详情输入吞本轮返回，既不造人页也不关闭父页。
             } else if (raw == 26 && action == StartupWorldTaskAction::confirm) {
                 if (!close(next, id))
                     return {Error::script_failed};
@@ -527,11 +662,35 @@ StartupWorldTaskPageResult act_startup_world_runtime_task_page(State &state, std
         return {};
     }
     auto target = id;
+    if(raw==27&&action==StartupWorldTaskAction::inspect) {
+        const auto list=next.task_extra_pages.find(id);auto &ui=next.task_page_ui.find(id)->second;
+        if(list==next.task_extra_pages.end()||selection<0||selection>=static_cast<int>(list->second.size()))return {Error::invalid_page};
+        ui.selection=selection;if(ui.first>selection)ui.first=selection;else if(selection-ui.first>=5)ui.first=selection-4;
+        if(!inspect_task_human(next,list->second[selection]))return {Error::script_failed};
+        next.scripts.executing_page.reset();state=std::move(next);return {};
+    }
     if (action != StartupWorldTaskAction::confirm && action != StartupWorldTaskAction::cancel &&
         !(raw == 27 && action == StartupWorldTaskAction::hire))
         return {Error::invalid_page};
     auto c = project(next, *p);
     const auto consume = consumer(next, id, target);
+    int human_selection=selection;
+    if(raw==27&&(action==StartupWorldTaskAction::confirm||action==StartupWorldTaskAction::hire)) {
+        const auto list=next.task_extra_pages.find(id);auto &ui=next.task_page_ui.find(id)->second;
+        if(list==next.task_extra_pages.end())return {Error::missing_source};
+        if(action==StartupWorldTaskAction::hire) {
+            const auto item=std::find(list->second.begin(),list->second.end(),selection);
+            if(item==list->second.end())return {Error::invalid_page};
+            ui.selection=static_cast<int>(item-list->second.begin());
+        } else {
+            if(selection<0||selection>=static_cast<int>(list->second.size()))return {Error::invalid_page};ui.selection=selection;
+        }
+        if(ui.first>ui.selection)ui.first=ui.selection;else if(ui.selection-ui.first>=5)ui.first=ui.selection-4;
+        human_selection=list->second[ui.selection];
+    }
+    if(raw==28&&action==StartupWorldTaskAction::confirm) {
+        if(selection<0||selection>1)return {Error::invalid_page};next.task_page_ui.find(id)->second.selection=selection;
+    }
     const ref::TaskCommandInput input{action == StartupWorldTaskAction::confirm ||
                                           action == StartupWorldTaskAction::hire,
                                       action == StartupWorldTaskAction::cancel, selection};
@@ -539,7 +698,7 @@ StartupWorldTaskPageResult act_startup_world_runtime_task_page(State &state, std
     if (raw == 23 && p->task_identity)
         result = ref::prepare_world_task_offer(c, *p->task_identity, input, consume);
     else if (raw == 27)
-        result = ref::prepare_world_task_hire(c, selection, input, consume);
+        result = ref::prepare_world_task_hire(c, human_selection, input, consume);
     else if (raw == 28)
         result = ref::prepare_world_task_departure(c, input, consume);
     else
@@ -550,10 +709,58 @@ StartupWorldTaskPageResult act_startup_world_runtime_task_page(State &state, std
 StartupWorldTaskPageResult input_startup_world_runtime_task_page(State &state, std::uint64_t id,
                                                                 const StartupTaskPageInput &input) {
     const auto p = top(state);
+    if(p&&p->id==id&&p->legacy_page>=31&&p->legacy_page<=33)
+        return input_startup_world_runtime_task_summary_page(state,id,input);
     if (state.scene.framework_paused || !p || p->id != id || p->lifecycle != 2 ||
-        (p->legacy_page != 22 && p->legacy_page != 23)) return {Error::invalid_page};
+        (p->legacy_page <22||p->legacy_page>28||p->legacy_page==24)) return {Error::invalid_page};
     if (!valid_startup_world_runtime_task_page(state, *p)) return {Error::missing_source};
     const int raw = p->legacy_page;
+    if(raw>=25) {
+        if(!state.task_page_ui.count(id)||input.track||(raw!=25&&input.depart)||
+           (raw!=27&&(input.left||input.right)&&raw!=28)||
+           (raw==28&&(input.up||input.down||input.scroll||input.inspect)))return {Error::invalid_page};
+        auto next=state;
+        if(raw<=26) {
+            if(!restore_roster_answer(next,id)||!valid_startup_world_runtime_task_page(next,*p))return {Error::missing_source};
+        }
+        auto &ui=next.task_page_ui.find(id)->second;
+        const int count=raw<=26?static_cast<int>(ui.member_rows.size()):raw==27?
+            static_cast<int>(next.task_extra_pages.find(id)->second.size()):2;
+        if(count<=0)return {Error::missing_source};
+        if(input.scroll) {
+            if(input.scroll->value==std::numeric_limits<int>::max())return {Error::invalid_page};
+            const auto wanted=input.scroll->absolute?std::int64_t(input.scroll->value):std::int64_t(ui.first)+input.scroll->value;
+            const int first=static_cast<int>(std::clamp(wanted,std::int64_t(0),std::int64_t(std::max(0,count-5))));
+            ui.selection+=first-ui.first;ui.first=first;
+        }
+        if(input.selection) {
+            if(*input.selection<0||*input.selection>=count)return {Error::invalid_page};ui.selection=*input.selection;
+        }
+        if(input.up)ui.selection=ui.selection?ui.selection-1:count-1;
+        if(input.down)ui.selection=ui.selection==count-1?0:ui.selection+1;
+        if(raw==27) {
+            if(input.left)ui.tab=1-ui.tab;if(input.right)ui.tab=1-ui.tab;
+        } else if(raw==28) {
+            if(input.left)ui.selection=1-ui.selection;if(input.right)ui.selection=1-ui.selection;
+        }
+        if(raw!=28) {
+            if(ui.first>ui.selection)ui.first=ui.selection;else if(ui.selection-ui.first>=5)ui.first=ui.selection-4;
+        }
+        StartupWorldTaskPageResult result;
+        if(input.confirm)result=act_startup_world_runtime_task_page(next,id,StartupWorldTaskAction::confirm,ui.selection);
+        else if(raw==25&&input.depart)result=act_startup_world_runtime_task_page(next,id,StartupWorldTaskAction::depart,ui.selection);
+        else if(raw==27) {
+            if(input.cancel)result=act_startup_world_runtime_task_page(next,id,StartupWorldTaskAction::cancel,ui.selection);
+            else if(input.inspect)result=act_startup_world_runtime_task_page(next,id,StartupWorldTaskAction::inspect,ui.selection);
+        } else if(raw<=26) {
+            if(input.inspect)result=act_startup_world_runtime_task_page(next,id,StartupWorldTaskAction::inspect,ui.selection);
+            else if(input.cancel)result=act_startup_world_runtime_task_page(next,id,StartupWorldTaskAction::cancel,ui.selection);
+        } else if(input.cancel&&next.page_phases.find(id)->second==0)
+            result=act_startup_world_runtime_task_page(next,id,StartupWorldTaskAction::cancel,ui.selection);
+        if(result.error!=Error::none)return result;
+        state=std::move(next);return result;
+    }
+    if(input.inspect||input.depart)return {Error::invalid_page};
     if ((raw == 22 && (input.left || input.right)) ||
         (raw == 23 && (input.up || input.down || input.scroll || input.track))) return {Error::invalid_page};
     auto next = state;
@@ -602,7 +809,8 @@ StartupWorldTaskPageResult input_startup_world_runtime_task_page(State &state, s
 Error input_startup_world_runtime_task_tracking_scene(State &state, const StartupTaskPageInput &input) {
     const auto p = top(state);
     if (state.scene.framework_paused || state.scene.scene_state != 4 || !p ||
-        p->kind != ref::WorldScriptPageKind::scene || p->lifecycle != 2 || input.up || input.down || input.scroll) return Error::invalid_page;
+        p->kind != ref::WorldScriptPageKind::scene || p->lifecycle != 2 || input.up || input.down || input.scroll||
+        input.inspect||input.depart) return Error::invalid_page;
     if (!valid_startup_world_runtime_task_tracking_scene(state) || !state.rules) return Error::missing_source;
     auto next = state; next.scripts.executing_page = p->id;
     auto &selected = next.page_phases.at(p->id);

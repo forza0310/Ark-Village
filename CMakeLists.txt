@@ -84,6 +84,8 @@ if(ARK_BUILD_DESKTOP)
         src/desktop/ui/village/world_magic_pot_skin.cpp
         src/desktop/ui/tasks/world_crew_summary.cpp src/desktop/ui/tasks/world_tasks.cpp
         src/desktop/ui/tasks/world_task_selection.cpp src/desktop/ui/tasks/world_task_tracking.cpp
+        src/desktop/ui/tasks/world_task_input.cpp src/desktop/ui/tasks/world_task_followup.cpp
+        src/desktop/ui/tasks/world_task_draw.cpp
         src/desktop/ui/tasks/world_task_result.cpp src/desktop/ui/actors/world_human_ceremony.cpp
         src/desktop/ui/system/world_menu.cpp src/desktop/ui/system/world_manual.cpp)
     target_include_directories(ark_village PRIVATE "${ARK_DESKTOP_GENERATED_DIR}")

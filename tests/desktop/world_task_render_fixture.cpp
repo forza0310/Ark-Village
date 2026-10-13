@@ -1,15 +1,15 @@
 // Optional actual-window task callsites. Conditions are explicit, not natural unlock evidence.
 #include "../../src/desktop/scene/projection.hpp"
 #include "../../src/desktop/scene/world_canvas.hpp"
-#include "../../src/desktop/ui/village/world_progression.hpp"
 #include "../../src/desktop/ui/actors/world_human_ceremony.hpp"
 #include "../../src/desktop/ui/common/skin.hpp"
 #include "../../src/desktop/ui/common/world_reports.hpp"
 #include "../../src/desktop/ui/tasks/world_task_tracking.hpp"
 #include "../../src/desktop/ui/tasks/world_tasks.hpp"
+#include "../../src/desktop/ui/village/world_progression.hpp"
 #include "../support/world_fixture.hpp"
-#include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
 #include "ark/simulation/facilities/startup_world_building.hpp"
+#include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
 #include <algorithm>
 #include <cstdlib>
 #include <filesystem>
@@ -135,6 +135,117 @@ void world_task_render_fixture() {
         house.page_counters[complete.id] = counter;
         samples.emplace_back("house96-reward" + std::to_string(counter), house);
     }
+    // Conditional source-bound successors. These frozen payloads do not certify natural wins.
+    auto team = listing;
+    const auto team_id = top(team).id;
+    auto &team_page = team.scripts.pages.back();
+    team_page.legacy_page = 25;
+    team_page.lifecycle = 0;
+    team_page.task_identity = selected_task;
+    team_page.task_definition = team.tasks.at(selected_task).definition;
+    team.task_page_lists.erase(team_id);
+    team.page_phases.erase(team_id);
+    team.page_secondary_counters.erase(team_id);
+    team.page_counters[team_id] = 8;
+    team.participants = {1, 2, 3, 4, 5, 6};
+    for (int id = 0; id < 9; ++id)
+        team.human_presence.at(id) = 1;
+    require(sim::initialize_startup_world_runtime_task_ui_page(team, team_id),
+            "Conditional team Init rejected");
+    team.scripts.pages.back().lifecycle = 2;
+    team.task_page_ui.at(team_id).selection = 6;
+    team.task_page_ui.at(team_id).first = 2;
+    require(sim::valid_startup_world_runtime_task_page(team, top(team)),
+            "Conditional frozen team rejected");
+    samples.emplace_back("task25-tail", team);
+    auto active = team;
+    active.scripts.pages.back().legacy_page = 26;
+    active.active_task = selected_task;
+    samples.emplace_back("task26-active", active);
+    auto extra = team;
+    sim::StartupTaskPageInput additional;
+    additional.confirm = true;
+    require(sim::input_startup_world_runtime_task_page(extra, team_id, additional).error ==
+                sim::StartupWorldRuntimeError::none,
+            "Actual additional-member producer rejected");
+    ready(extra);
+    require(top(extra).legacy_page == 27, "Conditional extra page was not produced");
+    samples.emplace_back("task27-fees", extra);
+    extra.task_page_ui.at(top(extra).id).tab = 1;
+    samples.emplace_back("task27-attributes", extra);
+    auto departure = team;
+    additional = {};
+    additional.depart = true;
+    require(sim::input_startup_world_runtime_task_page(departure, team_id, additional).error ==
+                sim::StartupWorldRuntimeError::none,
+            "Actual departure prompt producer rejected");
+    ready(departure);
+    require(top(departure).legacy_page == 28, "Conditional departure prompt was not produced");
+    samples.emplace_back("task28-yes", departure);
+    departure.task_page_ui.at(top(departure).id).selection = 1;
+    samples.emplace_back("task28-no", departure);
+    departure.task_page_ui.at(top(departure).id).selection = 0;
+    departure.page_phases.at(top(departure).id) = 1;
+    for (int counter : {0, 32, 70, 95}) {
+        auto s = departure;
+        s.page_counters.at(top(s).id) = counter;
+        s.page_secondary_counters.at(top(s).id) = counter / 3;
+        samples.emplace_back("task28-depart" + std::to_string(counter), std::move(s));
+    }
+    auto crew = team;
+    auto &crew_page = crew.scripts.pages.back();
+    crew_page.legacy_page = 31;
+    crew_page.lifecycle = 0;
+    crew.task_page_ui.clear();
+    crew.page_counters.erase(team_id);
+    require(sim::initialize_startup_world_runtime_task_summary_ui_page(crew, team_id),
+            "Actual crew result Init rejected");
+    crew.scripts.pages.back().lifecycle = 2;
+    samples.emplace_back("task31-crew", crew);
+    auto treasure = team;
+    auto &treasure_page = treasure.scripts.pages.back();
+    treasure_page.legacy_page = 32;
+    treasure_page.lifecycle = 0;
+    treasure_page.legacy_f = 1;
+    treasure_page.legacy_g = 3;
+    treasure.task_page_ui.clear();
+    treasure.page_counters.erase(team_id);
+    treasure.exploration_summaries.emplace(
+        team_id, sim::rules::WorldExplorationSummary{
+                     32, selected_task, treasure.tasks.at(selected_task).definition, {}});
+    auto &rewards = treasure.exploration_summaries.at(team_id).rewards;
+    const auto &equipment = treasure.rules->equipment.front();
+    for (int row = 0; row < 9; ++row)
+        rewards.push_back(row % 2 ? std::array<int, 2>{equipment.shop.kind, equipment.shop.id}
+                                  : std::array<int, 2>{0, treasure.rules->items.front().identity});
+    require(sim::initialize_startup_world_runtime_task_summary_ui_page(treasure, team_id),
+            "Treasure UI Init rejected");
+    treasure.scripts.pages.back().lifecycle = 2;
+    samples.emplace_back("task32-rewards", treasure);
+    treasure.task_page_ui.at(team_id).first = 4;
+    samples.emplace_back("task32-tail", treasure);
+    auto deadline = team;
+    auto &deadline_page = deadline.scripts.pages.back();
+    deadline_page.legacy_page = 33;
+    deadline_page.lifecycle = 0;
+    deadline.task_page_ui.clear();
+    deadline.page_counters.erase(team_id);
+    deadline.active_task = selected_task;
+    require(sim::initialize_startup_world_runtime_deadline_page(deadline, team_id),
+            "Deadline UI Init rejected");
+    deadline.scripts.pages.back().lifecycle = 2;
+    samples.emplace_back("task33-continue", deadline);
+    for (int answer : {0, 1}) {
+        auto s = deadline;
+        s.task_page_ui.at(team_id).selection = answer;
+        s.page_phases.at(team_id) = 1;
+        s.deadline_returns[team_id] = answer;
+        for (int counter : {0, 25, 50}) {
+            s.page_counters.at(team_id) = counter;
+            samples.emplace_back(
+                "task33-answer" + std::to_string(answer) + "-" + std::to_string(counter), s);
+        }
+    }
     auto long_list = listing;
     auto &ids = long_list.task_page_lists.at(top(long_list).id);
     const auto first = ids.front();
@@ -158,9 +269,13 @@ void world_task_render_fixture() {
         ~Scope() { CloseWindow(); }
     } scope;
     Sprites sprites(ARK_TEST_ASSETS);
-    std::string glyphs = "任务选择寻求！冒险者姓名费用请选择任务募集冒险者返回选择追踪加速合计人交"
-                         "给我!多指教来了!我会加油的!我要参加!好期待攻略了解自宅完成的满意度努力"
-                         "胜利！因为完成任务街道人气上升了!!显示全文确定";
+    std::string glyphs =
+        "任务选择寻求！冒险者姓名费用请选择任务募集冒险者返回选择追踪加速合计人交"
+        "给我!多指教来了!我会加油的!我要参加!好期待攻略了解自宅完成的满意度努力"
+        "胜利！因为完成任务街道人气上升了!!显示全文确定参加者名单参加委托追加队员"
+        "任务开始立即重新考虑成果打倒数倒地下次数获得宝物！任务继续确认加油哦!遗憾…"
+        "有些困难吧有点担心这些人真是了不起我觉得会好的值得期待能轻松通关他们做到"
+        "再加把劲再加加油需要补充战力重新来过比较好应该撤退消费金继续中止贡献努力";
     for (const auto &t : listing.rules->tasks)
         glyphs += t.name;
     for (const auto &p : listing.rules->humans)
@@ -196,7 +311,8 @@ void world_task_render_fixture() {
                     ui::prepare_world_progression(v, s, skin);
                     require(bool(v.ceremony),
                             "Normal management progression must bind the residence ceremony");
-                    ui::draw_world_progression(v, ui::world_progression_layout(extent, 96), skin, true);
+                    ui::draw_world_progression(v, ui::world_progression_layout(extent, 96), skin,
+                                               true);
                 } else if (s.scene.scene_state == 4 || s.scene.scene_state == 5 ||
                            top(s).legacy_page == 29) {
                     auto v = top(s).legacy_page == 29 ? ui::world_task_information_view(s, top(s))
@@ -220,8 +336,25 @@ void world_task_render_fixture() {
                     auto v = ui::world_task_view(s, top(s));
                     require(v.initialized, "Task conditional view unavailable");
                     ui::prepare_world_task(v, s, skin);
-                    ui::draw_world_task_selection(v, ui::world_task_layout(extent, v.raw), skin,
-                                                  true);
+                    if (v.raw <= 24)
+                        ui::draw_world_task_selection(v, ui::world_task_layout(extent, v.raw), skin,
+                                                      true);
+                    else {
+                        const auto controls = ui::draw_world_task_followup(
+                            v, ui::world_task_layout(extent, v.raw), skin, true, {});
+                        require(bool(controls), "Followup painted geometry missing");
+                        require(controls->geometry.selection == v.selected &&
+                                    controls->geometry.first == v.first,
+                                "Followup geometry must tag the actual Owner cursor");
+                        const auto frame = ui::world_task_layout(extent, v.raw).panel;
+                        for (const auto &row : controls->geometry.rows)
+                            require(row.rectangle.x >= frame.x && row.rectangle.y >= frame.y &&
+                                        row.rectangle.x + row.rectangle.width <=
+                                            frame.x + frame.width &&
+                                        row.rectangle.y + row.rectangle.height <=
+                                            frame.y + frame.height,
+                                    "Followup PC rows cannot hit outside the painted source frame");
+                    }
                 }
                 EndMode2D();
                 text.flush(raster.zoom, raster.offset);
@@ -243,6 +376,7 @@ void world_task_render_fixture() {
             require(same_world_clock(s, before) && s.page_counters == before.page_counters &&
                         s.page_secondary_counters == before.page_secondary_counters &&
                         s.page_phases == before.page_phases &&
+                        s.task_page_ui.size() == before.task_page_ui.size() &&
                         s.items.size() == before.items.size() &&
                         std::equal(s.items.begin(), s.items.end(), before.items.begin(),
                                    [](const auto &a, const auto &b) {

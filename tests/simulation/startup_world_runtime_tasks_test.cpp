@@ -820,15 +820,21 @@ void active_management() {
     for (auto &p : s.scripts.pages)
         if (p.id != team && p.kind != ref::WorldScriptPageKind::scene)
             p.lifecycle = 4;
+    const auto team_resumed=prepare_startup_world_runtime(s);
+    check(team_resumed.candidate.has_value(),"real framework resumes parent team after extra recruitment");
+    s=*team_resumed.candidate;
     check(act_startup_world_runtime_task_page(s, team, StartupWorldTaskAction::inspect, 0).error ==
                   StartupWorldRuntimeError::none &&
               s.scripts.pages.back().legacy_page == 60 &&
               s.page_human_bindings.at(s.scripts.pages.back().id) == 1,
           "participant detail binds source definition, not synthetic actor or another roster");
     check(act_startup_world_runtime_task_page(s, s.scripts.pages.back().id,
-                                              StartupWorldTaskAction::cancel)
-                      .error == StartupWorldRuntimeError::none &&
-              act_startup_world_runtime_task_page(s, team, StartupWorldTaskAction::cancel).error ==
+                                              StartupWorldTaskAction::cancel).error == StartupWorldRuntimeError::none,
+          "participant detail closes independently before parent resume");
+    const auto detail_resumed=prepare_startup_world_runtime(s);
+    check(detail_resumed.candidate.has_value(),"real framework resumes team after participant details");
+    s=*detail_resumed.candidate;
+    check(act_startup_world_runtime_task_page(s, team, StartupWorldTaskAction::cancel).error ==
                   StartupWorldRuntimeError::none,
           "detail and team return independently, no fee or active task cancellation");
     check(open_startup_world_runtime_task_control_menu(s) == StartupWorldRuntimeError::none,
@@ -868,6 +874,90 @@ void active_management() {
             settled->scene.random.draws() == draws && !settled->deadline_page &&
             settled->participants == std::vector<int>({1, 3}),
         "parent restores whole site then80/-10/first162/notice26; no deadlinefee or random shadow");
+}
+void task_roster_ui() {
+    using E=StartupWorldRuntimeError;
+    auto s=test_support::world_fixture(ref::WorldRandomStream::from_java_seed(0));
+    const auto made=ref::prepare_world_task_creation(startup_world_runtime_factory(s),0);
+    check(made.candidate&&made.candidate->created_task&&write_startup_world_runtime_factory(s,made.candidate->state),
+          "roster UI uses real task factory rather than synthetic task references");
+    s.active_task=*made.candidate->created_task;s.scene.world.world.ai.task_active=true;
+    s.task.kind=0;s.task.center=*s.tasks.at(*s.active_task).site;s.participants={1};s.human_presence.at(3)=1;
+    check(open_startup_world_runtime_task_menu(s)==E::none,"active roster producer creates26");
+    const auto team=s.scripts.pages.back().id;s.scripts.pages.back().lifecycle=2;
+    check(s.task_page_ui.at(team).member_rows==std::vector<int>({1,-1}),"roster freezes member source and sentinel");
+    StartupTaskPageInput input;input.selection=1;input.inspect=true;input.cancel=true;
+    check(input_startup_world_runtime_task_page(s,team,input).error==E::none&&s.scripts.pages.back().id==team&&
+          s.scripts.pages.back().lifecycle==2,"sentinel inspect swallows same-round cancel without opening phantom human");
+    auto bad=s;bad.task_page_ui.erase(team);const auto unchanged=startup_world_state_digest(bad);
+    check(input_startup_world_runtime_task_page(bad,team,{}).error==E::missing_source&&startup_world_state_digest(bad)==unchanged,
+          "initialized roster missing UI rejects atomically instead of reconstructing it");
+    input={};input.confirm=true;
+    check(input_startup_world_runtime_task_page(s,team,input).error==E::none&&s.scripts.pages.back().legacy_page==27,
+          "frozen sentinel confirm opens additional recruitment");
+    const auto extra=s.scripts.pages.back().id;s.scripts.pages.back().lifecycle=2;
+    check(s.task_page_ui.at(extra).parent==team,"additional recruitment binds real parent once");
+    auto max27=s;max27.page_counters.at(extra)=std::numeric_limits<int>::max()-1;
+    const auto clock27=prepare_startup_world_runtime(max27);
+    check(clock27.candidate&&clock27.candidate->page_counters.at(extra)==0&&
+          clock27.candidate->task_page_ui.at(extra).selection==max27.task_page_ui.at(extra).selection&&
+          clock27.candidate->task_page_ui.at(extra).tab==max27.task_page_ui.at(extra).tab&&
+          clock27.candidate->scene.random.draws()==max27.scene.random.draws(),"real27 framework wraps main clock preserving UI and random stream");
+    input={};input.left=input.right=true;input.up=input.down=true;
+    check(input_startup_world_runtime_task_page(s,extra,input).error==E::none&&s.task_page_ui.at(extra).tab==0&&
+          s.task_page_ui.at(extra).selection==0,"independent up/down/left/right preserve original ordering and double pulses");
+    input={};input.cancel=true;input.inspect=true;
+    check(input_startup_world_runtime_task_page(s,extra,input).error==E::none&&s.task_page_ui.at(team).answer==1&&
+          s.scripts.pages.back().lifecycle==4,"27 cancellation precedes inspect and writes parent answer1");
+    const auto cancelled=prepare_startup_world_runtime(s).candidate;
+    check(cancelled&&!cancelled->task_page_ui.at(team).answer&&cancelled->task_page_ui.at(team).member_rows==std::vector<int>({1,-1})&&
+          cancelled->task_page_ui.at(team).selection==1,"parent cancellation consumes once preserving frozen list and cursor");
+    s=*cancelled;
+    check(act_startup_world_runtime_task_page(s,team,StartupWorldTaskAction::add_member).error==E::none,
+          "parent opens a later independent candidate page");
+    const auto hired=s.scripts.pages.back().id;s.scripts.pages.back().lifecycle=2;
+    const auto cash=s.scene.world.world.ai.accounting.funds();
+    // 原script lock只抑制插页，不能拿它冒充失败；ID耗尽由真正page()显式拒绝。
+    auto exhausted=s;exhausted.scripts.next_page_id=std::numeric_limits<std::uint64_t>::max();
+    const auto before_exhausted=startup_world_state_digest(exhausted);
+    check(act_startup_world_runtime_task_page(exhausted,hired,StartupWorldTaskAction::hire,3).error!=E::none&&
+          startup_world_state_digest(exhausted)==before_exhausted,"late recruitment event page-ID overflow rolls back fee, member, cursor and parent answer together");
+    check(act_startup_world_runtime_task_page(s,hired,StartupWorldTaskAction::hire,3).error==E::none&&
+          s.task_page_ui.at(team).answer==0&&s.task_page_ui.at(team).member_rows==std::vector<int>({1,-1})&&
+          s.participants==std::vector<int>({1,3})&&s.scene.world.world.ai.accounting.funds()==cash-200,
+          "successful recruitment pays once but does not eagerly rewrite paused parent roster");
+    // 明确关闭事件64提示的条件调用点，不声明原窗口／自然招募动态覆盖。
+    for(auto &p:s.scripts.pages)if(p.id!=team&&p.kind!=ref::WorldScriptPageKind::scene)p.lifecycle=4;
+    const auto resumed=prepare_startup_world_runtime(s).candidate;
+    check(resumed&&resumed->task_page_ui.at(team).member_rows==std::vector<int>({1,3,-1})&&
+          resumed->task_page_ui.at(team).selection==2&&!resumed->task_page_ui.at(team).answer&&
+          resumed->scene.world.world.ai.accounting.funds()==cash-200,"successful parent restore alone refreshes X and selects sentinel");
+    const auto again=update_startup_world_runtime_task_roster_page(*resumed,team);
+    check(again&&again->task_page_ui.at(team).member_rows==resumed->task_page_ui.at(team).member_rows&&
+          !again->task_page_ui.at(team).answer&&again->scene.world.world.ai.accounting.funds()==cash-200&&
+          again->page_counters.at(team)==resumed->page_counters.at(team)+1,"second parent update only advances main clock, never repays or replays answer");
+    // 已组队的25来源条件夹具，28仍必须经真正departure producer安装预测／双钟／按钮。
+    auto departure=*resumed;departure.active_task.reset();departure.scene.world.world.ai.task_active=false;
+    for(auto &p:departure.scripts.pages)if(p.id==team)p.legacy_page=25;
+    check(act_startup_world_runtime_task_page(departure,team,StartupWorldTaskAction::depart).error==E::none&&
+          departure.scripts.pages.back().legacy_page==28,"source-conditioned team25 runs actual28 producer");
+    const auto page28=departure.scripts.pages.back().id;departure.scripts.pages.back().lifecycle=2;
+    departure.page_counters.at(page28)=departure.page_secondary_counters.at(page28)=std::numeric_limits<int>::max()-1;
+    const auto clock28=update_startup_world_runtime_task_page(departure,page28);
+    check(clock28&&clock28->page_counters.at(page28)==0&&clock28->page_secondary_counters.at(page28)==0&&
+          valid_startup_world_runtime_task_page(*clock28,clock28->scripts.pages.back())&&!clock28->active_task&&
+          clock28->scene.random.draws()==departure.scene.random.draws()&&
+          clock28->scene.world.world.ai.accounting.funds()==departure.scene.world.world.ai.accounting.funds(),
+          "real28 Owner commits wrapped double clocks and retains valid button/prediction without task activation");
+    for(const int invalid:{-1,std::numeric_limits<int>::max()}) {
+        auto broken=departure;broken.page_secondary_counters.at(page28)=invalid;
+        const auto digest=startup_world_state_digest(broken);
+        check(!update_startup_world_runtime_task_page(broken,page28)&&startup_world_state_digest(broken)==digest,
+              "28 Owner rejects negative or MAX secondary clock without partial candidate changes");
+    }
+    auto frozen=*resumed;frozen.participants={3,1};input={};input.selection=0;input.inspect=true;
+    check(input_startup_world_runtime_task_page(frozen,team,input).error==E::none&&
+          frozen.page_human_bindings.at(frozen.scripts.pages.back().id)==1,"details resolves frozen member identity despite later live order");
 }
 
 // 本批仍用真实工厂分配身份；挑战门槛和显式绘制次数是调用点夹具，不冒充自然玩家路线。
@@ -1282,6 +1372,7 @@ int main() {
         task_start_audio();
         task_victory_requests();
         active_management();
+        task_roster_ui();
         task_tracking_menu();
         presentation_admission_and_random();
         presentation_gift_sound_and_rollback();

@@ -7,8 +7,9 @@
 - [x] 正式4c7a490及前置已接人物四页、职业61–63、赠礼64–66、结果68/69及装备73；455来源/73适配、719素材保持，整帧FIFO/真实scroll及系统2独立身份已接，见[B1](docs/stages/B1-playable-prototype.md#research-4c7a490-human-catalogues)。
 - [x] 现actors UI执行raw60四页有序计划、实际字体测宽/恢复提示/比例条；保留PC页签/捷径与FIFO/pending，装备方向先走四槽、行点击选择、Enter进入对应赠礼槽，魔法Enter无操作。
 - [x] 用户指定的小窗preview.mjs及所引设施/道具/菜单/提示/人物示例已纳入本goal，复用各自正式合同及套件，对照入口见[清单](docs/reference/REFERENCE_CHECKLIST.md#ui-small-window-goal)。预览服务、CSS和夹具数值不进入游戏。
-- [x] 6a0f8e2／395fa0b职业预览、转职演出和赠礼结果计划已消费，真实转职/赠礼窗口通过；共享奖励人物时钟未建模，静态帧0边界明确，不从参考PNG代做业务或时钟。
-- [ ] 接续正式755fdf2：共享人物时钟、商品72/79、强化75–77、口碑82双计数/联合恢复；沿现模块/套件与玩家清理政策，不把本批99条件图或静态帧0认证为完整原时钟/OS输入/原字体。
+- [x] 6a0f8e2／395fa0b职业预览、转职演出和赠礼结果计划已消费，真实转职/赠礼窗口通过；共享奖励人物帧已由755fdf2的entry_updates只读桥提供；手形仍静态0，原OS动态单列。
+- [x] 正式755fdf2商品72/79、强化75–77、口碑82双计数/联合恢复及共享人物帧已接；461来源/73适配、720素材，整帧FIFO、玩家冷清及两Debug/Release受影响检查通过，见[B1](docs/stages/B1-playable-prototype.md#research-755fdf2-facility-pages)。158条件图与两次真实新局图不认证OS输入或原字体。
+- [ ] 接续正式fd69d44村办51–54、晋级48–50及解锁/领取59/95/96/97皮肤与恢复修正，1372a06为文档收敛；先核维护增量与现套件，沿同一Owner/玩家政策，不接研究窗口宿主。
 - [x] 获批steam-month分段月96→97→98→99及三次独立冷载通过；每段6分钟/10000轮，原季度入口保持，失败观察档不作输入，见[B1](docs/stages/B1-playable-prototype.md#research-e22ed0a-human-ui)。
 
 - [x] 正式bb61d5f普通设施两页维护计划：获批四目标已导入，455来源/70适配保留，新增资源映射现有Steam属性图标；后续c6b1a5b无闭包增量，见[方案](docs/MILESTONES.md#research-bb61d5f-detail-plan)。
@@ -32,7 +33,7 @@
 ## 表现与研究边界
 
 - [ ] 桌面自动表现请求及探索底栏：补原准入/包装资格、滑入/背景/资源桥后接线，见[最小缺口](docs/reference/RESEARCH_REQUESTS.md#dungeon-strip-consumer-gap)；不按60FPS推导随机调用。
-- [ ] 完整施工、正门/进出、手持武器/物体/投射物、连击/升级/浮标与76/77演出按精确帧、锚点和时钟合同接入；受击不凭观感添加减速、硬直或击退，见[受击缺口](docs/reference/RESEARCH_REQUESTS.md#hit-reaction-gap)。
+- [ ] 完整施工、正门/进出、手持武器/物体/投射物、连击/升级/浮标按精确帧、锚点和时钟合同接入；76/77已按755fdf2正式计划接线；受击不凭观感添加减速、硬直或击退，见[受击缺口](docs/reference/RESEARCH_REQUESTS.md#hit-reaction-gap)。
 - [ ] 设置、世界内排行榜/退出及标题完整动效等余项按[候选门槛](docs/reference/REFERENCE_CHECKLIST.md#候选接续状态与接入门槛)推进；已接的真实菜单和34/39不再列为缺失消费者。
 - [ ] 自动跨周中断档等待轮内恢复合同后单独设计，保持既有玩家存档政策，见[RQ12](docs/reference/RESEARCH_REQUESTS.md#persistence-integration-gap)。
 - [ ] 正常窗口输入/回执按实际职责整理，保留generation、pending、held与失焦边界；Windows原游戏与产品OS输入对照单列，不将截图或程序内输入当作真实鼠标验收。

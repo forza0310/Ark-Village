@@ -12,6 +12,7 @@
 #include "ark/simulation/world/startup_world_save.hpp"
 #include "ark/simulation/actors/startup_world_human.hpp"
 #include "ark/simulation/facilities/startup_world_commerce.hpp"
+#include "ark/simulation/facilities/startup_world_facility_items.hpp"
 
 #include <algorithm>
 
@@ -1363,6 +1364,31 @@ int check_domain_restore(
             throw std::runtime_error("restore fixture cannot initialize82");
         praise.scripts.pages.back().lifecycle = 2;
         expect(praise, true, "initialized82 complete source");
+        reject(praise,"initialized82 missing independent counter",[&](auto &v){v.page_secondary_counters.erase(animation.id);});
+        reject(praise,"initialized82 independent counter overflow",[&](auto &v){v.page_secondary_counters.at(animation.id)=std::numeric_limits<int>::max();});
+        {
+            auto pending=praise;pending.facility_catalog_pages_initialized.erase(animation.id);
+            expect(pending,false,"uninitialized82 preinstalled independent counter");
+        }
+        // 两段的短往返只认证来源条件夹具；不重复自然世界前缀。
+        const auto praise_source=praise;
+        praise.page_counters.at(animation.id)=40;praise.page_secondary_counters.at(animation.id)=117;
+        for(int phase=0;phase<2;++phase) {
+            expect(praise,true,"82 phase boundary exact source");
+            const auto bytes=p::persistence_detail::encode_state(praise);
+            auto restored=p::persistence_detail::decode_state(bytes,*praise.rules);
+            expect(restored,true,"82 phase boundary exact restore");
+            if(p::persistence_detail::encode_state(restored)!=bytes||
+               p::act_startup_world_facility_catalog_page(praise,animation.id,p::StartupFacilityCatalogAction::confirm)!=p::StartupWorldRuntimeError::none||
+               p::act_startup_world_facility_catalog_page(restored,animation.id,p::StartupFacilityCatalogAction::confirm)!=p::StartupWorldRuntimeError::none||
+               p::persistence_detail::encode_state(restored)!=p::persistence_detail::encode_state(praise))
+                throw std::runtime_error("restore82 phase input diverges");
+            const auto a=p::prepare_startup_world_runtime(praise),b=p::prepare_startup_world_runtime(restored);
+            if(!a.candidate||!b.candidate||p::persistence_detail::encode_state(*a.candidate)!=p::persistence_detail::encode_state(*b.candidate))
+                throw std::runtime_error("restore82 phase update/output diverges");
+            if(phase==0) {praise=*a.candidate;praise.page_counters.at(animation.id)=40;}
+        }
+        praise=praise_source; // 后面的破坏测试使用原有效页，不能伪造复活已退休的演出。
         reject(praise, "animation82 missing facility definition", [&](auto &v) {
             v.scripts.pages.back().facility_definition.reset();
         });
@@ -1382,6 +1408,75 @@ int check_domain_restore(
             v.facility_catalog_page_lists.at(animation.id).front() =
                 std::numeric_limits<int>::max();
         });
+    }
+    {
+        auto facility=baseline;
+        for(auto &[id,owned]:facility.items) {
+            owned.inventory=id>=0&&id<8?2:0;facility.catalog.at({0,id})=owned;
+        }
+        const auto source=std::find_if(facility.scene.world.world.facilities.begin(),facility.scene.world.world.facilities.end(),
+            [](const auto &entry){return entry.second.placement.definition_id==33&&entry.second.status!=0;});
+        if(source==facility.scene.world.world.facilities.end()||
+           p::open_startup_world_facility_page(facility,source->first)!=p::StartupWorldRuntimeError::none||
+           p::open_startup_world_facility_items(facility,facility.scripts.pages.back().id)!=p::StartupWorldRuntimeError::none)
+            throw std::runtime_error("restore75 actual source74 unavailable");
+        const auto directory=facility.scripts.pages.back().id;
+        const auto tick=[&](auto &state) {
+            auto next=p::prepare_startup_world_runtime(state);
+            if(!next.candidate)throw std::runtime_error("restore75/76/77 actual framework rejected");
+            state=std::move(*next.candidate);
+        };
+        expect(facility,true,"pending75 no preinstalled payload");
+        auto broken=facility;broken.facility_item_page_scroll[directory]=0;
+        expect(broken,false,"pending75 preinstalled scroll rejects");
+        tick(facility);
+        p::StartupFacilityItemInput input;input.up=true;
+        if(p::input_startup_world_facility_item_page(facility,directory,input)!=p::StartupWorldRuntimeError::none||
+           facility.facility_item_page_scroll.at(directory)!=3)
+            throw std::runtime_error("restore75 actual tail navigation rejected");
+        const auto roundtrip=[&](const auto &state,p::StartupFacilityItemInput action) {
+            expect(state,true,"75/76/77 complete replay source");
+            const auto bytes=p::persistence_detail::encode_state(state);
+            auto restored=p::persistence_detail::decode_state(bytes,*state.rules),live=state;
+            expect(restored,true,"75/76/77 replay recovered");
+            if(p::persistence_detail::encode_state(restored)!=bytes)
+                throw std::runtime_error("restore75/76/77 bytes diverged");
+            const auto id=state.scripts.pages.back().id;
+            const auto a=p::input_startup_world_facility_item_page(live,id,action),
+                       b=p::input_startup_world_facility_item_page(restored,id,action);
+            if(a!=p::StartupWorldRuntimeError::none||a!=b)
+                throw std::runtime_error("restore75/76/77 input rejected");
+            tick(live);tick(restored);
+            if(p::persistence_detail::encode_state(live)!=p::persistence_detail::encode_state(restored))
+                throw std::runtime_error("restore75/76/77 input/update/output differs");
+        };
+        input={};input.confirm=true;roundtrip(facility,input);
+        auto retiring=facility;
+        if(p::act_startup_world_facility_item_page(retiring,directory,p::StartupFacilityItemAction::cancel)!=p::StartupWorldRuntimeError::none)
+            throw std::runtime_error("restore75 actual retirement rejected");
+        expect(retiring,true,"retiring75 retains cursor until Finish");
+        retiring.facility_item_page_scroll.erase(directory);
+        expect(retiring,false,"retiring initialized75 still requires scroll payload");
+        for(int fault=0;fault<6;++fault) {
+            broken=facility;
+            if(fault==0)broken.facility_item_page_scroll.erase(directory);
+            if(fault==1)broken.facility_item_page_scroll.at(directory)=-1;
+            if(fault==2)broken.facility_item_page_scroll.at(directory)=8;
+            if(fault==3)broken.facility_item_page_selections.at(directory)=0;
+            if(fault==4)broken.facility_item_page_scroll[facility.scripts.pages.front().id]=0;
+            if(fault==5)broken.facility_page_bindings.erase(facility.scripts.pages[facility.scripts.pages.size()-2].id);
+            expect(broken,false,"75 missing/offscreen/orphan/wrong-parent rejects");
+        }
+        if(p::input_startup_world_facility_item_page(facility,directory,input)!=p::StartupWorldRuntimeError::none)
+            throw std::runtime_error("restore75 confirm rejected");
+        for(int frame=0;frame<37;++frame)tick(facility);
+        roundtrip(facility,{}); // 下一轮count38必须恰一次排声音8。
+        for(int frame=37;frame<50;++frame)tick(facility);
+        roundtrip(facility,input); // 77快进/输出/冻结改良与父75首行全部保持。
+        if(p::input_startup_world_facility_item_page(facility,facility.scripts.pages.back().id,input)!=p::StartupWorldRuntimeError::none)
+            throw std::runtime_error("restore77 fast forward rejected");
+        for(int frame=0;frame<6;++frame)tick(facility);
+        roundtrip(facility,input); // 退休77并返回75不重付、不重Init、不洗scroll。
     }
     {
         // 壶资格/库存是明确条件组合；页面载荷只准备最小结构，不宣称自然新局解锁。

@@ -1108,8 +1108,12 @@ void facility_item_command_transactions() {
         const auto page = task_top(state).id;
         app::WorldSession session(state);
         const auto early = session.act_facility_item(page, A::confirm);
+        sim::StartupFacilityItemInput input;
+        input.confirm = true;
+        const auto early_frame = session.input_facility_item(page, input);
         const auto stopped = input_frame(session, session.set_paused(true));
         check(!stopped->failed && input_result(*stopped, early).outcome == Outcome::rejected &&
+                  input_result(*stopped, early_frame).outcome == Outcome::rejected &&
                   task_top(*stopped->state).id == page &&
                   stopped->state->items.at(1).inventory == 2 &&
                   stopped->state->scene.random.draws() == state.scene.random.draws(),
@@ -1132,7 +1136,11 @@ void facility_item_command_transactions() {
     session.set_paused(false);
     const auto invalid = session.act_facility_item(page, static_cast<A>(999));
     const auto bad_row = session.act_facility_item(page, A::confirm, 1);
-    const auto use = session.act_facility_item(page, A::confirm, 0);
+    sim::StartupFacilityItemInput composed;
+    composed.up = composed.down = composed.confirm = composed.cancel = true;
+    composed.selection = 0;
+    composed.scroll = sim::StartupFacilityItemInput::Scroll{true, 0};
+    const auto use = session.input_facility_item(page, composed);
     const auto duplicate = session.act_facility_item(page, A::confirm, 0);
     const auto paid = input_frame(session, session.set_paused(true));
     check(!paid->failed && input_result(*paid, invalid).outcome == Outcome::rejected &&

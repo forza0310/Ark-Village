@@ -130,9 +130,42 @@ void world_commerce() {
               "Pending catalogue blocks repeated input");
         input = {};
         input.click = center({layout.rows.x, layout.rows.y, layout.rows.width, layout.row_height});
-        check(ui::world_facility_catalog_input(view, layout, input, false)->action ==
-                  CatalogAction::select,
-              "Commodity row click selects without clearing NEW or purchasing");
+        check(!ui::world_facility_catalog_input(view, layout, input, false),
+              "Commodity click requires the last-painted controls");
+        ui::WorldFacilityPaintedControls painted;
+        painted.page = view.page;
+        painted.raw = view.raw;
+        painted.phase = view.phase;
+        painted.selection = view.selection;
+        painted.first = view.first_visible;
+        painted.count = static_cast<int>(view.rows.size());
+        painted.choice = view.choice->identity;
+        painted.extent = layout.extent;
+        painted.rows.push_back({0, entries.front(),
+                                {layout.rows.x, layout.rows.y, layout.rows.width, layout.row_height}});
+        const auto clicked = ui::world_facility_catalog_input(
+            view, layout, input, false, painted, layout.extent);
+        check(clicked && clicked->input && clicked->input->selection == 0 &&
+                  clicked->input->confirm && !clicked->input->inspect,
+              "Source79 row release selects and confirms in one frame without a purchase action");
+        check(!ui::world_facility_catalog_input(view, layout, input, true, painted, layout.extent),
+              "Pending catalogue cannot confirm its last-painted row");
+        auto stale = painted;
+        ++stale.phase;
+        check(!ui::world_facility_catalog_input(view, layout, input, false, stale, layout.extent),
+              "Commodity click rejects geometry from a different phase");
+        auto confirmed = source;
+        confirmed.catalog.at({1, entries.front()}).newly_unlocked = true;
+        const auto stock = confirmed.catalog.at({1, entries.front()}).inventory;
+        check(sim::input_startup_world_facility_catalog_page(confirmed, page.id, *clicked->input) ==
+                  sim::StartupWorldRuntimeError::none &&
+                  confirmed.scripts.pages.back().lifecycle == 4 &&
+                  !confirmed.catalog.at({1, entries.front()}).newly_unlocked &&
+                  confirmed.catalog.at({1, entries.front()}).inventory == stock &&
+                  confirmed.scene.world.world.ai.accounting.funds() ==
+                      source.scene.world.world.ai.accounting.funds() &&
+                  confirmed.scene.random.draws() == source.scene.random.draws(),
+              "Commodity confirmation closes and clears NEW without payment, stock use or RNG");
         input = {};
         input.inspect = true;
         check(ui::world_facility_catalog_input(view, layout, input, false)->action ==

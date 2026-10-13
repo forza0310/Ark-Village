@@ -2,12 +2,14 @@
 #include "ark/simulation/actors/startup_world_human.hpp"
 #include "ark/simulation/application/startup_world_inheritance.hpp"
 #include "ark/simulation/facilities/startup_world_building.hpp"
+#include "ark/simulation/facilities/startup_world_commerce.hpp"
 #include "ark/simulation/facilities/startup_world_editing.hpp"
 #include "ark/simulation/facilities/startup_world_facility_catalog.hpp"
 #include "ark/simulation/facilities/startup_world_facility_items.hpp"
 #include "ark/simulation/map/startup_world_expansion.hpp"
 #include "ark/simulation/persistence/startup_world_persistence.hpp"
-#include "ark/simulation/facilities/startup_world_commerce.hpp"
+#include "ark/simulation/presentation/steam_facility_effect_skin.hpp"
+#include "ark/simulation/presentation/steam_facility_reputation_skin.hpp"
 #include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
 #include "support/world_fixture.hpp"
 
@@ -152,16 +154,18 @@ void construction_notice_cache() {
     }
     check(refresh_startup_world_build_notices(s) && s.build_category_new == std::array<bool, 3>{} &&
               s.facility_unlock_notices == notices && s.facility_commerce_read == shop_read,
-          "road and residence with H1 never produce category NEW; kind3 without flag4 is excluded; r/O preserved");
+          "road and residence with H1 never produce category NEW; kind3 without flag4 is excluded; "
+          "r/O preserved");
     const auto inn = source_facility(s, 28);
     s.facility_presence.at(28) = 2;
     s.scene.world.world.facilities.at(inn).status = 0;
     check(refresh_startup_world_build_notices(s) && s.facility_build_present.at(28) &&
               s.build_category_new == std::array<bool, 3>{},
           "actual unfinished non-operating inn still contributes P through full instance list");
-    check(retire_startup_world_facility(s, inn) && s.facility_build_present.at(28) &&
-              s.build_category_new == std::array<bool, 3>{},
-          "actual retirement preserves stale cached P and categories until explicit source refresh");
+    check(
+        retire_startup_world_facility(s, inn) && s.facility_build_present.at(28) &&
+            s.build_category_new == std::array<bool, 3>{},
+        "actual retirement preserves stale cached P and categories until explicit source refresh");
     check(refresh_startup_world_build_notices(s) && !s.facility_build_present.at(28) &&
               s.build_category_new == std::array<bool, 3>{false, true, false},
           "later explicit refresh alone discovers retired definition as unbuilt");
@@ -170,23 +174,34 @@ void construction_notice_cache() {
         auto rules = *s.rules;
         bad.rules = &rules;
         const auto id = bad.scene.world.facility_order.front();
-        if (fault == 0) bad.facility_presence.erase(28);
-        if (fault == 1) bad.facility_build_present.erase(28);
-        if (fault == 2) bad.facility_free_builds.erase(28);
-        if (fault == 3) bad.scene.world.facility_order.front() = 999999;
-        if (fault == 4) bad.scene.world.facility_order.back() = id;
-        if (fault == 5) bad.scene.world.world.facilities.at(id).placement.definition_id = 999999;
-        if (fault == 6) bad.scene.world.world.facilities.at(id).placement.instance_id.value = 999999;
-        if (fault == 7) bad.scene.world.facility_order.pop_back();
+        if (fault == 0)
+            bad.facility_presence.erase(28);
+        if (fault == 1)
+            bad.facility_build_present.erase(28);
+        if (fault == 2)
+            bad.facility_free_builds.erase(28);
+        if (fault == 3)
+            bad.scene.world.facility_order.front() = 999999;
+        if (fault == 4)
+            bad.scene.world.facility_order.back() = id;
+        if (fault == 5)
+            bad.scene.world.world.facilities.at(id).placement.definition_id = 999999;
+        if (fault == 6)
+            bad.scene.world.world.facilities.at(id).placement.instance_id.value = 999999;
+        if (fault == 7)
+            bad.scene.world.facility_order.pop_back();
         if (fault == 8) {
             auto &d = *std::find_if(rules.facilities.begin(), rules.facilities.end(),
                                     [](const auto &v) { return v.id == 28; });
             d.tab = 3; // 损坏输入拒绝夹具，原表不变。
         }
-        if (fault == 9) rules.facilities.back().id = rules.facilities.front().id;
+        if (fault == 9)
+            rules.facilities.back().id = rules.facilities.front().id;
         const auto digest = startup_world_state_digest(bad);
-        check(!refresh_startup_world_build_notices(bad) && startup_world_state_digest(bad) == digest,
-              "missing cache key or source field, bad instance order/reference/category rolls back all cache fields");
+        check(!refresh_startup_world_build_notices(bad) &&
+                  startup_world_state_digest(bad) == digest,
+              "missing cache key or source field, bad instance order/reference/category rolls back "
+              "all cache fields");
     }
     auto menu = test_support::world_fixture();
     menu.facility_unlock_notices.at(28) = true;
@@ -198,7 +213,8 @@ void construction_notice_cache() {
     broken.facility_build_present.erase(28);
     const auto digest = startup_world_state_digest(broken);
     check(select_startup_world_build_menu(broken, page, 28).error ==
-                  StartupWorldRuntimeError::missing_source && startup_world_state_digest(broken) == digest,
+                  StartupWorldRuntimeError::missing_source &&
+              startup_world_state_digest(broken) == digest,
           "raw21 refresh rejection preserves page r build mode cash and random atomically");
     broken = menu;
     broken.facility_unlock_notices.erase(28);
@@ -216,7 +232,8 @@ void construction_notice_cache() {
     auto bad_road = road;
     bad_road.facility_build_present.erase(28);
     const auto road_digest = startup_world_state_digest(bad_road);
-    check(begin_startup_world_road(bad_road, 18).error == StartupWorldRuntimeError::missing_source &&
+    check(begin_startup_world_road(bad_road, 18).error ==
+                  StartupWorldRuntimeError::missing_source &&
               startup_world_state_digest(bad_road) == road_digest,
           "road selection refresh failure cannot clear r or enter placement mode");
     check(begin_startup_world_road(road, 18).error == StartupWorldRuntimeError::none &&
@@ -225,7 +242,8 @@ void construction_notice_cache() {
           "road definition selection uses the same original clear r then cache refresh sequence");
     auto edit = test_support::world_fixture();
     check(begin_startup_world_edit(edit, false).error == StartupWorldRuntimeError::none &&
-              !edit.facility_build_present.at(28) && edit.build_category_new == std::array<bool, 3>{},
+              !edit.facility_build_present.at(28) &&
+              edit.build_category_new == std::array<bool, 3>{},
           "remove sentinel enters edit mode without executing definition selection cache refresh");
 }
 void normal_construction() {
@@ -973,6 +991,142 @@ void facility_item_pages() {
           "framework initializes75 in source item order using positive inventory only");
     s = *update.candidate;
     const auto original = s;
+    SteamFacilityEffectOptions skin_options;
+    skin_options.title_widths = std::array<int, 2>{80, 80};
+    // 八项库存是滚动边界夹具；通过实际Owner输入进入/退出76/77，不声明自然取得。
+    {
+        auto scrolling = s;
+        auto &rows = scrolling.facility_item_page_lists.at(directory);
+        rows.clear();
+        for (int item = 0; item < 8; ++item) {
+            scrolling.items.at(item).inventory = 2;
+            scrolling.catalog.at({0, item}) = scrolling.items.at(item);
+            rows.push_back(item);
+        }
+        StartupFacilityItemInput gesture;
+        gesture.up = true;
+        check(input_startup_world_facility_item_page(scrolling, directory, gesture) ==
+                      StartupWorldRuntimeError::none &&
+                  scrolling.facility_item_page_selections.at(directory) == 7 &&
+                  scrolling.facility_item_page_scroll.at(directory) == 3,
+              "75 up wraps to last row and persists five-row viewport");
+        gesture = {};
+        gesture.up = gesture.down = true;
+        check(input_startup_world_facility_item_page(scrolling, directory, gesture) ==
+                      StartupWorldRuntimeError::none &&
+                  scrolling.facility_item_page_scroll.at(directory) == 3,
+              "75 cancelling directions retain historical viewport");
+        gesture = {};
+        gesture.scroll = StartupFacilityItemInput::Scroll{true, 1};
+        check(input_startup_world_facility_item_page(scrolling, directory, gesture) ==
+                      StartupWorldRuntimeError::none &&
+                  scrolling.facility_item_page_selections.at(directory) == 5 &&
+                  scrolling.facility_item_page_scroll.at(directory) == 1,
+              "75 scrollbar synchronizes selection while preserving relative visible row");
+        gesture.scroll = StartupFacilityItemInput::Scroll{false, std::numeric_limits<int>::max()};
+        const auto before = startup_world_state_digest(scrolling);
+        check(input_startup_world_facility_item_page(scrolling, directory, gesture) ==
+                      StartupWorldRuntimeError::invalid_page &&
+                  startup_world_state_digest(scrolling) == before,
+              "75 invalid scrollbar request leaves all state intact");
+        auto late_scroll = scrolling;
+        late_scroll.scripts.next_page_id = std::numeric_limits<std::uint64_t>::max();
+        const auto late_before = startup_world_state_digest(late_scroll);
+        gesture = {};
+        gesture.scroll = StartupFacilityItemInput::Scroll{true, 0};
+        gesture.confirm = true;
+        check(input_startup_world_facility_item_page(late_scroll, directory, gesture) ==
+                      StartupWorldRuntimeError::script_failed &&
+                  startup_world_state_digest(late_scroll) == late_before,
+              "75 late child insertion rolls back changed scroll/selection and inventory together");
+        gesture = {};
+        gesture.selection = 7;
+        gesture.confirm = true;
+        check(input_startup_world_facility_item_page(scrolling, directory, gesture) ==
+                      StartupWorldRuntimeError::none &&
+                  scrolling.items.at(7).inventory == 1 &&
+                  scrolling.facility_item_page_scroll.at(directory) == 3,
+              "75 same-round off-window selection repairs viewport before actual consumption");
+        for (int frame = 0; frame < 50; ++frame) {
+            const auto next = prepare_startup_world_runtime(scrolling);
+            check(next.candidate.has_value(), "75 covered scroll scenario advances actual76/77");
+            scrolling = *next.candidate;
+        }
+        const auto feedback = scrolling.scripts.pages.back().id;
+        check(act_startup_world_facility_item_page(scrolling, feedback, Action::confirm) ==
+                  StartupWorldRuntimeError::none,
+              "75 covered scroll scenario fast-forwards77");
+        for (int frame = 0; frame < 6; ++frame) {
+            const auto next = prepare_startup_world_runtime(scrolling);
+            check(next.candidate.has_value(), "77 reaches actual return boundary");
+            scrolling = *next.candidate;
+        }
+        check(act_startup_world_facility_item_page(scrolling, feedback, Action::confirm) ==
+                  StartupWorldRuntimeError::none,
+              "77 returns to historical75");
+        const auto returned = prepare_startup_world_runtime(scrolling);
+        check(returned.candidate &&
+                  returned.candidate->facility_item_page_scroll.at(directory) == 3 &&
+                  returned.candidate->facility_item_page_selections.at(directory) == 7 &&
+                  steam_facility_effect_skin(*returned.candidate, directory, skin_options)
+                      .has_value(),
+              "75 parent scroll/selection survive children and feed readonly skin");
+        scrolling = *returned.candidate;
+        check(act_startup_world_facility_item_page(scrolling, directory, Action::confirm) ==
+                      StartupWorldRuntimeError::none &&
+                  scrolling.items.at(7).inventory == 0 &&
+                  scrolling.facility_item_page_lists.at(directory).size() == 7 &&
+                  scrolling.facility_item_page_scroll.at(directory) == 0 &&
+                  scrolling.facility_item_page_selections.at(directory) == 0,
+              "75 exhausted last row applies confirmed selection and viewport reset together");
+    }
+    // 两种正库存的定向目录，验证不带行号的确认使用Owner选择，非自然取得声明。
+    auto selected_item = s;
+    selected_item.items.at(0).inventory = 2;
+    selected_item.catalog.at({0, 0}) = selected_item.items.at(0);
+    selected_item.facility_item_page_lists.at(directory) = {0, 1};
+    StartupFacilityItemInput input;
+    input.selection = 1;
+    check(input_startup_world_facility_item_page(selected_item, directory, input) ==
+                  StartupWorldRuntimeError::none &&
+              selected_item.facility_item_page_selections.at(directory) == 1,
+          "75 input selects second original item without paying");
+    input = {};
+    input.up = input.down = true;
+    check(input_startup_world_facility_item_page(selected_item, directory, input) ==
+                  StartupWorldRuntimeError::none &&
+              selected_item.facility_item_page_selections.at(directory) == 1,
+          "75 same-round up/down cancel before current-item confirmation");
+    const auto input_before = startup_world_state_digest(selected_item);
+    input.selection = 9;
+    input.confirm = true;
+    check(input_startup_world_facility_item_page(selected_item, directory, input) ==
+                  StartupWorldRuntimeError::invalid_page &&
+              startup_world_state_digest(selected_item) == input_before,
+          "75 bad same-round row rejects before direction/payment/page changes");
+    auto late_input = selected_item;
+    late_input.scripts.next_page_id = std::numeric_limits<std::uint64_t>::max();
+    const auto late_input_before = startup_world_state_digest(late_input);
+    input = {};
+    input.down = input.confirm = true;
+    check(input_startup_world_facility_item_page(late_input, directory, input) ==
+                  StartupWorldRuntimeError::script_failed &&
+              startup_world_state_digest(late_input) == late_input_before,
+          "75 late insertion failure rolls back same-round changed choice and payment");
+    input = {};
+    input.confirm = input.cancel = true;
+    check(input_startup_world_facility_item_page(selected_item, directory, input) ==
+                  StartupWorldRuntimeError::none &&
+              selected_item.items.at(0).inventory == 2 &&
+              selected_item.items.at(1).inventory == 1 &&
+              selected_item.scripts.pages.back().legacy_page == 76,
+          "75 confirm wins cancel and consumes actual current row1 rather than window default0");
+    input = {};
+    input.selection = 0;
+    check(input_startup_world_facility_item_page(selected_item,
+                                                 selected_item.scripts.pages.back().id,
+                                                 input) == StartupWorldRuntimeError::invalid_page,
+          "76 rejects row input rather than consuming another item");
     check(act_startup_world_facility_item_page(s, directory, Action::select, 1) ==
                   StartupWorldRuntimeError::invalid_page &&
               s.facility_item_page_selections.at(directory) == 0 && s.items.at(1).inventory == 2,
@@ -988,6 +1142,19 @@ void facility_item_pages() {
               act_startup_world_facility_item_page(broken, directory, Action::confirm) !=
                   StartupWorldRuntimeError::none,
           "initialized missing catalogue explicitly refuses update and input");
+    broken = s;
+    broken.facility_item_page_scroll.erase(directory);
+    check(!prepare_startup_world_runtime(broken).candidate &&
+              !steam_facility_effect_skin(broken, directory, skin_options),
+          "initialized75 missing first explicitly refuses update and readonly skin");
+    broken = s;
+    broken.facility_item_page_scroll.at(directory) = 1;
+    check(!prepare_startup_world_runtime(broken).candidate,
+          "initialized75 off-window cursor refuses update");
+    broken = original;
+    broken.facility_item_pages_initialized.erase(directory);
+    check(!prepare_startup_world_runtime(broken).candidate,
+          "uninitialized75 preinstalled cursor explicitly refuses Init");
     broken = s;
     broken.facility_page_bindings.at(parent) = 4;
     check(!prepare_startup_world_runtime(broken).candidate,
@@ -1027,11 +1194,33 @@ void facility_item_pages() {
               s.scene.world.world.facilities.at(*second.created).price == other_price + 60 &&
               s.facility_item_response == 2 && s.facility_upgrade_display[2][1] == 8,
           "actual milk doubles33 improvement and refreshes both prices with actual initial jobs");
+    const auto skin_before = startup_world_state_digest(s);
+    const auto animated_skin = steam_facility_effect_skin(s, animation, skin_options);
+    check(animated_skin && !steam_facility_effect_skin(s, directory, skin_options),
+          "76 Owner skin reads frozen payload and refuses covered75");
+    for (int repeat = 0; repeat < 12; ++repeat)
+        check(steam_facility_effect_skin(s, animation, skin_options)->operations.size() ==
+                  animated_skin->operations.size(),
+              "76 repeated rendering output does not accumulate");
+    check(startup_world_state_digest(s) == skin_before,
+          "76 skin never reapplies shared improvement or sound");
+    broken = s;
+    broken.facility_item_page_items.erase(animation);
+    check(!steam_facility_effect_skin(broken, animation, skin_options),
+          "initialized76 missing item source rejects");
+    s.sound_requests.clear();
+    int throw_sound_count = 0;
     for (int n = 0; n < 48; ++n) {
         update = prepare_startup_world_runtime(s);
         check(update.candidate.has_value(), "76 qualified animation advances");
         s = *update.candidate;
+        for (const auto &sound : s.sound_requests)
+            throw_sound_count +=
+                sound == StartupAudioRequest{StartupAudioOperation::ordinary_play, 8};
+        s.sound_requests.clear();
     }
+    check(throw_sound_count == 1,
+          "76 count38 queues one ordinary SE8, rendering does not duplicate it");
     check(s.scripts.pages.back().legacy_page == 77 && s.items.at(1).inventory == 1 &&
               s.scripts.facilities.at(33).improvements[0] == 60,
           "49th animation update replaces76 with77 without repeating improvement");
@@ -1039,6 +1228,8 @@ void facility_item_pages() {
     update = prepare_startup_world_runtime(s);
     check(update.candidate.has_value(), "77 initializes under common framework");
     s = *update.candidate;
+    check(steam_facility_effect_skin(s, result, skin_options).has_value(),
+          "77 Owner skin preserves actual response and frozen values after consumption");
     check(act_startup_world_facility_item_page(s, result, Action::cancel) ==
                   StartupWorldRuntimeError::invalid_page &&
               act_startup_world_facility_item_page(s, result, Action::confirm) ==
@@ -1069,6 +1260,7 @@ void facility_item_pages() {
     check(update.candidate && update.candidate->facility_item_page_lists.empty() &&
               update.candidate->facility_item_pages_initialized.empty() &&
               update.candidate->facility_item_page_selections.empty() &&
+              update.candidate->facility_item_page_scroll.empty() &&
               startup_world_resource_usage(*update.candidate).page_payloads ==
                   baseline.page_payloads,
           "item page payloads retire fully; only original74 binding and neighbour snapshot remain");
@@ -1145,6 +1337,7 @@ void facility_item_empty_and_legend() {
     s = *update.candidate;
     bool completed{};
     std::uint64_t animation{};
+    std::array<bool, 2> rendered{};
     for (int step = 0; step < 600 && !completed; ++step) {
         const auto tick = prepare_startup_world_runtime(s);
         check(tick.candidate.has_value(), "legend integration actual framework continues");
@@ -1157,6 +1350,28 @@ void facility_item_empty_and_legend() {
             check(top->facility_definition == 33 && top->legacy_f == 0,
                   "actual75 continuation2033 creates82 bound to original bun shop definition");
             if (inspect_startup_world_facility_catalog_page(s, animation)) {
+                const int phase = s.page_phases.at(animation);
+                if (!rendered[phase]) {
+                    SteamFacilityReputationOptions options;
+                    options.title_widths = std::array<int, 2>{84, 84};
+                    options.increase_suffix_width = 24;
+                    const auto before = startup_world_state_digest(s);
+                    const auto plan = steam_facility_reputation_skin(s, animation, options);
+                    check(plan.has_value(), "actual opcode40-created82 produces formal Owner skin");
+                    for (int repeat = 0; repeat < 12; ++repeat) {
+                        const auto again = steam_facility_reputation_skin(s, animation, options);
+                        check(again && again->operations.size() == plan->operations.size(),
+                              "82 repeated query output size remains stable");
+                    }
+                    check(startup_world_state_digest(s) == before,
+                          "82 rendering never advances either timer, random, sound or popularity "
+                          "queue");
+                    auto invalid = s;
+                    invalid.page_secondary_counters.erase(animation);
+                    check(!steam_facility_reputation_skin(invalid, animation, options),
+                          "82 Owner skin rejects missing independent clock");
+                    rendered[phase] = true;
+                }
                 const bool finishing =
                     s.page_phases.at(animation) == 1 && s.page_counters.at(animation) >= 40;
                 check(acknowledge_startup_world_runtime_page(s, animation) ==
@@ -1179,7 +1394,8 @@ void facility_item_empty_and_legend() {
         }
         s.sound_requests.clear(); // 显式表现消费者领取本次输出，不留下积累声音。
     }
-    check(completed && s.scene.world.popularity_queue.front() == std::array<int, 3>{10, 20, 1} &&
+    check(completed && rendered[0] && rendered[1] &&
+              s.scene.world.popularity_queue.front() == std::array<int, 3>{10, 20, 1} &&
               s.facility_item_confirmations.at(source_facility(s, 33)) == 0,
           "condition fixture reaches actual75→100-delay→82→one deferred20 request without "
           "repeating gift");
@@ -1888,13 +2104,16 @@ void commerce_definition_preview() {
             wrong.legacy_page = 83;
             broken.scripts.pages.insert(broken.scripts.pages.end() - 1, wrong);
         }
-        if(fault==5)broken.facility_presence.at(d)=1;
-        if(fault==6)broken.facility_presence.at(d)=2;
-        const auto digest=startup_world_state_digest(broken);
+        if (fault == 5)
+            broken.facility_presence.at(d) = 1;
+        if (fault == 6)
+            broken.facility_presence.at(d) = 2;
+        const auto digest = startup_world_state_digest(broken);
         check(
             !prepare_startup_world_runtime(broken).candidate &&
                 act_startup_world_facility_page(broken, page, StartupFacilityPageAction::confirm) !=
-                    StartupWorldRuntimeError::none && startup_world_state_digest(broken)==digest,
+                    StartupWorldRuntimeError::none &&
+                startup_world_state_digest(broken) == digest,
             "damaged initialized definition preview explicitly refuses without map.at exceptions");
     }
     check(act_startup_world_facility_page(s, page, static_cast<StartupFacilityPageAction>(99)) ==
@@ -1918,49 +2137,64 @@ void commerce_definition_preview() {
     check(retired.candidate && !retired.candidate->facility_definition_page_bindings.count(page) &&
               retired.candidate->commerce_page_data.at(parent) == row,
           "definition preview payload retires on real framework update while85 selection survives");
-    s=*retired.candidate;
-    for(const int presence:{1,2}) {
-        auto unavailable=s;unavailable.facility_presence.at(d)=presence;
-        const auto digest=startup_world_state_digest(unavailable);
-        check(open_startup_world_facility_definition(unavailable,d)!=StartupWorldRuntimeError::none &&
-              startup_world_state_digest(unavailable)==digest,"p1/p2 cannot open a stale commerce definition preview");
+    s = *retired.candidate;
+    for (const int presence : {1, 2}) {
+        auto unavailable = s;
+        unavailable.facility_presence.at(d) = presence;
+        const auto digest = startup_world_state_digest(unavailable);
+        check(open_startup_world_facility_definition(unavailable, d) !=
+                      StartupWorldRuntimeError::none &&
+                  startup_world_state_digest(unavailable) == digest,
+              "p1/p2 cannot open a stale commerce definition preview");
     }
     // 同一真实85→93链只准备30村点；原5000G不注入，领取后真实放置三次。
-    const auto &list=s.commerce_page_lists.at(parent);
-    const auto drink=std::find(list.begin(),list.end(),34);
-    check(drink!=list.end() && s.facility_presence.at(34)==0,"cold drink34 remains an actual p0 commerce choice");
-    s.village_points=30;
-    check(act_startup_world_commerce_page(s,parent,StartupCommerceAction::select,
-              static_cast<int>(drink-list.begin()))==StartupWorldRuntimeError::none &&
-          act_startup_world_commerce_page(s,parent,StartupCommerceAction::confirm)==StartupWorldRuntimeError::none,
+    const auto &list = s.commerce_page_lists.at(parent);
+    const auto drink = std::find(list.begin(), list.end(), 34);
+    check(drink != list.end() && s.facility_presence.at(34) == 0,
+          "cold drink34 remains an actual p0 commerce choice");
+    s.village_points = 30;
+    check(act_startup_world_commerce_page(s, parent, StartupCommerceAction::select,
+                                          static_cast<int>(drink - list.begin())) ==
+                  StartupWorldRuntimeError::none &&
+              act_startup_world_commerce_page(s, parent, StartupCommerceAction::confirm) ==
+                  StartupWorldRuntimeError::none,
           "actual85 buys previously unavailable drink34 entitlement for30 points");
-    const auto reward=s.scripts.pages.back().id;
+    const auto reward = s.scripts.pages.back().id;
     check(initialize_startup_world_commerce_pages(s) &&
-          act_startup_world_commerce_page(s,reward,StartupCommerceAction::confirm)==StartupWorldRuntimeError::none &&
-          act_startup_world_commerce_page(s,reward,StartupCommerceAction::confirm)==StartupWorldRuntimeError::none &&
-          s.facility_presence.at(34)==2 && s.facility_free_builds.at(34)==1 && s.village_points==0,
-          "actual93 grants H1 and permanent p2 ordinary construction eligibility, not a free-building coupon");
-    const auto funds=s.scene.world.world.ai.accounting.funds();
-    const auto initial_count=s.scene.world.facility_order.size();
+              act_startup_world_commerce_page(s, reward, StartupCommerceAction::confirm) ==
+                  StartupWorldRuntimeError::none &&
+              act_startup_world_commerce_page(s, reward, StartupCommerceAction::confirm) ==
+                  StartupWorldRuntimeError::none &&
+              s.facility_presence.at(34) == 2 && s.facility_free_builds.at(34) == 1 &&
+              s.village_points == 0,
+          "actual93 grants H1 and permanent p2 ordinary construction eligibility, not a "
+          "free-building coupon");
+    const auto funds = s.scene.world.world.ai.accounting.funds();
+    const auto initial_count = s.scene.world.facility_order.size();
     std::int64_t spent{};
-    for(int placement=0;placement<3;++placement) {
-        const auto quote=startup_world_build_quote(s,34);
-        check(quote && quote->construction_cost>0,
+    for (int placement = 0; placement < 3; ++placement) {
+        const auto quote = startup_world_build_quote(s, 34);
+        check(quote && quote->construction_cost > 0,
               "all ordinary placements quote gold even after93 increments H");
-        const auto price=quote->construction_cost;
-        check(begin_startup_world_build(s,34).error==StartupWorldRuntimeError::none,
+        const auto price = quote->construction_cost;
+        check(begin_startup_world_build(s, 34).error == StartupWorldRuntimeError::none,
               "claimed facility remains in ordinary build catalogue for repeat copies");
-        const auto built=confirm_startup_world_build(s,empty_anchor(s,34),ref::FacilityOrientation::first);
-        spent+=price;
-        check(built.created && s.facility_free_builds.at(34)==1 && s.facility_presence.at(34)==2 &&
-              s.village_points==0 && s.scene.world.facility_order.size()==initial_count+placement+1 &&
-              s.scene.world.world.ai.accounting.funds()==funds-spent &&
-              cancel_startup_world_build(s)==StartupWorldRuntimeError::none,
-              "three real ordinary placements charge gold every time, preserve H1 and never rebuy unlock");
+        const auto built =
+            confirm_startup_world_build(s, empty_anchor(s, 34), ref::FacilityOrientation::first);
+        spent += price;
+        check(built.created && s.facility_free_builds.at(34) == 1 &&
+                  s.facility_presence.at(34) == 2 && s.village_points == 0 &&
+                  s.scene.world.facility_order.size() == initial_count + placement + 1 &&
+                  s.scene.world.world.ai.accounting.funds() == funds - spent &&
+                  cancel_startup_world_build(s) == StartupWorldRuntimeError::none,
+              "three real ordinary placements charge gold every time, preserve H1 and never rebuy "
+              "unlock");
     }
-    const auto completed=startup_world_state_digest(s);
-    check(act_startup_world_commerce_page(s,reward,StartupCommerceAction::confirm)!=StartupWorldRuntimeError::none &&
-          startup_world_state_digest(s)==completed,"old93 cannot refund or increment H again after repeated gold construction");
+    const auto completed = startup_world_state_digest(s);
+    check(act_startup_world_commerce_page(s, reward, StartupCommerceAction::confirm) !=
+                  StartupWorldRuntimeError::none &&
+              startup_world_state_digest(s) == completed,
+          "old93 cannot refund or increment H again after repeated gold construction");
 }
 } // namespace
 int main() {

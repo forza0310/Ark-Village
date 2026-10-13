@@ -416,6 +416,7 @@
             ["facility_item_page_items", "std::map<std::uint64_t, int>"],
             ["facility_item_page_lists", "std::map<std::uint64_t, std::vector<int>>"],
             ["facility_item_page_selections", "std::map<std::uint64_t, int>"],
+            ["facility_item_page_scroll", "std::map<std::uint64_t, int>"],
             ["facility_item_response", "int"],
             ["commerce_pages_initialized", "std::set<std::uint64_t>"],
             ["commerce_page_data", "std::map<std::uint64_t, std::array<int, 6>>"],

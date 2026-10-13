@@ -43,6 +43,9 @@ void WorldManagement::observe(const app::WorldFrame &frame) {
         manual_layout_.reset();
         human_controls_.reset();
         human_gesture_ = {};
+        facility_controls_.reset();
+        facility_items_ = {};
+        facility_catalog_gesture_ = {};
     }
     if (!pending_)
         return;
@@ -72,7 +75,10 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
         human_controls_.reset();
         human_gesture_ = {};
         building_ = {};
-        facility_items_ = {};
+        facility_controls_.reset();
+        facility_items_.marked_row.reset();
+        facility_items_.scrolling = false;
+        facility_catalog_gesture_.scrolling = false;
         award_ = {};
         rank_ = 0;
         feedback_.clear();
@@ -157,8 +163,8 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
     }
     if (ui::world_facility_catalog_page(page)) {
         const auto view = ui::world_facility_catalog_view(state, page);
-        const auto layout = ui::world_facility_catalog_layout(extent);
-        const ui::WorldFacilityCatalogInput input{
+        const auto layout = ui::world_facility_catalog_layout(extent, view.raw);
+        ui::WorldFacilityCatalogInput input{
             point,
             enter,
             escape,
@@ -168,8 +174,16 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
             IsKeyPressed(KEY_RIGHT),
             IsKeyPressed(KEY_I),
             hit(mouse, layout.rows) ? -static_cast<int>(GetMouseWheelMove() * 2) : 0};
-        if (const auto intent = ui::world_facility_catalog_input(view, layout, input, blocked))
-            queued(session.act_facility_catalog(page.id, intent->action, intent->selection));
+        input.pointer = mouse;
+        input.pointer_pressed = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+        input.pointer_down = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+        input.pointer_released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
+        if (const auto intent =
+                ui::world_facility_catalog_input(view, layout, input, blocked, facility_controls_,
+                                                 extent, &facility_catalog_gesture_))
+            queued(intent->input
+                       ? session.input_facility_catalog(page.id, *intent->input)
+                       : session.act_facility_catalog(page.id, intent->action, intent->selection));
         return true;
     }
     if (ui::world_commerce_page(page)) {
@@ -191,15 +205,21 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
     }
     if (ui::world_facility_items_page(page)) {
         const auto view = ui::world_facility_items_view(state, page);
-        const auto layout = ui::world_facility_items_layout(extent);
-        const ui::WorldFacilityItemsInput input{
+        const auto layout = ui::world_facility_items_layout(extent, view.raw);
+        ui::WorldFacilityItemsInput input{
             point,         enter,
             escape,        up,
             down,          hit(mouse, layout.rows) ? -static_cast<int>(GetMouseWheelMove() * 2) : 0,
             keyboard_event};
-        if (const auto intent =
-                ui::world_facility_items_input(view, layout, facility_items_, input, blocked))
-            queued(session.act_facility_item(page.id, intent->action, intent->selection));
+        input.pointer = mouse;
+        input.pointer_pressed = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+        input.pointer_down = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+        input.pointer_released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
+        if (const auto intent = ui::world_facility_items_input(view, layout, facility_items_, input,
+                                                               blocked, facility_controls_, extent))
+            queued(intent->input
+                       ? session.input_facility_item(page.id, *intent->input)
+                       : session.act_facility_item(page.id, intent->action, intent->selection));
         return true;
     }
     if (ui::world_village_activity_page(page)) {
@@ -241,9 +261,8 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
         input.pointer_released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
         if (keyboard_event)
             human_gesture_ = {};
-        if (const auto intent =
-                ui::world_human_input(view, layout, input, blocked, human_controls_, extent,
-                                      &human_gesture_)) {
+        if (const auto intent = ui::world_human_input(view, layout, input, blocked, human_controls_,
+                                                      extent, &human_gesture_)) {
             if (intent->input)
                 queued(session.input_human(page.id, *intent->input));
             else
@@ -364,9 +383,10 @@ bool WorldManagement::draw_page(const State &state, const Page &page, Extent ext
         ui::draw_world_magic_pot(ui::world_magic_pot_view(state, page),
                                  ui::world_commerce_layout(extent), skin, enabled, feedback_);
     } else if (ui::world_facility_catalog_page(page)) {
-        ui::draw_world_facility_catalog(ui::world_facility_catalog_view(state, page),
-                                        ui::world_facility_catalog_layout(extent), skin, enabled,
-                                        feedback_);
+        auto view = ui::world_facility_catalog_view(state, page);
+        ui::prepare_world_facility_catalog(view, state, skin, facility_catalog_gesture_.scrolling);
+        facility_controls_ = ui::draw_world_facility_catalog(
+            view, ui::world_facility_catalog_layout(extent, view.raw), skin, enabled, feedback_);
     } else if (ui::world_commerce_page(page)) {
         const auto view = ui::world_commerce_view(state, page);
         ui::draw_world_commerce(view, ui::world_commerce_layout(extent), skin, enabled, feedback_,
@@ -374,9 +394,10 @@ bool WorldManagement::draw_page(const State &state, const Page &page, Extent ext
                                     ? commerce_amount_
                                     : std::nullopt);
     } else if (ui::world_facility_items_page(page)) {
-        ui::draw_world_facility_items(ui::world_facility_items_view(state, page),
-                                      ui::world_facility_items_layout(extent), skin, enabled,
-                                      feedback_);
+        auto view = ui::world_facility_items_view(state, page);
+        ui::prepare_world_facility_items(view, state, skin, facility_items_.scrolling);
+        facility_controls_ = ui::draw_world_facility_items(
+            view, ui::world_facility_items_layout(extent, view.raw), skin, enabled, feedback_);
     } else if (ui::world_village_activity_page(page)) {
         ui::draw_world_village_activity(ui::world_village_activity_view(state, page),
                                         ui::world_village_activity_layout(extent), skin, enabled,

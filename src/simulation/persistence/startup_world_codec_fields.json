@@ -911,6 +911,10 @@
           "type": "std::map<std::uint64_t, int>"
         },
         {
+          "name": "facility_item_page_scroll",
+          "type": "std::map<std::uint64_t, int>"
+        },
+        {
           "name": "facility_item_response",
           "type": "int"
         },

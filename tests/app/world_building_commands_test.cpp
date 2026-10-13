@@ -1,6 +1,7 @@
 #include "world_session_test_support.hpp"
 
 #include <algorithm>
+#include <limits>
 #include <stdexcept>
 
 namespace ark::test::world_session {
@@ -27,26 +28,40 @@ void facility_catalog_commands() {
         // A generic acknowledgement must not bypass NEW clearing or the two publicity gates.
         const auto generic = session.ack_page(id);
         const auto invalid = session.act_facility_catalog(id, static_cast<Action>(999));
+        sim::StartupFacilityCatalogInput malformed;
+        malformed.selection = std::numeric_limits<int>::max();
+        const auto malformed_serial = session.input_facility_catalog(id, malformed);
         if (raw == 79) {
             const auto source = sim::inspect_startup_world_facility_catalog_page(expected, id);
             check(source && !source->entries.empty(),
                   "Real new-game equipment catalogue is nonempty");
+            sim::StartupFacilityCatalogInput combined;
+            combined.up = combined.down = combined.left = combined.right = true;
+            combined.selection = static_cast<int>(source->entries.size()) - 1;
+            combined.scroll = sim::StartupFacilityCatalogInput::Scroll{true, 0};
+            check(sim::input_startup_world_facility_catalog_page(expected, id, combined) ==
+                      sim::StartupWorldRuntimeError::none,
+                  "Sequential reference composes one full commodity input frame");
+            session.input_facility_catalog(id, combined);
             check(sim::act_startup_world_facility_catalog_page(expected, id, Action::cancel) ==
                       sim::StartupWorldRuntimeError::none,
                   "Sequential commodity close reference");
             session.act_facility_catalog(id, Action::cancel);
         } else {
             for (int n = 0; n < 4; ++n) {
-                check(sim::act_startup_world_facility_catalog_page(expected, id, Action::confirm) ==
+                sim::StartupFacilityCatalogInput confirm;
+                confirm.confirm = true;
+                check(sim::input_startup_world_facility_catalog_page(expected, id, confirm) ==
                           sim::StartupWorldRuntimeError::none,
                       "Sequential two40 publicity reference");
-                session.act_facility_catalog(id, Action::confirm);
+                session.input_facility_catalog(id, confirm);
             }
         }
         const auto stale = session.act_facility_catalog(id, Action::confirm);
         const auto frame = input_frame(session, session.set_paused(true));
         check(!frame->failed && input_result(*frame, generic).outcome == Outcome::rejected &&
                   input_result(*frame, invalid).outcome == Outcome::rejected &&
+                  input_result(*frame, malformed_serial).outcome == Outcome::rejected &&
                   input_result(*frame, stale).outcome == Outcome::rejected,
               "Generic, invalid-enum and retired catalogue inputs reject without failing worker");
         check(frame->state->scene.world.world.ai.accounting.funds() ==

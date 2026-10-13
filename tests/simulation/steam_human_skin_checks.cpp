@@ -649,6 +649,56 @@ StartupWorldRuntimeState profession_fixture(int raw) {
     owner.village_points=1000;
     return owner;
 }
+void shared_character_clock_checks(Checks &check) {
+    const auto initial=test_support::world_fixture();
+    check(steam_human_shared_character_frame(initial)==std::optional<int>{0},
+          "新维护世界共享人物计数零初值，不借窗口帧或页面计数");
+    auto owner=profession_fixture(66);const auto id=owner.scripts.pages.back().id;
+    owner.human_equipment_choices[id]={0,1};owner.human_gift_scores[id]=24;
+    SteamHumanOverviewOptions options;
+    // 源action0按人物步速4分四幅；结果页局部counter不是该时钟。
+    for(const auto sample:std::array<std::array<int,2>,8>{{
+            {{0,0}},{{3,0}},{{4,1}},{{7,1}},{{8,2}},{{12,3}},{{15,3}},{{16,0}}}}) {
+        owner.entry_updates=sample[0];
+        options.character_frame=steam_human_shared_character_frame(owner);
+        for(int counter:{0,77,197}) {
+            const auto plan=steam_human_reward_skin(owner,1,1,counter,options);
+            check(plan.has_value(),"既有Owner共享计数可以显式接入奖励纯计划");
+            const auto portraits=parts<SteamHumanPortrait>(*plan);
+            check(portraits.size()==1&&portraits[0].actor.body.frame==sample[1],
+                  "共享计数决定身体幅，独立奖励counter变化不重置身体");
+        }
+    }
+    owner.entry_updates=12;owner.page_counters[id]=0;
+    const auto before=startup_world_state_digest(owner);
+    for(int i=0;i<12;++i)
+        check(steam_human_shared_character_frame(owner)==std::optional<int>{12}&&
+              startup_world_state_digest(owner)==before,
+              "重复共享计数查询不推进Owner／随机／页面或一次性输出");
+    const auto updated=update_startup_world_human_page(owner,id);
+    check(updated&&updated->page_counters.at(id)==1&&
+          steam_human_shared_character_frame(*updated)==std::optional<int>{12},
+          "实际66模态更新推进局部计数，保持UserData共享计数");
+    owner=*updated;
+    check(act_startup_world_human_page(owner,id,StartupHumanPageAction::confirm)==
+              StartupWorldRuntimeError::none&&owner.page_counters.at(id)==40&&
+          steam_human_shared_character_frame(owner)==std::optional<int>{12},
+          "66早确认快进到40不推进或清零共享人物计数");
+    owner.scene.framework_paused=true;
+    const auto paused=update_startup_world_human_page(owner,id);
+    check(paused&&paused->page_counters.at(id)==40&&
+          steam_human_shared_character_frame(*paused)==std::optional<int>{12},
+          "框架暂停保持局部及共享计数，不由查询补更新");
+    owner.entry_updates=std::numeric_limits<int>::max()-1;
+    check(steam_human_shared_character_frame(owner)==
+              std::optional<int>{std::numeric_limits<int>::max()-1},
+          "共享计数最大合法值可读取，绕回由既有世界入口负责");
+    for(int invalid:{-1,std::numeric_limits<int>::max()}) {
+        owner.entry_updates=invalid;
+        check(!steam_human_shared_character_frame(owner),
+              "负值及INT_MAX共享计数显式拒绝，不取模补合法值");
+    }
+}
 void profession_skin_checks(Checks &check) {
     auto owner=profession_fixture(62);const auto id=owner.scripts.pages.back().id;
     SteamHumanOverviewOptions o;o.title_widths=std::array<int,2>{80,80};o.profession_change_width=48;
@@ -1043,6 +1093,6 @@ void profession_catalogue_checks(Checks &check) {
 // 复用既有visuals执行文件；本层只验表现边界，不重测人物成长/战斗/职业业务。
 int check_steam_human_skin(const std::filesystem::path &source_root) {
     Checks check;power_checks(check);medal_bubble_checks(check);resources(check,source_root);owner_checks(check);overview_checks(check);attributes_checks(check);equipment_magic_checks(check);equipment_detail_checks(check);gift_confirmation_checks(check);profession_skin_checks(check);gift_result_skin_checks(check);
-    gift_catalogue_checks(check);profession_catalogue_checks(check);attribute_result_checks(check);
+    gift_catalogue_checks(check);profession_catalogue_checks(check);attribute_result_checks(check);shared_character_clock_checks(check);
     return check.count;
 }

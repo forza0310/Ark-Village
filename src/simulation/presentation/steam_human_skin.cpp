@@ -1,6 +1,8 @@
 // Steam人物局部纯图元：ui/STEAM_HUMAN_PRESENTATION.md、STEAM_HUMAN_PINCH.md。
 // raw60概览／六属性的有序绘制及输入边界见ui/STEAM_HUMAN_DETAIL.md。
 #include "ark/simulation/presentation/steam_human_skin.hpp"
+#include "ark/simulation/presentation/steam_facility_catalog_skin.hpp"
+#include "ark/simulation/facilities/startup_world_facility_catalog.hpp"
 #include "ark/simulation/actors/rules/human_management.hpp"
 #include "ark/simulation/presentation/steam_facility_skin.hpp"
 #include "ark/simulation/actors/startup_world_human.hpp"
@@ -9,6 +11,10 @@
 #include <limits>
 
 namespace ark::simulation {
+std::optional<int> steam_human_shared_character_frame(const StartupWorldRuntimeState &s) {
+    if(s.entry_updates<0||s.entry_updates>=std::numeric_limits<int>::max())return {};
+    return s.entry_updates;
+}
 namespace {
 using Asset = SteamHumanAsset;
 bool fits(std::int64_t value) {
@@ -370,21 +376,10 @@ std::optional<SteamHumanOverviewPlan> steam_human_information_skin(
     if(!view)return {};
     return human_page_skin(s,page,o,view->tab);
 }
-std::optional<SteamHumanOverviewPlan> steam_human_equipment_detail_skin(
-    const StartupWorldRuntimeState &s,std::uint64_t id,const SteamHumanOverviewOptions &o) {
-    const auto page=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[=](const auto &p){return p.id==id;});
-    const auto phase=s.page_phases.find(id),selection=s.human_page_selections.find(id);
-    const auto catalogue=s.equipment_page_catalogs.find(id);
-    if(!s.rules||page==s.scripts.pages.end()||page->kind!=ref::WorldScriptPageKind::raw_page||
-       page->legacy_page!=73||page->lifecycle<1||page->lifecycle>3||!s.human_pages_initialized.count(id)||
-       !s.page_human_bindings.count(id)||!s.human_equipment_choices.count(id)||!s.page_counters.count(id)||
-       s.page_counters.find(id)->second<0||phase==s.page_phases.end()||
-       phase->second<0||phase->second>3||selection==s.human_page_selections.end()||catalogue==s.equipment_page_catalogs.end()||
-       !o.title_widths||!startup_world_human_details(s,s.page_human_bindings.find(id)->second))return {};
-    if(s.human_equipment_choices.find(id)->second[0]!=phase->second)return {};
-    const auto &list=catalogue->second[phase->second];
-    if(selection->second<0||selection->second>=static_cast<int>(list.size()))return {};
-    const int equipment_id=list[selection->second],kind=phase->second==0?1:phase->second==3?3:2;
+namespace {
+std::optional<SteamHumanOverviewPlan> equipment_information_skin(
+    const StartupWorldRuntimeState &s,int kind,int equipment_id,int index,int count,int frame,
+    bool always_numbered,const SteamHumanOverviewOptions &o) {
     const auto definition=std::find_if(s.rules->equipment.begin(),s.rules->equipment.end(),[=](const auto &d) {
         return d.shop.kind==kind&&d.shop.id==equipment_id;
     });
@@ -394,11 +389,11 @@ std::optional<SteamHumanOverviewPlan> steam_human_equipment_detail_skin(
     const auto box=steam_startup_box_skin({42,95,197,177},o.view_y);
     if(!window||!box)return {};
     SteamHumanOverviewPlan out;out.soft_labels={2,2};out.title="装备信息";
-    if(list.size()>1)out.title+=" "+std::to_string(selection->second+1)+"/"+std::to_string(list.size());
+    if(always_numbered||count>1)out.title+=" "+std::to_string(index+1)+"/"+std::to_string(count);
     for(const auto &part:window->draws)out.operations.emplace_back(part);
     for(const auto &part:box->draws)out.operations.emplace_back(part);
-    if(list.size()>1) {
-        const int q=3*((s.page_counters.find(id)->second%16)/8);
+    if(always_numbered||count>1) {
+        const int q=3*((frame%16)/8);
         out.operations.emplace_back(SteamFacilityArrowTouch{{51-q,77},3,16});
         out.operations.emplace_back(SteamFacilityArrowTouch{{189+q,77},0,18});
     }
@@ -419,6 +414,32 @@ std::optional<SteamHumanOverviewPlan> steam_human_equipment_detail_skin(
     }
     out.operations.emplace_back(SteamStartupTouch{2,0,{},{},0}); // 原无矩形返回KeyClick，不猜整窗热区。
     return out;
+}
+} // namespace
+std::optional<SteamHumanOverviewPlan> steam_human_equipment_detail_skin(
+    const StartupWorldRuntimeState &s,std::uint64_t id,const SteamHumanOverviewOptions &o) {
+    const auto page=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[=](const auto &p){return p.id==id;});
+    const auto phase=s.page_phases.find(id),selection=s.human_page_selections.find(id);
+    const auto catalogue=s.equipment_page_catalogs.find(id);
+    if(!s.rules||page==s.scripts.pages.end()||page->kind!=ref::WorldScriptPageKind::raw_page||
+       page->legacy_page!=73||page->lifecycle<1||page->lifecycle>3||!s.human_pages_initialized.count(id)||
+       !s.page_human_bindings.count(id)||!s.human_equipment_choices.count(id)||!s.page_counters.count(id)||
+       s.page_counters.find(id)->second<0||phase==s.page_phases.end()||
+       phase->second<0||phase->second>3||selection==s.human_page_selections.end()||catalogue==s.equipment_page_catalogs.end()||
+       !o.title_widths||!startup_world_human_details(s,s.page_human_bindings.find(id)->second))return {};
+    if(s.human_equipment_choices.find(id)->second[0]!=phase->second)return {};
+    const auto &list=catalogue->second[phase->second];
+    if(selection->second<0||selection->second>=static_cast<int>(list.size()))return {};
+    const int equipment_id=list[selection->second],kind=phase->second==0?1:phase->second==3?3:2;
+    return equipment_information_skin(s,kind,equipment_id,selection->second,static_cast<int>(list.size()),
+        s.page_counters.find(id)->second,false,o);
+}
+std::optional<SteamHumanOverviewPlan> steam_facility_commodity_detail_skin(
+    const StartupWorldRuntimeState &s,std::uint64_t id,const SteamHumanOverviewOptions &o) {
+    const auto v=inspect_startup_world_facility_catalog_page(s,id);
+    if(!v||v->raw!=72||!o.title_widths)return {};
+    const int kind=v->mode==0?1:v->mode==3?3:2;
+    return equipment_information_skin(s,kind,v->binding,v->phase,static_cast<int>(v->entries.size()),v->counter,true,o);
 }
 std::optional<SteamHumanOverviewPlan> steam_human_gift_confirmation_skin(
     const StartupWorldRuntimeState &s,std::uint64_t id,const SteamHumanOverviewOptions &o) {

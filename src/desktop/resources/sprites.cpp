@@ -14,7 +14,8 @@ namespace {
 // not permission to silently fall back to the APK image with the same index.
 bool steam_common_override(int image) {
     return image == 31 || image == 37 || image == 84 || image == 85 || image == 88 ||
-           image == 103 || image == 105 || image == 109 || image == 128 || image == 151;
+           image == 103 || image == 105 || image == 109 || image == 128 || image == 136 ||
+           image == 151;
 }
 } // namespace
 std::optional<SpriteBlit> clip_sprite_blit(SpriteBlit blit, Rectangle clip) {

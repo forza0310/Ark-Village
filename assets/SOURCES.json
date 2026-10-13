@@ -5157,6 +5157,16 @@
       "purpose": "Steam raw13 GameView arrow atlas; density and crop from published manual arrow plan, independent of common74",
       "width": 128,
       "height": 128
+    },
+    {
+      "file": "steam_common/eff_tenantStren.png",
+      "source": "research/dungeon_village_1/assets/steam-facility-common/original/common/eff_tenantStren.png",
+      "sha256": "48a73254435c9620d9574ad6914f630409b0c736c35ac319ea90917db03f1299",
+      "bytes": 1361,
+      "source_revision": "755fdf2",
+      "purpose": "Steam77 improvement response, image136/SEB92; distinct from APK same-name pixels",
+      "width": 229,
+      "height": 17
     }
   ]
 }

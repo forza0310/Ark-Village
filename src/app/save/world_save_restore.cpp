@@ -249,6 +249,7 @@ void clear_presentation(State &s) {
     s.facility_item_page_items.clear();
     s.facility_item_page_lists.clear();
     s.facility_item_page_selections.clear();
+    s.facility_item_page_scroll.clear();
     s.facility_item_response = 0;
     s.commerce_pages_initialized.clear();
     s.commerce_page_data.clear();

@@ -2,9 +2,10 @@
 
 // 75 consumes owned items; 76 applies shared improvements; 77 only displays the result.
 #include "../../scene/world_build_placement.hpp"
+#include "../common/layout.hpp"
 #include "ark/simulation/facilities/startup_world_facility_items.hpp"
 #include "ark/simulation/presentation/startup_world_visuals.hpp"
-#include "../common/layout.hpp"
+#include "world_facility_input.hpp"
 #include <optional>
 #include <string>
 #include <vector>
@@ -27,37 +28,43 @@ struct WorldFacilityItemsView {
     std::vector<WorldFacilityItemRow> rows;
     std::optional<WorldFacilityItemRow> choice;
     std::array<std::array<std::int64_t, 3>, 3> attributes{};
+    std::optional<simulation::SteamFacilityEffectPlan> skin;
 };
 struct WorldFacilityItemsLayout {
-    Rectangle panel, heading, rows, result, hints, feedback, cancel, confirm;
+    Extent extent;
+    Rectangle panel, heading, rows, hints, feedback, cancel, confirm;
     float row_height{};
-    Rectangle result_picture, result_values;
 };
 struct WorldFacilityItemsInput {
     std::optional<Vector2> click;
     bool enter{}, escape{}, up{}, down{};
     int wheel_rows{};
     bool keyboard_event{}; // Any key-down clears the source mouse marker.
+    std::optional<Vector2> pointer{};
+    bool pointer_pressed{}, pointer_down{}, pointer_released{};
 };
 // User-approved ADR-0058 maps the researched component/absolute-row marker to PC clicks.
-struct WorldFacilityItemsSelection {
-    std::uint64_t page{};
-    std::optional<int> marked_row;
-};
+using WorldFacilityItemsSelection = WorldFacilityGesture;
 struct WorldFacilityItemsIntent {
     simulation::StartupFacilityItemAction action;
     std::uint64_t page{};
     int selection{-1};
+    std::optional<simulation::StartupFacilityItemInput> input{};
 };
 bool world_facility_items_page(const simulation::rules::WorldScriptPage &page);
 WorldFacilityItemsView world_facility_items_view(const simulation::StartupWorldRuntimeState &state,
                                                  const simulation::rules::WorldScriptPage &page);
-WorldFacilityItemsLayout world_facility_items_layout(Extent extent);
+WorldFacilityItemsLayout world_facility_items_layout(Extent extent, int raw = 75);
 Rectangle world_facility_item_highlight(const WorldFacilityItemsLayout &layout, int visible_row);
 std::optional<WorldFacilityItemsIntent> world_facility_items_input(
     const WorldFacilityItemsView &view, const WorldFacilityItemsLayout &layout,
-    WorldFacilityItemsSelection &selection, const WorldFacilityItemsInput &input, bool blocked);
-void draw_world_facility_items(const WorldFacilityItemsView &view,
-                               const WorldFacilityItemsLayout &layout, const Skin &skin,
-                               bool enabled, const std::string &feedback = {});
+    WorldFacilityItemsSelection &selection, const WorldFacilityItemsInput &input, bool blocked,
+    const std::optional<WorldFacilityPaintedControls> &painted = {}, Extent extent = {});
+void prepare_world_facility_items(WorldFacilityItemsView &view,
+                                  const simulation::StartupWorldRuntimeState &state,
+                                  const Skin &skin, bool scrolling = false);
+std::optional<WorldFacilityPaintedControls>
+draw_world_facility_items(const WorldFacilityItemsView &view,
+                          const WorldFacilityItemsLayout &layout, const Skin &skin, bool enabled,
+                          const std::string &feedback = {});
 } // namespace ark::desktop::ui

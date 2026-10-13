@@ -1199,6 +1199,14 @@ StartupWorldRuntimeError StartupWorldRuntimeSession::act_village_activity_page(
     std::uint64_t page, StartupVillageActivityAction action, int selection) {
     return act_startup_world_village_activity_page(state_, page, action, selection);
 }
+StartupWorldRuntimeError StartupWorldRuntimeSession::input_facility_catalog_page(
+    std::uint64_t page,const StartupFacilityCatalogInput &input) {
+    return input_startup_world_facility_catalog_page(state_,page,input);
+}
+StartupWorldRuntimeError StartupWorldRuntimeSession::input_facility_item_page(
+    std::uint64_t page,const StartupFacilityItemInput &input) {
+    return input_startup_world_facility_item_page(state_,page,input);
+}
 StartupWorldRuntimeError StartupWorldRuntimeSession::open_human_page(int human) {
     return open_startup_world_human_page(state_, human);
 }
@@ -1269,6 +1277,7 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
             admitted.facility_item_page_items.erase(page.id);
             admitted.facility_item_page_lists.erase(page.id);
             admitted.facility_item_page_selections.erase(page.id);
+            admitted.facility_item_page_scroll.erase(page.id);
             admitted.facility_catalog_pages_initialized.erase(page.id);
             admitted.facility_catalog_page_data.erase(page.id);
             admitted.facility_catalog_page_lists.erase(page.id);

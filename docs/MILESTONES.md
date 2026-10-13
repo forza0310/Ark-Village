@@ -13,7 +13,7 @@
 
 现facilities模块消费商品79/装备72、道具75/投放76/结果77及口碑82的有序只读计划，复用人物/数字/Mapchip2末端；实际测宽、居中和PC释放/滚动沿既有适配。整帧DTO通过WorldSession一次交源事务，原同轮输入优先级、NEW与库存兑现保持；75继续ADR-0058的已提交行二次点击。Owner保存滚动和82独立双计数，绘制不抽随机、不发奖励/声音、不建第二时钟。共享人物帧读取正式entry_updates桥，仅替换已证人物演出，不替代手形独立时钟。
 
-正式导入范围为27个产品目标（20更新、6新增及SOURCES），写入前核当前字节，任一并发变化停止对应导入；不自动改写断言或重签旧报告。此次自动审批连续拒绝导入与仅生成build副本的准备，要求本批具体范围获得明确确认，落盘暂未执行。
+正式导入范围为27个产品目标（20更新、6新增及SOURCES），写入前核当前字节，任一并发变化停止对应导入；不自动改写断言或重签旧报告。用户已明确批准27个目标及既定桌面接线验收；正式源/测试和来源清单已落盘，后续产品接线与本地结果见[B1](stages/B1-playable-prototype.md#research-755fdf2-facility-pages)。
 
 - 更新公开头：`include/ark/simulation/application/startup_application.hpp`；`include/ark/simulation/facilities/startup_world_facility_catalog.hpp`、`startup_world_facility_items.hpp`；`include/ark/simulation/world/startup_world_runtime.hpp`；`include/ark/simulation/presentation/steam_human_skin.hpp`。
 - 更新实现：`src/simulation/application/startup_application.cpp`、`startup_window_host.hpp`；`src/simulation/persistence/startup_world_codec_fields.inc`、`startup_world_codec_fields.json`、`startup_world_restore_validation.cpp`；`src/simulation/facilities/startup_world_facility_catalog.cpp`、`startup_world_facility_items.cpp`；`src/simulation/actors/startup_world_human.cpp`；`src/simulation/world/startup_world_runtime.cpp`；`src/simulation/presentation/steam_human_skin.cpp`。

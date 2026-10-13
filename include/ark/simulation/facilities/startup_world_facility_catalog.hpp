@@ -17,6 +17,15 @@ struct StartupFacilityCatalogView {
     int binding{-1}; // 79无绑定；72当前装备定义；82设施定义。
     std::vector<int> entries; // 79/72装备原ID，82共享人物定义ID。
 };
+struct StartupFacilityCatalogInput {
+    bool up{},down{},left{},right{},confirm{},cancel{},inspect{};
+    std::optional<int> selection;
+    struct Scroll { bool absolute{};int value{}; };
+    std::optional<Scroll> scroll; // 原组件12事件；平台手势不存入Owner。
+};
+// 同轮先合成方向再修窗；确认优先于返回／详情，失败不提交部分游标或NEW。
+StartupWorldRuntimeError input_startup_world_facility_catalog_page(
+    StartupWorldRuntimeState &state,std::uint64_t page,const StartupFacilityCatalogInput &input);
 bool initialize_startup_world_facility_catalog_pages(StartupWorldRuntimeState &state);
 // 恢复与操作共用只读校验；合法待初始化页不被偷偷重建载荷。
 bool valid_startup_world_facility_catalog_page(const StartupWorldRuntimeState &state,

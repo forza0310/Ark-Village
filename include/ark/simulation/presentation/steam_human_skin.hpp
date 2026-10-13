@@ -24,6 +24,8 @@ struct SteamHumanResource {
     const char *published_sprite;
 };
 std::optional<SteamHumanResource> steam_human_resource(SteamHumanAsset asset);
+// UserData.frame_／APK V的已存Owner映射。只在获准世界入口推进，模态绘制保持。
+std::optional<int> steam_human_shared_character_frame(const StartupWorldRuntimeState &state);
 struct SteamHumanImage {
     SteamHumanAsset asset;
     std::array<int,2> position{};

@@ -77,6 +77,7 @@ if(ARK_BUILD_DESKTOP)
         src/desktop/ui/village/world_village_activity.cpp
         src/desktop/ui/village/world_commerce.cpp src/desktop/ui/facilities/world_facility_items.cpp
         src/desktop/ui/facilities/world_facility_catalog.cpp
+        src/desktop/ui/facilities/world_facility_skin.cpp
         src/desktop/ui/village/world_magic_pot.cpp
         src/desktop/ui/tasks/world_crew_summary.cpp src/desktop/ui/tasks/world_tasks.cpp
         src/desktop/ui/system/world_menu.cpp src/desktop/ui/system/world_manual.cpp)

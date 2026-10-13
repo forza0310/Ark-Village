@@ -131,9 +131,12 @@ bool payload(const State &s, const Page &p) {
     if (v[0] != p.legacy_f || v[1] < 0 || v[2] < 0 || phase->second < 0)
         return false;
     if (p.legacy_page == 82) {
+        const auto secondary = s.page_secondary_counters.find(p.id);
         if (!p.facility_definition || *p.facility_definition != v[3] || v[0] < 0 || v[0] > 1 ||
             v[1] != 0 || v[2] != 0 || phase->second > 1 || list->second.size() > 3 ||
-            s.facility_catalog_page_parents.count(p.id))
+            s.facility_catalog_page_parents.count(p.id) || counter->second == std::numeric_limits<int>::max() ||
+            secondary == s.page_secondary_counters.end() || secondary->second < 0 ||
+            secondary->second == std::numeric_limits<int>::max())
             return false;
         const auto d = facility(s, v[3]);
         if (!d || d->legacy_icon != (v[0] == 0 ? 2 : 3))
@@ -169,7 +172,8 @@ bool initialize(State &s, const Page &p) {
         return payload(s, p);
     // 未初始化也拒绝残留半载荷，计数/phase可由共同框架先建立。
     if (!s.rules || !supported(p.legacy_page) || s.facility_catalog_page_data.count(p.id) ||
-        s.facility_catalog_page_lists.count(p.id))
+        s.facility_catalog_page_lists.count(p.id) ||
+        (p.legacy_page == 82 && s.page_secondary_counters.count(p.id)))
         return false;
     std::vector<int> list;
     int phase = 0;
@@ -207,6 +211,8 @@ bool initialize(State &s, const Page &p) {
     s.facility_catalog_page_lists.emplace(p.id, std::move(list));
     s.page_phases[p.id] = phase;
     s.page_counters.try_emplace(p.id, 0);
+    if (p.legacy_page == 82)
+        s.page_secondary_counters.emplace(p.id, 0);
     s.facility_catalog_pages_initialized.insert(p.id);
     return payload(s, p);
 }
@@ -237,7 +243,8 @@ bool valid_startup_world_facility_catalog_page(const State &s, const Page &p) {
     if (s.facility_catalog_pages_initialized.count(p.id))
         return payload(s, p);
     if (p.lifecycle != 0 || s.facility_catalog_page_data.count(p.id) ||
-        s.facility_catalog_page_lists.count(p.id))
+        s.facility_catalog_page_lists.count(p.id) ||
+        (p.legacy_page == 82 && s.page_secondary_counters.count(p.id)))
         return false;
     const auto counter = s.page_counters.find(p.id);
     const auto phase = s.page_phases.find(p.id);
@@ -373,6 +380,42 @@ Error act_startup_world_facility_catalog_page(State &s, std::uint64_t id, Action
     s = std::move(next);
     return Error::none;
 }
+Error input_startup_world_facility_catalog_page(State &s,std::uint64_t id,const StartupFacilityCatalogInput &input) {
+    const auto view=inspect_startup_world_facility_catalog_page(s,id);
+    if(s.scene.framework_paused||!view)return Error::invalid_page;
+    if(view->raw!=79&&(input.up||input.down||input.selection||input.scroll||input.inspect))return Error::invalid_page;
+    if(view->raw==82&&(input.left||input.right))return Error::invalid_page;
+    auto next=s;
+    auto &v=next.facility_catalog_page_data.find(id)->second;
+    auto &phase=next.page_phases.find(id)->second;
+    const int count=static_cast<int>(view->entries.size());
+    if(input.scroll) {
+        if(input.scroll->value==std::numeric_limits<int>::max())return Error::invalid_page;
+        const auto wanted=input.scroll->absolute?std::int64_t(input.scroll->value):std::int64_t(v[2])+input.scroll->value;
+        const int first=static_cast<int>(std::clamp(wanted,std::int64_t(0),std::int64_t(std::max(0,count-4))));
+        v[1]+=first-v[2];v[2]=first;
+    }
+    if(input.selection) {
+        if(*input.selection<0||*input.selection>=count)return Error::invalid_page;
+        v[1]=*input.selection;
+    }
+    if(view->raw==79) {
+        if(input.up)v[1]=v[1]==0?count-1:v[1]-1;
+        if(input.down)v[1]=v[1]==count-1?0:v[1]+1;
+        scroll(v);
+        if(input.left)phase=1-phase;
+        if(input.right)phase=1-phase;
+    } else if(view->raw==72) {
+        if(input.left)phase=phase==0?count-1:phase-1;
+        if(input.right)phase=phase==count-1?0:phase+1;
+    }
+    if(input.confirm||input.cancel||input.inspect) {
+        const auto action=input.confirm?Action::confirm:input.cancel?Action::cancel:Action::inspect;
+        const auto error=act_startup_world_facility_catalog_page(next,id,action);
+        if(error!=Error::none)return error;
+    }
+    s=std::move(next);return Error::none;
+}
 std::optional<State> update_startup_world_facility_catalog_page(const State &s, std::uint64_t id) {
     const auto p = top(s);
     if (!p || p->id != id || p->kind != ref::WorldScriptPageKind::raw_page || !supported(p->legacy_page))
@@ -386,7 +429,13 @@ std::optional<State> update_startup_world_facility_catalog_page(const State &s, 
     auto &counter = next.page_counters.find(id)->second;
     if (counter == std::numeric_limits<int>::max())
         return {};
-    ++counter;
+    if (original.legacy_page == 82) {
+        // Steam SubForm.Update先推进两个独立时钟；快进／切段只改主计数。
+        counter = (counter + 1) % std::numeric_limits<int>::max();
+        auto &secondary = next.page_secondary_counters.find(id)->second;
+        secondary = (secondary + 1) % std::numeric_limits<int>::max();
+    } else
+        ++counter;
     if (original.legacy_page == 82 && next.page_phases.find(id)->second == 0 && counter == 1)
         next.sound_requests.push_back({StartupAudioOperation::jingle, 4});
     return next;

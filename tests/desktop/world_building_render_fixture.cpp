@@ -1,18 +1,18 @@
 // Rendering acceptance at the published editing callsite, not natural flag32 unlock or OS input.
 // Only the gate flag is fixture input. Original map, buildings, prices and source transactions
 // remain real; no world updates are manufactured to obtain the two requested frames.
-#include "ark/simulation/facilities/startup_world_commerce.hpp"
-#include "ark/simulation/facilities/startup_world_editing.hpp"
-#include "../support/world_fixture.hpp"
-#include "../../src/desktop/ui/common/skin.hpp"
-#include "../../src/desktop/ui/facilities/world_building.hpp"
-#include "../../src/desktop/ui/village/world_commerce.hpp"
-#include "../../src/desktop/ui/facilities/world_facility_catalog.hpp"
-#include "../../src/desktop/ui/facilities/world_facility_items.hpp"
-#include "../../src/desktop/ui/village/world_magic_pot.hpp"
 #include "../../src/desktop/scene/world_canvas.hpp"
 #include "../../src/desktop/scene/world_editing.hpp"
 #include "../../src/desktop/scene/world_overlay_render.hpp"
+#include "../../src/desktop/ui/common/skin.hpp"
+#include "../../src/desktop/ui/facilities/world_building.hpp"
+#include "../../src/desktop/ui/facilities/world_facility_catalog.hpp"
+#include "../../src/desktop/ui/facilities/world_facility_items.hpp"
+#include "../../src/desktop/ui/village/world_commerce.hpp"
+#include "../../src/desktop/ui/village/world_magic_pot.hpp"
+#include "../support/world_fixture.hpp"
+#include "ark/simulation/facilities/startup_world_commerce.hpp"
+#include "ark/simulation/facilities/startup_world_editing.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -364,6 +364,11 @@ void world_facility_static_render_fixture() {
                     sim::write_startup_world_runtime_scripts(state, created.candidate->state) &&
                     sim::initialize_startup_world_facility_catalog_pages(state),
                 "catalogue/publicity source callsite failed");
+        const auto initialized = sim::prepare_startup_world_runtime(state);
+        require(initialized.candidate.has_value(), "catalogue fixture reaches real page lifecycle");
+        state = *initialized.candidate;
+        state.sound_requests
+            .clear(); // This conditional renderer consumes, but does not play, requests.
         return state;
     };
     auto magic = initial_world();
@@ -423,9 +428,12 @@ void world_facility_static_render_fixture() {
                 sim::StartupWorldRuntimeError::none &&
             sim::initialize_startup_world_facility_catalog_pages(equipment_info),
         "source79 could not open actual information72");
+    const auto equipment_ready = sim::prepare_startup_world_runtime(equipment_info);
+    require(equipment_ready.candidate.has_value(), "72 reaches its actual initialized lifecycle");
+    equipment_info = *equipment_ready.candidate;
     auto publicity = catalogue_callsite(82, 0, 36);
     auto publicity_second = publicity;
-    for (int n = 0; n < 2; ++n)
+    for (int n = 0; n < 3; ++n)
         require(sim::act_startup_world_facility_catalog_page(
                     publicity_second, top_page(publicity_second).id,
                     sim::StartupFacilityCatalogAction::confirm) ==
@@ -453,6 +461,9 @@ void world_facility_static_render_fixture() {
                     sim::StartupWorldRuntimeError::none &&
                 sim::initialize_startup_world_facility_item_pages(items),
             "source cannot initialize supplied-stock raw75");
+    const auto items_ready = sim::prepare_startup_world_runtime(items);
+    require(items_ready.candidate.has_value(), "75 reaches its actual initialized lifecycle");
+    items = *items_ready.candidate;
     auto reinforced = items;
     require(sim::act_startup_world_facility_item_page(reinforced, top_page(reinforced).id,
                                                       sim::StartupFacilityItemAction::confirm) ==
@@ -467,6 +478,9 @@ void world_facility_static_render_fixture() {
     require(top_page(reinforced).legacy_page == 77 &&
                 sim::initialize_startup_world_facility_item_pages(reinforced),
             "source improvement76 did not reach the real result77");
+    const auto result_ready = sim::prepare_startup_world_runtime(reinforced);
+    require(result_ready.candidate.has_value(), "77 reaches its actual initialized lifecycle");
+    reinforced = *result_ready.candidate;
     auto preview = initial_world();
     preview.scripts.user_flags |= 16U;
     preview.rank = 5; // Explicit eligibility fixture, never a claimed natural rank/commerce unlock.
@@ -544,6 +558,7 @@ void world_facility_static_render_fixture() {
         glyphs += recipe.name;
     glyphs += "魔法壶投入道具开发确认处理结果发现配方火冰雷暗等级经验持有";
     glyphs += "商品装备情报设施口碑名称能力正在销售种攻击防御魔法幸运确认可快进继续";
+    glyphs += "传说中的商店冒险者们中间话题传开街道人气上升出售中装备信息剩余";
     desktop::Text text(ARK_TEST_FONT, glyphs);
     std::cout << "Attribute font metrics: digit12=" << text.width("1", 12)
               << " digit14=" << text.width("1", 14) << " digit16=" << text.width("1", 16)
@@ -574,15 +589,23 @@ void world_facility_static_render_fixture() {
             else if (ui::world_commerce_page(page))
                 ui::draw_world_commerce(ui::world_commerce_view(state, page),
                                         ui::world_commerce_layout(extent), skin, true);
-            else if (ui::world_facility_catalog_page(page))
-                ui::draw_world_facility_catalog(ui::world_facility_catalog_view(state, page),
-                                                ui::world_facility_catalog_layout(extent), skin,
-                                                true);
-            else if (page.legacy_page >= 75 && page.legacy_page <= 77)
-                ui::draw_world_facility_items(ui::world_facility_items_view(state, page),
-                                              ui::world_facility_items_layout(extent), skin, true);
-            else {
-                auto view = display_override ? *display_override : ui::world_building_view(state, page);
+            else if (ui::world_facility_catalog_page(page)) {
+                auto view = ui::world_facility_catalog_view(state, page);
+                require(view.initialized,
+                        "Static catalogue fixture must reach actual initialized payload");
+                ui::prepare_world_facility_catalog(view, state, skin);
+                ui::draw_world_facility_catalog(
+                    view, ui::world_facility_catalog_layout(extent, view.raw), skin, true);
+            } else if (page.legacy_page >= 75 && page.legacy_page <= 77) {
+                auto view = ui::world_facility_items_view(state, page);
+                require(view.initialized,
+                        "Static improvement fixture must reach actual initialized payload");
+                ui::prepare_world_facility_items(view, state, skin);
+                ui::draw_world_facility_items(
+                    view, ui::world_facility_items_layout(extent, view.raw), skin, true);
+            } else {
+                auto view =
+                    display_override ? *display_override : ui::world_building_view(state, page);
                 const ui::WorldBuildingSelection selection{0, first_row, first_row};
                 ui::prepare_world_building_detail(view, state, selection, skin);
                 if (display_override && view.detail_skin) {
@@ -595,13 +618,13 @@ void world_facility_static_render_fixture() {
                                 ++bonus;
                                 if (bonus == 0)
                                     part->value = view.bonus_rows.at(0).source.name;
-                            } else if (bonus == 0 && part->role == sim::SteamFacilityDetailTextRole::bonus_value)
+                            } else if (bonus == 0 &&
+                                       part->role == sim::SteamFacilityDetailTextRole::bonus_value)
                                 part->value = view.bonus_rows.at(0).source.values.at(value++).text;
                         }
                 }
-                ui::draw_world_building(view,
-                                        ui::world_building_layout(extent, page.legacy_page), skin,
-                                        selection, true);
+                ui::draw_world_building(view, ui::world_building_layout(extent, page.legacy_page),
+                                        skin, selection, true);
             }
             EndMode2D();
             text.flush(raster.zoom, raster.offset);
@@ -736,6 +759,34 @@ void world_facility_static_render_fixture() {
     capture(equipment_info, "raw72-equipment.png", true);
     capture(publicity, "raw82-first.png", false);
     capture(publicity_second, "raw82-second.png", true);
+    // Counter snapshots of source-valid conditional payloads, not natural animation timing.
+    auto throwing = items;
+    require(sim::act_startup_world_facility_item_page(throwing, top_page(throwing).id,
+                                                      sim::StartupFacilityItemAction::confirm) ==
+                sim::StartupWorldRuntimeError::none,
+            "supplied item enters the actual throw child");
+    const auto throwing_ready = sim::prepare_startup_world_runtime(throwing);
+    require(throwing_ready.candidate.has_value(), "throw child reaches real initialized lifecycle");
+    throwing = *throwing_ready.candidate;
+    for (int counter : {14, 15, 35, 36, 37, 38, 41, 42, 46, 48}) {
+        auto sample = throwing;
+        sample.page_counters.at(top_page(sample).id) = counter;
+        const auto file = "raw76-frame-" + std::to_string(counter) + "-minimum.png";
+        capture(sample, file.c_str(), true);
+    }
+    for (int counter : {0, 5, 6, 33, 34, 48, 49, 54, 55}) {
+        auto sample = reinforced;
+        sample.page_counters.at(top_page(sample).id) = counter;
+        const auto file = "raw77-frame-" + std::to_string(counter) + "-minimum.png";
+        capture(sample, file.c_str(), true);
+    }
+    for (int secondary : {9, 10, 25, 26}) {
+        auto sample = publicity;
+        sample.page_counters.at(top_page(sample).id) = 40;
+        sample.page_secondary_counters.at(top_page(sample).id) = secondary;
+        const auto file = "raw82-secondary-" + std::to_string(secondary) + "-minimum.png";
+        capture(sample, file.c_str(), true);
+    }
     capture(magic, "raw41-magic-pot.png", true);
     capture(deposit_list, "raw42-pot-items.png", false);
     capture(deposited, "raw44-pot-deposit.png", true);

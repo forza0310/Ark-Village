@@ -292,6 +292,18 @@ void apply_world_decision(WorldState &state, const WorldCommand &command,
                       state, command.page, command.facility_catalog_action, command.selection)
                 : Error::invalid_page;
         break;
+    case Kind::facility_catalog_input:
+        result.runtime_error = state.facility_catalog_pages_initialized.count(command.page)
+                                   ? simulation::input_startup_world_facility_catalog_page(
+                                         state, command.page, command.facility_catalog_input)
+                                   : Error::invalid_page;
+        break;
+    case Kind::facility_item_input:
+        result.runtime_error = state.facility_item_pages_initialized.count(command.page)
+                                   ? simulation::input_startup_world_facility_item_page(
+                                         state, command.page, command.facility_item_input)
+                                   : Error::invalid_page;
+        break;
     case Kind::facility_item_action:
         result.runtime_error =
             valid_facility_item_action(command.facility_item_action) &&
@@ -432,15 +444,14 @@ void apply_world_decision(WorldState &state, const WorldCommand &command,
         // The source composes a whole input frame. Do not split it into commands that
         // would re-test a changed phase or leave partially changed selection/scroll.
         const auto page = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
-                                      [](const auto &p) { return p.lifecycle != 4; });
+                                       [](const auto &p) { return p.lifecycle != 4; });
         result.runtime_error =
             page != state.scripts.pages.rend() && page->id == command.page &&
                     simulation::startup_world_human_page_ready(state, command.page)
-                ? (page->legacy_page == 60
-                       ? simulation::input_startup_world_human_detail_page(state, command.page,
-                                                                          command.human_input)
-                       : simulation::input_startup_world_human_catalogue_page(state, command.page,
-                                                                             command.human_input))
+                ? (page->legacy_page == 60 ? simulation::input_startup_world_human_detail_page(
+                                                 state, command.page, command.human_input)
+                                           : simulation::input_startup_world_human_catalogue_page(
+                                                 state, command.page, command.human_input))
                 : Error::invalid_page;
         break;
     }
@@ -579,7 +590,7 @@ std::uint64_t WorldSession::act_human(std::uint64_t page, simulation::StartupHum
     return submit(command);
 }
 std::uint64_t WorldSession::input_human(std::uint64_t page,
-                                       const simulation::StartupHumanCatalogueInput &input) {
+                                        const simulation::StartupHumanCatalogueInput &input) {
     WorldCommand command;
     command.kind = WorldCommandKind::human_input;
     command.page = page;
@@ -708,6 +719,23 @@ std::uint64_t WorldSession::act_facility_catalog(std::uint64_t page,
 std::uint64_t WorldSession::open_menu_magic_pot() {
     WorldCommand command;
     command.kind = WorldCommandKind::open_menu_magic_pot;
+    return submit(command);
+}
+std::uint64_t
+WorldSession::input_facility_catalog(std::uint64_t page,
+                                     const simulation::StartupFacilityCatalogInput &input) {
+    WorldCommand command;
+    command.kind = WorldCommandKind::facility_catalog_input;
+    command.page = page;
+    command.facility_catalog_input = input;
+    return submit(command);
+}
+std::uint64_t WorldSession::input_facility_item(std::uint64_t page,
+                                                const simulation::StartupFacilityItemInput &input) {
+    WorldCommand command;
+    command.kind = WorldCommandKind::facility_item_input;
+    command.page = page;
+    command.facility_item_input = input;
     return submit(command);
 }
 std::uint64_t WorldSession::open_magic_pot() {

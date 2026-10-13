@@ -76,7 +76,9 @@ enum class WorldCommandKind {
     menu_input,
     open_source_save_menu,
     manual_input,
-    human_input
+    human_input,
+    facility_catalog_input,
+    facility_item_input
 };
 enum class WorldCommandOutcome { applied, rejected };
 struct WorldCommandResult {
@@ -143,6 +145,8 @@ struct WorldCommand {
     simulation::StartupWorldMenuInput menu_input;
     simulation::StartupManualInput manual_input;
     simulation::StartupHumanCatalogueInput human_input; // One source input frame, no device state.
+    simulation::StartupFacilityCatalogInput facility_catalog_input;
+    simulation::StartupFacilityItemInput facility_item_input;
     simulation::StartupFacilityItemAction facility_item_action{
         simulation::StartupFacilityItemAction::confirm};
     simulation::StartupFacilityCatalogAction facility_catalog_action{
@@ -212,7 +216,7 @@ class WorldSession {
     std::uint64_t act_human(std::uint64_t page, simulation::StartupHumanPageAction action,
                             int selection = 0);
     std::uint64_t input_human(std::uint64_t page,
-                             const simulation::StartupHumanCatalogueInput &input);
+                              const simulation::StartupHumanCatalogueInput &input);
     std::uint64_t act_tax(std::uint64_t page, simulation::StartupWorldTaxAction action,
                           int selection = 0);
     std::uint64_t open_menu_village_activities();
@@ -246,6 +250,11 @@ class WorldSession {
     std::uint64_t act_facility_catalog(std::uint64_t page,
                                        simulation::StartupFacilityCatalogAction action,
                                        int selection = 0);
+    // Submit an entire input frame once; only the maintained consumer repairs its viewport.
+    std::uint64_t input_facility_catalog(std::uint64_t page,
+                                         const simulation::StartupFacilityCatalogInput &input);
+    std::uint64_t input_facility_item(std::uint64_t page,
+                                      const simulation::StartupFacilityItemInput &input);
     std::uint64_t act_residence(std::uint64_t page, int human, bool cancel = false);
     std::uint64_t act_task_page(std::uint64_t page, simulation::StartupWorldTaskAction action,
                                 int selection = 0);

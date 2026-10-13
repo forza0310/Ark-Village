@@ -161,6 +161,7 @@ if(ARK_BUILD_DESKTOP)
             tests/desktop/world_commerce_test.cpp tests/desktop/world_facility_items_test.cpp
             src/desktop/ui/village/world_commerce.cpp src/desktop/ui/facilities/world_facility_items.cpp
             src/desktop/ui/facilities/world_facility_catalog.cpp
+            src/desktop/ui/facilities/world_facility_skin.cpp
             src/desktop/ui/village/world_magic_pot.cpp
             src/desktop/ui/actors/world_human.cpp src/desktop/ui/actors/world_human_detail.cpp
             src/desktop/ui/actors/world_human_skin.cpp src/desktop/ui/actors/world_human_input.cpp

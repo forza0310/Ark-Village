@@ -27,6 +27,8 @@ class WorldManagement {
     // Local keyboard reset also applies while a FIFO command is pending; it changes no Owner.
     void clear_mouse_marker() {
         facility_items_.marked_row.reset();
+        facility_items_.scrolling = false;
+        facility_catalog_gesture_.scrolling = false;
         human_gesture_ = {};
     }
     bool input_page(const app::WorldState &state, const simulation::rules::WorldScriptPage &page,
@@ -60,6 +62,8 @@ class WorldManagement {
     std::string feedback_;
     ui::WorldBuildingSelection building_;
     ui::WorldFacilityItemsSelection facility_items_;
+    ui::WorldFacilityGesture facility_catalog_gesture_;
+    mutable std::optional<ui::WorldFacilityPaintedControls> facility_controls_;
     ui::WorldAwardSelection award_;
     mutable std::optional<ui::WorldManualLayout> manual_layout_; // Last painted controls only.
     mutable std::optional<ui::WorldHumanPaintedControls> human_controls_;

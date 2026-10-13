@@ -468,6 +468,12 @@ std::string StartupApplication::act_human_page(std::uint64_t page, StartupHumanP
 std::string StartupApplication::input_human_catalogue_page(std::uint64_t page,const StartupHumanCatalogueInput &input) {
     return apply_world_action([&](auto &world) { return world.input_human_catalogue_page(page,input); });
 }
+std::string StartupApplication::input_facility_catalog_page(std::uint64_t page,const StartupFacilityCatalogInput &input) {
+    return apply_world_action([&](auto &world) { return world.input_facility_catalog_page(page,input); });
+}
+std::string StartupApplication::input_facility_item_page(std::uint64_t page,const StartupFacilityItemInput &input) {
+    return apply_world_action([&](auto &world) { return world.input_facility_item_page(page,input); });
+}
 std::string StartupApplication::input_human_detail_page(std::uint64_t page,const StartupHumanCatalogueInput &input) {
     return apply_world_action([&](auto &world) { return world.input_human_detail_page(page,input); });
 }

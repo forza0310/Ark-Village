@@ -1419,7 +1419,7 @@ StartupWorldResourceUsage startup_world_resource_usage(const State &s) {
                       s.activity_page_bindings.size() + s.activity_page_lists.size() +
                       s.activity_page_display_humans.size() + s.activity_page_parents.size() +
                       s.activity_page_answers.size() + s.activity_page_selections.size() +
-                      s.activity_page_scroll.size() + s.facility_item_pages_initialized.size() +
+                      s.activity_page_scroll.size() + s.facility_item_page_scroll.size() + s.facility_item_pages_initialized.size() +
                       s.facility_item_page_items.size() + s.facility_item_page_lists.size() +
                       s.facility_item_page_selections.size() + s.commerce_pages_initialized.size() +
                       s.commerce_page_data.size() + s.commerce_page_lists.size() +

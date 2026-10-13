@@ -602,6 +602,7 @@ struct Validation {
         PAGE_MAP(facility_item_page_items);
         PAGE_MAP(facility_item_page_lists);
         PAGE_MAP(facility_item_page_selections);
+        PAGE_MAP(facility_item_page_scroll);
         PAGE_MAP(commerce_page_data);
         PAGE_MAP(commerce_page_lists);
         PAGE_MAP(facility_catalog_page_data);
@@ -626,6 +627,39 @@ struct Validation {
         PAGE_SET(task_display_initialized, 99, 100);
         PAGE_SET(facility_upgrade_initialized, 81);
 #undef PAGE_SET
+        for(auto id:s.facility_item_pages_initialized)
+            if(page_kind(id,{75})&&(!s.facility_item_page_lists.count(id)||
+               !s.facility_item_page_selections.count(id)||!s.facility_item_page_scroll.count(id)))
+                return fail("facility item: 已初始化目录缺载荷");
+        for(auto id:s.facility_catalog_pages_initialized)
+            if(page_kind(id,{82})&&(!s.page_counters.count(id)||!s.page_secondary_counters.count(id)||
+               s.page_counters.at(id)==std::numeric_limits<int>::max()))
+                return fail("facility reputation: 已初始化演出缺双计数");
+        for(const auto &[id,first]:s.facility_item_page_scroll) {
+            const auto list=get(s.facility_item_page_lists,id);
+            const auto selected=get(s.facility_item_page_selections,id);
+            if(!page_kind(id,{75})||!s.facility_item_pages_initialized.count(id)||!list||!selected||
+               first<0||list->size()>65536||*selected<0||
+               (list->empty()?first!=0||*selected!=0:
+                std::size_t(*selected)>=list->size()||first>*selected||*selected-first>=5))
+                return fail("facility item scroll: 页型/初始化/可见窗非法");
+        }
+        for(const auto &[id,list]:s.facility_item_page_lists) {
+            (void)list;
+            if(!page_kind(id,{75})||!s.facility_item_pages_initialized.count(id)||
+               !s.facility_item_page_scroll.count(id)||!s.facility_item_page_selections.count(id))
+                return fail("facility item: 目录缺游标或附在错误页型");
+        }
+        for(const auto &[id,selected]:s.facility_item_page_selections) {
+            (void)selected;
+            if(!page_kind(id,{75})||!s.facility_item_pages_initialized.count(id)||
+               !s.facility_item_page_scroll.count(id)||!s.facility_item_page_lists.count(id))
+                return fail("facility item: 选择缺目录或附在错误页型");
+        }
+        for(const auto &[id,selected]:s.facility_item_page_items) {
+            (void)selected;
+            if(!page_kind(id,{76,77}))return fail("facility item: 演出道具附在错误页型");
+        }
         for (const auto &[id, context] : s.human_detail_contexts) {
             (void)context;
             if (!page_kind(id, {60}) || !valid_startup_world_human_detail_context(s, id))
@@ -685,7 +719,8 @@ struct Validation {
             if (!counter(n))
                 return fail("page: 计数非法");
         for (const auto &[id, n] : s.page_secondary_counters)
-            if (!counter(n))
+            if (!counter(n)||!page_kind(id,{24,81,82})||
+                (page_kind(id,{82})&&(!s.facility_catalog_pages_initialized.count(id)||n==std::numeric_limits<int>::max())))
                 return fail("page: 独立计数非法");
         for (const auto &[id, n] : s.page_phases)
             if (n < 0)

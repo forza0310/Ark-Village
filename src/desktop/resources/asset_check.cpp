@@ -182,7 +182,8 @@ void check_assets(const std::filesystem::path &root) {
         for (int frame = 0; frame < definition.frame_count; ++frame)
             validate_frame(path, frame, Sprites::Binding::effect);
     }
-    for (const auto &name : {"number05.seb", "number08.seb", "number12.seb"}) {
+    for (const auto &name :
+         {"number05.seb", "number08.seb", "number12.seb", "eff_tenantStren.seb"}) {
         const auto path = root / "common" / name;
         const auto definition = assets::parse_legacy_seb(read_bytes(path));
         for (int frame = 0; frame < definition.frame_count; ++frame)

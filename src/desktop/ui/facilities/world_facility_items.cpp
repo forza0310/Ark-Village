@@ -9,14 +9,6 @@ namespace {
 using State = simulation::StartupWorldRuntimeState;
 using Page = simulation::rules::WorldScriptPage;
 using Action = simulation::StartupFacilityItemAction;
-bool hit(const WorldFacilityItemsInput &input, Rectangle box) {
-    return input.click && input.click->x >= box.x && input.click->y >= box.y &&
-           input.click->x < box.x + box.width && input.click->y < box.y + box.height;
-}
-void fitted(const Skin &skin, const std::string &value, Rectangle box, Color color = ink) {
-    skin.text.draw(value, box.x, box.y, color,
-                   std::min(11.F, 12.F * box.width / std::max(1.F, skin.text.width(value))));
-}
 WorldFacilityItemRow item(const State &state, int id) {
     const auto source = std::find_if(state.rules->items.begin(), state.rules->items.end(),
                                      [id](const auto &d) { return d.identity == id; });
@@ -78,8 +70,7 @@ WorldFacilityItemsView world_facility_items_view(const State &state, const Page 
         out.selection = state.facility_item_page_selections.at(page.id);
         for (const int id : state.facility_item_page_lists.at(page.id))
             out.rows.push_back(item(state, id));
-        out.first_visible =
-            std::clamp(out.selection - 4, 0, std::max(0, static_cast<int>(out.rows.size()) - 5));
+        out.first_visible = state.facility_item_page_scroll.at(page.id);
         out.choice = out.rows.at(out.selection);
     } else {
         out.choice = item(state, state.facility_item_page_items.at(page.id));
@@ -90,141 +81,127 @@ WorldFacilityItemsView world_facility_items_view(const State &state, const Page 
     out.initialized = true;
     return out;
 }
-WorldFacilityItemsLayout world_facility_items_layout(Extent extent) {
+WorldFacilityItemsLayout world_facility_items_layout(Extent extent, int raw) {
     if (extent.width < 240 || extent.height < 256)
-        throw std::invalid_argument("Facility item page requires supported logical viewport");
+        throw std::invalid_argument("Unsupported facility viewport");
     WorldFacilityItemsLayout out;
-    const float width = std::min(224.F, extent.width - 16.F);
-    const float height = std::min(240.F, extent.height - 58.F);
+    out.extent = extent;
+    const float width = raw == 75 ? 220.F : 222.F, height = raw == 75 ? 168.F : 170.F;
     out.panel = {(extent.width - width) / 2, (extent.height - height) / 2, width, height};
-    const auto p = out.panel;
-    out.heading = {p.x + 10, p.y + 27, width - 20, 14};
-    // PAGES raw75: five rows at 19 pitch; selected background is 191x16.
-    // Keep result76/77 geometry separate so this list-only adaptation changes no consumer.
-    out.result = {p.x + 10, p.y + 47, width - 20, height - 118};
-    const float row_width = std::min(191.F, width - 20);
-    out.rows = {p.x + (width - row_width) / 2, p.y + 43, row_width, 5 * 19.F};
+    const auto origin = world_facility_skin_origin(out.panel);
+    out.heading = {origin.x + 30, origin.y + 69, 195, 14};
+    out.rows = {origin.x + 23, origin.y + 97, 191, 95};
     out.row_height = 19;
-    out.hints = {p.x + 10, p.y + 140, width - 20, 14};
-    out.feedback = {p.x + 10, p.y + height - 43, width - 20, 12};
-    out.cancel = {p.x + 10, p.y + height - 26, 48, 20};
-    out.confirm = {p.x + width - 58, p.y + height - 26, 48, 20};
-    // S045 places the real facility above three new-value/delta rows. Compress vertically
-    // at the minimum window without changing counters or manufacturing animation frames.
-    const float picture_height = std::max(34.F, std::min(74.F, (out.result.height - 4) * .5F));
-    out.result_picture = {p.x + (width - 97) / 2, out.result.y, 97, picture_height};
-    out.result_values = {out.result.x, out.result_picture.y + picture_height + 4, out.result.width,
-                         out.result.height - picture_height - 4};
+    out.hints = {origin.x + 30, origin.y + 201, 192, 12};
+    out.cancel = {out.panel.x + width - 50, out.panel.y + height + 4, 50, 18};
+    out.confirm = {out.panel.x, out.panel.y + height + 4, 50, 18};
+    out.feedback = {out.panel.x, out.panel.y + height + 24, width, 12};
     return out;
 }
-Rectangle world_facility_item_highlight(const WorldFacilityItemsLayout &layout, int visible_row) {
-    if (visible_row < 0 || visible_row >= 5)
-        throw std::invalid_argument("Facility item highlight requires a visible source row");
-    return {layout.rows.x, layout.rows.y + visible_row * 19 - 2, std::min(191.F, layout.rows.width),
-            16};
+Rectangle world_facility_item_highlight(const WorldFacilityItemsLayout &l, int row) {
+    if (row < 0 || row >= 5)
+        throw std::invalid_argument("Facility item highlight requires a visible row");
+    return {l.rows.x, l.rows.y + row * 19 - 2, 191, 16};
 }
-std::optional<WorldFacilityItemsIntent> world_facility_items_input(
-    const WorldFacilityItemsView &view, const WorldFacilityItemsLayout &layout,
-    WorldFacilityItemsSelection &selection, const WorldFacilityItemsInput &input, bool blocked) {
-    if (selection.page != view.page)
-        selection = {view.page, {}};
-    if (input.keyboard_event || input.enter || input.escape || input.up || input.down)
-        selection.marked_row.reset();
-    if (blocked || !view.initialized || view.raw == 76)
+void prepare_world_facility_items(WorldFacilityItemsView &v, const State &s, const Skin &skin,
+                                  bool scrolling) {
+    v.skin.reset();
+    if (!v.initialized)
+        return;
+    simulation::SteamFacilityEffectOptions o;
+    o.view_y = 23;
+    o.scroll_first_touch = scrolling;
+    o.title_widths =
+        std::array<int, 2>{int(skin.text.width(v.title)), int(skin.text.width(v.title))};
+    v.skin = simulation::steam_facility_effect_skin(s, v.page, o);
+    if (!v.skin)
+        throw std::invalid_argument("Invalid bound facility improvement plan");
+}
+std::optional<WorldFacilityItemsIntent>
+world_facility_items_input(const WorldFacilityItemsView &v, const WorldFacilityItemsLayout &,
+                           WorldFacilityItemsSelection &g, const WorldFacilityItemsInput &i,
+                           bool blocked, const std::optional<WorldFacilityPaintedControls> &painted,
+                           Extent extent) {
+    if (g.page != v.page) {
+        g.page = v.page;
+        g.marked_row.reset();
+        g.scrolling = false;
+    }
+    if (i.keyboard_event || i.enter || i.escape || i.up || i.down || i.wheel_rows)
+        g.marked_row.reset();
+    const bool fresh = painted && painted->page == v.page && painted->raw == v.raw &&
+                       painted->selection == v.selection && painted->first == v.first_visible &&
+                       painted->count == int(v.rows.size()) &&
+                       painted->choice == (v.choice ? v.choice->identity : -1) &&
+                       painted->extent.width == extent.width &&
+                       painted->extent.height == extent.height;
+    const auto drag = world_facility_scroll_input(
+        g, fresh ? &*painted : nullptr, fresh && !blocked && v.initialized && v.raw == 75,
+        i.pointer, i.pointer_pressed, i.pointer_down, i.pointer_released);
+    if (blocked || !v.initialized || v.raw == 76)
         return {};
-    const auto intent = [&](Action action, int selection = -1) {
-        return WorldFacilityItemsIntent{action, view.page, selection};
-    };
-    if (view.can_cancel && (input.escape || hit(input, layout.cancel)))
-        return intent(Action::cancel);
-    if (view.raw == 75 && !view.rows.empty()) {
-        if (input.up || input.down)
-            return intent(input.up ? Action::previous : Action::next);
-        if (input.wheel_rows)
-            return intent(Action::select, std::clamp(view.selection + input.wheel_rows, 0,
-                                                     static_cast<int>(view.rows.size()) - 1));
-        for (int n = 0; n < 5 && n + view.first_visible < static_cast<int>(view.rows.size()); ++n)
-            if (hit(input, world_facility_item_highlight(layout, n))) {
-                const int index = n + view.first_visible;
-                // cc4fb06 registers a component + absolute row key, with no timer.
-                // ADR-0058 requires the selected row to be committed before a second UP uses it.
-                const bool confirm = selection.marked_row == index && view.selection == index;
-                selection.marked_row = index;
-                return confirm ? intent(Action::confirm) : intent(Action::select, index);
+    simulation::StartupFacilityItemInput f;
+    f.up = v.raw == 75 && i.up;
+    f.down = v.raw == 75 && i.down;
+    f.cancel = v.can_cancel && i.escape;
+    f.confirm = v.can_confirm && i.enter;
+    if (v.raw == 75 && i.wheel_rows)
+        f.scroll = simulation::StartupFacilityItemInput::Scroll{false, i.wheel_rows};
+    if (drag.absolute)
+        f.scroll = simulation::StartupFacilityItemInput::Scroll{true, *drag.absolute};
+    if (fresh && !drag.consume_click) {
+        f.cancel |= v.can_cancel && world_facility_hit(i.click, painted->cancel);
+        f.confirm |= v.can_confirm && world_facility_hit(i.click, painted->confirm);
+        for (const auto &row : painted->rows)
+            if (row.index >= 0 && row.index < int(v.rows.size()) &&
+                row.identity == v.rows[row.index].identity &&
+                world_facility_hit(i.click, row.rectangle)) {
+                f.selection = row.index;
+                f.confirm = g.marked_row == row.index &&
+                            v.selection == row.index; // ADR-0058: second committed-row click only.
+                g.marked_row = row.index;
             }
     }
-    if (view.can_confirm && (input.enter || hit(input, layout.confirm)))
-        return intent(Action::confirm);
-    return {};
+    if (!f.up && !f.down && !f.confirm && !f.cancel && !f.selection && !f.scroll)
+        return {};
+    return WorldFacilityItemsIntent{f.confirm     ? Action::confirm
+                                    : f.cancel    ? Action::cancel
+                                    : f.selection ? Action::select
+                                    : f.up        ? Action::previous
+                                                  : Action::next,
+                                    v.page, f.selection.value_or(-1), f};
 }
-void draw_world_facility_items(const WorldFacilityItemsView &view,
-                               const WorldFacilityItemsLayout &layout, const Skin &skin,
-                               bool enabled, const std::string &feedback) {
-    skin.window(layout.panel, view.title);
-    const auto content = view.raw == 75 ? layout.rows : layout.result;
-    skin.content({content.x - 2, content.y - 3, content.width + 4, content.height + 5});
-    if (view.initialized) {
-        if (view.raw == 75) {
-            fitted(skin, "名称", {layout.rows.x + 29, layout.heading.y, 100, 14});
-            skin.right("剩余", layout.rows.x + layout.rows.width, layout.heading.y);
-            for (int n = 0; n < 5 && n + view.first_visible < static_cast<int>(view.rows.size());
-                 ++n) {
-                const int index = n + view.first_visible;
-                const auto &row = view.rows[index];
-                Rectangle box{layout.rows.x, layout.rows.y + n * layout.row_height,
-                              layout.rows.width, layout.row_height};
-                if (index == view.selection) {
-                    DrawRectangleRec(world_facility_item_highlight(layout, n), {255, 153, 55, 255});
-                    skin.sprites.draw("finger_r.seb", 0, {box.x + 2, box.y + 7}, WHITE,
-                                      Sprites::Binding::common);
-                }
-                draw_world_visuals(row.icon, skin.sprites, {box.x + 11, box.y - 1}, 1);
-                fitted(skin, row.name, {box.x + 29, box.y, box.width - 61, 16});
-                skin.right(std::to_string(row.owned), box.x + box.width - 3, box.y, blue, 10);
-            }
-            if (view.choice) {
-                constexpr const char *labels[]{"价格", "品质", "魅力"};
-                for (int n = 0; n < 3; ++n)
-                    fitted(skin, std::string(labels[n]) + std::string(view.choice->hint[n], '+'),
-                           {layout.hints.x + n * layout.hints.width / 3, layout.hints.y,
-                            layout.hints.width / 3, layout.hints.height},
-                           blue);
-            }
-        } else if (view.raw == 76) {
-            skin.sprites.thumbnail(view.graphic.sprite, view.graphic.frames,
-                                   {layout.result.x + 10, layout.result.y + 5,
-                                    layout.result.width - 20, layout.result.height - 25});
-            if (view.choice)
-                skin.centered(view.choice->name,
-                              {layout.result.x, layout.result.y + layout.result.height - 20,
-                               layout.result.width, 18});
-        } else {
-            skin.content(layout.result_picture, {248, 245, 206, 255});
-            skin.sprites.thumbnail(view.graphic.sprite, view.graphic.frames, layout.result_picture);
-            constexpr const char *labels[]{"价格", "品质", "魅力"};
-            for (int n = 0; n < 3; ++n) {
-                const auto b = layout.result_values;
-                const float y = b.y + n * b.height / 3;
-                fitted(skin, labels[n], {b.x + 3, y, 39, 14}, blue);
-                skin.right(std::to_string(view.attributes[1][n]) + (n == 0 ? "G" : ""),
-                           b.x + b.width * .64F, y, blue, 11);
-                if (view.attributes[2][n] != 0)
-                    skin.right((view.attributes[2][n] > 0 ? "+" : "") +
-                                   std::to_string(view.attributes[2][n]) + (n == 0 ? "G" : ""),
-                               b.x + b.width - 3, y, MAROON, 11);
-            }
-        }
+std::optional<WorldFacilityPaintedControls>
+draw_world_facility_items(const WorldFacilityItemsView &v, const WorldFacilityItemsLayout &l,
+                          const Skin &skin, bool enabled, const std::string &feedback) {
+    if (!v.initialized) {
+        skin.window(l.panel, v.title);
+        return {};
     }
-    if (view.initialized)
-        fitted(skin,
-               view.name + (view.profit ? "  收益 " + std::to_string(*view.profit) + "G" : ""),
-               layout.feedback, blue);
-    const bool active = enabled && view.initialized;
-    if (view.can_cancel)
-        skin.button(layout.cancel, "返回", active);
-    if (view.raw != 76)
-        skin.choice(layout.confirm, view.raw == 75 ? "使用" : "确定", active && view.can_confirm);
+    if (!v.skin)
+        throw std::invalid_argument("Improvement page requires measured source plan");
+    const auto origin = world_facility_skin_origin(l.panel);
+    draw_world_facility_effect(*v.skin, origin, skin);
+    WorldFacilityPaintedControls c;
+    c.page = v.page;
+    c.raw = v.raw;
+    c.selection = v.selection;
+    c.first = v.first_visible;
+    c.count = int(v.rows.size());
+    c.choice = v.choice ? v.choice->identity : -1;
+    c.extent = l.extent;
+    c.cancel = v.can_cancel ? l.cancel : Rectangle{};
+    c.confirm = v.raw != 76 ? l.confirm : Rectangle{};
+    std::vector<int> ids;
+    for (const auto &row : v.rows)
+        ids.push_back(row.identity);
+    c = world_facility_controls(*v.skin, origin, l.panel, std::move(c), ids);
+    if (v.can_cancel)
+        skin.choice(l.cancel, "返回", enabled);
+    if (v.raw != 76)
+        skin.choice(l.confirm, v.raw == 75 ? "使用" : "确定", enabled && v.can_confirm);
     if (!feedback.empty())
-        fitted(skin, feedback, layout.feedback, MAROON);
+        skin.text.draw(feedback, l.feedback.x, l.feedback.y, MAROON, 9);
+    return c;
 }
 } // namespace ark::desktop::ui

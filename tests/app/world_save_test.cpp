@@ -91,11 +91,13 @@ void codec_and_policy() {
     state.visual_effects.push_back({});
     state.scripts.notices.push_back({});
     state.human_page_scroll[901] = 7; // A retired presentation cache has no durable identity.
+    state.facility_item_page_scroll[902] = 5;
     auto transient = app::capture_world_save(state);
     check(transient.image && transient.image->bytes == captured.image->bytes,
           "Notifications, sound requests and local visuals are not file state");
     auto transient_loaded = app::decode_world_save(transient.image->bytes);
-    check(transient_loaded.state && transient_loaded.state->human_page_scroll.empty(),
+    check(transient_loaded.state && transient_loaded.state->human_page_scroll.empty() &&
+              transient_loaded.state->facility_item_page_scroll.empty(),
           "Player save excludes catalogue scroll; cold page initialization owns its next cursor");
     state.report_state = 1;
     check(app::capture_world_save(state).error == app::WorldSaveError::ineligible,

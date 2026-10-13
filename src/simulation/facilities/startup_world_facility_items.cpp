@@ -109,9 +109,12 @@ bool initialized_payload(const State &s, const ref::WorldScriptPage &p) {
                item(s, s.facility_item_page_items.at(p.id));
     const auto list = s.facility_item_page_lists.find(p.id);
     const auto selected = s.facility_item_page_selections.find(p.id);
+    const auto first = s.facility_item_page_scroll.find(p.id);
     if (list == s.facility_item_page_lists.end() || list->second.empty() ||
         selected == s.facility_item_page_selections.end() || selected->second < 0 ||
-        static_cast<std::size_t>(selected->second) >= list->second.size())
+        list->second.size() > 65536 || static_cast<std::size_t>(selected->second) >= list->second.size() ||
+        first == s.facility_item_page_scroll.end() || first->second < 0 ||
+        first->second > selected->second || selected->second - first->second >= 5)
         return false;
     std::set<int> seen;
     for (const int id : list->second) {
@@ -184,10 +187,11 @@ bool initialize(State &s, const ref::WorldScriptPage &p) {
             if (owned->second.inventory > 0)
                 list.push_back(d.identity);
         }
+        if (list.empty())
+            return event(s, 15) && close(s, p.id);
         s.facility_item_page_lists[p.id] = std::move(list);
         s.facility_item_page_selections[p.id] = 0;
-        if (s.facility_item_page_lists.at(p.id).empty())
-            return event(s, 15) && close(s, p.id);
+        s.facility_item_page_scroll[p.id] = 0;
     } else if (p.legacy_page == 76 && !improve(s, p))
         return false;
     s.facility_item_pages_initialized.insert(p.id);
@@ -210,10 +214,16 @@ bool valid_startup_world_facility_item_page(const State &s, const ref::WorldScri
         !s.page_phases.count(p.id))
         return false;
     if (p.legacy_page != 75) {
+        if(s.facility_item_page_lists.count(p.id)||s.facility_item_page_selections.count(p.id)||
+           s.facility_item_page_scroll.count(p.id))return false;
         const auto i = s.facility_item_page_items.find(p.id);
         if (i == s.facility_item_page_items.end() || !item(s, i->second))
             return false;
     } else {
+        if(s.facility_item_page_items.count(p.id))return false;
+        if(!s.facility_item_pages_initialized.count(p.id)&&
+           (s.facility_item_page_lists.count(p.id)||s.facility_item_page_selections.count(p.id)||
+            s.facility_item_page_scroll.count(p.id)))return false;
         const ref::WorldScriptPage *parent{};
         for (const auto &q : s.scripts.pages) {
             if (q.id == p.id)
@@ -280,6 +290,7 @@ Error act_startup_world_facility_item_page(State &s, std::uint64_t id, Action ac
     if (page.legacy_page == 75) {
         auto &list = next.facility_item_page_lists.at(id);
         auto &selected = next.facility_item_page_selections.at(id);
+        auto &first = next.facility_item_page_scroll.at(id);
         if (action == Action::cancel) {
             if (!close(next, id))
                 return Error::script_failed;
@@ -318,6 +329,10 @@ Error act_startup_world_facility_item_page(State &s, std::uint64_t id, Action ac
                 if (static_cast<std::size_t>(selected) >= list.size())
                     selected = 0;
             }
+            // 耗尽后维护空目录归零；非空只修可见窗，保留合法尾窗历史。
+            if(list.empty())first=0;
+            else if(selected<first)first=selected;
+            else if(selected-first>=5)first=selected-4;
             if (!open(next, 76, facility, d->id, chosen))
                 return Error::script_failed;
             ++next.facility_item_confirmations.at(facility);
@@ -330,6 +345,10 @@ Error act_startup_world_facility_item_page(State &s, std::uint64_t id, Action ac
             if (list.empty() && !close(next, id))
                 return Error::script_failed;
         }
+        if(!list.empty()) {
+            if(selected<first)first=selected;
+            else if(selected-first>=5)first=selected-4;
+        }
     } else if (page.legacy_page == 77 && action == Action::confirm) {
         auto &counter = next.page_counters.at(id);
         if (counter < 49)
@@ -341,6 +360,39 @@ Error act_startup_world_facility_item_page(State &s, std::uint64_t id, Action ac
     next.scripts.executing_page.reset();
     s = std::move(next);
     return Error::none;
+}
+Error input_startup_world_facility_item_page(State &s,std::uint64_t id,const StartupFacilityItemInput &input) {
+    const auto *p=top(s);
+    if(s.scene.framework_paused||!p||p->id!=id||!valid_startup_world_facility_item_page(s,*p))return Error::invalid_page;
+    if(p->legacy_page!=75&&(input.up||input.down||input.selection||input.scroll||input.cancel))return Error::invalid_page;
+    if(p->legacy_page==76&&input.confirm)return Error::invalid_page;
+    if(!s.facility_item_pages_initialized.count(id)||!initialized_payload(s,*p))return Error::missing_source;
+    auto next=s;
+    if(p->legacy_page==75) {
+        auto &chosen=next.facility_item_page_selections.find(id)->second;
+        auto &first=next.facility_item_page_scroll.find(id)->second;
+        const int count=static_cast<int>(next.facility_item_page_lists.find(id)->second.size());
+        if(input.scroll) {
+            if(input.scroll->value==std::numeric_limits<int>::max())return Error::invalid_page;
+            const auto proposed=input.scroll->absolute?std::int64_t(input.scroll->value):std::int64_t(first)+input.scroll->value;
+            const int moved=static_cast<int>(std::clamp(proposed,std::int64_t(0),std::int64_t(std::max(0,count-5))));
+            chosen+=moved-first;first=moved;
+            chosen=std::min(chosen,count-1);
+        }
+        if(input.selection) {
+            if(*input.selection<0||*input.selection>=count)return Error::invalid_page;
+            chosen=*input.selection;
+        }
+        if(input.up)chosen=chosen==0?count-1:chosen-1;
+        if(input.down)chosen=chosen==count-1?0:chosen+1;
+        // 原75先合成上下，再修窗口；抵消方向不改合法首行。
+        if(chosen<first)first=chosen;else if(chosen-first>=5)first=chosen-4;
+    }
+    if(input.confirm||input.cancel) {
+        const auto error=act_startup_world_facility_item_page(next,id,input.confirm?Action::confirm:Action::cancel,-1);
+        if(error!=Error::none)return error;
+    }
+    s=std::move(next);return Error::none;
 }
 std::optional<State> prepare_startup_world_facility_item_page(const State &s) {
     const auto *p = top(s);
@@ -360,6 +412,9 @@ std::optional<State> prepare_startup_world_facility_item_page(const State &s) {
     if (counter == std::numeric_limits<int>::max())
         return {};
     ++counter;
+    // 原76绘制在counter38调用PlaySe(8)；维护按已确认显式表现方案由Owner只排一次。
+    if(page.legacy_page==76&&counter==38)
+        next.sound_requests.push_back({StartupAudioOperation::ordinary_play,8});
     if (page.legacy_page == 76 && counter >= 49) {
         if (!open(next, 77, next.facility_page_bindings.at(page.id), page.legacy_f,
                   next.facility_item_page_items.at(page.id)) ||

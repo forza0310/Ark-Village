@@ -42,6 +42,7 @@ void WorldManagement::observe(const app::WorldFrame &frame) {
         building_ = {};
         manual_layout_.reset();
         human_controls_.reset();
+        human_gesture_ = {};
     }
     if (!pending_)
         return;
@@ -69,6 +70,7 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
         page_ = page.id;
         manual_layout_.reset();
         human_controls_.reset();
+        human_gesture_ = {};
         building_ = {};
         facility_items_ = {};
         award_ = {};
@@ -233,9 +235,20 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
         input.professions = IsKeyPressed(KEY_P);
         input.gifts = IsKeyPressed(KEY_G);
         input.inspect = IsKeyPressed(KEY_I);
+        input.pointer = mouse;
+        input.pointer_pressed = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+        input.pointer_down = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+        input.pointer_released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
+        if (keyboard_event)
+            human_gesture_ = {};
         if (const auto intent =
-                ui::world_human_input(view, layout, input, blocked, human_controls_, extent))
-            queued(session.act_human(page.id, intent->action, intent->selection));
+                ui::world_human_input(view, layout, input, blocked, human_controls_, extent,
+                                      &human_gesture_)) {
+            if (intent->input)
+                queued(session.input_human(page.id, *intent->input));
+            else
+                queued(session.act_human(page.id, intent->action, intent->selection));
+        }
         return true;
     }
     if (ui::world_tax_page(page)) {
@@ -375,7 +388,7 @@ bool WorldManagement::draw_page(const State &state, const Page &page, Extent ext
         const auto down_width =
             static_cast<int>(std::ceil(skin.text.width(ui::world_human_down_text)));
         auto view = ui::world_human_view(state, page, down_width);
-        ui::prepare_world_human_detail(view, state, skin);
+        ui::prepare_world_human_detail(view, state, skin, human_gesture_.scrolling);
         human_controls_ =
             ui::world_human_painted_controls(view, ui::world_human_layout(extent), extent, skin);
         ui::draw_world_human(view, ui::world_human_layout(extent), skin, enabled, feedback_);

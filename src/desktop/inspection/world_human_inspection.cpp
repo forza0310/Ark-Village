@@ -549,7 +549,7 @@ bool human_inspection_ready(const State &s, const std::string &mode,
                                      "target/reset experience");
         return true;
     }
-    if (!i.human || !simulation::startup_world_human_page_ready(s, page->id))
+    if (!i.human || page->lifecycle < 1 || !simulation::startup_world_human_page_ready(s, page->id))
         return false;
     const auto binding = s.page_human_bindings.find(page->id);
     if (binding == s.page_human_bindings.end() || binding->second != *i.human)

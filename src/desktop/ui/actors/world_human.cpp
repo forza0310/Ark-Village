@@ -12,13 +12,7 @@ namespace ark::desktop::ui {
 namespace {
 using State = simulation::StartupWorldRuntimeState;
 using Page = simulation::rules::WorldScriptPage;
-using Action = simulation::StartupHumanPageAction;
 constexpr const char *attributes[]{"体力", "力量", "灵活", "结实", "魔力", "运气"};
-constexpr const char *combat[]{"最大HP", "攻击", "防御", "魔法"};
-constexpr const char *slots[]{"武器", "衣服", "盾帽", "饰品", "道具"};
-bool hit(std::optional<Vector2> p, Rectangle r) {
-    return p && p->x >= r.x && p->y >= r.y && p->x < r.x + r.width && p->y < r.y + r.height;
-}
 void fitted(const Skin &skin, const std::string &text, Rectangle box, Color color = ink) {
     const float size = std::min(11.F, 12.F * box.width / std::max(1.F, skin.text.width(text)));
     skin.text.draw(text, box.x, box.y, color, size);
@@ -90,18 +84,20 @@ WorldHumanView world_human_view(const State &state, const Page &page,
     WorldHumanView view;
     view.raw = page.legacy_page;
     view.page = page.id;
-    view.title = view.raw == 60   ? "人物情报"
-                 : view.raw == 61 ? "转职"
-                 : view.raw == 62 ? "转职确认"
-                 : view.raw == 63 ? "职业变更"
+    view.title = view.raw == 60   ? "冒险者信息"
+                 : view.raw == 61 ? "职业一览"
+                 : view.raw == 62 ? "职业一览"
+                 : view.raw == 63 ? "转职"
                  : view.raw == 64 ? "赠送礼物"
-                 : view.raw == 65 ? "赠送确认"
-                 : view.raw == 66 ? "礼物评价"
-                 : view.raw == 68 ? "装备能力"
-                 : view.raw == 69 ? "能力提升"
+                 : view.raw == 65 ? "赠送礼物"
+                 : view.raw == 66 ? "赠送礼物"
+                 : view.raw == 68 ? "装备变更"
+                 : view.raw == 69 ? "能力上升"
                  : view.raw == 70 ? "职业大师"
-                                  : "装备情报";
-    if (!simulation::startup_world_human_page_ready(state, page.id))
+                                  : "装备信息";
+    // Init payload readiness can precede the framework's first page lifecycle update.
+    // Maintained skin plans require a drawable page; neither drawing nor input advances it.
+    if (page.lifecycle < 1 || !simulation::startup_world_human_page_ready(state, page.id))
         return view;
     const auto binding = state.page_human_bindings.find(page.id);
     if (binding == state.page_human_bindings.end())
@@ -134,6 +130,13 @@ WorldHumanView world_human_view(const State &state, const Page &page,
     view.phase = state.page_phases.at(page.id);
     view.counter = state.page_counters.at(page.id);
     view.selection = state.human_page_selections.at(page.id);
+    if (view.raw == 61 || view.raw == 64) {
+        const auto cursor = simulation::inspect_startup_world_human_catalogue_cursor(state, page.id);
+        if (!cursor)
+            return view;
+        view.first_visible = cursor->first;
+        view.visible_rows = cursor->visible;
+    }
     view.can_cancel = view.raw == 60 || view.raw == 61 || view.raw == 62 || view.raw == 64 ||
                       view.raw == 65 || view.raw == 73;
     view.can_confirm = view.raw != 63 || view.counter >= 197;
@@ -179,6 +182,8 @@ WorldHumanView world_human_view(const State &state, const Page &page,
         // Keep the header's profession and level paired from the same current-owner details.
         view.target_profession = state.rules->jobs.at(state.page_job_bindings.at(page.id)).name;
     } else if (view.raw == 68) {
+        const auto &choice = state.human_equipment_choices.at(page.id);
+        view.choice = equipment(state, choice[0], choice[1]);
         view.combat = state.equipment_attribute_display;
     } else if (view.raw == 69) {
         const auto &choice = state.human_equipment_choices.at(page.id);
@@ -215,8 +220,6 @@ WorldHumanLayout world_human_layout(Extent extent) {
     out.row_height = out.rows.height / 5;
     for (int tab = 0; tab < 4; ++tab)
         out.tabs[tab] = {p.x + 10 + tab * (width - 20) / 4, p.y + 49, (width - 20) / 4, 20};
-    for (int tab = 0; tab < 5; ++tab)
-        out.gift_tabs[tab] = {p.x + 10 + tab * (width - 20) / 5, p.y + 49, (width - 20) / 5, 20};
     out.cancel = {p.x + 10, p.y + height - 28, 44, 20};
     out.confirm = {p.x + width - 54, p.y + height - 28, 44, 20};
     out.previous = {p.x + width / 2 - 28, p.y + height - 28, 24, 20};
@@ -226,114 +229,9 @@ WorldHumanLayout world_human_layout(Extent extent) {
     out.inspect = {p.x + width / 2 - 24, p.y + height - 28, 48, 20};
     return out;
 }
-int world_human_first_row(const WorldHumanView &view) { return std::max(0, view.selection - 4); }
 Rectangle world_tracking_confirm(Extent extent) {
     return {extent.width / 2.F - 37, extent.height - 51.F, 74, 20};
 }
-std::optional<WorldHumanIntent>
-world_human_input(const WorldHumanView &view, const WorldHumanLayout &base_layout,
-                  const WorldHumanInput &input, bool blocked,
-                  const std::optional<WorldHumanPaintedControls> &painted, Extent extent) {
-    const auto layout = view.raw == 60 ? world_human_detail_layout(base_layout)
-                        : world_human_source_child(view)
-                            ? world_human_subwindow_layout(base_layout, view.raw)
-                            : base_layout;
-    if (blocked || !view.initialized)
-        return {};
-    const auto intent = [&](Action action, int selection = 0) {
-        return WorldHumanIntent{action, view.page, selection};
-    };
-    if (world_human_source_child(view)) {
-        const bool current = painted && painted->page == view.page && painted->raw == view.raw &&
-                             painted->phase == view.phase && painted->selection == view.selection &&
-                             painted->human == view.human &&
-                             painted->choice == (view.choice ? view.choice->identity : -1) &&
-                             painted->extent.width == extent.width &&
-                             painted->extent.height == extent.height;
-        if (view.can_cancel &&
-            (input.escape || (current && (hit(input.click, painted->back) ||
-                                          hit(input.click, painted->other_back)))))
-            return intent(Action::cancel);
-        if ((view.raw == 73 || view.raw == 62) && !view.rows.empty()) {
-            if (input.left ||
-                (current && hit(input.click, painted->previous.value_or(Rectangle{}))))
-                return intent(Action::previous);
-            if (input.right || (current && hit(input.click, painted->next.value_or(Rectangle{}))))
-                return intent(Action::next);
-        }
-        if (view.can_confirm &&
-            (input.enter || (current && hit(input.click, painted->primary.value_or(Rectangle{})))))
-            return intent(Action::confirm);
-        return {}; // No guessed whole-window click, arrow bounds, price or payment here.
-    }
-    if (view.can_cancel && (input.escape || hit(input.click, layout.cancel)))
-        return intent(Action::cancel);
-    if (view.raw == 60 || view.raw == 64) {
-        const int count = view.raw == 60 ? 4 : 5;
-        for (int tab = 0; tab < count; ++tab)
-            if (hit(input.click, view.raw == 60 ? layout.tabs[tab] : layout.gift_tabs[tab]))
-                return intent(view.raw == 60 ? Action::view_tab : Action::equipment_slot, tab);
-        if (view.raw == 64 && (input.left || input.right))
-            return intent(Action::equipment_slot, (view.phase + (input.left ? 4 : 1)) % 5);
-    }
-    if (view.raw == 60) {
-        if (view.can_track && hit(input.click, layout.track))
-            return intent(Action::track);
-        if (input.professions || hit(input.click, layout.professions))
-            return intent(Action::professions);
-        if (input.gifts || hit(input.click, layout.gifts))
-            return intent(Action::gifts);
-        if (view.phase <= 1 && (input.enter || hit(input.click, layout.primary)))
-            return intent(view.phase == 0 ? Action::gifts : Action::professions);
-        if (view.phase == 2 && input.enter)
-            return intent(Action::gifts);
-        if (input.inspect && view.phase == 2)
-            return intent(Action::inspect_equipment, view.selection);
-        if (input.left || input.right || input.up || input.down || input.wheel_rows)
-            return intent(input.left || input.up || input.wheel_rows < 0 ? Action::previous
-                                                                         : Action::next);
-        if (view.phase == 2)
-            for (int slot = 0; slot < 4; ++slot)
-                if (hit(input.click, {layout.body.x, layout.body.y + slot * layout.body.height / 4,
-                                      layout.body.width, layout.body.height / 4}))
-                    return intent(Action::select, slot);
-        return {}; // The source magic page has no confirmation command; Back remains above.
-    }
-    if (list_page(view.raw) || browse_page(view.raw)) {
-        if (!view.rows.empty()) {
-            if (input.up || input.down || (browse_page(view.raw) && (input.left || input.right)))
-                return intent(input.up || input.left ? Action::previous : Action::next);
-            if (input.wheel_rows)
-                return intent(Action::select, std::clamp(view.selection + input.wheel_rows, 0,
-                                                         static_cast<int>(view.rows.size()) - 1));
-            if (list_page(view.raw))
-                for (int row = 0; row < 5 && world_human_first_row(view) + row <
-                                                 static_cast<int>(view.rows.size());
-                     ++row)
-                    if (hit(input.click, {layout.rows.x, layout.rows.y + row * layout.row_height,
-                                          layout.rows.width, layout.row_height}))
-                        return intent(Action::select, world_human_first_row(view) + row);
-            if (browse_page(view.raw) &&
-                (hit(input.click, layout.previous) || hit(input.click, layout.next)))
-                return intent(hit(input.click, layout.previous) ? Action::previous : Action::next);
-            if (view.raw == 64 && view.phase != 4 &&
-                (input.inspect || hit(input.click, layout.inspect)))
-                return intent(Action::inspect_equipment);
-        }
-    }
-    if (view.raw == 70 && view.phase == 2) {
-        if (input.up || input.down || input.left || input.right)
-            return intent(Action::next);
-        for (int row = 0; row < 2; ++row)
-            if (hit(input.click, {layout.body.x, layout.body.y + (row + 2) * layout.body.height / 4,
-                                  layout.body.width, layout.body.height / 4}))
-                return intent(Action::select, row);
-    }
-    if (view.can_confirm && (input.enter || hit(input.click, layout.confirm)))
-        return intent(Action::confirm);
-    return {};
-}
-
 void draw_world_human(const WorldHumanView &view, const WorldHumanLayout &layout, const Skin &skin,
                       bool enabled, const std::string &feedback) {
     if (view.raw == 60) {
@@ -355,58 +253,16 @@ void draw_world_human(const WorldHumanView &view, const WorldHumanLayout &layout
         fitted(skin,
                view.name + "  " + view.profession + " Lv" + std::to_string(view.details.level),
                {layout.panel.x + 29, layout.panel.y + 30, layout.panel.width - 39, 14});
-        if (view.raw == 64) {
-            for (int n = 0; n < 5; ++n) {
-                const auto box = layout.gift_tabs[n];
-                if (view.phase == n)
-                    DrawRectangleRec(box, {210, 229, 195, 255});
-                skin.centered(slots[n], box, ink, 10);
-            }
-        }
         const auto line = [&](const std::string &value, int row, int count, Color color = ink) {
             fitted(skin, value,
                    {layout.body.x + 3, layout.body.y + row * layout.body.height / count + 2,
                     layout.body.width - 6, layout.body.height / count},
                    color);
         };
-        const auto grid = [&](const std::string &value, int index, int row_count) {
-            fitted(skin, value,
-                   {layout.body.x + 3 + (index % 2) * layout.body.width / 2,
-                    layout.body.y + (index / 2) * layout.body.height / row_count + 2,
-                    layout.body.width / 2 - 6, layout.body.height / row_count});
-        };
-        if (list_page(view.raw)) {
-            if (view.rows.empty())
-                line("暂无候选", 0, 5);
-            const int first = world_human_first_row(view);
-            for (int n = first; n < static_cast<int>(view.rows.size()) && n < first + 5; ++n) {
-                const auto &row = view.rows[n];
-                Rectangle box{layout.rows.x, layout.rows.y + (n - first) * layout.row_height,
-                              layout.rows.width, layout.row_height};
-                if (n == view.selection)
-                    DrawRectangleRec(box, {255, 236, 174, 255});
-                const auto value = view.raw == 61 ? std::to_string(row.cost) + "点" : quote(row);
-                const float icon_width = row.icon.empty() ? 0 : 20;
-                draw_world_visuals(row.icon, skin.sprites, {box.x + 4, box.y + 1}, 1);
-                fitted(
-                    skin, (row.fresh ? "* " : "") + row.name,
-                    {box.x + 3 + icon_width, box.y + 2, box.width * .60F - icon_width, box.height});
-                skin.right(value, box.x + box.width - 3, box.y + 2, blue, 10);
-            }
-        } else if (view.raw == 65 && view.choice) {
+        if (view.raw == 65 && view.choice) {
             line(view.choice->name, 0, 4, blue);
             line(quote(*view.choice), 1, 4);
             line("赠送给 " + view.name + "？", 2, 4);
-        } else if (view.raw == 68) {
-            for (int n = 0; n < 4; ++n)
-                line(std::string(combat[n]) + "  " + std::to_string(view.combat[0][n]) + " > " +
-                         std::to_string(view.combat[1][n]),
-                     n, 4);
-        } else if (view.raw == 69) {
-            for (int n = 0; n < 6; ++n)
-                grid(std::string(attributes[n]) + " " + std::to_string(view.attributes[0][n]) +
-                         " > " + std::to_string(view.attributes[1][n]),
-                     n, 3);
         } else if (view.raw == 70) {
             line(view.profession + " 大师", 0, 4, blue);
             if (view.mastery_attribute >= 0 && view.mastery_attribute < 6)
@@ -428,8 +284,6 @@ void draw_world_human(const WorldHumanView &view, const WorldHumanLayout &layout
     if (view.can_cancel)
         skin.button(layout.cancel, "返回", active);
     skin.button(layout.confirm, "确定", active && view.can_confirm);
-    if (view.raw == 64 && view.phase != 4)
-        skin.button(layout.inspect, "情报", active && !view.rows.empty());
     if (!feedback.empty())
         fitted(skin, feedback,
                {layout.body.x, layout.panel.y + layout.panel.height - 49, layout.body.width, 14},

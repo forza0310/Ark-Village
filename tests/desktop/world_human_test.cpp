@@ -37,6 +37,21 @@ bool inside(Rectangle outer, Rectangle inner) {
            inner.x + inner.width <= outer.x + outer.width &&
            inner.y + inner.height <= outer.y + outer.height;
 }
+// Input-only geometry fixture. GPU/font/source geometry is verified by the renderer case.
+ui::WorldHumanPaintedControls painted_rows(const ui::WorldHumanView &v,
+                                           const ui::WorldHumanLayout &l) {
+    ui::WorldHumanPaintedControls p;
+    p.page = v.page; p.raw = v.raw; p.phase = v.phase; p.selection = v.selection;
+    p.human = v.human; p.choice = v.choice ? v.choice->identity : -1;
+    p.extent = {240, 256}; p.first = v.first_visible; p.count = int(v.rows.size());
+    const int visible = v.raw == 60 ? 4 : v.visible_rows;
+    for (int n = 0; n < visible && (v.raw == 60 || n + p.first < p.count); ++n) {
+        const int index = p.first + n;
+        p.rows.push_back({index, v.raw == 60 ? index : v.rows[index].identity,
+                          {l.rows.x, l.rows.y + n * l.row_height, l.rows.width, l.row_height}});
+    }
+    return p;
+}
 } // namespace
 
 void world_human() {
@@ -174,10 +189,13 @@ void world_human() {
                   !ui::world_human_input(equipment, layout, enter, true),
               "Equipment Enter opens Owner-selected gift slot and rejects pending duplicates");
         const auto rows = ui::world_human_detail_layout(layout).body;
+        auto painted = painted_rows(equipment, layout);
+        for (int slot = 0; slot < 4; ++slot)
+            painted.rows[slot].rectangle = {rows.x, rows.y + slot * 17, rows.width, 17};
         for (int slot = 0; slot < 4; ++slot) {
             ui::WorldHumanInput click;
             click.click = middle({rows.x, rows.y + slot * 17, rows.width, 17});
-            const auto intent = ui::world_human_input(equipment, layout, click, false);
+            const auto intent = ui::world_human_input(equipment, layout, click, false, painted, {240, 256});
             check(intent && intent->action == Action::select && intent->selection == slot &&
                       !ui::world_human_input(equipment, layout, click, true),
                   "Visible equipment row selects its source slot without opening or spending");
@@ -194,7 +212,8 @@ void world_human() {
         input = {};
         input.click = middle(ui::world_human_detail_layout(layout).tabs[tab]);
         const auto intent = ui::world_human_input(view, layout, input, false);
-        check(intent && intent->action == Action::view_tab && intent->selection == tab,
+        check(intent && intent->input && intent->input->scroll && intent->input->scroll->absolute &&
+                  intent->input->scroll->value == tab,
               "Each human detail tab targets its exact source phase");
     }
     input = {};
@@ -208,16 +227,21 @@ void world_human() {
     page.legacy_page = state.scripts.pages.back().legacy_page = 61;
     state.human_page_catalogs[page.id] = {2, 0, 1};
     state.human_page_selections[page.id] = 1;
+    state.human_page_scroll[page.id] = 0;
+    page.lifecycle = state.scripts.pages.back().lifecycle = 0;
+    check(!ui::world_human_view(state, page).initialized && state.human_pages_initialized.count(page.id),
+          "Initialized catalogue payload is not drawable before the source page lifecycle advances");
+    page.lifecycle = state.scripts.pages.back().lifecycle = 1;
     view = ui::world_human_view(state, page);
     check(view.rows.size() == 3 && view.rows[0].identity == 2 && view.rows[1].identity == 0 &&
               view.choice->identity == 0,
           "Profession catalogue retains source ordering and selection separately from IDs");
     input = {};
     input.click = middle({layout.rows.x, layout.rows.y, layout.rows.width, layout.row_height});
-    auto intent = ui::world_human_input(view, layout, input, false);
-    check(intent && intent->action == Action::select && intent->selection == 0 &&
+    auto intent = ui::world_human_input(view, layout, input, false, painted_rows(view, layout), {240, 256});
+    check(intent && intent->input && intent->input->selection == 0 && intent->input->confirm &&
               state.human_page_selections.at(page.id) == 1,
-          "Row click selects an index through FIFO without confirming or mutating the Owner");
+          "Profession UP maps to one selected-row confirmation without mutating the Owner");
     state.human_page_answers[page.id] = 0;
     check(!ui::world_human_view(state, page).initialized,
           "Resumed catalogue waits until the Owner consumes its child answer");
@@ -273,11 +297,10 @@ void world_human() {
           "price");
     for (int slot = 0; slot < 5; ++slot) {
         input = {};
-        input.click = middle(layout.gift_tabs[slot]);
+        input.right = true;
         intent = ui::world_human_input(view, layout, input, false);
-        check(intent && intent->action == Action::equipment_slot && intent->selection == slot,
-              "Gift tabs preserve four equipment namespaces and the separate ordinary-item "
-              "namespace");
+        check(intent && intent->input && intent->input->right && !intent->input->selection,
+              "Gift tab input delegates five-namespace navigation to the source Owner");
     }
     const int ordinary = state.rules->items.at(5).identity;
     state.equipment_page_catalogs[page.id][4] = {ordinary};
@@ -293,6 +316,60 @@ void world_human() {
               view.choice->stock == 3 && view.choice->cost == -1 &&
               view.choice->name == state.rules->items.at(5).name,
           "Fifth gift tab reads owned item z, never equipment armor or free-purchase stock");
+    {
+        auto painted = painted_rows(view, layout);
+        ui::WorldHumanGesture marker;
+        ui::WorldHumanInput click;
+        click.click = middle(painted.rows.front().rectangle);
+        const auto first = ui::world_human_input(view, layout, click, false, painted, {240, 256}, &marker);
+        const auto pending = ui::world_human_input(view, layout, click, true, painted, {240, 256}, &marker);
+        const auto second = ui::world_human_input(view, layout, click, false, painted, {240, 256}, &marker);
+        check(first && first->input && first->input->selection == 0 && !first->input->confirm &&
+                  !pending && second && second->input->confirm,
+              "Ordinary gift first UP marks, pending blocks, same committed key then confirms");
+        ui::WorldHumanInput keys;
+        keys.up = keys.down = keys.enter = keys.escape = true;
+        const auto combined = ui::world_human_input(view, layout, keys, false, painted, {240, 256}, &marker);
+        check(combined && combined->input->up && combined->input->down &&
+                  combined->input->confirm && combined->input->cancel && marker.marked_identity == -1,
+              "Simultaneous keys reach the source intact and clear pointer confirmation marker");
+        ++painted.first;
+        check(!ui::world_human_input(view, layout, click, false, painted, {240, 256}, &marker),
+              "Stale catalogue scroll geometry cannot select or confirm a gift");
+        auto empty = view;
+        empty.rows.clear();
+        empty.choice.reset();
+        empty.can_confirm = false;
+        ui::WorldHumanInput switch_and_confirm;
+        switch_and_confirm.right = switch_and_confirm.enter = true;
+        const auto next_tab = ui::world_human_input(empty, layout, switch_and_confirm, false);
+        check(next_tab && next_tab->input->right && next_tab->input->confirm,
+              "Empty old gift tab cannot suppress source confirmation after same-frame tab navigation");
+        auto long_list = view;
+        long_list.rows.clear();
+        for (int n = 0; n < 8; ++n) {
+            auto row = *view.choice;
+            row.identity = state.rules->items.at(n).identity;
+            long_list.rows.push_back(row);
+        }
+        auto track = painted_rows(long_list, layout);
+        track.scroll = Rectangle{215, 85, 5, 110};
+        track.scroll_count = 8;
+        track.scroll_visible = 4;
+        ui::WorldHumanInput drag;
+        drag.pointer = Vector2{217, 194};
+        drag.pointer_pressed = drag.pointer_down = true;
+        const auto scrolled = ui::world_human_input(long_list, layout, drag, false, track, {240, 256}, &marker);
+        check(scrolled && scrolled->input->scroll && scrolled->input->scroll->absolute &&
+                  scrolled->input->scroll->value == 4 && marker.scrolling &&
+                  long_list.first_visible == 0 && state.human_page_scroll.at(page.id) == 0,
+              "Painted track maps to a source absolute-scroll input without a second cursor");
+        drag.pointer_pressed = drag.pointer_down = false;
+        drag.pointer_released = true;
+        check(!ui::world_human_input(long_list, layout, drag, true, track, {240, 256}, &marker) &&
+                  !marker.scrolling,
+              "Releasing the scrollbar during pending FIFO clears capture without submitting input");
+    }
     input = {};
     input.inspect = true;
     check(!ui::world_human_input(view, layout, input, false),
@@ -481,6 +558,7 @@ void world_human() {
               "Gift window background is not an extra confirmation button");
         child.raw = painted.raw = 73;
         child.rows = {*child.choice, *child.choice};
+        painted.count = 2;
         painted.other_back = {10, 208, 50, 18};
         painted.previous = Rectangle{40, 65, 18, 18};
         painted.next = Rectangle{182, 65, 18, 18};
@@ -538,8 +616,6 @@ void world_human() {
         for (const auto box : {frame.body, frame.cancel, frame.confirm, frame.previous, frame.next,
                                frame.professions, frame.gifts, frame.inspect})
             check(inside(frame.panel, box), "Human controls fit minimum and large viewports");
-        for (const auto box : frame.gift_tabs)
-            check(inside(frame.panel, box), "All five gift tabs fit minimum and large viewports");
         const auto detail = ui::world_human_detail_layout(frame);
         check(
             inside({0, 0, float(extent.width), float(extent.height)}, detail.panel) &&

@@ -21,4 +21,8 @@ StartupWorldSavedSession decode_world_session_bytes(std::vector<std::uint8_t>,
                                                      CodecDecodeBudget &budget);
 std::vector<std::uint8_t> encode_system_records_bytes(const StartupSystemRecords &);
 StartupSystemRecords decode_system_records_bytes(std::vector<std::uint8_t>);
+std::vector<std::uint8_t> encode_system_records_bytes(const StartupSystemRecords &,
+                                                     const std::string &data_identity);
+StartupSystemRecords decode_system_records_bytes(std::vector<std::uint8_t>,
+                                                  const std::string &data_identity);
 } // namespace ark::simulation::persistence_detail

@@ -193,6 +193,7 @@ void clear_presentation(State &s) {
     s.human_page_catalogs.clear();
     s.equipment_page_catalogs.clear();
     s.human_page_selections.clear();
+    s.human_page_scroll.clear();
     s.page_job_bindings.clear();
     s.human_page_parents.clear();
     s.human_page_answers.clear();

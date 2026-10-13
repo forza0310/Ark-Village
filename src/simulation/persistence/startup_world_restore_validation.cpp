@@ -544,12 +544,35 @@ struct Validation {
         PAGE_MAP(human_page_catalogs);
         PAGE_MAP(equipment_page_catalogs);
         PAGE_MAP(human_page_selections);
+        PAGE_MAP(human_page_scroll);
         PAGE_MAP(page_job_bindings);
         PAGE_MAP(human_page_parents);
         PAGE_MAP(human_page_answers);
         PAGE_MAP(human_equipment_choices);
         PAGE_MAP(human_gift_scores);
         PAGE_MAP(human_gift_messages);
+        for(const auto &[id,first]:s.human_page_scroll) {
+            const auto owner=page(id);
+            const auto selected=get(s.human_page_selections,id),phase=get(s.page_phases,id);
+            if(!page_kind(id,{61,64})||!s.human_pages_initialized.count(id)||first<0||!selected||!phase)
+                return fail("human scroll: 页型/初始化/首行非法");
+            // Finish前的退休页仍保留载荷，必须同样校验范围，不能藏入坏游标。
+            std::size_t count{};const int visible=owner->legacy_page==61?5:4;
+            if(owner->legacy_page==61) {
+                const auto list=get(s.human_page_catalogs,id);
+                if(!list||list->empty()||*phase<0||*phase>1)return fail("human scroll: 职业目录非法");
+                count=list->size();
+            } else {
+                const auto lists=get(s.equipment_page_catalogs,id);
+                if(!lists||*phase<0||*phase>4)return fail("human scroll: 赠礼目录非法");
+                count=(*lists)[*phase].size();
+            }
+            if(count>std::size_t(std::numeric_limits<int>::max())||*selected<0||
+               (count?std::size_t(*selected)>=count:*selected!=0)||
+               first>std::max(0,int(count)-visible)||
+               (count&&(*selected<first||*selected-first>=visible)))
+                return fail("human scroll: 选择/首行越界或不可见");
+        }
         PAGE_MAP(tax_page_residents);
         PAGE_MAP(tax_page_selection);
         PAGE_MAP(tax_page_scroll);
@@ -799,10 +822,10 @@ struct Validation {
             return fail("human page: 缺父页");
         if (raw == 65 && !s.human_page_parents.count(id))
             return fail("human page: 缺装备确认父页");
-        if (raw == 65 || raw == 66 || raw == 69 || raw == 73) {
+        if (raw == 65 || raw == 66 || raw == 68 || raw == 69 || raw == 73) {
             const auto choice = get(s.human_equipment_choices, id);
             if (!choice || !equipment((*choice)[0], (*choice)[1]) ||
-                (raw == 65 && (*choice)[0] > 3) || (raw == 69 && (*choice)[0] != 4))
+                ((raw == 65 || raw == 68) && (*choice)[0] > 3) || (raw == 69 && (*choice)[0] != 4))
                 return fail("human page: 道具/装备选择非法");
         }
         if (raw == 69) {
@@ -820,6 +843,8 @@ struct Validation {
         const auto phase = get(s.page_phases, id), selection = get(s.human_page_selections, id);
         if (!phase || !selection || !s.page_counters.count(id) || *selection < 0)
             return fail("human page: 已初始化载荷缺失");
+        if((raw==61||raw==64)&&!inspect_startup_world_human_catalogue_cursor(s,id))
+            return fail("human scroll: 缺首行或目录窗口越界");
         if (raw == 61 || raw == 62) {
             const auto list = get(s.human_page_catalogs, id);
             if (!list || list->empty() || !selected(*selection, list->size()) ||

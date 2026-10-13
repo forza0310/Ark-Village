@@ -348,6 +348,7 @@
             ["human_page_catalogs", "std::map<std::uint64_t, std::vector<int>>"],
             ["equipment_page_catalogs", "std::map<std::uint64_t, std::array<std::vector<int>, 5>>"],
             ["human_page_selections", "std::map<std::uint64_t, int>"],
+            ["human_page_scroll", "std::map<std::uint64_t, int>"],
             ["page_job_bindings", "std::map<std::uint64_t, int>"],
             ["human_page_parents", "std::map<std::uint64_t, std::uint64_t>"],
             ["human_page_answers", "std::map<std::uint64_t, int>"],

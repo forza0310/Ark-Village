@@ -75,7 +75,8 @@ enum class WorldCommandKind {
     confirm_tracking,
     menu_input,
     open_source_save_menu,
-    manual_input
+    manual_input,
+    human_input
 };
 enum class WorldCommandOutcome { applied, rejected };
 struct WorldCommandResult {
@@ -141,6 +142,7 @@ struct WorldCommand {
     simulation::StartupInformationInput information_input;
     simulation::StartupWorldMenuInput menu_input;
     simulation::StartupManualInput manual_input;
+    simulation::StartupHumanCatalogueInput human_input; // One source input frame, no device state.
     simulation::StartupFacilityItemAction facility_item_action{
         simulation::StartupFacilityItemAction::confirm};
     simulation::StartupFacilityCatalogAction facility_catalog_action{
@@ -209,6 +211,8 @@ class WorldSession {
     std::uint64_t open_human(simulation::rules::CharacterId actor, int definition);
     std::uint64_t act_human(std::uint64_t page, simulation::StartupHumanPageAction action,
                             int selection = 0);
+    std::uint64_t input_human(std::uint64_t page,
+                             const simulation::StartupHumanCatalogueInput &input);
     std::uint64_t act_tax(std::uint64_t page, simulation::StartupWorldTaxAction action,
                           int selection = 0);
     std::uint64_t open_menu_village_activities();

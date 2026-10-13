@@ -153,7 +153,13 @@ int signed32(Reader &r) {
             "系统记录整数越界");
     return static_cast<int>(value);
 }
-Bytes encode(const StartupSystemRecords &r) {
+void valid_identity(const std::string &identity) {
+    require(identity.size() == 64 && std::all_of(identity.begin(), identity.end(), [](char c) {
+        return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
+    }), "系统记录数据身份非法");
+}
+Bytes encode(const StartupSystemRecords &r, const std::string &identity) {
+    valid_identity(identity);
     valid(r);
     Writer record, inheritance, directory;
     record.u32(static_cast<std::uint32_t>(r.last_slot));
@@ -180,7 +186,7 @@ Bytes encode(const StartupSystemRecords &r) {
     Writer file;
     file.raw(magic, 8);
     file.u32(2);
-    file.text(startup_world_persistence_dataset());
+    file.text(identity);
     file.u32(static_cast<std::uint32_t>(3 + r.opaque_sections.size()));
     const auto section = [&](std::uint32_t id, std::uint32_t version, bool required,
                              const Bytes &payload) {
@@ -201,7 +207,8 @@ Bytes encode(const StartupSystemRecords &r) {
     file.raw(digest.data(), 64);
     return std::move(file.bytes);
 }
-StartupSystemRecords decode(Bytes file) {
+StartupSystemRecords decode(Bytes file, const std::string &identity) {
+    valid_identity(identity);
     require(file.size() >= 80 && file.size() <= file_budget, "系统文件长度非法");
     const std::string checksum(file.end() - 64, file.end());
     file.resize(file.size() - 64);
@@ -210,7 +217,7 @@ StartupSystemRecords decode(Bytes file) {
     const auto signature = reader.raw(8);
     require(std::equal(signature.begin(), signature.end(), magic), "系统文件标识不符");
     require(reader.u32() == 2, "不支持的系统文件版本（旧版本不迁移）");
-    require(reader.text() == startup_world_persistence_dataset(), "系统记录固定数据来源不匹配");
+    require(reader.text() == identity, "系统记录固定数据来源不匹配");
     const auto count = reader.u32();
     require(count >= 3 && count <= 63, "系统文件分区数非法");
     StartupSystemRecords r;
@@ -287,12 +294,18 @@ bool operator==(const StartupSaveDirectoryEntry &a, const StartupSaveDirectoryEn
 }
 namespace persistence_detail {
 Bytes encode_system_records_bytes(const StartupSystemRecords &records) {
-    auto bytes = encode(records);
-    (void)decode(bytes); // 沿用文件写入前自检，不经过临时文件往返。
+    return encode_system_records_bytes(records, startup_world_persistence_dataset());
+}
+Bytes encode_system_records_bytes(const StartupSystemRecords &records, const std::string &identity) {
+    auto bytes = encode(records, identity);
+    (void)decode(bytes, identity); // Same codec self-check, no file round-trip or alternate identity.
     return bytes;
 }
 StartupSystemRecords decode_system_records_bytes(Bytes bytes) {
-    return decode(std::move(bytes));
+    return decode_system_records_bytes(std::move(bytes), startup_world_persistence_dataset());
+}
+StartupSystemRecords decode_system_records_bytes(Bytes bytes, const std::string &identity) {
+    return decode(std::move(bytes), identity);
 }
 } // namespace persistence_detail
 
@@ -305,7 +318,12 @@ std::string validate_startup_system_records(const StartupSystemRecords &r) {
     }
 }
 StartupSystemLoadResult load_startup_system_file(const std::filesystem::path &path) {
+    return load_startup_system_file(path, startup_world_persistence_dataset());
+}
+StartupSystemLoadResult load_startup_system_file(const std::filesystem::path &path,
+                                                const std::string &identity) {
     try {
+        valid_identity(identity);
         require(!path.empty() && !path.filename().empty(), "系统文件路径为空或无文件名");
         std::error_code error;
         const auto status = std::filesystem::symlink_status(path, error);
@@ -315,16 +333,20 @@ StartupSystemLoadResult load_startup_system_file(const std::filesystem::path &pa
         require(!error, "无法查询系统文件状态");
         require(std::filesystem::is_regular_file(status), "系统文件目标不是普通文件");
         return {persistence_detail::decode_system_records_bytes(
-                    persistence_detail::read_save_file(path, file_budget)), false, {}};
+                    persistence_detail::read_save_file(path, file_budget), identity), false, {}};
     } catch (const std::exception &e) {
         return {std::nullopt, false, e.what()};
     }
 }
 std::string save_startup_system_file(const std::filesystem::path &path,
                                    const StartupSystemRecords &r) {
+    return save_startup_system_file(path, r, startup_world_persistence_dataset());
+}
+std::string save_startup_system_file(const std::filesystem::path &path,
+                                   const StartupSystemRecords &r, const std::string &identity) {
     try {
         require(!path.empty() && !path.filename().empty(), "系统文件路径为空或无文件名");
-        auto bytes = persistence_detail::encode_system_records_bytes(r);
+        auto bytes = persistence_detail::encode_system_records_bytes(r, identity);
         persistence_detail::replace_save_file(path, bytes);
         return {};
     } catch (const std::exception &e) {

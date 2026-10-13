@@ -1074,6 +1074,181 @@ void human_details_and_gifts() {
               !slots.equipment_page_catalogs.count(child)&&slots.scene.random.draws()==draws&&
               slots.scene.world.world.ai.accounting.funds()==cash,"gift cancel keeps equipment selection and retires references");
     }
+    {
+        // raw60滚动与同轮输入接线；规则成长/收费仍由各自主责套件覆盖。
+        auto detail=s;
+        check(act_startup_world_human_page(detail,id,A::view_tab,2)==E::none&&
+              act_startup_world_human_page(detail,id,A::select,0)==E::none,"same-round fixture starts equipment weapon0");
+        StartupHumanCatalogueInput both;both.up=both.down=true;
+        check(input_startup_world_human_detail_page(detail,id,both)==E::none&&detail.page_phases.at(id)==1&&
+              detail.human_page_selections.at(id)==1,"raw60 equipment0 up/down share original page2 branch: page1 slot1");
+        check(act_startup_world_human_page(detail,id,A::view_tab,2)==E::none&&
+              act_startup_world_human_page(detail,id,A::select,1)==E::none&&
+              act_startup_world_human_page(detail,id,A::view_tab,0)==E::none&&
+              act_startup_world_human_page(detail,id,A::view_tab,2)==E::none&&detail.human_page_selections.at(id)==1,
+              "raw60 direct0 to2 preserves hidden selection; only old1/3 explicitly relocate");
+        check(act_startup_world_human_page(detail,id,A::view_tab,0)==E::none,"scroll fixture starts overview with hidden slot1");
+        StartupHumanCatalogueInput scroll;scroll.scroll=StartupHumanCatalogueInput::Scroll{true,2};
+        check(input_startup_world_human_detail_page(detail,id,scroll)==E::none&&detail.page_phases.at(id)==2&&
+              detail.human_page_selections.at(id)==3,"raw60 component absolute2 adds actual delta2 to hidden selection before page sync");
+        check(act_startup_world_human_page(detail,id,A::view_tab,1)==E::none&&
+              input_startup_world_human_detail_page(detail,id,scroll)==E::none&&detail.human_page_selections.at(id)==0,
+              "component old1 to2 overrides shifted selection with weapon0");
+        check(act_startup_world_human_page(detail,id,A::view_tab,3)==E::none&&
+              input_startup_world_human_detail_page(detail,id,scroll)==E::none&&detail.human_page_selections.at(id)==3,
+              "component old3 to2 overrides shifted selection with accessory3");
+        for(bool absolute:{false,true}) {
+            auto edge=detail;
+            check(act_startup_world_human_page(edge,id,absolute?A::scroll_absolute:A::scroll_relative,
+                      std::numeric_limits<int>::min())==E::none&&edge.page_phases.at(id)==0&&edge.human_page_selections.at(id)==1,
+                  "raw60 INT_MIN scroll clamps with wide arithmetic; actual delta is minus2");
+        }
+        auto magic=detail;StartupHumanCatalogueInput finish;finish.down=finish.confirm=finish.cancel=true;
+        const auto page_count=magic.scripts.pages.size();
+        check(input_startup_world_human_detail_page(magic,id,finish)==E::none&&magic.page_phases.at(id)==3&&
+              magic.scripts.pages.size()==page_count&&magic.scripts.pages.back().id==id,
+              "raw60 accessory down reaches magic; confirm is no-op and outranks simultaneous cancel");
+        for(int fault=0;fault<8;++fault) {
+            auto bad=detail;StartupHumanCatalogueInput invalid;
+            if(fault==0)bad.page_phases.erase(id);
+            if(fault==1)bad.human_page_selections.erase(id);
+            if(fault==2)bad.page_counters.erase(id);
+            if(fault==3)bad.human_detail_contexts.erase(id);
+            if(fault==4)bad.human_page_selections.at(id)=4;
+            if(fault==5)bad.page_counters.at(id)=std::numeric_limits<int>::max();
+            if(fault==6)invalid.selection=4;
+            if(fault==7)invalid.scroll=StartupHumanCatalogueInput::Scroll{false,std::numeric_limits<int>::max()};
+            const auto before=startup_world_state_digest(bad);
+            check(input_startup_world_human_detail_page(bad,id,invalid)!=E::none&&startup_world_state_digest(bad)==before,
+                  "raw60 missing fields/bad slot/scroll sentinel rejects before any page/random/entity mutation");
+        }
+        auto failed=detail;failed.scripts.next_page_id=std::numeric_limits<std::uint64_t>::max();
+        StartupHumanCatalogueInput buy;buy.selection=2;buy.confirm=true;
+        const auto failed_before=startup_world_state_digest(failed);
+        check(input_startup_world_human_detail_page(failed,id,buy)==E::script_failed&&startup_world_state_digest(failed)==failed_before,
+              "raw60 changed selection and late gift child allocation fail together, preserving whole old Owner");
+        auto parent=detail;parent.scripts.event_calls[99]=1;
+        check(input_startup_world_human_detail_page(parent,id,buy)==E::none&&parent.scripts.pages.back().legacy_page==64&&
+              parent.page_phases.at(parent.scripts.pages.back().id)==2,"raw60 same-round selected armour2 confirm routes to matching64 tab");
+        page_tick(parent);const auto child=parent.scripts.pages.back().id;
+        check(act_startup_world_human_page(parent,child,A::cancel)==E::none,"same-round gift child cancels through existing consumer");
+        page_tick(parent);
+        check(parent.scripts.pages.back().id==id&&parent.page_phases.at(id)==2&&parent.human_page_selections.at(id)==2&&
+              !parent.equipment_page_catalogs.count(child)&&!parent.human_page_scroll.count(child)&&
+              parent.scene.random.draws()==draws&&parent.scene.world.world.ai.accounting.funds()==cash,
+              "raw60 input bridge restores parent selection and retires child catalogue/scroll without finance/random side effect");
+        for(int tab:{0,1}) {
+            auto route=s;route.scripts.event_calls[99]=route.scripts.event_calls[112]=1;
+            check(act_startup_world_human_page(route,id,A::view_tab,tab)==E::none,"raw60 confirmation route fixture sets existing tab");
+            StartupHumanCatalogueInput confirm;confirm.confirm=confirm.cancel=true;
+            check(input_startup_world_human_detail_page(route,id,confirm)==E::none&&
+                  route.scripts.pages.back().legacy_page==(tab==0?64:61)&&route.human_detail_contexts.count(id),
+                  "raw60 final-page0 gift/page1 profession routes and confirm priority retain actual detail parent");
+        }
+    }
+    {
+        // raw60页0回复入口条件夹具；同一固定道具目录，不注入消费或经营进度。
+        auto recovery=s;
+        check(act_startup_world_human_page(recovery,id,A::view_tab,0)==E::none,
+              "recovery route starts actual overview page0");
+        for(auto &entry:recovery.items) {
+            entry.second.inventory=0;
+            recovery.catalog.at({0,entry.first}).inventory=0;
+        }
+        const auto stock=[&](auto &owner,int item,int amount) {
+            owner.items.at(item).inventory=owner.catalog.at({0,item}).inventory=amount;
+        };
+        check(std::any_of(recovery.rules->items.begin(),recovery.rules->items.end(),[](const auto &item){return item.identity==29&&item.recovery>0;})&&
+              std::any_of(recovery.rules->items.begin(),recovery.rules->items.end(),[](const auto &item){return item.identity==30&&item.recovery>0;}),
+              "fixed source provides first recovery29 and subsequent recovery30");
+        stock(recovery,0,2);stock(recovery,29,1);
+        ref::BattleActorRecord first;
+        first.id={800};first.kind=ref::ActorKind::human;first.definition=1;
+        const int max_hp=recovery.scene.world.world.ai.growth.at(1).derived.combat[0];
+        check(max_hp>=2,"actual shared character max permits strict half-HP boundary");
+        first.capacity=max_hp;first.hp.target=max_hp/2-1;first.hp.displayed=max_hp;
+        recovery.scene.world.world.ai.battle.actors[first.id]=first;
+        recovery.scene.world.world.ai.human_order={first.id};
+        recovery.actor_metadata[first.id]={};
+        check(!recovery.human_detail_contexts.at(id).actor,
+              "source0 fixture has no bound context actor; recovery uses actual live order");
+        const auto route=[&](auto owner,bool expected) {
+            const auto before=startup_world_state_digest(owner);
+            check(startup_world_human_recovery_gift(owner,1)==std::optional<bool>{expected}&&
+                  startup_world_state_digest(owner)==before,"recovery eligibility is read-only and uses current source");
+            const auto cash=owner.scene.world.world.ai.accounting.funds();
+            const auto draws=owner.scene.random.draws();const auto date=owner.scene.calendar.units;
+            std::vector<std::array<int,4>> inventory;
+            for(const auto &item:owner.items)
+                inventory.push_back({item.first,item.second.inventory,owner.catalog.at({0,item.first}).inventory,item.second.free_purchases});
+            check(act_startup_world_human_page(owner,id,A::gifts)==E::none,
+                  "overview opens gift catalogue through real recovery/fallback route");
+            const auto child=owner.scripts.pages.back().id;
+            check(owner.scripts.pages.back().legacy_page==64&&owner.page_phases.at(child)==(expected?4:0)&&
+                  owner.human_page_selections.at(child)==(expected?1:0),
+                  "qualified recovery opens item4 at original owned ordinary prefix1; fallback opens weapon0");
+            check(owner.scene.world.world.ai.accounting.funds()==cash&&owner.scene.random.draws()==draws&&
+                  owner.scene.calendar.units==date&&std::all_of(inventory.begin(),inventory.end(),[&](const auto &item){
+                      return owner.items.at(item[0]).inventory==item[1]&&owner.catalog.at({0,item[0]}).inventory==item[2]&&
+                          owner.items.at(item[0]).free_purchases==item[3];}),
+                  "opening recovery gift route does not consume inventory, cash, date or random");
+            return owner;
+        };
+        auto opened=route(recovery,true);const auto child=opened.scripts.pages.back().id;
+        page_tick(opened);
+        check(opened.page_phases.at(child)==4&&opened.human_page_selections.at(child)==1&&
+              opened.equipment_page_catalogs.at(child)[4]==std::vector<int>{0,29}&&
+              opened.human_page_scroll.at(child)==0,
+              "actual64 Init retains recovery prefix index and full owned-item catalogue");
+        auto edge=recovery;edge.scene.world.world.ai.battle.actors.at(first.id).hp.target=max_hp/2;
+        edge.scene.world.world.ai.battle.actors.at(first.id).hp.displayed=0;route(edge,false);
+        edge=recovery;edge.scene.world.world.ai.battle.actors.at(first.id).hp.target=max_hp;route(edge,false);
+        edge.scene.world.world.ai.battle.actors.at(first.id).control.state=7;route(edge,true);
+        edge=recovery;edge.scene.world.world.ai.human_order.clear();route(edge,false);
+        edge=recovery;stock(edge,29,0);route(edge,false);
+        {
+            auto extended=recovery;
+            for(int item=0;item<6;++item)stock(extended,item,1);
+            const auto before=startup_world_state_digest(extended);
+            check(act_startup_world_human_page(extended,id,A::gifts)==E::none,
+                  "recovery entry accepts an owned ordinary prefix beyond four rows");
+            const auto extended_child=extended.scripts.pages.back().id;page_tick(extended);
+            const auto cursor=inspect_startup_world_human_catalogue_cursor(extended,extended_child);
+            check(cursor&&cursor->selection==6&&cursor->first==3&&cursor->visible==4&&
+                  extended.equipment_page_catalogs.at(extended_child)[4].at(cursor->selection)==29&&
+                  startup_world_state_digest(extended)!=before&&extended.items.at(29).inventory==1,
+                  "first catalogue frame scrolls to actual recovery prefix instead of rejecting valid preselection");
+        }
+        // 第一回复定义无库存：select仍是首回复定义前的正库存数量，选择后续持有回复项。
+        auto later=recovery;stock(later,29,0);stock(later,30,2);
+        const auto later_cash=later.scene.world.world.ai.accounting.funds();const auto later_draws=later.scene.random.draws();
+        check(startup_world_human_recovery_gift(later,1)==std::optional<bool>{true}&&
+              act_startup_world_human_page(later,id,A::gifts)==E::none,"owned later recovery qualifies despite absent first recovery29");
+        const auto later_child=later.scripts.pages.back().id;page_tick(later);
+        check(later.page_phases.at(later_child)==4&&later.human_page_selections.at(later_child)==1&&
+              later.equipment_page_catalogs.at(later_child)[4]==std::vector<int>{0,30}&&
+              later.items.at(0).inventory==2&&later.items.at(29).inventory==0&&later.items.at(30).inventory==2&&
+              later.scene.world.world.ai.accounting.funds()==later_cash&&later.scene.random.draws()==later_draws,
+              "recovery prefix survives actual Init and selects owned30 without changing resources");
+        auto ordered=recovery;auto second=first;second.id={801};second.hp.target=0;
+        ordered.scene.world.world.ai.battle.actors[second.id]=second;ordered.actor_metadata[second.id]={};
+        ordered.scene.world.world.ai.battle.actors.at(first.id).hp.target=max_hp;
+        ordered.scene.world.world.ai.human_order={first.id,second.id};route(ordered,false);
+        ordered.scene.world.world.ai.human_order={second.id,first.id};route(ordered,true);
+        for(int fault=0;fault<5;++fault) {
+            auto invalid=recovery;
+            if(fault==0)invalid.items.erase(29);
+            if(fault==1)invalid.items.at(29).inventory=-1;
+            if(fault==2)invalid.scene.world.world.ai.battle.actors.at(first.id).id=second.id;
+            if(fault==3)invalid.scene.world.world.ai.battle.actors.at(first.id).kind=ref::ActorKind::monster;
+            if(fault==4)invalid.scene.world.world.ai.battle.actors.erase(first.id);
+            const auto before=startup_world_state_digest(invalid);
+            check(!startup_world_human_recovery_gift(invalid,1)&&
+                  act_startup_world_human_page(invalid,id,A::gifts)!=E::none&&
+                  startup_world_state_digest(invalid)==before,
+                  "recovery missing stock/actor, negative inventory or bad actor identity/kind rejects whole old Owner");
+        }
+    }
     check(act_startup_world_human_page(s, id, A::gifts) == E::none,
           "actual human detail opens equipment gift catalogue");
     const auto gift = s.scripts.pages.back().id;
@@ -1156,6 +1331,139 @@ void human_details_and_gifts() {
               acknowledge_startup_world_runtime_page(s, s.scripts.pages.back().id) == E::none &&
               s.scene.world.world.ai.accounting.funds() == before && s.scene.random.draws() == 0,
           "equipment details confirm only closes without gift side effects");
+}
+void human_catalogue_navigation() {
+    using A=StartupHumanPageAction;
+    using E=StartupWorldRuntimeError;
+    for(const int raw:{61,64}) {
+        // 解锁条件夹具只扩大既有定义目录，不改原表、不宣称自然取得。
+        auto s=human_fixture(raw);const auto id=s.scripts.pages.back().id;
+        s.village_points=999;
+        s.human_calendar.at(1).celebrations=99;
+        for(auto &entry:s.scripts.professions)entry.second.status=1;
+        for(auto &entry:s.catalog)if(entry.first.first!=0) {entry.second.status=1;entry.second.free_purchases=1;}
+        {
+            auto uninitialized=s;uninitialized.human_page_scroll.emplace(id,0);
+            const auto before=startup_world_state_digest(uninitialized);
+            check(!prepare_startup_world_runtime(uninitialized).candidate&&startup_world_state_digest(uninitialized)==before,
+                  "uninitialized catalogue cannot inherit an orphan preinstalled scroll payload");
+        }
+        page_tick(s);
+        const auto initial=inspect_startup_world_human_catalogue_cursor(s,id);
+        check(initial&&initial->count>initial->visible&&initial->visible==(raw==61?5:4)&&initial->first==0,
+              "61 five rows / 64 four rows use actual initialized source catalogues");
+        const int count=initial->count,visible=initial->visible;
+        const auto send=[&](const StartupHumanCatalogueInput &input) {
+            check(input_startup_world_human_catalogue_page(s,id,input)==E::none,"catalogue combined input succeeds");
+        };
+        StartupHumanCatalogueInput input;input.up=true;send(input);
+        check(s.human_page_selections.at(id)==count-1&&s.human_page_scroll.at(id)==count-visible,
+              "catalogue up wraps to last row and last visible window");
+        input.down=true;const auto cancelled=startup_world_state_digest(s);send(input);
+        check(startup_world_state_digest(s)==cancelled,"same-round up/down cancel without changing scroll or outputs");
+        input={};input.down=true;send(input);
+        check(s.human_page_selections.at(id)==0&&s.human_page_scroll.at(id)==0,"catalogue down wraps to first row");
+        input={};input.selection=visible;send(input);
+        check(s.human_page_selections.at(id)==visible&&s.human_page_scroll.at(id)==1,"direct row selection follows visible window");
+        input={};input.scroll=StartupHumanCatalogueInput::Scroll{true,count-visible};send(input);
+        check(s.human_page_scroll.at(id)==count-visible&&s.human_page_selections.at(id)==count-1,
+              "absolute scroll preserves the selected visible-row offset");
+        input.scroll=StartupHumanCatalogueInput::Scroll{false,-1};send(input);
+        check(s.human_page_scroll.at(id)==count-visible-1&&s.human_page_selections.at(id)==count-2,
+              "relative scroll moves both window and selected row");
+        {
+            auto limited=s;StartupHumanCatalogueInput clamp;
+            clamp.scroll=StartupHumanCatalogueInput::Scroll{false,std::numeric_limits<int>::min()};
+            check(input_startup_world_human_catalogue_page(limited,id,clamp)==E::none&&
+                  limited.human_page_scroll.at(id)==0&&limited.human_page_selections.at(id)==visible-1&&
+                  inspect_startup_world_human_catalogue_cursor(limited,id).has_value(),
+                  "INT_MIN relative scroll clamps safely with preserved selected visible-row offset");
+        }
+        const int old_selection=s.human_page_selections.at(id),old_first=s.human_page_scroll.at(id);
+        input={};input.left=input.right=true;const auto dual=startup_world_state_digest(s);send(input);
+        check(startup_world_state_digest(s)==dual,"same-round left/right has no net tab change or cursor reset");
+        input={};input.right=true;send(input);
+        check(s.page_phases.at(id)==1&&(raw==61?
+              s.human_page_selections.at(id)==old_selection&&s.human_page_scroll.at(id)==old_first:
+              s.human_page_selections.at(id)==0&&s.human_page_scroll.at(id)==0),
+              "61 tab preserves cursor; 64 changed tab resets selection and scroll");
+        input={};input.left=true;send(input);
+        input={};input.selection=visible;send(input);
+        for(int fault=0;fault<6;++fault) {
+            auto bad=s;StartupHumanCatalogueInput rejected;rejected.selection=0;
+            if(fault==0)rejected.selection=-1;
+            if(fault==1)rejected.selection=count;
+            if(fault==2)rejected.scroll=StartupHumanCatalogueInput::Scroll{true,std::numeric_limits<int>::max()};
+            if(fault==3) {
+                const int selected=bad.human_page_selections.at(id);
+                if(raw==61)bad.human_page_catalogs.at(id).at(selected)=std::numeric_limits<int>::max();
+                else bad.equipment_page_catalogs.at(id)[bad.page_phases.at(id)].at(selected)=std::numeric_limits<int>::max();
+            }
+            if(fault==4)bad.human_page_scroll.erase(id);
+            if(fault==5)bad.human_page_scroll.at(id)=count;
+            const auto before=startup_world_state_digest(bad);
+            check(input_startup_world_human_catalogue_page(bad,id,rejected)!=E::none&&
+                  startup_world_state_digest(bad)==before,"bad catalogue cursor/input rejects atomically before mixed selection commits");
+        }
+        if(raw==64) {
+            const int next_count=static_cast<int>(s.equipment_page_catalogs.at(id)[1].size());
+            check(next_count>4,"next equipment category supplies a scrolling directory");
+            for(int direction=0;direction<3;++direction) {
+                auto switched=s;StartupHumanCatalogueInput combined;combined.right=true;
+                combined.up=direction!=0;combined.down=direction!=1;
+                check(input_startup_world_human_catalogue_page(switched,id,combined)==E::none&&
+                      switched.page_phases.at(id)==1&&switched.human_page_selections.at(id)==
+                          (direction==0?1:direction==1?next_count-1:0)&&
+                      switched.human_page_scroll.at(id)==(direction==1?next_count-4:0),
+                      "64 switches/resets first, then applies same-round directions against new category count");
+            }
+            {
+                // 空目录是合法列表条件，不提供任何替代装备或补演示定义。
+                auto empty=s;empty.equipment_page_catalogs.at(id)[1].clear();
+                StartupHumanCatalogueInput combined;combined.right=combined.down=true;
+                check(input_startup_world_human_catalogue_page(empty,id,combined)==E::none&&
+                      empty.page_phases.at(id)==1&&empty.human_page_selections.at(id)==0&&empty.human_page_scroll.at(id)==0,
+                      "64 tab-change to empty category ignores direction and retains zero cursor");
+                combined.right=false;combined.left=true;
+                check(input_startup_world_human_catalogue_page(empty,id,combined)==E::none&&
+                      empty.page_phases.at(id)==0&&empty.human_page_selections.at(id)==1&&empty.human_page_scroll.at(id)==0,
+                      "64 direction after leaving empty tab consumes the new nonempty catalogue");
+            }
+            const auto funds=s.scene.world.world.ai.accounting.funds();const auto draws=s.scene.random.draws();
+            const int weapon=s.equipment_page_catalogs.at(id)[0].at(s.human_page_selections.at(id));
+            const int tokens=s.catalog.at({1,weapon}).free_purchases;
+            auto combined=s;StartupHumanCatalogueInput priority;
+            priority.confirm=priority.cancel=priority.inspect_equipment=true;
+            check(input_startup_world_human_catalogue_page(combined,id,priority)==E::none&&
+                  combined.scripts.pages.back().legacy_page==65&&combined.catalog.at({1,weapon}).free_purchases==tokens&&
+                  combined.scene.world.world.ai.accounting.funds()==funds&&combined.scene.random.draws()==draws,
+                  "64 same-round confirm/cancel/information prioritizes quote65 without eager consumption");
+            combined=s;priority.confirm=false;
+            check(input_startup_world_human_catalogue_page(combined,id,priority)==E::none&&
+                  combined.scripts.pages.back().id==id&&combined.scripts.pages.back().lifecycle==4&&
+                  combined.catalog.at({1,weapon}).free_purchases==tokens&&combined.scene.world.world.ai.accounting.funds()==funds&&
+                  combined.scene.random.draws()==draws,
+                  "64 cancel outranks information73 and preserves stock/funds/random");
+        }
+        if(raw==61) {
+            const auto &jobs=s.human_page_catalogs.at(id);
+            const int current=s.scene.world.world.ai.growth.at(1).definition.current_profession;
+            const auto other=std::find_if(jobs.begin()+visible,jobs.end(),[&](int job){return job!=current;});
+            check(other!=jobs.end(),"profession fixture supplies an alternative beyond first window");
+            input={};input.selection=static_cast<int>(other-jobs.begin());send(input);
+            input={};input.confirm=true;send(input);
+        } else {input={};input.inspect_equipment=true;send(input);}
+        const auto child=s.scripts.pages.back().id;
+        const int selection=s.human_page_selections.at(id),first=s.human_page_scroll.at(id);
+        page_tick(s);check(act_startup_world_human_page(s,child,A::cancel)==E::none,"catalogue child cancels through Owner");
+        page_tick(s);
+        check(s.scripts.pages.back().id==id&&s.human_page_selections.at(id)==selection&&s.human_page_scroll.at(id)==first&&
+              !s.page_human_bindings.count(child)&&!s.human_page_catalogs.count(child)&&!s.equipment_page_catalogs.count(child),
+              "62/73 return preserves nonzero parent cursor and releases child references");
+        check(act_startup_world_human_page(s,id,A::cancel)==E::none,"catalogue parent closes");page_tick(s);
+        check(!s.human_page_scroll.count(id)&&!s.human_page_selections.count(id)&&!s.human_pages_initialized.count(id)&&
+              !inspect_startup_world_human_catalogue_cursor(s,id),"retired catalogue releases scroll, selection and query reference");
+    }
 }
 void human_profession_and_mastery() {
     using A = StartupHumanPageAction;
@@ -4499,6 +4807,7 @@ int main() {
         manual_save_page();
         manual_help_page();
         present_directory_pages();
+        human_catalogue_navigation();
         human_profession_and_mastery();
         mastery_profession_announcement();
         tax_pages();

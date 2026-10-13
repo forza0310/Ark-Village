@@ -25,6 +25,7 @@ struct StartupWorldJob {
     int mastery_attribute{};        // 原h.v，>=10表示魔法，<6为满级属性奖励。
     int mastery_value{};            // 原h.w。
     std::vector<int> item_affinity; // 原h.u，job索引17，普通道具分类评价。
+    std::string bonus_description; // 原job列22；目录61经济说明，不是大师属性奖励。
 };
 struct StartupWorldHuman {
     int identity{};

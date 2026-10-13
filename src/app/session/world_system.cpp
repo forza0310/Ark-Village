@@ -30,13 +30,18 @@ std::string path_error(const std::filesystem::path &directory) {
 std::filesystem::path world_system_path(const std::filesystem::path &directory) {
     return directory / "system.arksys";
 }
+const char *world_system_data_identity() {
+    // Keep the identity already used by the system2 record/score/inheritance contract.
+    // Change only after reviewing that persistent semantic contract, never for UI text.
+    return "c3f9419d56e2db0c4a4fcf582f3b34fe5100a12b6acaa2b3bbf3ca0273faa690";
+}
 simulation::StartupSystemLoadResult read_world_system(const std::filesystem::path &directory) {
     if (directory.empty())
         return {simulation::StartupSystemRecords{}, true, {}};
     const auto error = path_error(directory);
     if (!error.empty())
         return {{}, false, error};
-    return simulation::load_startup_system_file(world_system_path(directory));
+    return simulation::load_startup_system_file(world_system_path(directory), world_system_data_identity());
 }
 std::string write_world_system(const std::filesystem::path &directory,
                                const simulation::StartupSystemRecords &records) {
@@ -49,7 +54,8 @@ std::string write_world_system(const std::filesystem::path &directory,
     std::filesystem::create_directories(directory, io_error);
     if (io_error)
         return "无法创建系统纪录目录";
-    return simulation::save_startup_system_file(world_system_path(directory), records);
+    return simulation::save_startup_system_file(world_system_path(directory), records,
+                                                world_system_data_identity());
 }
 bool world_clear_page(const State &state) {
     const auto *page = top(state);

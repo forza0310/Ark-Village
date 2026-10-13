@@ -491,6 +491,36 @@ void human_command_transactions() {
           "Human tab, close and stale input preserve FIFO and reject invalid action enums");
     details.stop();
 
+    // One source frame must preserve independent UP/DOWN branch ordering; splitting it
+    // into two FIFO actions would re-evaluate the newly changed phase and select a different slot.
+    auto simultaneous = managed_page_fixture(60);
+    const auto simultaneous_page = task_top(simultaneous).id;
+    simultaneous.page_phases.at(simultaneous_page) = 2;
+    simultaneous.human_page_selections.at(simultaneous_page) = 0;
+    app::WorldSession composed(simultaneous);
+    composed.set_paused(false);
+    sim::StartupHumanCatalogueInput both;
+    both.up = both.down = true;
+    const auto combined = composed.input_human(simultaneous_page, both);
+    auto bad = both;
+    bad.selection = 999;
+    const auto invalid_selection = composed.input_human(simultaneous_page, bad);
+    app::WorldCommand old;
+    old.kind = app::WorldCommandKind::human_input;
+    old.page = simultaneous_page;
+    old.human_input = both;
+    old.generation = composed.frame()->generation + 1;
+    const auto wrong_generation = composed.submit(old);
+    frame = input_frame(composed, composed.set_paused(true));
+    check(!frame->failed && input_result(*frame, combined).outcome == Outcome::applied &&
+              input_result(*frame, invalid_selection).outcome == Outcome::rejected &&
+              input_result(*frame, wrong_generation).outcome == Outcome::rejected &&
+              frame->state->page_phases.at(simultaneous_page) == 1 &&
+              frame->state->human_page_selections.at(simultaneous_page) == 1 &&
+              frame->state->scene.random.draws() == simultaneous.scene.random.draws(),
+          "Composite human frame retains branch ordering; invalid selection and generation roll back");
+    composed.stop();
+
     auto report = state;
     report.report_state = 1;
     report.scene.framework_paused = false;

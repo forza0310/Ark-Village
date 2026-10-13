@@ -1,5 +1,6 @@
 #include "../support/world_fixture.hpp"
 #include "ark/simulation/world/startup_world_save.hpp"
+#include "ark/assets/sha256.hpp"
 #include "world_session_test_support.hpp"
 #include <filesystem>
 #include <fstream>
@@ -107,6 +108,60 @@ void system_command_transactions() {
     const auto directory = std::filesystem::current_path() / "world-system-session-test";
     std::filesystem::remove_all(directory);
     auto state = initial(false);
+    // Product identity is an explicit system2 contract. Maintenance files still use their
+    // own dataset and never gain a second automatic fallback in the player loader.
+    sim::StartupSystemRecords retained;
+    retained.last_slot = 1;
+    retained.high_score = 76543;
+    retained.cash_peak = 912345;
+    retained.trophy = 3;
+    retained.revision = 8;
+    retained.facility_levels = {0, 1, 0, 2};
+    retained.profession_status = {0, 1};
+    retained.opaque_sections.push_back({1024, 2, {1, 2, 3}});
+    std::filesystem::create_directories(directory);
+    const auto system_path = app::world_system_path(directory);
+    check(sim::save_startup_system_file(system_path, retained, app::world_system_data_identity()).empty(),
+          "Canonical system2 fixture is written with its existing independent identity");
+    const auto original_system = file_bytes(system_path);
+    const auto compatible = app::read_world_system(directory);
+    check(compatible.records && !compatible.missing && compatible.error.empty() &&
+              compatible.records->high_score == retained.high_score &&
+              compatible.records->cash_peak == retained.cash_peak && compatible.records->trophy == 3 &&
+              compatible.records->facility_levels == retained.facility_levels &&
+              compatible.records->profession_status == retained.profession_status &&
+              compatible.records->opaque_sections.front().bytes == retained.opaque_sections.front().bytes &&
+              compatible.records->revision == retained.revision && file_bytes(system_path) == original_system,
+          "Same-semantic pre-manual system2 file loads read-only with records and inheritance intact");
+    check(!sim::load_startup_system_file(system_path).records,
+          "Default maintenance loader rejects product identity instead of silently changing policy");
+    check(sim::save_startup_system_file(system_path, retained).empty() &&
+              !app::read_world_system(directory).records,
+          "Product loader rejects maintenance identity instead of falling back");
+    check(sim::save_startup_system_file(system_path, retained, std::string(64, '0')).empty() &&
+              !app::read_world_system(directory).records,
+          "Unknown well-formed system identity remains rejected");
+    const auto rewrite = [&](const std::string &bytes) {
+        std::ofstream out(system_path, std::ios::binary | std::ios::trunc);
+        out.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+        check(bool(out), "Isolated adversarial system fixture writes its exact bytes");
+    };
+    auto corrupted = original_system;
+    corrupted.at(100) ^= 1;
+    rewrite(corrupted);
+    check(!app::read_world_system(directory).records, "Corrupt system payload remains rejected");
+    auto old_version = original_system;
+    old_version.at(8) = 1;
+    old_version.resize(old_version.size() - 64);
+    old_version += ark::assets::sha256_hex(std::vector<std::uint8_t>(old_version.begin(), old_version.end()));
+    rewrite(old_version);
+    check(!app::read_world_system(directory).records, "Old system version with a valid checksum remains rejected");
+    rewrite(original_system);
+    auto invalid_records = retained;
+    invalid_records.trophy = 5;
+    check(!app::write_world_system(directory, invalid_records).empty() &&
+              file_bytes(system_path) == original_system,
+          "Failed system encoding preserves the previously valid file");
     app::WorldSystemState system;
     app::WorldNewGameDraft draft;
     draft.human = {"UI测试甲", 1, true};

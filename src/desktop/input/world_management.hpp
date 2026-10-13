@@ -25,7 +25,10 @@ class WorldManagement {
     void observe(const app::WorldFrame &frame);
     bool pending() const { return pending_ != 0; }
     // Local keyboard reset also applies while a FIFO command is pending; it changes no Owner.
-    void clear_mouse_marker() { facility_items_.marked_row.reset(); }
+    void clear_mouse_marker() {
+        facility_items_.marked_row.reset();
+        human_gesture_ = {};
+    }
     bool input_page(const app::WorldState &state, const simulation::rules::WorldScriptPage &page,
                     Extent extent, std::optional<Vector2> mouse, bool click, bool back,
                     bool keyboard_event, bool blocked, app::WorldSession &session);
@@ -60,6 +63,7 @@ class WorldManagement {
     ui::WorldAwardSelection award_;
     mutable std::optional<ui::WorldManualLayout> manual_layout_; // Last painted controls only.
     mutable std::optional<ui::WorldHumanPaintedControls> human_controls_;
+    ui::WorldHumanGesture human_gesture_;
     int rank_{};
     int edit_mode_{-1};
     std::optional<int> definition_;

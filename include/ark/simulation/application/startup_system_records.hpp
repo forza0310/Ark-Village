@@ -42,4 +42,11 @@ std::string validate_startup_system_records(const StartupSystemRecords &records)
 StartupSystemLoadResult load_startup_system_file(const std::filesystem::path &path);
 std::string save_startup_system_file(const std::filesystem::path &path,
                                    const StartupSystemRecords &records);
+// Explicit caller identity for a separately versioned product policy. Default overloads
+// retain the maintenance dataset; all overloads use the same codec and strict validation.
+StartupSystemLoadResult load_startup_system_file(const std::filesystem::path &path,
+                                                const std::string &data_identity);
+std::string save_startup_system_file(const std::filesystem::path &path,
+                                   const StartupSystemRecords &records,
+                                   const std::string &data_identity);
 } // namespace ark::simulation

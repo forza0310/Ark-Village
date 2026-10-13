@@ -234,6 +234,7 @@ void world_human_render_fixture() {
                 owner.page_phases[parent.id] = slot;
                 owner.page_counters[parent.id] = 0;
                 owner.human_page_selections[parent.id] = 0;
+                owner.human_page_scroll[parent.id] = 0;
                 owner.human_pages_initialized.insert(parent.id);
                 owner.equipment_page_catalogs[parent.id][slot] = {candidate};
                 owner.human_equipment_choices[parent.id] = {slot, candidate};
@@ -307,6 +308,109 @@ void world_human_render_fixture() {
                       << '\n';
         }
     }
+    // Synthetic directory/attribute conditions use complete Owner payloads. They prove
+    // drawing and pointer wiring, not natural unlock, payment or equipment acquisition.
+    for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{720, 600}}) {
+        SetWindowSize(extent.width, extent.height);
+        for (int sample = 0; sample < 14; ++sample) {
+            auto owner = initial_world();
+            auto catalogue = *owner.rules;
+            owner.rules = &catalogue;
+            auto current = page;
+            current.legacy_page = sample < 2 ? 61 : sample < 8 ? 64 : sample < 11 ? 68 : 69;
+            owner.scripts.pages.push_back(current);
+            owner.page_human_bindings[current.id] = human;
+            owner.human_pages_initialized.insert(current.id);
+            const int phase = sample < 2 ? sample : sample < 7 ? sample - 2 : sample == 7 ? 4 : 0;
+            owner.page_phases[current.id] = phase;
+            owner.page_counters[current.id] = sample < 8 ? 16 :
+                std::array<int, 3>{0, sample < 11 ? 52 : 24, sample < 11 ? 73 : 45}.at((sample - 8) % 3);
+            owner.human_page_selections[current.id] = 0;
+            owner.human_page_scroll[current.id] = 0;
+            if (current.legacy_page == 64)
+                owner.equipment_page_catalogs[current.id] = {};
+            if (current.legacy_page == 61) {
+                for (int job = 0; job < 8; ++job) {
+                    owner.human_page_catalogs[current.id].push_back(job);
+                    owner.scripts.professions.at(job).status = 1;
+                    owner.scene.world.world.ai.growth.at(human).definition.profession_levels.at(job) = job + 1;
+                }
+                catalogue.jobs.at(6).name = "名称较长的测试职业";
+            } else if (current.legacy_page == 64 && sample != 7) {
+                auto &list = owner.equipment_page_catalogs[current.id][phase];
+                if (phase == 4) {
+                    for (const auto &item : catalogue.items) {
+                        list.push_back(item.identity);
+                        owner.items.at(item.identity).inventory = 3;
+                        owner.catalog.at({0, item.identity}) = owner.items.at(item.identity);
+                        if (list.size() == 8) break;
+                    }
+                } else {
+                    const int kind = phase == 0 ? 1 : phase == 3 ? 3 : 2;
+                    for (const auto &item : catalogue.equipment) {
+                        if (item.shop.kind != kind || (kind == 2 && (item.shop.type == 2 ? 1 : 2) != phase)) continue;
+                        list.push_back(item.shop.id);
+                        auto &stock = owner.catalog.at({kind, item.shop.id});
+                        stock.status = 3;
+                        stock.free_purchases = list.size() == 7 ? 2 : 0;
+                        stock.newly_unlocked = true;
+                        if (list.size() == 8) break;
+                    }
+                }
+            } else if (current.legacy_page == 68) {
+                owner.human_equipment_choices[current.id] = {0, 1};
+                owner.equipment_attribute_display = {{{100, 20, 30, 40}, {90, 25, 30, 42}, {-10, 5, 0, 2}}};
+            } else if (current.legacy_page == 69) {
+                const auto item = std::find_if(catalogue.items.begin(), catalogue.items.end(),
+                                               [](const auto &d) { return d.effect == 2; });
+                if (item == catalogue.items.end()) throw std::runtime_error("Attribute item fixture missing");
+                owner.human_equipment_choices[current.id] = {4, item->identity};
+                owner.human_attribute_display = {{{100, 20, 30, 40, 50, 60}, {100, 20, 34, 40, 50, 60}, {0, 0, 4, 0, 0, 0}}};
+            }
+            if (sample < 7) {
+                const auto count = current.legacy_page == 61 ? owner.human_page_catalogs.at(current.id).size()
+                    : owner.equipment_page_catalogs.at(current.id).at(phase).size();
+                if (count > 6) {
+                    owner.human_page_selections[current.id] = 6;
+                    owner.human_page_scroll[current.id] = 3;
+                }
+            }
+            if (!text.include_text("名称较长的测试职业")) throw std::runtime_error("Catalogue fixture font missing");
+            const auto before = owner;
+            const auto frame = ui::world_human_layout(extent);
+            auto view = ui::world_human_view(owner, current);
+            ui::prepare_world_human_detail(view, owner, skin);
+            const auto controls = ui::world_human_painted_controls(view, frame, extent, skin);
+            if (!view.detail_page_skin || !controls ||
+                ((current.legacy_page == 61 || current.legacy_page == 64) && !controls->scroll))
+                throw std::runtime_error("Directory/result fixture lost its measured controls");
+            for (const auto &row : controls->rows) {
+                ui::WorldHumanInput click;
+                click.click = Vector2{row.rectangle.x + row.rectangle.width / 2, row.rectangle.y + row.rectangle.height / 2};
+                ui::WorldHumanGesture gesture;
+                const auto input = ui::world_human_input(view, frame, click, false, controls, extent, &gesture);
+                if (!input || !input->input || input->input->selection != row.index ||
+                    input->input->confirm != (current.legacy_page == 61 || phase != 4))
+                    throw std::runtime_error("Source-painted catalogue row lost select/confirm mapping");
+            }
+            for (int draw = 0; draw < 8; ++draw) {
+                if (WindowShouldClose()) throw std::runtime_error("Directory fixture closed before capture");
+                BeginDrawing(); ClearBackground({145, 211, 247, 255});
+                DrawText("SYNTHETIC catalogue/result UI", 4, 4, 12, BLACK);
+                ui::draw_world_human(view, frame, skin, true);
+                text.flush(1, {}); EndDrawing();
+            }
+            const auto file = output / ("synthetic-human-management-" + std::to_string(extent.width) + "-" + std::to_string(sample) + ".png");
+            capture(file);
+            if (!same_world_clock(owner, before) || owner.human_page_scroll != before.human_page_scroll ||
+                owner.page_counters != before.page_counters || owner.scene.random.draws() != before.scene.random.draws() ||
+                owner.human_attribute_display != before.human_attribute_display ||
+                owner.equipment_attribute_display != before.equipment_attribute_display)
+                throw std::runtime_error("Catalogue/result drawing changed cursor, reward or clock");
+            std::cout << "UI fixture / synthetic raw=" << current.legacy_page << " sample=" << sample
+                      << " frames=8 screenshot=" << file.string() << '\n';
+        }
+    }
     struct ResultSample {
         int raw, counter, condition;
         const char *name;
@@ -349,6 +453,7 @@ void world_human_render_fixture() {
             owner.page_human_bindings[parent.id] = human;
             owner.page_phases[parent.id] = owner.page_counters[parent.id] = 0;
             owner.human_page_selections[parent.id] = 0;
+            owner.human_page_scroll[parent.id] = 0;
             owner.human_pages_initialized.insert(parent.id);
             owner.human_page_catalogs[parent.id] = {0, 1};
             auto detail = page;

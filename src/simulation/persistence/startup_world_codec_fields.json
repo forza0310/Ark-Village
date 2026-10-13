@@ -495,6 +495,10 @@
           "type": "std::map<std::uint64_t, int>"
         },
         {
+          "name": "human_page_scroll",
+          "type": "std::map<std::uint64_t, int>"
+        },
+        {
           "name": "page_job_bindings",
           "type": "std::map<std::uint64_t, int>"
         },

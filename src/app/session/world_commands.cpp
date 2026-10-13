@@ -41,6 +41,8 @@ bool valid_human_action(simulation::StartupHumanPageAction action) {
     case Action::view_tab:
     case Action::equipment_slot:
     case Action::track:
+    case Action::scroll_relative:
+    case Action::scroll_absolute:
         return true;
     }
     return false;
@@ -426,6 +428,22 @@ void apply_world_decision(WorldState &state, const WorldCommand &command,
                                                            command.human_action, command.selection)
                 : Error::invalid_page;
         break;
+    case Kind::human_input: {
+        // The source composes a whole input frame. Do not split it into commands that
+        // would re-test a changed phase or leave partially changed selection/scroll.
+        const auto page = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
+                                      [](const auto &p) { return p.lifecycle != 4; });
+        result.runtime_error =
+            page != state.scripts.pages.rend() && page->id == command.page &&
+                    simulation::startup_world_human_page_ready(state, command.page)
+                ? (page->legacy_page == 60
+                       ? simulation::input_startup_world_human_detail_page(state, command.page,
+                                                                          command.human_input)
+                       : simulation::input_startup_world_human_catalogue_page(state, command.page,
+                                                                             command.human_input))
+                : Error::invalid_page;
+        break;
+    }
     case Kind::tax_action:
         // Only the framework may initialize a tax list. A stale click cannot create its
         // payload, advance automatic98, or consume the next report/page instead.
@@ -558,6 +576,14 @@ std::uint64_t WorldSession::act_human(std::uint64_t page, simulation::StartupHum
     command.page = page;
     command.human_action = action;
     command.selection = selection;
+    return submit(command);
+}
+std::uint64_t WorldSession::input_human(std::uint64_t page,
+                                       const simulation::StartupHumanCatalogueInput &input) {
+    WorldCommand command;
+    command.kind = WorldCommandKind::human_input;
+    command.page = page;
+    command.human_input = input;
     return submit(command);
 }
 std::uint64_t WorldSession::act_tax(std::uint64_t page, simulation::StartupWorldTaxAction action,

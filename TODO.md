@@ -4,17 +4,17 @@
 
 ## 当前接入与收口
 
-- [x] 正式395fa0b及前置已接人物四页、职业62/63、装备65/73和赠礼结果66，455来源/70适配保持，719素材；复用既有套件，见[B1](docs/stages/B1-playable-prototype.md#research-395fa0b-human-results)。
+- [x] 正式4c7a490及前置已接人物四页、职业61–63、赠礼64–66、结果68/69及装备73；455来源/73适配、719素材保持，整帧FIFO/真实scroll及系统2独立身份已接，见[B1](docs/stages/B1-playable-prototype.md#research-4c7a490-human-catalogues)。
 - [x] 现actors UI执行raw60四页有序计划、实际字体测宽/恢复提示/比例条；保留PC页签/捷径与FIFO/pending，装备方向先走四槽、行点击选择、Enter进入对应赠礼槽，魔法Enter无操作。
 - [x] 用户指定的小窗preview.mjs及所引设施/道具/菜单/提示/人物示例已纳入本goal，复用各自正式合同及套件，对照入口见[清单](docs/reference/REFERENCE_CHECKLIST.md#ui-small-window-goal)。预览服务、CSS和夹具数值不进入游戏。
 - [x] 6a0f8e2／395fa0b职业预览、转职演出和赠礼结果计划已消费，真实转职/赠礼窗口通过；共享奖励人物时钟未建模，静态帧0边界明确，不从参考PNG代做业务或时钟。
-- [ ] 人物原字体、OS输入与完整动态/滚动条鼠标、控制器提示及职业/赠礼余页皮肤继续按正式交付接续，不用四页和65/73局部计划与产品截图宣称原版全部对齐。
+- [ ] 接续正式755fdf2：共享人物时钟、商品72/79、强化75–77、口碑82双计数/联合恢复；沿现模块/套件与玩家清理政策，不把本批99条件图或静态帧0认证为完整原时钟/OS输入/原字体。
 - [x] 获批steam-month分段月96→97→98→99及三次独立冷载通过；每段6分钟/10000轮，原季度入口保持，失败观察档不作输入，见[B1](docs/stages/B1-playable-prototype.md#research-e22ed0a-human-ui)。
 
 - [x] 正式bb61d5f普通设施两页维护计划：获批四目标已导入，455来源/70适配保留，新增资源映射现有Steam属性图标；后续c6b1a5b无闭包增量，见[方案](docs/MILESTONES.md#research-bb61d5f-detail-plan)。
 - [x] 普通raw74两页已接现facilities UI：正式c3b568c滚动皮肤/事件及原套件增量迁入，原序绘制/Steam箭头、字体测宽与五行光标沿已批桌面适配；窗口/剩余原版输入边界见[B1](docs/stages/B1-playable-prototype.md#research-c3b568c-detail-ui)。
 
-- [ ] 系统纪录身份解耦待用户确认：说明正文变化不应未经决策改变既有系统档资格；具体兼容边界与验证范围见上述设计。玩家仍为两栏schema5、随机不保存，不迁移旧档或自动删除用户文件。
+- [x] 用户批准系统2独立语义身份；原系统副本的Release标题通过、最高纪录/继承保留与未知/损坏/旧版拒绝覆盖，原系统及两栏未改，见[身份决策](docs/MILESTONES.md#system-record-identity)。
 - [ ] raw39极端金额列宽适配待确认：十位金额可能侵入名称列；按实际字体和最小窗口评估50像素金额列，不宣称极端排版已收口。
 - [ ] 对应main的desktop-release完整CTest及发布流水线验证；本地结果与CI分别记录，不自动推送或发布。
 

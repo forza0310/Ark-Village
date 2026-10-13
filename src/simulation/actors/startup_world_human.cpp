@@ -99,10 +99,10 @@ bool initialize(State &s, std::uint64_t id, int raw) {
         (raw == 60 && !valid_startup_world_human_detail_context(s, id)))
         return false;
     const int human = h->second;
-    if (raw == 65 || raw == 66 || raw == 69) {
+    if (raw == 65 || raw == 66 || raw == 68 || raw == 69) {
         const auto choice = s.human_equipment_choices.find(id);
         if (choice == s.human_equipment_choices.end() || choice->second[0] < 0 ||
-            choice->second[0] > (raw == 65 ? 3 : 4))
+            choice->second[0] > ((raw == 65 || raw == 68) ? 3 : 4))
             return false;
         if (choice->second[0] == 4) {
             const auto item =
@@ -122,6 +122,10 @@ bool initialize(State &s, std::uint64_t id, int raw) {
             return false;
         if ((raw == 61 || raw == 62) && !s.human_page_catalogs.count(id))
             return false;
+        if(raw==61||raw==64) {
+            const auto cursor=inspect_startup_world_human_catalogue_cursor(s,id);
+            if(!cursor)return false;
+        }
         if ((raw == 64 || raw == 73) && !s.equipment_page_catalogs.count(id))
             return false;
         if (raw == 64 || raw == 73) {
@@ -134,10 +138,13 @@ bool initialize(State &s, std::uint64_t id, int raw) {
                 (list.empty() ? selected != 0 : selected >= static_cast<int>(list.size())))
                 return false;
         }
-        if ((raw == 65 || raw == 66 || raw == 69) && !s.human_equipment_choices.count(id))
+        if ((raw == 65 || raw == 66 || raw == 68 || raw == 69) && !s.human_equipment_choices.count(id))
             return false;
         return true;
     }
+    // 首次Init不能接管孤立滚动载荷；只有本次Init可以创建该键。
+    if (s.human_page_scroll.count(id))
+        return false;
     auto &g = s.scene.world.world.ai.growth.at(human);
     if (raw == 60) {
         const auto stats =
@@ -151,6 +158,8 @@ bool initialize(State &s, std::uint64_t id, int raw) {
         const auto profile = startup_world_human_profile(s, human);
         if (!profile)
             return false;
+        for(std::size_t job=0;job<s.rules->jobs.size();++job)
+            if(!s.scripts.professions.count(static_cast<int>(job)))return false;
         const auto list =
             ref::catalogue_human_professions(profile->sex, professions(s));
         if (!list || list->empty())
@@ -221,6 +230,16 @@ bool initialize(State &s, std::uint64_t id, int raw) {
     s.page_phases.try_emplace(id, 0);
     s.page_counters.try_emplace(id, 0);
     s.human_page_selections.try_emplace(id, 0);
+    if(raw==61||raw==64) {
+        auto first=s.human_page_scroll.emplace(id,0).first;
+        const int phase=s.page_phases.at(id),selected=s.human_page_selections.at(id);
+        if(selected<0||phase<0||phase>(raw==61?1:4))return false;
+        const auto count=raw==61?s.human_page_catalogs.at(id).size():s.equipment_page_catalogs.at(id)[phase].size();
+        if(count?std::size_t(selected)>=count:selected!=0)return false;
+        // 回复入口可预选屏外道具；首轮按原窗口规则修正，不能将合法前缀判为坏载荷。
+        const int visible=raw==61?5:4;
+        if(selected>=visible)first->second=selected-visible+1;
+    }
     if (raw == 60) {
         // Init可压入首次说明111，栈顶已不是60；完成Init的本页仍须进入Start阶段。
         // 不能靠框架仅更新back()把已初始化却被遮住的60遗留为生命周期0。
@@ -326,8 +345,11 @@ bool commit_gift(State &s, std::uint64_t parent, int human) {
     s.human_equipment_choices[*gift] = choice;
     if (c.equipment_display) {
         s.equipment_attribute_display = *c.equipment_display;
-        if (!open(s, 68, human))
+        const auto display=open(s,68,human);
+        if (!display)
             return false;
+        // 原结果头保存实际变更槽及新装备，不由恢复后的当前装备猜测。
+        s.human_equipment_choices[*display]=choice;
     }
 
     if (!reward_page(s, human, c.reward))
@@ -400,6 +422,13 @@ bool commit_item(State &s, std::uint64_t parent, int human, int item) {
     auto &selection = s.human_page_selections.at(parent);
     if (selection >= static_cast<int>(list.size()))
         selection = 0;
+    // Steam非空目录在本次消费后即修窗；空目录沿既有维护归零策略，区别原保留旧游标。
+    auto &first=s.human_page_scroll.at(parent);
+    if(list.empty())first=0;
+    else {
+        if(first>selection)first=selection;else if(first+4<=selection)first=selection-3;
+        first=std::min(first,std::max(0,static_cast<int>(list.size())-4));
+    }
     // 原j()末尾同步首个同定义实例武器，即使道具不改变装备也执行同一收尾。
     for (const auto id : s.scene.world.world.ai.human_order) {
         const auto &actor = s.scene.world.world.ai.battle.actors.at(id);
@@ -674,6 +703,26 @@ inspect_startup_world_human_presentation(const State &s, std::uint64_t id) {
     // 无实际实例仍返回定义肖像；不得补一条满HP血条。原HP可以超过新上限。
     return view;
 }
+std::optional<bool> startup_world_human_recovery_gift(const State &s,int human) {
+    if(!s.rules||!startup_world_human_details(s,human))return {};
+    const ref::BattleActorRecord *live{};
+    for(const auto actor:s.scene.world.world.ai.human_order) {
+        const auto found=s.scene.world.world.ai.battle.actors.find(actor);
+        if(found==s.scene.world.world.ai.battle.actors.end()||!(found->second.id==actor)||
+           found->second.kind!=ref::ActorKind::human)return {};
+        if(found->second.definition==human){live=&found->second;break;}
+    }
+    if(!live)return false;
+    bool recovery{};
+    for(const auto &item:s.rules->items) {
+        const auto stock=s.items.find(item.identity);
+        if(stock==s.items.end()||stock->second.inventory<0)return {};
+        recovery=recovery||(stock->second.inventory>0&&item.recovery>0);
+    }
+    const auto growth=s.scene.world.world.ai.growth.find(human);
+    if(growth==s.scene.world.world.ai.growth.end()||growth->second.derived.combat[0]<=0||live->control.state<0)return {};
+    return recovery&&(live->control.state==7||live->hp.target<growth->second.derived.combat[0]/2);
+}
 bool valid_startup_world_human_detail_context(const State &s, std::uint64_t id) {
     const auto page = std::find_if(s.scripts.pages.begin(), s.scripts.pages.end(),
                                    [id](const auto &p) { return p.id == id; });
@@ -807,6 +856,7 @@ bool startup_world_human_page_ready(const State &s, std::uint64_t id) {
         !s.human_page_selections.count(id))
         return false;
     const int raw = p->legacy_page;
+    if((raw==61||raw==64)&&!inspect_startup_world_human_catalogue_cursor(s,id))return false;
     if (raw == 60 && !valid_startup_world_human_detail_context(s, id))
         return false;
     if ((raw == 61 || raw == 62) && !s.human_page_catalogs.count(id))
@@ -817,7 +867,7 @@ bool startup_world_human_page_ready(const State &s, std::uint64_t id) {
         if (catalog == s.equipment_page_catalogs.end() || phase < 0 || phase > (raw == 64 ? 4 : 3))
             return false;
     }
-    return !((raw == 65 || raw == 66 || raw == 69) && !s.human_equipment_choices.count(id)) &&
+    return !((raw == 65 || raw == 66 || raw == 68 || raw == 69) && !s.human_equipment_choices.count(id)) &&
            !(raw == 66 && (!s.human_gift_scores.count(id) || !s.human_gift_messages.count(id)));
 }
 bool initialize_startup_world_human_pages(State &s) {
@@ -845,6 +895,145 @@ bool initialize_startup_world_human_pages(State &s) {
     return true;
 }
 
+std::optional<StartupHumanCatalogueCursor> inspect_startup_world_human_catalogue_cursor(
+    const State &s,std::uint64_t id) {
+    const auto p=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[=](const auto &v){return v.id==id;});
+    const auto selection=s.human_page_selections.find(id),first=s.human_page_scroll.find(id),phase=s.page_phases.find(id),counter=s.page_counters.find(id);
+    if(!s.rules||p==s.scripts.pages.end()||p->kind!=ref::WorldScriptPageKind::raw_page||p->lifecycle<0||p->lifecycle>3||
+       (p->legacy_page!=61&&p->legacy_page!=64)||!s.human_pages_initialized.count(id)||!s.page_human_bindings.count(id)||
+       selection==s.human_page_selections.end()||first==s.human_page_scroll.end()||phase==s.page_phases.end()||
+       counter==s.page_counters.end()||counter->second<0||selection->second<0||first->second<0)return {};
+    if(!startup_world_human_details(s,s.page_human_bindings.find(id)->second))return {};
+    int count{},visible=p->legacy_page==61?5:4;
+    if(p->legacy_page==61) {
+        const auto list=s.human_page_catalogs.find(id);
+        if(list==s.human_page_catalogs.end()||list->second.empty()||list->second.size()>std::size_t(std::numeric_limits<int>::max())||phase->second<0||phase->second>1)return {};
+        for(const int job:list->second)
+            if(job<0||std::size_t(job)>=s.rules->jobs.size()||!s.scripts.professions.count(job))return {};
+        for(std::size_t job=0;job<s.rules->jobs.size();++job)
+            if(!s.scripts.professions.count(static_cast<int>(job)))return {};
+        count=static_cast<int>(list->second.size());
+    } else {
+        const auto lists=s.equipment_page_catalogs.find(id);
+        if(lists==s.equipment_page_catalogs.end()||phase->second<0||phase->second>4)return {};
+        const auto &list=lists->second[phase->second];if(list.size()>std::size_t(std::numeric_limits<int>::max()))return {};
+        for(const int item:list) {
+            if(phase->second<4) {if(!equipment(s,phase->second,item))return {};}
+            else if(!s.items.count(item)||std::none_of(s.rules->items.begin(),s.rules->items.end(),
+                [=](const auto &v){return v.identity==item;}))return {};
+        }
+        count=static_cast<int>(list.size());
+    }
+    if((count?selection->second>=count:selection->second!=0)||first->second>std::max(0,count-visible)||
+       (count&&(selection->second<first->second||selection->second-first->second>=visible)))return {};
+    return StartupHumanCatalogueCursor{selection->second,first->second,count,visible};
+}
+Error input_startup_world_human_catalogue_page(State &s,std::uint64_t id,const StartupHumanCatalogueInput &input) {
+    const auto *page=top(s);
+    if(!s.rules||s.scene.framework_paused||!page||page->id!=id||page->kind!=ref::WorldScriptPageKind::raw_page||
+       (page->legacy_page!=61&&page->legacy_page!=64))return Error::invalid_page;
+    auto next=s;next.scripts.executing_page=id;
+    const int raw=page->legacy_page;
+    if(!initialize(next,id,raw))return Error::missing_source;
+    if(next.human_page_answers.count(id))return Error::invalid_page;
+    const auto cursor=inspect_startup_world_human_catalogue_cursor(next,id);if(!cursor)return Error::missing_source;
+    auto &selected=next.human_page_selections.at(id);
+    auto &first=next.human_page_scroll.at(id);
+    auto &phase=next.page_phases.at(id);
+    if(input.scroll) {
+        if(input.scroll->value==std::numeric_limits<int>::max())return Error::invalid_page;
+        const auto proposed=input.scroll->absolute?std::int64_t(input.scroll->value):std::int64_t(first)+input.scroll->value;
+        const int moved=static_cast<int>(std::clamp(proposed,std::int64_t(0),std::int64_t(std::max(0,cursor->count-cursor->visible))));
+        selected+=moved-first;first=moved;
+    }
+    if(input.selection) {
+        if(*input.selection<0||*input.selection>=cursor->count)return Error::invalid_page;
+        selected=*input.selection;
+    }
+    int count=cursor->count;
+    // 64先切最终页签，净变化才归零；上下随后使用新页签目录。
+    if(raw==64) {
+        const int old_phase=phase;
+        if(input.left)phase=(phase+4)%5;
+        if(input.right)phase=(phase+1)%5;
+        if(phase!=old_phase) {
+            selected=0;first=0;
+            const auto switched=inspect_startup_world_human_catalogue_cursor(next,id);
+            if(!switched)return Error::missing_source;
+            count=switched->count;
+        }
+    }
+    if(count) {
+        if(input.up)selected=selected==0?count-1:selected-1;
+        if(input.down)selected=selected==count-1?0:selected+1;
+    } // 原空64目录跳过上下；仍允许切页、返回，不造非法取模。
+    // 原同轮上下先合成再修窗，不能逐方向修窗使抵消输入改变旧scroll。
+    if(selected<first)first=selected;else if(selected-first>=cursor->visible)first=selected-cursor->visible+1;
+    if(raw==61) {
+        if(input.left)phase=(phase+1)%2;
+        if(input.right)phase=(phase+1)%2;
+    }
+    next.scripts.executing_page.reset();
+    if(input.confirm||input.inspect_equipment||input.cancel) {
+        const auto action=input.confirm?StartupHumanPageAction::confirm:input.cancel?
+            StartupHumanPageAction::cancel:StartupHumanPageAction::inspect_equipment;
+        const auto error=act_startup_world_human_page(next,id,action);
+        if(error!=Error::none)return error;
+    }
+    s=std::move(next);return Error::none;
+}
+Error input_startup_world_human_detail_page(State &s,std::uint64_t id,const StartupHumanCatalogueInput &input) {
+    const auto *page=top(s);
+    if(!s.rules||s.scene.framework_paused||!page||page->id!=id||page->kind!=ref::WorldScriptPageKind::raw_page||
+       page->legacy_page!=60||input.left||input.right||input.inspect_equipment)return Error::invalid_page;
+    if(!startup_world_human_page_ready(s,id))return Error::missing_source;
+    auto next=s;
+    auto &phase=next.page_phases.find(id)->second;
+    auto &chosen=next.human_page_selections.find(id)->second;
+    const int old_phase=phase;
+    if(input.scroll) {
+        if(input.scroll->value==std::numeric_limits<int>::max())return Error::invalid_page;
+        const auto requested=input.scroll->absolute?std::int64_t(input.scroll->value):std::int64_t(phase)+input.scroll->value;
+        const int moved=static_cast<int>(std::clamp(requested,std::int64_t(0),std::int64_t(3)));
+        // OnTouchVScrollBar先同步select；raw60的scroll与page轮末同值，无需第二份持久字段。
+        chosen=std::clamp(chosen+moved-phase,0,3);phase=moved;
+    }
+    if(input.selection) {
+        if(old_phase!=2||*input.selection<0||*input.selection>3)return Error::invalid_page;
+        chosen=*input.selection;
+    }
+    // Steam1031E06F–E0AE：只在旧页1/3进入2时重定位；0直跳2保留触摸处理后的选择。
+    if(phase==2&&old_phase!=2) {
+        if(old_phase==1)chosen=0;
+        else if(old_phase==3)chosen=3;
+    }
+    const int navigation_phase=phase;
+    if(navigation_phase==2) {
+        // 两个repeat共享本轮已进入的页2分支，不能逐动作重新分派到中途改变的page。
+        if(input.up){if(chosen>0)--chosen;else phase=1;}
+        if(input.down){if(chosen<3)++chosen;else phase=3;}
+    } else {
+        if(input.up)phase=(phase+3)%4;
+        if(input.down)phase=(phase+1)%4;
+        if(phase==2&&phase!=navigation_phase) {
+            if(navigation_phase==1)chosen=0;
+            else if(navigation_phase==3)chosen=3;
+        }
+    }
+    next.scripts.executing_page.reset();
+    if(input.confirm) {
+        // 旧act(confirm)是维护关闭入口，保留；此桥明确使用原最终页的赠礼/转职/no-op路由。
+        if(phase<=2) {
+            const auto error=act_startup_world_human_page(next,id,phase==1?
+                StartupHumanPageAction::professions:StartupHumanPageAction::gifts);
+            if(error!=Error::none)return error;
+        }
+    } else if(input.cancel) {
+        const auto error=act_startup_world_human_page(next,id,StartupHumanPageAction::cancel);
+        if(error!=Error::none)return error;
+    }
+    s=std::move(next);return Error::none;
+}
 Error act_startup_world_human_page(State &s, std::uint64_t id, StartupHumanPageAction action,
                                    int selection) {
     using A = StartupHumanPageAction;
@@ -877,7 +1066,10 @@ Error act_startup_world_human_page(State &s, std::uint64_t id, StartupHumanPageA
             next.scripts.professions.at(job).pending_notice = false;
     };
     if (raw == 60) {
-        if (action == A::track) {
+        if(action==A::scroll_relative||action==A::scroll_absolute) {
+            StartupHumanCatalogueInput input;input.scroll=StartupHumanCatalogueInput::Scroll{action==A::scroll_absolute,selection};
+            return input_startup_world_human_detail_page(s,id,input);
+        } else if (action == A::track) {
             // Steam ProcChaseCommandFromInfoWindow按humans_原序取首个同定义W。
             // 没有W是业务提示137，不关闭详情，也不移动人物或镜头。
             const auto &ai = next.scene.world.world.ai;
@@ -907,7 +1099,10 @@ Error act_startup_world_human_page(State &s, std::uint64_t id, StartupHumanPageA
         } else if (action == A::view_tab) {
             if (selection < 0 || selection > 3)
                 return Error::invalid_page;
-            if(selection==2&&phase!=2)chosen=phase==3?3:0;
+            if(selection==2&&phase!=2) {
+                if(phase==1)chosen=0;
+                else if(phase==3)chosen=3;
+            }
             phase = selection;
         } else if(action==A::select) {
             if(phase!=2||selection<0||selection>3)return Error::invalid_page;
@@ -929,10 +1124,28 @@ Error act_startup_world_human_page(State &s, std::uint64_t id, StartupHumanPageA
                 !open(next, 61, human))
                 return Error::script_failed;
         } else if (action == A::gifts) {
+            std::optional<int> recovery_selection;
+            if(phase==0) {
+                const auto recovery=startup_world_human_recovery_gift(next,human);
+                if(!recovery)return Error::missing_source;
+                if(*recovery) {
+                    int prefix{};
+                    for(const auto &item:next.rules->items) {
+                        if(item.recovery>0)break;
+                        const auto stock=next.items.find(item.identity);
+                        if(stock==next.items.end()||stock->second.inventory<0)return Error::missing_source;
+                        if(stock->second.inventory>0)++prefix;
+                    }
+                    recovery_selection=prefix;
+                }
+            }
             const auto child=open(next,64,human);
             if(!child)
                 return Error::script_failed;
             if(phase==2)next.page_phases[*child]=chosen;
+            else if(recovery_selection) {
+                next.page_phases[*child]=4;next.human_page_selections[*child]=*recovery_selection;
+            }
         } else if (action == A::inspect_equipment) {
             if (selection < 0 || selection > 3)
                 return Error::invalid_page;
@@ -946,7 +1159,13 @@ Error act_startup_world_human_page(State &s, std::uint64_t id, StartupHumanPageA
         const auto &list = next.human_page_catalogs.at(id);
         if (chosen < 0 || chosen >= static_cast<int>(list.size()))
             return Error::missing_source;
-        if (action == A::previous || action == A::next || action == A::select) {
+        if(raw==61&&action==A::view_tab) {
+            if(selection<0||selection>1)return Error::invalid_page;
+            phase=selection; // 两统计页共享目录，原选择／scroll保持。
+        } else if(raw==61&&(action==A::scroll_relative||action==A::scroll_absolute)) {
+            StartupHumanCatalogueInput input;input.scroll=StartupHumanCatalogueInput::Scroll{action==A::scroll_absolute,selection};
+            return input_startup_world_human_catalogue_page(s,id,input);
+        } else if (action == A::previous || action == A::next || action == A::select) {
             const int size = static_cast<int>(list.size());
             const int target = action == A::select
                                    ? selection
@@ -954,6 +1173,10 @@ Error act_startup_world_human_page(State &s, std::uint64_t id, StartupHumanPageA
             if (target < 0 || target >= size)
                 return Error::invalid_page;
             chosen = target;
+            if(raw==61) {
+                auto &first=next.human_page_scroll.at(id);
+                if(first>chosen)first=chosen;else if(first+5<=chosen)first=chosen-4;
+            }
             if (raw == 62) {
                 next.page_job_bindings[id] = list[chosen];
                 const auto preview = ref::preview_human_profession_change(
@@ -1030,8 +1253,10 @@ Error act_startup_world_human_page(State &s, std::uint64_t id, StartupHumanPageA
         if (action == A::equipment_slot && raw == 64) {
             if (selection < 0 || selection > 4)
                 return Error::invalid_page;
-            phase = selection;
-            chosen = 0;
+            if(phase!=selection) {phase = selection;chosen = 0;next.human_page_scroll.at(id)=0;}
+        } else if(raw==64&&(action==A::scroll_relative||action==A::scroll_absolute)) {
+            StartupHumanCatalogueInput input;input.scroll=StartupHumanCatalogueInput::Scroll{action==A::scroll_absolute,selection};
+            return input_startup_world_human_catalogue_page(s,id,input);
         } else if (action == A::previous || action == A::next || action == A::select) {
             if (list.empty())
                 return Error::invalid_page;
@@ -1042,6 +1267,10 @@ Error act_startup_world_human_page(State &s, std::uint64_t id, StartupHumanPageA
             if (target < 0 || target >= size)
                 return Error::invalid_page;
             chosen = target;
+            if(raw==64) {
+                auto &first=next.human_page_scroll.at(id);
+                if(first>chosen)first=chosen;else if(first+4<=chosen)first=chosen-3;
+            }
         } else if (action == A::cancel || (action == A::confirm && raw == 73)) {
             if (raw == 64 && !clear_startup_world_item_notices(next))
                 return Error::missing_source;
@@ -1180,7 +1409,7 @@ StartupWorldResourceUsage startup_world_resource_usage(const State &s) {
                       s.menu_page_data.size() + s.menu_page_positions.size() +
                       s.page_phases.size() + s.page_human_bindings.size() +
                       s.human_pages_initialized.size() + s.human_page_catalogs.size() +
-                      s.equipment_page_catalogs.size() + s.human_page_selections.size() +
+                      s.equipment_page_catalogs.size() + s.human_page_selections.size() +s.human_page_scroll.size()+
                       s.page_job_bindings.size() + s.human_page_parents.size() +
                       s.human_detail_contexts.size() +
                       s.human_page_answers.size() + s.human_equipment_choices.size() +

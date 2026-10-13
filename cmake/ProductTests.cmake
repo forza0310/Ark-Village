@@ -32,7 +32,7 @@ ark_test_executable(ark_world_session_tests
     SOURCES tests/app/world_session_test.cpp tests/app/world_task_commands_test.cpp
         tests/app/world_building_commands_test.cpp tests/app/world_save_commands_test.cpp
         tests/app/world_management_commands_test.cpp
-    LIBRARIES ark_world_session)
+    LIBRARIES ark_world_session ark_world_hash)
 ark_test_case(world_session ark_world_session_tests LABELS runtime TIMEOUT 30)
 ark_test_executable(ark_world_save_tests SOURCES tests/app/world_save_test.cpp
     tests/app/world_save_restore_test.cpp
@@ -163,7 +163,8 @@ if(ARK_BUILD_DESKTOP)
             src/desktop/ui/facilities/world_facility_catalog.cpp
             src/desktop/ui/village/world_magic_pot.cpp
             src/desktop/ui/actors/world_human.cpp src/desktop/ui/actors/world_human_detail.cpp
-            src/desktop/ui/actors/world_human_skin.cpp src/desktop/ui/village/world_tax.cpp
+            src/desktop/ui/actors/world_human_skin.cpp src/desktop/ui/actors/world_human_input.cpp
+            src/desktop/ui/village/world_tax.cpp
             src/desktop/ui/information/world_information.cpp
             src/desktop/ui/village/world_award.cpp src/desktop/ui/tasks/world_crew_summary.cpp src/desktop/ui/common/world_reports.cpp
             src/desktop/ui/tasks/world_tasks.cpp src/desktop/ui/system/world_menu.cpp

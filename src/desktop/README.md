@@ -1,5 +1,7 @@
 # desktop
 
+`ui/actors/world_human`按只读投影、输入、布局和源计划执行分文件。61五行/两统计页、64四行/五分类及68/69冻结结果复用同一执行器；测宽来自实际字体，列表游标与输入次序由模拟Owner保持。`world_human_input`只保留带语义标签的已画热区、普通道具标记和短寿命拖条捕获，通过Session一次提交整帧输入；pending、换代、键盘及过期几何清理/拒绝相应手势。初始化载荷早于可绘生命周期时等待真实框架更新，不由绘制补初始化或推进时钟。原OS动态与未接共享动画分别记，阶段证据见[B1](../../docs/stages/B1-playable-prototype.md#research-4c7a490-human-catalogues)。
+
 `ui/facilities/world_facility_detail`从同一不可变Owner与实际字体测宽准备普通raw74两页计划，在已批准224×172面板中按源顺序执行窗框、图文、数字、Mapchip2裁剪和滚动条。键盘/滚轮/行选择复用正式光标消费者；OS滚动条拖动与原Surface映射、全局手形动画另待接，不用绘制帧推进。特殊设施和定义预览沿各自既有模板。
 
 `platform/crash_report`管理Windows进程文本诊断及标准流/raylib日志，`platform/world_diagnostics`只读已发布快照，每秒保存摘要及64条回执，首次失败立即报告。它不改Owner、不写玩家档；调用栈种类、限额及测试方式见[故障诊断](../../docs/CONTRIBUTING.md#windows故障诊断)。原生异常的栈来自故障线程，catch/terminate/桌面观察栈单独标记。文件写入失败不能阻止游戏启动或推进。

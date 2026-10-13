@@ -5,7 +5,8 @@
 
 namespace ark::desktop::ui {
 bool world_human_source_child(const WorldHumanView &v) {
-    return v.raw == 62 || v.raw == 63 || v.raw == 66 || v.raw == 73 ||
+    return v.raw == 61 || v.raw == 62 || v.raw == 63 || v.raw == 64 || v.raw == 66 ||
+           v.raw == 68 || v.raw == 69 || v.raw == 73 ||
            (v.raw == 65 && (!v.choice || v.choice->slot < 4));
 }
 Vector2 world_human_skin_origin(const WorldHumanLayout &l) {
@@ -14,11 +15,14 @@ Vector2 world_human_skin_origin(const WorldHumanLayout &l) {
             l.panel.y - (131 - int(l.panel.height) / 2)};
 }
 WorldHumanLayout world_human_subwindow_layout(const WorldHumanLayout &base, int raw) {
-    if (raw != 62 && raw != 63 && raw != 65 && raw != 66 && raw != 73)
+    if (raw != 61 && raw != 62 && raw != 63 && raw != 64 && raw != 65 && raw != 66 &&
+        raw != 68 && raw != 69 && raw != 73)
         throw std::invalid_argument("Unsupported human source child");
     auto out = base;
     const float width = raw == 73 ? 170.F : raw == 63 || raw == 66 ? 222.F : 220.F;
-    const float height = raw == 73 ? 125.F : raw == 62 ? 168.F : raw == 65 ? 136.F : 170.F;
+    const float height = raw == 73 ? 125.F : raw == 64 ? 169.F
+                        : raw == 61 || raw == 62 || raw == 68 || raw == 69 ? 168.F
+                        : raw == 65 ? 136.F : 170.F;
     const auto center =
         Vector2{base.panel.x + base.panel.width / 2, base.panel.y + base.panel.height / 2};
     out.panel = {center.x - width / 2, center.y - height / 2, width, height};
@@ -26,7 +30,11 @@ WorldHumanLayout world_human_subwindow_layout(const WorldHumanLayout &base, int 
                   18};
     out.confirm =
         raw == 73 ? Rectangle{out.panel.x + width - 50, out.cancel.y, 50, 18} : Rectangle{};
-    if (raw == 63 || raw == 66) {
+    if (raw == 61 || raw == 64) {
+        out.confirm = {out.panel.x, out.cancel.y, 50, 18};
+        out.inspect = {out.panel.x + 55, out.cancel.y, 50, 18};
+    }
+    if (raw == 63 || raw == 66 || raw == 68 || raw == 69) {
         out.confirm = out.cancel; // Existing PC confirmation, separate from source Touch2.
         out.cancel = {};
     }
@@ -86,12 +94,16 @@ void draw_world_human_subwindow(const WorldHumanView &v, const WorldHumanLayout 
             throw std::runtime_error("Human child needs its measured source plan");
         draw_world_human_skin(*v.detail_page_skin, world_human_skin_origin(l), s);
     } else
-        s.window(l.panel, v.raw == 73 ? "装备信息" : "赠送礼物");
+        s.window(l.panel, v.title);
     if (v.can_cancel)
         s.button(l.cancel, "返回", enabled && v.initialized);
     if (v.raw == 73)
         s.button(l.confirm, "返回", enabled && v.initialized);
-    if (v.raw == 63 || v.raw == 66)
+    if (v.raw == 61 || v.raw == 64)
+        s.button(l.confirm, "确定", enabled && v.initialized && v.can_confirm);
+    if (v.raw == 64 && v.phase != 4)
+        s.choice(l.inspect, "情报", enabled && v.initialized && !v.rows.empty());
+    if (v.raw == 63 || v.raw == 66 || v.raw == 68 || v.raw == 69)
         s.button(l.confirm, "确定", enabled && v.initialized && v.can_confirm);
     if (!feedback.empty()) {
         const float size =

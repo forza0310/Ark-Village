@@ -17,6 +17,8 @@ struct WorldSystemState {
     std::optional<WorldClearPage> clear;
 };
 std::filesystem::path world_system_path(const std::filesystem::path &directory);
+// Product system2 semantic identity; UI text and maintenance snapshots do not version it.
+const char *world_system_data_identity();
 simulation::StartupSystemLoadResult read_world_system(const std::filesystem::path &directory);
 std::string write_world_system(const std::filesystem::path &directory,
                                const simulation::StartupSystemRecords &records);

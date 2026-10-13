@@ -28,6 +28,7 @@ enum class StartupFacilityCatalogAction;
 enum class StartupMagicPotEntry;
 enum class StartupMagicPotAction;
 struct StartupInformationInput;
+struct StartupHumanCatalogueInput;
 struct StartupWorldMenuInput;
 struct StartupManualInput;
 struct StartupManualPageData {
@@ -146,6 +147,7 @@ struct StartupWorldRuntimeState {
     std::map<std::uint64_t, std::array<std::vector<int>, 5>>
         equipment_page_catalogs; // 64四装备及普通道具Z。
     std::map<std::uint64_t, int> human_page_selections;
+    std::map<std::uint64_t, int> human_page_scroll; // 61五行／64四行，原scroll_；子页覆盖保持，Finish退休。
     std::map<std::uint64_t, int> page_job_bindings;                      // 62/63原p。
     std::map<std::uint64_t, std::uint64_t> human_page_parents;           // 子页65/62原bW引用。
     std::map<std::uint64_t, int> human_page_answers;                     // 父61/64恢复时才消费K。
@@ -451,6 +453,8 @@ class StartupWorldRuntimeSession {
     StartupWorldRuntimeError open_human_page(int human);
     StartupWorldRuntimeError act_human_page(std::uint64_t page, StartupHumanPageAction action,
                                             int selection = 0);
+    StartupWorldRuntimeError input_human_catalogue_page(std::uint64_t page,const StartupHumanCatalogueInput &input);
+    StartupWorldRuntimeError input_human_detail_page(std::uint64_t page,const StartupHumanCatalogueInput &input);
     StartupWorldRuntimeError act_tax_page(std::uint64_t page, StartupWorldTaxAction action,
                                           int selection = 0);
     // 表现输出一次领取；无音频适配的验收明确丢弃，不作为世界耐久历史。

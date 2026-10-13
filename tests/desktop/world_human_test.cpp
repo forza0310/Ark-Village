@@ -502,6 +502,30 @@ void world_human() {
         up.up = true;
         check(!ui::world_human_input(child, layout, up, false, painted, {240, 256}),
               "Equipment child does not inherit unsupported vertical list navigation");
+        child.raw = painted.raw = 62;
+        pointer.click = middle(*painted.next);
+        check(ui::world_human_input(child, layout, pointer, false, painted, {240, 256})->action ==
+                  Action::next,
+              "Profession preview title arrow cycles the source candidate catalogue");
+        painted.primary.reset();
+        pointer.click = middle({90, 180, 60, 16});
+        check(!ui::world_human_input(child, layout, pointer, false, painted, {240, 256}),
+              "Current job or insufficient-points label is not a painted change button");
+        for (const int raw : {63, 66}) {
+            child.raw = painted.raw = raw;
+            child.can_cancel = false;
+            child.can_confirm = raw == 66;
+            painted.primary = Rectangle{180, 208, 50, 18};
+            pointer.click = middle(*painted.primary);
+            check(bool(ui::world_human_input(child, layout, pointer, false, painted, {240, 256})) ==
+                      child.can_confirm,
+                  "Result footer obeys current Owner confirmation/fast-forward eligibility");
+            child.can_confirm = true;
+            check(
+                ui::world_human_input(child, layout, pointer, false, painted, {240, 256})->action ==
+                    Action::confirm,
+                "Result footer confirms through its actual painted area once eligible");
+        }
     }
     for (const auto extent :
          {desktop::Extent{240, 256}, desktop::Extent{384, 256}, desktop::Extent{1080, 720}}) {

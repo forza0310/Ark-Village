@@ -25,6 +25,13 @@ class FixtureWindow {
     FixtureWindow(const FixtureWindow &) = delete;
     FixtureWindow &operator=(const FixtureWindow &) = delete;
 };
+void capture(const std::filesystem::path &file) {
+    auto image = LoadImageFromScreen();
+    const bool saved = image.data && ExportImage(image, file.string().c_str());
+    UnloadImage(image);
+    if (!saved || !std::filesystem::is_regular_file(file) || std::filesystem::file_size(file) == 0)
+        throw std::runtime_error("Human fixture failed to write its screenshot");
+}
 } // namespace
 
 void world_human_render_fixture() {
@@ -81,12 +88,7 @@ void world_human_render_fixture() {
             EndDrawing();
         }
         const auto file = output / ("synthetic-raw70-phase" + std::to_string(phase) + ".png");
-        auto capture = LoadImageFromScreen();
-        const bool saved = capture.data && ExportImage(capture, file.string().c_str());
-        UnloadImage(capture);
-        if (!saved || !std::filesystem::is_regular_file(file) ||
-            std::filesystem::file_size(file) == 0)
-            throw std::runtime_error("Synthetic UI fixture failed to write its screenshot");
+        capture(file);
         if (!same_world_clock(state, untouched) ||
             state.scene.world.world.ai.accounting.funds() != cash ||
             state.scene.random.draws() != draws || state.page_counters.at(page.id) != 40 ||
@@ -197,12 +199,7 @@ void world_human_render_fixture() {
                                                      : "long-equipment";
             const auto file = output / ("synthetic-raw60-" + std::to_string(extent.width) + "-" +
                                         suffix + ".png");
-            auto capture = LoadImageFromScreen();
-            const bool saved = capture.data && ExportImage(capture, file.string().c_str());
-            UnloadImage(capture);
-            if (!saved || !std::filesystem::is_regular_file(file) ||
-                std::filesystem::file_size(file) == 0)
-                throw std::runtime_error("Synthetic raw60 fixture failed to write its screenshot");
+            capture(file);
             if (!same_world_clock(owner, before) || owner.page_counters != before.page_counters ||
                 owner.scene.random.draws() != before.scene.random.draws() ||
                 owner.scene.world.world.ai.accounting.funds() !=
@@ -296,12 +293,7 @@ void world_human_render_fixture() {
             const auto file =
                 output / ("synthetic-raw" + std::to_string(child.legacy_page) + "-" +
                           std::to_string(extent.width) + "-" + samples[sample] + ".png");
-            auto capture = LoadImageFromScreen();
-            const bool saved = capture.data && ExportImage(capture, file.string().c_str());
-            UnloadImage(capture);
-            if (!saved || !std::filesystem::is_regular_file(file) ||
-                std::filesystem::file_size(file) == 0)
-                throw std::runtime_error("Child fixture failed to write its screenshot");
+            capture(file);
             if (!same_world_clock(owner, before) || owner.page_counters != before.page_counters ||
                 owner.scene.random.draws() != before.scene.random.draws() ||
                 owner.scene.world.world.ai.accounting.funds() !=
@@ -313,6 +305,128 @@ void world_human_render_fixture() {
             std::cout << "UI fixture / synthetic raw=" << child.legacy_page
                       << " sample=" << samples[sample] << " frames=8 screenshot=" << file.string()
                       << '\n';
+        }
+    }
+    struct ResultSample {
+        int raw, counter, condition;
+        const char *name;
+    };
+    const ResultSample results[]{{62, 0, 0, "preview"},
+                                 {62, 8, 1, "insufficient"},
+                                 {62, 0, 2, "current"},
+                                 {62, 0, 3, "long-job"},
+                                 {63, 40, 0, "curtain"},
+                                 {63, 55, 0, "changed"},
+                                 {63, 197, 0, "reward"},
+                                 {66, 13, 0, "throw"},
+                                 {66, 25, 0, "receive"},
+                                 {66, 45, 0, "open"},
+                                 {66, 75, 0, "evaluation"},
+                                 {66, 162, 0, "reward"},
+                                 {66, 80, 1, "recovery-hp"},
+                                 {66, 90, 1, "recovery-effect"},
+                                 {66, 115, 1, "recovery-message"},
+                                 {66, 162, 2, "magic-message"}};
+    for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{720, 600}}) {
+        SetWindowSize(extent.width, extent.height);
+        for (const auto &sample : results) {
+            auto owner = initial_world();
+            auto catalogue = *owner.rules;
+            owner.rules = &catalogue;
+            auto &ai = owner.scene.world.world.ai;
+            ai.growth.at(human).definition.current_profession = 0;
+            ai.growth.at(human).definition.profession_levels[0] = 2;
+            ai.growth.at(human).definition.profession_levels[1] = 5;
+            owner.village_points = sample.raw == 62 && sample.condition == 1 ? 0 : 1000;
+            owner.reward_display = {{{999, 9}, {999, 10}, {5, 1}}};
+            owner.human_attribute_display = {{{100, 100, 100, 100, 100, 100},
+                                              {99, 100, 101, 100, 100, 100},
+                                              {-1, 0, 1, 0, 0, 0}}};
+            auto parent = page;
+            parent.legacy_page = sample.raw == 66 ? 64 : 61;
+            parent.lifecycle = 3;
+            owner.scripts.pages.push_back(parent);
+            owner.page_human_bindings[parent.id] = human;
+            owner.page_phases[parent.id] = owner.page_counters[parent.id] = 0;
+            owner.human_page_selections[parent.id] = 0;
+            owner.human_pages_initialized.insert(parent.id);
+            owner.human_page_catalogs[parent.id] = {0, 1};
+            auto detail = page;
+            detail.id = 902;
+            detail.legacy_page = sample.raw;
+            owner.scripts.pages.push_back(detail);
+            owner.page_human_bindings[detail.id] = human;
+            owner.human_pages_initialized.insert(detail.id);
+            owner.page_phases[detail.id] = sample.raw == 66 && sample.counter >= 135 ? 1 : 0;
+            owner.page_counters[detail.id] = sample.counter;
+            owner.human_page_selections[detail.id] =
+                sample.raw == 62 && sample.condition != 2 ? 1 : 0;
+            owner.human_page_catalogs[detail.id] = {0, 1};
+            owner.human_page_parents[detail.id] = parent.id;
+            owner.page_job_bindings[detail.id] = sample.raw == 62 && sample.condition == 2 ? 0 : 1;
+            owner.human_gift_messages[detail.id] = "谢谢";
+            owner.human_gift_scores[detail.id] = 90;
+            owner.human_equipment_choices[detail.id] = {0, 1};
+            owner.shop_humans.at(human).equipment[0] = 1;
+            if (sample.raw == 63 && sample.counter >= 55)
+                ai.growth.at(human).definition.current_profession = 1;
+            if (sample.raw == 62 && sample.condition == 3) {
+                catalogue.jobs.at(1).name = "名称较长的测试职业";
+                if (!text.include_text(catalogue.jobs.at(1).name))
+                    throw std::runtime_error("Long job font glyph missing");
+            }
+            if (sample.raw == 66 && sample.condition != 0) {
+                const auto item = std::find_if(
+                    catalogue.items.begin(), catalogue.items.end(), [&](const auto &d) {
+                        return sample.condition == 1 ? d.recovery > 0 : d.effect == 9;
+                    });
+                if (item == catalogue.items.end())
+                    throw std::runtime_error("Result needs a published recovery/magic item");
+                owner.human_equipment_choices[detail.id] = {4, item->identity};
+                if (sample.condition == 1) {
+                    rules::BattleActorRecord actor;
+                    actor.id = {900};
+                    actor.kind = rules::ActorKind::human;
+                    actor.definition = human;
+                    actor.hp.displayed = 50;
+                    actor.hp.target = 70;
+                    actor.capacity = 100;
+                    ai.battle.actors.emplace(actor.id, actor);
+                    ai.human_order = {actor.id};
+                    ai.growth.at(human).derived.combat[0] = 100;
+                }
+            }
+            const auto before = owner;
+            const auto frame = ui::world_human_layout(extent);
+            auto view = ui::world_human_view(owner, detail);
+            ui::prepare_world_human_detail(view, owner, skin);
+            const auto controls = ui::world_human_painted_controls(view, frame, extent, skin);
+            if (!view.detail_page_skin || !controls ||
+                (sample.raw == 62 &&
+                 bool(controls->primary) != (sample.condition != 1 && sample.condition != 2)))
+                throw std::runtime_error("Result skin lost its change/confirmation controls");
+            for (int draw = 0; draw < 8; ++draw) {
+                if (WindowShouldClose())
+                    throw std::runtime_error("Result fixture closed before capture");
+                BeginDrawing();
+                ClearBackground({145, 211, 247, 255});
+                DrawText("SYNTHETIC result UI", 4, 4, 12, BLACK);
+                ui::draw_world_human(view, frame, skin, true);
+                text.flush(1, {});
+                EndDrawing();
+            }
+            const auto file = output / ("synthetic-raw" + std::to_string(sample.raw) + "-" +
+                                        std::to_string(extent.width) + "-" + sample.name + ".png");
+            capture(file);
+            if (!same_world_clock(owner, before) || owner.page_counters != before.page_counters ||
+                owner.scene.random.draws() != before.scene.random.draws() ||
+                owner.scene.world.world.ai.accounting.funds() !=
+                    before.scene.world.world.ai.accounting.funds() ||
+                owner.reward_display != before.reward_display ||
+                owner.shop_humans.at(human).equipment != before.shop_humans.at(human).equipment)
+                throw std::runtime_error("Result drawing changed rewards, equipment or clock");
+            std::cout << "UI fixture / synthetic raw=" << sample.raw << " sample=" << sample.name
+                      << " frames=8 screenshot=" << file.string() << '\n';
         }
     }
 }

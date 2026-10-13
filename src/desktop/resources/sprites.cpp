@@ -13,8 +13,8 @@ namespace {
 // Explicit published Steam replacements. A missing replacement is an asset error,
 // not permission to silently fall back to the APK image with the same index.
 bool steam_common_override(int image) {
-    return image == 31 || image == 37 || image == 84 || image == 85 || image == 88 || image == 103 ||
-           image == 105 || image == 109 || image == 128 || image == 151;
+    return image == 31 || image == 37 || image == 84 || image == 85 || image == 88 ||
+           image == 103 || image == 105 || image == 109 || image == 128 || image == 151;
 }
 } // namespace
 std::optional<SpriteBlit> clip_sprite_blit(SpriteBlit blit, Rectangle clip) {
@@ -88,15 +88,19 @@ void Sprites::draw(const std::string &sprite, int frame, Vector2 anchor, Color t
     const char *group = binding == Binding::farmer || binding == Binding::human ? "human"
                         : binding == Binding::monster                           ? "monster"
                         : binding == Binding::weapon                            ? "weapon"
+                        : binding == Binding::effect                            ? "effect"
                         : binding == Binding::common2                           ? "common2"
                         : binding == Binding::secretary || binding == Binding::common ||
                                 binding == Binding::steam_common
                             ? "common"
                             : "image";
+    if (binding == Binding::effect && !actor_images_.count(group))
+        actor_images_.emplace(group, image_index(root_, group));
     // Steam status SEB17 has its own crop; same filename does not imply APK geometry.
-    const auto relative = std::filesystem::path(
-                              binding == Binding::steam_common && sprite == "menuRT00.seb"
-                                  ? "steam_common" : group) / sprite;
+    const auto relative =
+        std::filesystem::path(
+            binding == Binding::steam_common && sprite == "menuRT00.seb" ? "steam_common" : group) /
+        sprite;
     const auto &sprite_data = definition(relative);
     if (binding == Binding::map) {
         frame = map_frame_index(sprite, sprite_data, frame);
@@ -130,7 +134,9 @@ void Sprites::draw(const std::string &sprite, int frame, Vector2 anchor, Color t
                 : binding == Binding::common || binding == Binding::steam_common
                     ? root_ / group / common_images_.at(p.image_index)
                 : binding == Binding::common2 ? root_ / group / common2_images_.at(p.image_index)
-                                              : root_ / "image" / images_.at(p.image_index);
+                : binding == Binding::effect
+                    ? root_ / group / actor_images_.at(group).at(p.image_index)
+                    : root_ / "image" / images_.at(p.image_index);
             const auto &image = texture(path);
             validate(p, image.width, image.height);
             SpriteBlit blit{{static_cast<float>(p.source_x), static_cast<float>(p.source_y),
@@ -356,6 +362,7 @@ void Sprites::image(const std::string &name, Rectangle source, Rectangle destina
                         : binding == Binding::steam_title  ? "steam_title"
                         : binding == Binding::steam_common ? "steam_common"
                         : binding == Binding::event        ? "event"
+                        : binding == Binding::effect       ? "effect"
                         : binding == Binding::map          ? "image"
                         : binding == Binding::weapon       ? "weapon"
                                                            : "common";

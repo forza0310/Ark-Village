@@ -49,6 +49,12 @@ std::string label(const sim::SteamHumanOverviewText &p, bool recovery) {
         return "赠礼更换装备";
     case Role::gift_accept:
         return "赠送礼物";
+    case Role::profession_current:
+        return "当前职业";
+    case Role::profession_insufficient:
+        return "村子点数不足";
+    case Role::gift_result_suffix:
+        return "作为礼物赠送";
     default:
         throw std::invalid_argument("Human skin text has no bound value");
     }
@@ -85,9 +91,11 @@ class HumanSkinDraw {
         const auto resource = sim::steam_human_resource(p.asset);
         if (!resource)
             throw std::invalid_argument("Missing human skin resource");
-        const auto group = std::string(resource->published_image).rfind("original/", 0) == 0
-                               ? Sprites::Binding::common
-                               : Sprites::Binding::steam_common;
+        const std::string source = resource->published_image;
+        const auto group = source.rfind("original/event/", 0) == 0    ? Sprites::Binding::event
+                           : source.rfind("original/effect/", 0) == 0 ? Sprites::Binding::effect
+                           : source.rfind("original/", 0) == 0        ? Sprites::Binding::common
+                                                               : Sprites::Binding::steam_common;
         image(resource->published_image, resource->published_sprite, p.position, p.frame, p.crop,
               group);
     }
@@ -129,6 +137,24 @@ class HumanSkinDraw {
         skin_.sprites.actor(false, b.sprite, b.image, b.frame, anchor);
         parts(p.after_portrait);
     }
+    void portrait(const sim::SteamHumanPortrait &p) const {
+        // Source clip belongs to this portrait alone. Keep logical coordinates through
+        // the normal blit helper so canvas/DPI applies once without a nested OS scissor.
+        std::optional<Rectangle> clip;
+        if (p.clip) {
+            const auto &r = *p.clip;
+            clip = Rectangle{origin_.x + r[0], origin_.y + r[1], float(r[2]), float(r[3])};
+        }
+        const auto anchor = point(p.position);
+        if (p.actor.weapon) {
+            const auto &w = *p.actor.weapon;
+            skin_.sprites.indexed_sprite(Sprites::Binding::weapon, w.sprite, w.frame, w.layer,
+                                         w.image, {anchor.x + w.offset[0], anchor.y + w.offset[1]},
+                                         1, clip);
+        }
+        const auto &body = p.actor.body;
+        skin_.sprites.actor(false, body.sprite, body.image, body.frame, anchor, 1, clip);
+    }
     void frame(const sim::SteamStartupFrameDraw &p) const {
         if (const auto *r = std::get_if<sim::StartupSkinRect>(&p))
             rectangle(*r);
@@ -154,14 +180,21 @@ class HumanSkinDraw {
         const auto &r = p.rectangle;
         float size = p.font_size ? float(p.font_size) : 12.F;
         // Desktop Chinese typography fits the complete text into source columns.
-        const float width = r[2] > 0                                                ? float(r[2])
-                            : p.role == sim::SteamHumanOverviewTextRole::name       ? 86.F
-                            : p.role == sim::SteamHumanOverviewTextRole::profession ? 53.F
-                            : p.role == sim::SteamHumanOverviewTextRole::attribute  ? 38.F
-                            : p.role == sim::SteamHumanOverviewTextRole::magic_status ||
-                                    p.role == sim::SteamHumanOverviewTextRole::gift_change_prompt
-                                ? 200.F
-                                : 60.F;
+        const float width =
+            r[2] > 0                                                ? float(r[2])
+            : p.role == sim::SteamHumanOverviewTextRole::name       ? 86.F
+            : p.role == sim::SteamHumanOverviewTextRole::profession ? 53.F
+            : p.role == sim::SteamHumanOverviewTextRole::attribute  ? 38.F
+            : p.role == sim::SteamHumanOverviewTextRole::result_message ||
+                    p.role == sim::SteamHumanOverviewTextRole::profession_insufficient
+                ? skin_.text.width(value, size)
+            : p.role == sim::SteamHumanOverviewTextRole::magic_status ||
+                    p.role == sim::SteamHumanOverviewTextRole::gift_change_prompt ||
+                    p.role == sim::SteamHumanOverviewTextRole::profession_transition ||
+                    p.role == sim::SteamHumanOverviewTextRole::gift_result_name ||
+                    p.role == sim::SteamHumanOverviewTextRole::gift_result_suffix
+                ? 200.F
+                : 60.F;
         size *= std::min(1.F, width / std::max(1.F, skin_.text.width(value, size)));
         const float measured = skin_.text.width(value, size);
         float x = origin_.x + r[0], y = origin_.y + r[1];
@@ -230,8 +263,12 @@ void prepare_world_human_detail(WorldHumanView &v, const sim::StartupWorldRuntim
     sim::SteamHumanOverviewOptions o;
     o.view_y = 23; // Published helper input; outer desktop origin is applied once when drawing.
     o.finger_frame = 0; // No Owner animation clock mapping: never animate by drawing FPS.
-    std::string title = v.raw == 73 ? "装备信息" : v.raw == 65 ? "赠送礼物" : "冒险者信息";
-    if (v.raw == 73 && v.rows.size() > 1)
+    std::string title = v.raw == 73                  ? "装备信息"
+                        : v.raw == 62                ? "职业一览"
+                        : v.raw == 63                ? "转职"
+                        : v.raw == 65 || v.raw == 66 ? "赠送礼物"
+                                                     : "冒险者信息";
+    if ((v.raw == 73 && v.rows.size() > 1) || v.raw == 62)
         title += " " + std::to_string(v.selection + 1) + "/" + std::to_string(v.rows.size());
     o.title_widths = std::array<int, 2>{int(skin.text.width(title)), int(skin.text.width(title))};
     o.profession_width = int(skin.text.width(v.profession));
@@ -242,6 +279,24 @@ void prepare_world_human_detail(WorldHumanView &v, const sim::StartupWorldRuntim
     o.equipment_hint_width = int(skin.text.width("按确认键赠送礼物"));
     o.magic_hint_width = int(skin.text.width("精通特定职业可以习得"));
     o.down_text_width = int(std::ceil(skin.text.width(world_human_down_text)));
+    o.character_frame = 0; // Explicit static reward pose; original UserData clock is not modeled.
+    o.insufficient_points_width = int(skin.text.width("村子点数不足"));
+    std::string message = v.message;
+    if (v.raw == 66 && v.choice && v.choice->slot == 4) {
+        const auto item =
+            std::find_if(state.rules->items.begin(), state.rules->items.end(),
+                         [&](const auto &d) { return d.identity == v.choice->identity; });
+        if (item == state.rules->items.end())
+            throw std::invalid_argument("Gift result has no bound item");
+        if (item->recovery > 0 && v.counter >= 115)
+            message = "HP回复!";
+        else if (item->recovery == 0 && item->effect == 9)
+            message = std::string(
+                          std::array<const char *, 4>{"火魔法", "冰魔法", "雷魔法", "回复魔法"}.at(
+                              item->spell)) +
+                      "习得";
+    }
+    o.message_width = int(skin.text.width(message));
     if (v.raw == 73)
         v.detail_page_skin = sim::steam_human_equipment_detail_skin(state, v.page, o);
     else if (v.raw == 65 && v.choice) {
@@ -252,7 +307,15 @@ void prepare_world_human_detail(WorldHumanView &v, const sim::StartupWorldRuntim
             int(skin.text.width(v.choice->name, 10))};
         o.gift_accept_width = int(skin.text.width("赠送礼物"));
         v.detail_page_skin = sim::steam_human_gift_confirmation_skin(state, v.page, o);
-    } else
+    } else if (v.raw == 62 && v.choice) {
+        o.profession_change_width =
+            int(skin.text.width(v.details.profession == v.choice->identity ? "当前职业" : "转职"));
+        v.detail_page_skin = sim::steam_human_profession_preview_skin(state, v.page, o);
+    } else if (v.raw == 63)
+        v.detail_page_skin = sim::steam_human_profession_result_skin(state, v.page, o);
+    else if (v.raw == 66)
+        v.detail_page_skin = sim::steam_human_gift_result_skin(state, v.page, o);
+    else
         v.detail_page_skin = sim::steam_human_information_skin(state, v.page, o);
     if (!v.detail_page_skin)
         throw std::invalid_argument("Measured human page rejected its bound Owner");
@@ -272,6 +335,8 @@ void draw_world_human_skin(const sim::SteamHumanOverviewPlan &plan, Vector2 orig
         else if (const auto *p = std::get_if<sim::SteamHumanOverviewText>(&op))
             draw.text(*p, plan.recovery_gift);
         else if (const auto *p = std::get_if<sim::SteamHumanDetailSkin>(&op))
+            draw.portrait(*p);
+        else if (const auto *p = std::get_if<sim::SteamHumanPortrait>(&op))
             draw.portrait(*p);
         else if (const auto *p = std::get_if<sim::SteamHumanOverviewScroll>(&op))
             for (const auto &r : p->rectangles)
@@ -304,10 +369,14 @@ std::optional<WorldHumanPaintedControls> world_human_painted_controls(const Worl
     out.choice = v.choice ? v.choice->identity : -1;
     out.extent = extent;
     out.back = layout.cancel;
-    out.other_back = layout.confirm;
+    if (v.raw == 73)
+        out.other_back = layout.confirm;
+    if (v.raw == 63 || v.raw == 66)
+        out.primary = layout.confirm;
     for (const auto &op : v.detail_page_skin->operations) {
         if (const auto *p = std::get_if<sim::SteamHumanOverviewText>(&op);
-            p && p->role == sim::SteamHumanOverviewTextRole::gift_accept) {
+            p && (p->role == sim::SteamHumanOverviewTextRole::gift_accept ||
+                  p->role == sim::SteamHumanOverviewTextRole::profession_change)) {
             const auto &r = p->rectangle;
             out.primary = Rectangle{origin.x + r[0], origin.y + r[1], float(r[2]), float(r[3])};
         } else if (const auto *p = std::get_if<sim::SteamFacilityArrowTouch>(&op)) {

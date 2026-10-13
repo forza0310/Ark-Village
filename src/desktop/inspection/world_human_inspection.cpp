@@ -1,9 +1,9 @@
 #include "world_human_inspection.hpp"
 #include "ark/simulation/actors/rules/human_management.hpp"
+#include "ark/simulation/actors/startup_world_human.hpp"
 #include "ark/simulation/facilities/startup_world_building.hpp"
 #include "ark/simulation/facilities/startup_world_commerce.hpp"
 #include "ark/simulation/facilities/startup_world_facility_items.hpp"
-#include "ark/simulation/actors/startup_world_human.hpp"
 #include "ark/simulation/village/startup_world_tax.hpp"
 #include <algorithm>
 #include <stdexcept>
@@ -463,7 +463,7 @@ bool human_inspection_mode(const std::string &mode) {
            facility_item_mode(mode) || commerce_mode(mode) || mode == "world-item-gift" ||
            profession_mode(mode) || mode == "world-gift-confirm" || mode == "world-gift-cancel" ||
            mode == "world-equipment-info" || mode == "world-gift-result" ||
-           mode == "world-equipment-change";
+           mode == "world-gift-opening" || mode == "world-equipment-change";
 }
 void begin_human_inspection(State &s, const std::string &mode, WorldHumanInspection &i) {
     if (!tax_mode(mode))
@@ -576,8 +576,9 @@ bool human_inspection_ready(const State &s, const std::string &mode,
         return raw == 65;
     if (mode == "world-equipment-info")
         return raw == 73;
-    if (mode == "world-gift-result")
-        return raw == 66 && i.gift_confirmed && s.page_counters.at(page->id) >= 135;
+    if (mode == "world-gift-result" || mode == "world-gift-opening")
+        return raw == 66 && i.gift_confirmed &&
+               s.page_counters.at(page->id) >= (mode == "world-gift-opening" ? 45 : 162);
     return mode == "world-equipment-change" && raw == 68 && i.gift_confirmed &&
            s.page_counters.at(page->id) >= 40;
 }
@@ -725,7 +726,8 @@ bool apply_human_inspection_input(State &s, const std::string &mode, WorldHumanI
         return true;
     }
     if (page.legacy_page == 66 || page.legacy_page == 68) {
-        if ((mode == "world-gift-result" && page.legacy_page == 66) ||
+        if (((mode == "world-gift-result" || mode == "world-gift-opening") &&
+             page.legacy_page == 66) ||
             (mode == "world-equipment-change" && page.legacy_page == 68))
             return true;
         act(s, page.id, Action::confirm);

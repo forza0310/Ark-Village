@@ -38,6 +38,7 @@ class Sprites {
         // Steam-only common PNG replacements; SEB layout remains the published common data.
         steam_common,
         event,
+        effect, // Original effect image indices are independent of common/common2.
         weapon
     };
     explicit Sprites(std::filesystem::path root);

@@ -1,7 +1,7 @@
 // CPU image/SEB validation for --check; does not require a GPU texture or running world.
 #include "ark/simulation/world/startup.hpp"
-#include "resources.hpp"
 #include "resource_metadata.hpp"
+#include "resources.hpp"
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
@@ -12,10 +12,8 @@ using namespace resource_detail;
 void check_assets(const std::filesystem::path &root) {
     for (const auto &[name, width, height] :
          {std::tuple{"number05.png", 100, 21}, std::tuple{"number08.png", 100, 21},
-          std::tuple{"number12.png", 100, 21},
-          std::tuple{"menuRT00.png", 59, 45}, std::tuple{"menuRT04.png", 11, 11},
-          std::tuple{"buttoneffect.png", 128, 128},
-          std::tuple{"buttoneffect.png", 128, 128},
+          std::tuple{"number12.png", 100, 21}, std::tuple{"menuRT00.png", 59, 45},
+          std::tuple{"menuRT04.png", 11, 11}, std::tuple{"buttoneffect.png", 128, 128},
           std::tuple{"icon_param00.png", 112, 32}, std::tuple{"wnd_ato.png", 10, 7}}) {
         auto image = LoadImage((root / "steam_common" / name).string().c_str());
         const bool valid = image.data && image.width == width && image.height == height;
@@ -46,6 +44,7 @@ void check_assets(const std::filesystem::path &root) {
     }
     const auto images = image_index(root);
     const auto common_images = image_index(root, "common");
+    const auto effect_images = image_index(root, "effect");
     const auto common2_images = image_index(root, "common2");
     for (const auto &[name, width, height] :
          {std::tuple{"road4block00.png", 30, 20}, std::tuple{"road4block01.png", 27, 15}}) {
@@ -93,6 +92,8 @@ void check_assets(const std::filesystem::path &root) {
                         ? root / "common" / common_images.at(part.image_index)
                     : binding == Sprites::Binding::common2
                         ? root / "common2" / common2_images.at(part.image_index)
+                    : binding == Sprites::Binding::effect
+                        ? root / "effect" / effect_images.at(part.image_index)
                         : root / "image" / images.at(part.image_index);
                 auto image = LoadImage(path.string().c_str());
                 if (!image.data)
@@ -172,6 +173,14 @@ void check_assets(const std::filesystem::path &root) {
         const auto definition = assets::parse_legacy_seb(read_bytes(path));
         for (int frame = 0; frame < definition.frame_count; ++frame)
             validate_frame(path, frame, Sprites::Binding::common2);
+    }
+    // Only these published effect frames are consumed by raw66; unrelated original frames
+    // are not certified merely because their image-bank index is present.
+    for (const auto &name : {"dropItem00.seb", "eff02.seb"}) {
+        const auto path = root / "effect" / name;
+        const auto definition = assets::parse_legacy_seb(read_bytes(path));
+        for (int frame = 0; frame < definition.frame_count; ++frame)
+            validate_frame(path, frame, Sprites::Binding::effect);
     }
     for (const auto &name : {"number05.seb", "number08.seb", "number12.seb"}) {
         const auto path = root / "common" / name;

@@ -61,8 +61,8 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
                 page != "world-gifts-armor" && page != "world-gifts-shield" &&
                 page != "world-gifts-accessory" && page != "world-gift-confirm" &&
                 page != "world-equipment-info" && page != "world-gift-result" &&
-                page != "world-equipment-change" && page != "world-tax" &&
-                page != "world-tax-collected" && page != "world-village" &&
+                page != "world-gift-opening" && page != "world-equipment-change" &&
+                page != "world-tax" && page != "world-tax-collected" && page != "world-village" &&
                 page != "world-village-start" && page != "world-village-results" &&
                 page != "world-expansion-catalogue" && page != "world-expansion-start" &&
                 page != "world-expansion-completed" && page != "world-reward95" &&

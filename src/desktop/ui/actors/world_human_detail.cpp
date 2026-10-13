@@ -5,7 +5,8 @@
 
 namespace ark::desktop::ui {
 bool world_human_source_child(const WorldHumanView &v) {
-    return v.raw == 73 || (v.raw == 65 && (!v.choice || v.choice->slot < 4));
+    return v.raw == 62 || v.raw == 63 || v.raw == 66 || v.raw == 73 ||
+           (v.raw == 65 && (!v.choice || v.choice->slot < 4));
 }
 Vector2 world_human_skin_origin(const WorldHumanLayout &l) {
     // Source helper: VIEW_Y23, vertical0. This also yields top44 for the 220x175 parent.
@@ -13,10 +14,11 @@ Vector2 world_human_skin_origin(const WorldHumanLayout &l) {
             l.panel.y - (131 - int(l.panel.height) / 2)};
 }
 WorldHumanLayout world_human_subwindow_layout(const WorldHumanLayout &base, int raw) {
-    if (raw != 65 && raw != 73)
+    if (raw != 62 && raw != 63 && raw != 65 && raw != 66 && raw != 73)
         throw std::invalid_argument("Unsupported human source child");
     auto out = base;
-    const float width = raw == 73 ? 170.F : 220.F, height = raw == 73 ? 125.F : 136.F;
+    const float width = raw == 73 ? 170.F : raw == 63 || raw == 66 ? 222.F : 220.F;
+    const float height = raw == 73 ? 125.F : raw == 62 ? 168.F : raw == 65 ? 136.F : 170.F;
     const auto center =
         Vector2{base.panel.x + base.panel.width / 2, base.panel.y + base.panel.height / 2};
     out.panel = {center.x - width / 2, center.y - height / 2, width, height};
@@ -24,6 +26,10 @@ WorldHumanLayout world_human_subwindow_layout(const WorldHumanLayout &base, int 
                   18};
     out.confirm =
         raw == 73 ? Rectangle{out.panel.x + width - 50, out.cancel.y, 50, 18} : Rectangle{};
+    if (raw == 63 || raw == 66) {
+        out.confirm = out.cancel; // Existing PC confirmation, separate from source Touch2.
+        out.cancel = {};
+    }
     out.previous = out.next = {}; // Real title arrows are measured from their SEB helper.
     return out;
 }
@@ -81,13 +87,16 @@ void draw_world_human_subwindow(const WorldHumanView &v, const WorldHumanLayout 
         draw_world_human_skin(*v.detail_page_skin, world_human_skin_origin(l), s);
     } else
         s.window(l.panel, v.raw == 73 ? "装备信息" : "赠送礼物");
-    s.button(l.cancel, "返回", enabled && v.initialized);
+    if (v.can_cancel)
+        s.button(l.cancel, "返回", enabled && v.initialized);
     if (v.raw == 73)
         s.button(l.confirm, "返回", enabled && v.initialized);
+    if (v.raw == 63 || v.raw == 66)
+        s.button(l.confirm, "确定", enabled && v.initialized && v.can_confirm);
     if (!feedback.empty()) {
         const float size =
             9.F * std::min(1.F, l.panel.width / std::max(1.F, s.text.width(feedback, 9.F)));
-        s.text.draw(feedback, l.panel.x, l.cancel.y + 21, MAROON, size);
+        s.text.draw(feedback, l.panel.x, l.panel.y + l.panel.height + 43, MAROON, size);
     }
 }
 } // namespace ark::desktop::ui

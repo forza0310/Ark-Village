@@ -58,7 +58,7 @@ struct SteamFacilityMapchipDraw {
 // 固定已核mapchip目录；不借地图可建/旋转资格限制只读helper，也不改道路请求帧。
 std::optional<std::vector<SteamFacilityMapchipDraw>> steam_facility_mapchip2_draws(
     const SteamFacilityMapchip2 &request);
-enum class SteamFacilityNumberKind { number, money, plus_value, comma_number };
+enum class SteamFacilityNumberKind { number, money, plus_value, comma_number, minus_value };
 struct SteamFacilityNumber {
     SteamFacilityNumberKind kind;
     SteamFacilityAsset asset;
@@ -75,7 +75,7 @@ struct SteamFacilityNumber {
 // number03_hud独立绑定SEB10/sourceY0；35的number03绑定SEB11/sourceY12，二者普通步宽8。
 // number11绑定SEB20，普通字格步宽7；与number05均支持独立comma_number固定8步宽。
 // comma_number保留frame10请求；SEB20缺该帧的空绘制由已核后端消费，不借别图补逗号。
-// 39负利润number12绑定Steam image109/SEB19，支持普通数/money，不扩为plus消费者。
+// number12绑定Steam image109/SEB19，39支持普通数/money；62负差另用minus正幅值，仍拒绝plus。
 // 源负数可能请求负frame；保留请求事实，不能当作已认证的负帧像素/减号映射。
 std::optional<std::vector<SteamFacilityImage>> steam_facility_number_draws(
     const SteamFacilityNumber &number, int digit_width);

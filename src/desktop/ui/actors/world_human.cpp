@@ -254,7 +254,7 @@ world_human_input(const WorldHumanView &view, const WorldHumanLayout &base_layou
             (input.escape || (current && (hit(input.click, painted->back) ||
                                           hit(input.click, painted->other_back)))))
             return intent(Action::cancel);
-        if (view.raw == 73 && !view.rows.empty()) {
+        if ((view.raw == 73 || view.raw == 62) && !view.rows.empty()) {
             if (input.left ||
                 (current && hit(input.click, painted->previous.value_or(Rectangle{}))))
                 return intent(Action::previous);
@@ -262,8 +262,7 @@ world_human_input(const WorldHumanView &view, const WorldHumanLayout &base_layou
                 return intent(Action::next);
         }
         if (view.can_confirm &&
-            (input.enter || (view.raw == 65 && current &&
-                             hit(input.click, painted->primary.value_or(Rectangle{})))))
+            (input.enter || (current && hit(input.click, painted->primary.value_or(Rectangle{})))))
             return intent(Action::confirm);
         return {}; // No guessed whole-window click, arrow bounds, price or payment here.
     }
@@ -356,14 +355,12 @@ void draw_world_human(const WorldHumanView &view, const WorldHumanLayout &layout
         fitted(skin,
                view.name + "  " + view.profession + " Lv" + std::to_string(view.details.level),
                {layout.panel.x + 29, layout.panel.y + 30, layout.panel.width - 39, 14});
-        if (view.raw == 60 || view.raw == 64) {
-            constexpr const char *tabs[]{"概况", "属性", "装备", "魔法"};
-            const int count = view.raw == 60 ? 4 : 5;
-            for (int n = 0; n < count; ++n) {
-                const auto box = view.raw == 60 ? layout.tabs[n] : layout.gift_tabs[n];
+        if (view.raw == 64) {
+            for (int n = 0; n < 5; ++n) {
+                const auto box = layout.gift_tabs[n];
                 if (view.phase == n)
                     DrawRectangleRec(box, {210, 229, 195, 255});
-                skin.centered(view.raw == 60 ? tabs[n] : slots[n], box, ink, 10);
+                skin.centered(slots[n], box, ink, 10);
             }
         }
         const auto line = [&](const std::string &value, int row, int count, Color color = ink) {
@@ -396,28 +393,10 @@ void draw_world_human(const WorldHumanView &view, const WorldHumanLayout &layout
                     {box.x + 3 + icon_width, box.y + 2, box.width * .60F - icon_width, box.height});
                 skin.right(value, box.x + box.width - 3, box.y + 2, blue, 10);
             }
-        } else if (view.raw == 62 && view.choice) {
-            fitted(skin,
-                   view.choice->name + "  " + std::to_string(view.choice->cost) + "点  勋章" +
-                       std::to_string(view.choice->medals),
-                   {layout.tabs[0].x, layout.tabs[0].y + 3, layout.body.width, 16}, blue);
-            for (int n = 0; n < 6; ++n)
-                grid(std::string(attributes[n]) + " " + std::to_string(view.attributes[0][n]) +
-                         ">" + std::to_string(view.attributes[1][n]),
-                     n, 3);
-        } else if (view.raw == 63) {
-            line(view.target_profession, 0, 4, blue);
-            line(view.counter < 55 ? "转职准备中" : "职业已变更", 1, 4);
-            line(view.message, 2, 4);
         } else if (view.raw == 65 && view.choice) {
             line(view.choice->name, 0, 4, blue);
             line(quote(*view.choice), 1, 4);
             line("赠送给 " + view.name + "？", 2, 4);
-        } else if (view.raw == 66) {
-            if (view.choice)
-                line(view.choice->name, 0, 4);
-            line(view.message, 1, 4);
-            line("评价 " + std::to_string(view.gift_score), 2, 4, blue);
         } else if (view.raw == 68) {
             for (int n = 0; n < 4; ++n)
                 line(std::string(combat[n]) + "  " + std::to_string(view.combat[0][n]) + " > " +
@@ -448,15 +427,8 @@ void draw_world_human(const WorldHumanView &view, const WorldHumanLayout &layout
     }
     if (view.can_cancel)
         skin.button(layout.cancel, "返回", active);
-    skin.button(layout.confirm, view.raw == 60 || view.raw == 73 ? "关闭" : "确定",
-                active && view.can_confirm);
-    if (view.raw == 60) {
-        skin.button(layout.professions, "转职", active);
-        skin.button(layout.gifts, "赠送", active);
-    } else if (browse_page(view.raw)) {
-        skin.button(layout.previous, "<", active && !view.rows.empty());
-        skin.button(layout.next, ">", active && !view.rows.empty());
-    } else if (view.raw == 64 && view.phase != 4)
+    skin.button(layout.confirm, "确定", active && view.can_confirm);
+    if (view.raw == 64 && view.phase != 4)
         skin.button(layout.inspect, "情报", active && !view.rows.empty());
     if (!feedback.empty())
         fitted(skin, feedback,

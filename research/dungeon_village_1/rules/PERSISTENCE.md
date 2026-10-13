@@ -718,6 +718,8 @@ SaveAll已证true→false→system的顺序保留，完整生命周期上游仍�
 
 同批重新扫描全部可执行区的E8／E9目的地址，`SetReserveSave`仍只有五处已核Billing直调，`SetReserveSaveEnable`没有直接调用命中。后者RVA `0x795290`还被多个无关类型的布尔setter共享，包括通知、字体／图像管理及Unity配置；单凭该地址或`+0x0C`写入不能识别KairoBase配置。基构造VA `0x108CDA26`的使能true已证，但全部间接／内联赋值仍未穷尽，不能承诺使能运行期间始终为true。来源是同身份DLL、既有`work/persistence-replay-analysis/exe/methods.json`与`dumper/dump.cs`的具体方法／槽声明，无新增过程产物。
 
+普通暂停的通知旁支现另有局部排除：`OnApplicationPause(true)`在VA `0x10787E44`调用已有通知实例的`DoNotify`，后于`0x10787E64`调用`SetNotificationBackground(true)`。`DoNotify`（RVA `0x8CE560`）要求KairoBase实例非空且`isPlaying_ +0x64`为真；这里读的是游玩标志，**不是**`reserveSaveEnable +0x0C`。它先调用`CancelNotifications(false,true)`，再于`0x108CE5E3`分派通知实例槽4。`MyNotify.GetInstance`在`0x101DE9AC`登记到同一`NotifyManager.instance_`；该游戏类的槽4 `OnNotify`明确使用`0x101C9750`的空返回实现。两个插件包装所取委托槽`0x110EBD98`／`0x110EC8C4`已分别解码为MethodDef4915 `<CancelNotifications>b__125_0`／4924 `<SetNotificationBackground>b__134_0`，均为同一空返回；包装通过`RunOnUiThread(wait=true)`提交它们，不产生保存请求或修改保存使能。此结论只覆盖已登记MyNotify及这两个具体回调；不把等待空回调当作档案刷新，也不认证整个UI线程队列、账号服务、OS退出或强制终止。源码仍是上述固定DLL及metadata，未操作游戏／存档、未新增分析产物。
+
 因此已闭合正常尾段及所核异常续体的预留保存分派，并排除上述具体游戏表单暂停／恢复链；普通暂停／退出／后台还有何入口提出值2、停止运行后是否有消费机会、OS关闭／暂停／强制终止是否触发保存仍未知。五处Billing setter记录不等于完整入口清单或玩家动态认证。
 
 ## 当前C++边界与持续存取

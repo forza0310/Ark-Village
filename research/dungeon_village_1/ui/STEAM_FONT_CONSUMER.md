@@ -89,6 +89,32 @@ HEIGHT来自Font.cctor RVA77EDD0的实际InitializeArray调用（1077EE60，slot
 
 测宽存在原共享副作用：块入口VA107DB18E把`Language.UnicodeToChanakyaEnable`静态+C8写false；正常两收尾及所核异常续体均调用helper7D0660–06B9，将同字段写true。这里**未保存进入前布尔值**，不能实现成“始终无修改”或擅称恢复原值；异常清理后仍重新抛出，不吞解析／空引用错误。类型槽110FB03C独立解码为Language（TypeDef由本样本registration解析），与dump的+C8字段一致，不靠共享setter名字认证。Font、插件字形度量及标签生产者边界保持；本批不运行原游戏、不导出字体、不新增核对脚本或过程指纹。
 
+### 标签入口及颜色组
+
+2026-10-13续核`TextLayout._makeTextBlocks` RVA7CD750的真实扫描入口、`TextLayout.cctor` RVA7CCD70的TAG写入，以及颜色组分支；与固定APK `kairo/android/ui/aa.java`的`f()`交叉。此处闭合的是标签识别和`co`组，未认证完整布局／其它标签效果，也不是Unity原生富文本合同。
+
+Steam先对原text调用`Language.TranslateText(text,true)` RVA8211A0，再调用`UnicodeToChanakya` RVA821340；随后`StringUtil.Replace` RVA86A390把精确`<br>`替成LF（VA107CDBE2–DC17，槽110EB3DC／110FC0D8）。扫描按C#字符串代码单元进行：当前字符为`<`才查从当前位置开始的第一个`>`；找到且`结束索引−起始索引≤32`才取含括号的候选串（107CDCDF–DD24）。这个32约束是索引差，不是参数长度；超过门槛走另一分支，不应以浏览器HTML规则解释。
+
+TAG由cctor实际创建14项数组并按原序写入（107CCF16–D2A8）：
+
+| 索引 | 精确模板 |
+| --- | --- |
+| 0／1 | `<co=>`／`</co>` |
+| 2／3 | `<si=>`／`</si>` |
+| 4／5 | `<st=>`／`</st>` |
+| 6／7 | `<bl=>`／`</bl>` |
+| 8／9 | `<po=>`／`<pic=>` |
+| 10／11 | `<bo=>`／`</bo>` |
+| 12／13 | `<btn=>`／`<ff>` |
+
+逐项先`CompareTo(candidate)==0`；不相等时，只有模板和候选都含`=`才取模板从开头至第一个`=`的前缀，交`candidate.StartsWith(prefix)`（107CDD9D–DE96）。无小写转换、Trim或通用HTML属性解析；具体比较保留C# CompareTo／StartsWith调用语义，不能擅称全部是Ordinal。关闭`</co>`因此按整串匹配；带参数模板按包含`=`的前缀匹配。找到以后参数取候选第一个`=`之后至最终`>`之前，用`StringEx.SubstringJ` RVA851D80，不把括号写入参数。此表存在仅证明识别资格，不能直接宣称14种绘制都已维护。
+
+颜色参数先尝试十进制`JInteger.ParseInt`，再独立尝试基16版本（107CDF35、107CDFF6）；这两个失败各有捕获，初始数值0保留。独立helper RVA7F6950仅在radix16时转`Int32.Parse(s,NumberStyles.HexNumber=0x200)`，其余转十进制`Int32.Parse(s)`，无命名色字典；不能把`red`／`blue`当作已支持的颜色名称，也不自行增加`#`前缀语法。`co`与`bo`索引的十六进制结果为0且参数含逗号时，才`StringUtil.Split(value,",")`并将前三段十进制值依次左移16／8／0后按位或（107CE0B5–E16A）；各段此处未先夹限到0–255，后续取RGB时才分别掩到8位。不将解析失败默认为布局原色：`co`最终按所得RGB调用`Graphics.GetColorOfRGB` RVA76CF70，写当前色（107CE8AA–E8ED），例如合法`000000`是黑色。未知／越界／RGB段解析异常的完整后继尚未认证，不在产品补容错后冒称原版。
+
+`</co>`直接从本实例`color_`（+10）重置当前色（107CE889–E89B），**没有颜色栈或恢复上一嵌套色**。当前色冻结给随后新建的`TextBlock`（107CF0F2／107CF332），构造RVA7DB440在107DB4C6写块`color_`。因此嵌套例`<co=FF0000>A<co=0000FF>B</co>C</co>`的C恢复布局基色，不恢复外层红色；这是源分支结果，尚非原窗口动态样本。颜色标签本身不作为普通可见文字块；新块仍交已核Font测宽，不能用标记串长度计宽。
+
+APK的TAG只有前9项，`aa.java`同样先翻译、精确`<br>`换LF，再以索引差≤32、整串／含`=`前缀匹配；颜色参数十进制／十六进制尝试、逗号RGB拼合、关闭色直接回`f543c`与Steam该组一致。APK反编译内普通换行／英文单词循环有明显条件失真，本批未以它认证Steam完整换行；Steam新增的`pic`／`bo`／`btn`／`ff`也不能倒填成固定APK已有标签。本次只读机器码与现有反编译输入，不新增图片、字体、核对脚本或临时产物。
+
 ## 仍需闭合及产品使用边界
 
 已核层级是资源查找顺序、GUIStyle对象切换资格、本地化公式和两种测宽调用链。仍缺当前语言真实返回值、Unity空font具体回退、局部开关／scale／offset完整设置来源、TextLayout完整标签处理及实际字形baseline。[文字后端](STEAM_FONT_BACKEND.md)已有开关资格及栈恢复，[普通DrawString](STEAM_FONT_DRAW.md)已核锚点／字号补偿／矩阵→clip→GUI位置；这些不代替当前运行字体对象和字形度量。

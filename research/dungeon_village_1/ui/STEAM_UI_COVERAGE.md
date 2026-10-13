@@ -56,7 +56,7 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 14 | SAVE | 事件／系统 | 静态保存状态机与局部皮肤已核；维护：真实菜单应用保存及冷载已验；S041/S064仅原动态局部，不代表自动中断上游，见[保存合同](STEAM_SAVE_MENU.md) |
 | 15 | NEWS | 事件／系统 | 仅声明；更新／绘制／动态链待逐项 |
 | 16 | WAIT | 事件／系统 | 仅声明；更新／绘制／动态链待逐项 |
-| 17 | CLEARPOINT | 事件／系统 | 静态：[SetClearPoint六类及Update阶段](../rules/STARTUP_RECORDS.md#通关六类计分固定apk及steam有限交叉)有Steam有限交叉；维护：计分／应用回放已接，现图片计划沿APK合同。动态：通关页未取得；Steam完整Draw、快速分支资格及真实输入仍缺 |
+| 17 | CLEARPOINT | 事件／系统 | 静态：[计分规则](../rules/STARTUP_RECORDS.md#通关六类计分固定apk及steam有限交叉)与[Steam局部Draw](STARTUP_SKIN.md#steam计分17的独立绘制交叉)已核，独立主钟／阶段钟、六类空单位及Touch2分开。维护：计分／应用回放已接，窗口仍是适配显示，现图片计划沿APK；正式Steam皮肤及主钟恢复未接。动态：通关页、快速分支资格及真实输入仍缺 |
 | 18 | ENDING | 事件／系统 | 仅声明；更新／绘制／动态链待逐项 |
 | 19 | NO_MYMENU | 事件／系统 | 仅声明；更新／绘制／动态链待逐项 |
 | 20 | SAVE_MENU | 事件／系统 | 三项原序、raw1父子消费、取消清结果、SEB2/3／测宽／触摸窄矩形已核，见[合同](STEAM_SAVE_MENU.md)；已有S040不代替全链动态，维护文件17命令另验 |

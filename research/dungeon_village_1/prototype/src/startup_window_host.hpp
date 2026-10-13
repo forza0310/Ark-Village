@@ -211,6 +211,9 @@ class StartupWindowHost {
     StartupWorldRuntimeError act_tax_page(std::uint64_t page, StartupWorldTaxAction action, int selection = 0) {
         return command([&](auto &owner) { return owner.act_tax_page(page, action, selection); });
     }
+    StartupWorldRuntimeError input_tax_page(std::uint64_t page, const StartupWorldTaxInput &input) {
+        return command([&](auto &owner) { return owner.input_tax_page(page, input); });
+    }
     StartupWorldRuntimeError open_human_page(int human) {
         return command([&](auto &owner) { return owner.open_human_page(human); });
     }

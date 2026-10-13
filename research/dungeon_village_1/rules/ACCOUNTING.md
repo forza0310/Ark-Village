@@ -205,6 +205,31 @@ Steam `UserData.AddTownPopularPointNow`（RVA `0x2C8830`）已独立交叉：VA 
 合计标签`(30,200)`、金额`(212,201)`。头像用当时职业`b().a(e)`，不以场上身体图片替代。
 此处是固定APK像素布局，简化原型页面不是原皮肤与动画等价认证。
 
+#### Steam raw90独立交叉
+
+固定Steam2.56的Init2局部VA `1030E7D1–1030E8B8`新建ary1，按AppData.characterData原数组顺序，仅取`state_≠0 && myHouse_[2]==1`。没有在场、税额正负、flags或职业过滤；加入原CharacterData引用，不复制`taxMoney_ +84h`（对应APK G）。构造默认page0，此Init和Update不新增／切换页码。维护可复用已有居民名单、selection、scroll和当前G，不为绘制新建税额账本或持久字段；已经初始化却缺名单／游标的载荷应拒绝，不能重新枚举掩盖损坏。
+
+Update2 `10318D5E–10318EAC`顺序为上repeat `0x20000`→下repeat `0x80000`→修五行scroll→确认pulse `0x100000`立即Pop，与APK已核普通路径相同。无取消、左右页签、计数门槛、税额入账或专用声音；Steam另有`Config.DEBUG_CMD +83h`才准入的held `0x40`后备，不能当玩家常规键。SubForm.cctor `1032A7BC–1032A7FC`给90安装新长度2、未写元素的数组，故softLabels90为`{0,0}`，没有返回软标签。上下同时命中依原序各处理一次，不能合成任择方向。
+
+`_draw2_4`局部 `1034A926–1034AFD1`完整图元如下；坐标是原Graphics实参，不是桌面像素，文字沿原翻译／字体后端：
+
+| 图元 | 原序与实参 |
+| --- | --- |
+| 窗框／列头 | DrawWindow(220,168,0,`税金収入`)，DrawBox(17,74,219,184)。`住居所有者`在(30,69)，`収入`日文(179,69)／其它语言(154,69)，common SEB12 frame20在(204,70)。原字符串槽依次110F8B4C／110F4ABC／110F5B44 |
+| 五行 | 从scroll起最多5人，`y=97+19×可见行号`。当前行橙底(23,y−3,191,18)，SC_WINDOW_SELECT=(255,153,55)；紧接Touch11，矩形(3,y−3,231,18)、value=`0x20000\|绝对index`，没有marker16或额外margin |
+| 头像 | RGB(196,236,169)底(29,y−2,16,16)，RGB(204,204,204)轮廓及clip为(29,y−2,15,15)。读取当前职业`GetJob`→`JobData.GetImgId(character)`，调用SetDispPlayerData(0,img,0,1,0)，无武器DrawDispPlayer(37,y+21)，再PopClip；当前行手形common SEB21当前帧在(21,y+8) |
+| 姓名／行金额 | SC_WINDOW_BLACK=(92,51,31)，GetName普通文字(48,y)；当前taxMoney有符号扩展到long，Draw_money(212,y+1,G,SEB15)。原page==0才画列头、姓名与行金额，合法90没有改变该默认页码的输入 |
+| 滚动／合计 | DrawVerticalScroll2(221,85,4,111,scroll,count−1,5)；之后按整个冻结ary1再次读取当前G，以int累加。`合計`（110F5CE8）在(30,200)，Draw_money(212,201,total,SEB12)。不是只合计屏幕五行，也不重新按当前居民资格筛选 |
+| 末尾触摸 | 跳到共尾 `103477DA–10347824`，AddTouch(2,TouchOption.Create(2))；没有显式矩形，不据此猜全屏物理点击区 |
+
+金额复用[Steam数字helper](../ui/STEAM_FACILITY_DRAW_HELPERS.md#金额与加号的最终锚点)：Draw_money先令x=dx−9，带逗号数字右锚与同SEB货币frame20均为该x，所以本页行钱／合计实际锚为203；不用字体格式化结果代替数字裁片。common SEB12／图片103采用已出版Steam number05，SEB15／图片105采用Steam number08；手形SEB21／图片70沿已核同字节副本，不新增图集。行钱与合计分别使用15／12，不能统一字体。负号请求及极端边界沿该helper限制，维护继续显式拒绝合计溢出，不夹成0或删去负数。
+
+头像不是装备外观或场上实例截图：GetJob RVA2134F0读取当前jobId，GetImgId RVA21AC90严格读该职业`imgId_[gender_]`；三参DrawDispPlayer RVA2CD000转五参时武器ID=−1、步帧0。正常人类action0／haveObj=−1下使用human SEB1 frame0，裁片(0,24,18,24)、偏移(−9,−24)，身体资源身份沿[已核人物素材](../ui/STEAM_TITLE_ACTORS.md#scratch副作用与交付边界)。本页没有独立阴影／武器层；SetDispPlayerData仍写共享显示人物，后续SetDrawParam／Draw_human及残留效果限制沿同合同，纯肖像计划不认证任意scratch历史或完整绘制随机。各行姓名、职业和G均读取当前定义，冻结的是成员身份。
+
+滚动复用[通用消费者](../ui/STEAM_FACILITY_DRAW_HELPERS.md#drawverticalscroll2实际是两项组件注册)，本页高度**111**而74是110：D=max(count,5)，top=85+trunc(111×scroll/D)，len=trunc(555/D)，轨道(220,85,5,111)，拇指(220,top,5,len+1)，短表也画112高蓝条。OnTouchVScrollBar RVA23D810对事件8将当前scroll加value，事件9取绝对value；INT_MAX不处理，夹到0…max(count−5,0)。只有真实变化才先写scroll，再按delta同步selection并夹0…count−1；组件14的两倍delta不适用于本页组件12。最终基矩形、margin和OS事件生成沿通用合同，不能把初始注册矩形当全部物理热区。
+
+以上几何、居民过滤与普通输入同固定APK独立交叉；Steam额外DEBUG_CMD支路、通用滚动即时绘制与数字资源使用各自证据。这里只认证90局部和具名helper，不因此认证Steam跨年准备／98入账全链、原窗口动态、中文字体或产品接入。
+
 ### raw98：更新自动入账，随后清全人物累计
 
 事件opcode37只插raw98（`d/a.java:929-932`）。真正提交在
@@ -230,6 +255,8 @@ Steam `UserData.AddTownPopularPointNow`（RVA `0x2C8830`）已独立交叉：VA 
 居民引用、选择与滚动属于页附属状态，随实际退休清理。失败保留旧金币、分类统计、通知、F/G、
 页面生命周期与随机游标；关闭后旧页输入明确拒绝，不能通过再确认98重复付钱。
 此为C++研究事务保证，不推断原APK文件写入也具有原子性。
+
+Steam90后继由`steam_tax_information_skin`复用现信息皮肤模块：严格桥读已初始化名单及当前名字／职业／G，金额与合计沿原SEB，无新图集。`StartupWorldTaxInput`将设备选择／滚动、上→下、修窗→确认合为一次候选提交；软标签0／0，无取消。`initialize_startup_world_tax_pages`在框架置就绪前处理真实Init，暂停不创建字段；名单、选择、首行、计数四键必须完整，已就绪全缺也不重建。只读查询与恢复总校验共用拒绝规则，原稳定普通档边界及持久字段不变。输入／初始化／回滚归现pages，皮肤与源裁片归现visuals；两种研究图例见[示例](../ui/examples/steam-tax-income.png)。头像基础身体可消费，共享显示人物附效、原字体及原OS动态仍按来源限制保留。
 
 收口验收应覆盖：不同职业税率／向零取十、未开放及非居民过滤、零税额仍展示、名单源序与五行
 滚动、首次立即确认不入账、123对话后的98自动提交、当前资格重新合计、其它分类且月报前三类

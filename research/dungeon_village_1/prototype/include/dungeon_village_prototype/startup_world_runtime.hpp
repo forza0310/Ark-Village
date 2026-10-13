@@ -21,6 +21,7 @@ struct StartupPresentationResult;
 enum class StartupFacilityPageAction;
 enum class StartupHumanPageAction;
 enum class StartupWorldTaxAction;
+struct StartupWorldTaxInput;
 enum class StartupVillageActivityAction;
 enum class StartupFacilityItemAction;
 enum class StartupCommerceAction;
@@ -503,6 +504,7 @@ class StartupWorldRuntimeSession {
     StartupWorldRuntimeError input_human_mastery_page(std::uint64_t page,const StartupHumanCatalogueInput &input);
     StartupWorldRuntimeError act_tax_page(std::uint64_t page, StartupWorldTaxAction action,
                                           int selection = 0);
+    StartupWorldRuntimeError input_tax_page(std::uint64_t page, const StartupWorldTaxInput &input);
     // 表现输出一次领取；无音频适配的验收明确丢弃，不作为世界耐久历史。
     std::vector<StartupAudioRequest> take_audio_requests();
     // 旧调用者显式丢弃操作类别，仅投影ID；与typed接口消费同一队列，不能重复领取。

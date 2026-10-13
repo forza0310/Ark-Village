@@ -1792,11 +1792,117 @@ void tax_pages() {
     }
     const auto cash = s.scene.world.world.ai.accounting.funds();
     const auto draws = s.scene.random.draws();
+    check(!inspect_startup_world_tax_page(s, id) &&
+              input_startup_world_tax_page(s, id, {}) == E::invalid_page,
+          "90 pending source page cannot manufacture a query list or consume player input");
+    auto paused_tax = s;
+    paused_tax.scene.framework_paused = true;
+    const auto paused_tick = prepare_startup_world_runtime(paused_tax);
+    check(paused_tick.candidate && paused_tick.candidate->scripts.pages.back().lifecycle == 0 &&
+              !paused_tick.candidate->tax_page_residents.count(id) &&
+              !paused_tick.candidate->page_counters.count(id),
+          "paused90 leaves pending initialization and all four payload keys absent");
+    auto incomplete_pending = s;
+    incomplete_pending.page_counters.emplace(id, 0);
+    check(!prepare_startup_world_runtime(incomplete_pending).candidate,
+          "90 partially prepared constructor cannot fill missing frozen-list records");
     page_tick(s);
     check(s.tax_page_residents.at(id) == std::vector<int>({0, 1, 2, 3, 4, 5}) &&
               act_startup_world_tax_page(s, id, StartupWorldTaxAction::select, 5) == E::none &&
               s.tax_page_scroll.at(id) == 1,
           "90 freezes source residents and keeps selected row in five-row viewport");
+    const auto ready_tax = s;
+    {
+        auto input_state = ready_tax;
+        StartupWorldTaxInput input;
+        input.selection = 0;
+        input.up = input.down = true;
+        check(input_startup_world_tax_page(input_state, id, input) == E::none &&
+                  input_state.tax_page_selection.at(id) == 0 && input_state.tax_page_scroll.at(id) == 0,
+              "90 same-round selection then up/down repairs viewport only after both source repeats");
+        input.selection = 5;
+        input.down = false;
+        input.confirm = true;
+        const auto counter = input_state.page_counters.at(id);
+        check(input_startup_world_tax_page(input_state, id, input) == E::none &&
+                  input_state.tax_page_selection.at(id) == 4 && input_state.tax_page_scroll.at(id) == 0 &&
+                  input_state.scripts.pages.back().lifecycle == 4 && input_state.page_counters.at(id) == counter &&
+                  input_state.scene.world.world.ai.accounting.funds() == cash && input_state.scene.random.draws() == draws,
+              "90 selection/up/confirm is one transaction without extra update, money or random");
+        check(input_startup_world_tax_page(input_state, id, input) == E::invalid_page &&
+                  !inspect_startup_world_tax_page(input_state, id), "retired90 rejects stale input and query");
+        page_tick(input_state);
+        check(!input_state.tax_page_residents.count(id) && !input_state.tax_page_selection.count(id) &&
+                  !input_state.tax_page_scroll.count(id) && !input_state.page_counters.count(id),
+              "90 actual retirement releases all four payload records");
+    }
+    {
+        struct ScrollCase { bool absolute; int value, chosen, first, expected_chosen, expected_first; };
+        const ScrollCase cases[]{{false,100,0,0,1,1}, {true,-50,5,1,4,0},
+                                 {true,1,0,0,1,1}, {false,-1,5,1,4,0},
+                                 {true,std::numeric_limits<int>::max(),5,1,5,1},
+                                 {false,std::numeric_limits<int>::max()-1,5,1,5,1}};
+        for (const auto &c : cases) {
+            auto input_state = ready_tax;
+            input_state.tax_page_selection.at(id) = c.chosen;
+            input_state.tax_page_scroll.at(id) = c.first;
+            StartupWorldTaxInput input;
+            input.scroll = StartupWorldTaxInput::Scroll{c.absolute,c.value};
+            check(input_startup_world_tax_page(input_state,id,input)==E::none &&
+                      input_state.tax_page_selection.at(id)==c.expected_chosen &&
+                      input_state.tax_page_scroll.at(id)==c.expected_first,
+                  "90 scroll clips boundaries, synchronizes selection by delta, and honors computed INT_MAX sentinel");
+        }
+        auto overflow = ready_tax;
+        StartupWorldTaxInput input;
+        input.scroll = StartupWorldTaxInput::Scroll{false,std::numeric_limits<int>::max()};
+        input.confirm = true;
+        const auto before = startup_world_state_digest(overflow);
+        check(input_startup_world_tax_page(overflow,id,input)==E::invalid_page &&
+                  startup_world_state_digest(overflow)==before,
+              "90 relative scroll overflow refuses the complete input including confirm");
+    }
+    for (int fault=0; fault<9; ++fault) {
+        auto bad=ready_tax;
+        if(fault==0 || fault==4)bad.tax_page_residents.erase(id);
+        if(fault==1 || fault==4)bad.tax_page_selection.erase(id);
+        if(fault==2 || fault==4)bad.tax_page_scroll.erase(id);
+        if(fault==3 || fault==4)bad.page_counters.erase(id);
+        if(fault==5)bad.tax_page_selection.at(id)=6;
+        if(fault==6)bad.tax_page_scroll.at(id)=6;
+        if(fault==7)bad.page_counters.at(id)=std::numeric_limits<int>::max();
+        if(fault==8)bad.tax_page_residents.at(id).push_back(0);
+        const auto before=startup_world_state_digest(bad);
+        StartupWorldTaxInput input;input.confirm=true;
+        check(!valid_startup_world_tax_page(bad,bad.scripts.pages.back()) &&
+                  !inspect_startup_world_tax_page(bad,id) && !prepare_startup_world_runtime(bad).candidate &&
+                  input_startup_world_tax_page(bad,id,input)==E::missing_source &&
+                  startup_world_state_digest(bad)==before,
+              "90 query/update/restore validator/input all reject incomplete initialized payload or bad cursor without repair");
+    }
+    {
+        auto late=ready_tax;
+        late.scripts.professions.emplace(static_cast<int>(late.scene.world.world.ai.professions.size()),
+                                         ref::WorldScriptUnlockDefinition{});
+        const auto before=startup_world_state_digest(late);
+        StartupWorldTaxInput input;input.selection=0;input.up=true;input.confirm=true;
+        check(input_startup_world_tax_page(late,id,input)==E::script_failed && startup_world_state_digest(late)==before,
+              "90 late close rejection rolls back candidate device selection, repeats, scroll and all Owner outputs");
+    }
+    {
+        auto empty=fixture(90);const auto empty_id=empty.scripts.pages.back().id;
+        page_tick(empty);
+        const auto empty_view=inspect_startup_world_tax_page(empty,empty_id);
+        StartupWorldTaxInput input;input.up=true;input.confirm=true;
+        const auto before=startup_world_state_digest(empty);
+        check(empty_view&&empty_view->rows.empty()&&empty_view->total==0&&
+                  input_startup_world_tax_page(empty,empty_id,input)==E::invalid_page&&
+                  startup_world_state_digest(empty)==before,
+              "90 empty list has a legitimate zero display but rejects source modulo-zero navigation atomically");
+        input.up=false;
+        check(input_startup_world_tax_page(empty,empty_id,input)==E::none&&
+                  empty.scripts.pages.back().lifecycle==4,"90 empty conditional page can still confirm without invented residents");
+    }
     s.human_calendar.at(5).legacy_G = 90;
     s.human_homes.at(5)[2] = 0;
     const auto view = inspect_startup_world_tax_page(s, id);

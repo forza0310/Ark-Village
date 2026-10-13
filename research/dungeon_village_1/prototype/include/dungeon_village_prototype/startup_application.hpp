@@ -135,6 +135,7 @@ class StartupApplication {
     std::string act_facility_catalog_page(std::uint64_t page, StartupFacilityCatalogAction action,
                                           int selection = -1);
     std::string act_tax_page(std::uint64_t page, StartupWorldTaxAction action, int selection = 0);
+    std::string input_tax_page(std::uint64_t page, const StartupWorldTaxInput &input);
     std::string act_village_activity_page(std::uint64_t page, StartupVillageActivityAction action,
                                           int selection = 0);
     std::string input_village_activity_page(std::uint64_t page,const StartupVillageActivityInput &input);

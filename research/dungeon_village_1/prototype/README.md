@@ -13,7 +13,7 @@
 | `startup_world_runtime_task_pages`、`steam_task_selection_skin`／`steam_task_roster_skin`／`steam_task_result_skin` | 22–24与scene4查看位置、raw29严格信息桥；25–28及31／32纯计划尚待Owner UI接线；[任务操作与皮肤](../ui/PAGES.md#steam任务选择与募集22–24) |
 | `startup_world_magic_pot`、`steam_magic_pot_skin`／`steam_magic_pot_effect_skin` | 41–47壶目录、投入／处理演出、配方发现／制作确认；[操作与表现](../ui/STEAM_MAGIC_POT.md) |
 | `startup_world_commerce`、`steam_commerce_skin` | 83主页三入口同轮事务、原序只读皮肤及真实NEW查询；85三行图块目录／整轮输入、86交易反馈已接，保留独立93领取和86自动关闭；84金额及皮肤另列；[商会合同](../rules/COMMERCE.md#steam-commerce-top) |
-| `startup_world_menu`／`information`／`manual`／`save`、`steam_information_skin` | 菜单、34–39信息、13说明及14保存；[信息合同](../ui/INFORMATION_MENU.md)、[菜单](../ui/PAGES.md) |
+| `startup_world_menu`／`information`／`manual`／`save`、`steam_information_skin` | 菜单、34–39信息、90税收、13说明及14保存；[信息合同](../ui/INFORMATION_MENU.md)、[菜单](../ui/PAGES.md) |
 | `startup_application`、应用存储／标题／回放模块 | [应用](STARTUP_APPLICATION.md)、[存储事务](APPLICATION_STORAGE.md)、[标题](TITLE_MENU.md)、[完整回放](APPLICATION_REPLAY.md) |
 | `startup_world_persistence`／codec／restore_validation | [正常文件、精确回放及字段政策](PERSISTENCE.md) |
 | `startup_world_presentation`／`visuals`、`startup_view`／`startup_window_host` | [显式表现请求](../ui/INPUT_RENDER_REQUESTS.md)、只读计划与平台执行；[声音一次输出](AUDIO_REQUESTS.md) |
@@ -88,7 +88,7 @@
 | [设施道具](include/dungeon_village_prototype/startup_world_facility_items.hpp)、[实现](src/startup_world_facility_items.cpp) | 74→75库存目录、75消费与实例门槛／原程序、76首次共享改良／49换页、77结果确认；各同定义实例独立重算价格，载荷随页退休 |
 | [商会](include/dungeon_village_prototype/startup_world_commerce.hpp)、[实现](src/startup_world_commerce.cpp) | 83入口、84真实买卖／86反馈、85点数购买与93确认领取；金币、村子点数、商会A库存、人物可用z库存和建筑H次数分开；85定义预览只读共享定义 |
 | [人物管理](include/dungeon_village_prototype/startup_world_human.hpp)、[实现](src/startup_world_human.cpp) | 当前四页／装备73、61/62预览与拒绝、63中点及最终提交、64/65装备延迟赠礼、64普通道具及66/68/69结果／回复、70大师奖励；只维护同一Owner的共享进度和页附属记录 |
-| [税收](include/dungeon_village_prototype/startup_world_tax.hpp)、[实现](src/startup_world_tax.cpp) | 90居民引用／实时税额和98自动其它收入、清全人物F/G；确认与入账分开，无额外随机 |
+| [税收](include/dungeon_village_prototype/startup_world_tax.hpp)、[实现](src/startup_world_tax.cpp) | 90冻结居民／当前G、原序皮肤和整轮输入；严格四键初始化／恢复与五行滚动。98自动其它收入、清全人物F/G；确认不入账 |
 | [村办活动](include/dungeon_village_prototype/startup_world_village_activity.hpp)、[实现](src/startup_world_village_activity.cpp) | 51—54初始化／只读投影／动作／更新，类型0／1／2及人物结果的有放回抽签；类型3在53提交地图扩张，不插54或额外抽签。同一Owner提交资源、人物、脚本和页面，严格拒绝失配载荷并随真实页退休辅助记录 |
 | dungeon_village_startup_model | 标准C++17静态证据与新局规则，无raylib/字体/JSON运行依赖 |
 | dungeon_village_startup_world | 标准C++17共同世界与完整原表；不依赖raylib，不在运行时读取APK/研究临时文件 |

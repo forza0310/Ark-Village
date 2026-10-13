@@ -9,6 +9,7 @@
 #include "dungeon_village_prototype/steam_information_skin.hpp"
 #include "dungeon_village_prototype/startup_world_information.hpp"
 #include "dungeon_village_prototype/startup_world_menu.hpp"
+#include "dungeon_village_prototype/startup_world_tax.hpp"
 #include "dungeon_village_prototype/startup_world_persistence.hpp"
 #include "dungeon_village_prototype/startup_world_projection.hpp"
 #include "support/world_fixture.hpp"
@@ -2179,6 +2180,110 @@ void adventurer_information_skin(Checks &check,const std::filesystem::path &root
           contribution->source_y+contribution->height<=result_png.image.height,
           "35贡献SEB44 frame4真实裁片落在Steam图内，不以PNG列数猜帧");
 }
+void tax_information_skin(Checks &check) {
+    using R=SteamInformationTextRole;
+    const auto labels=[](const SteamInformationSkinPlan &p,R role) {
+        std::vector<SteamInformationText> out;
+        for(const auto &draw:p.draws)if(const auto *text=std::get_if<SteamInformationText>(&draw))
+            if(text->role==role)out.push_back(*text);
+        return out;
+    };
+    SteamInformationSkinOptions options;options.title_widths=std::array<int,2>{48,50};
+    for(const bool japanese:{false,true})for(const int count:{0,6}) {
+        options.japanese=japanese;SteamTaxInformationSkinInput in;
+        for(int row=0;row<count;++row)in.rows.push_back({row,0,row%2,(row+1)*10,"住户"+std::to_string(row)});
+        if(count){in.selection=5;in.first_visible=1;in.total=210;}
+        const auto plan=steam_tax_information_skin(in,options);
+        check(plan&&plan->raw==90&&plan->soft_labels==std::array<int,2>{0,0},"90空/六人纯计划无返回软键，不借普通目录页签");
+        const auto titles=labels(*plan,R::tax_title),heads=labels(*plan,R::tax_owner_header),income=labels(*plan,R::tax_income_header);
+        check(titles.size()==2&&titles[0].period==0&&heads.size()==1&&heads[0].position==std::array<int,2>{30,69}&&
+            income.size()==1&&income[0].position==std::array<int,2>{japanese?179:154,69}&&income[0].font_size==0,
+            "90标题两遍、所有者与两语言收入列头原位置，不猜字号");
+        int bodies=0,numbers=0,clips=0,selected=0,unit=0,fingers=0;
+        for(const auto &draw:plan->draws) {
+            if(const auto *body=std::get_if<SteamInformationHumanBody>(&draw)) {
+                const int row=bodies++,y=97+19*row;
+                check(body->body.sprite==1&&body->body.frame==0&&body->position==std::array<int,2>{37,y+21},
+                    "90当前性别职业静态身体action0/direction1，不附武器或造人物实例");
+            }
+            if(const auto *clip=std::get_if<SteamFacilityClip>(&draw)) {
+                ++clips;if(clip->kind==SteamFacilityClipKind::push_intersect)
+                    check(clip->rectangle[0]==29&&clip->rectangle[2]==15&&clip->rectangle[3]==15,"90头像15x15 clip独立于16x16底板");
+            }
+            if(const auto *number=std::get_if<SteamFacilityNumber>(&draw)) {
+                const int row=numbers++;
+                if(count&&row<5)check(number->asset==SteamFacilityAsset::number08&&number->kind==SteamFacilityNumberKind::money&&
+                    number->value==(row+2)*10&&number->position==std::array<int,2>{212,98+19*row},"90行款沿当前G原SEB15和Draw_money锚");
+                else check(number->asset==SteamFacilityAsset::number05&&number->kind==SteamFacilityNumberKind::money&&
+                    number->value==in.total&&number->position==std::array<int,2>{212,201},"90合计用独立SEB12，不复制行钱SEB15");
+            }
+            if(const auto *rect=std::get_if<StartupSkinRect>(&draw)) {
+                if(rect->rect==std::array<int,4>{23,170,191,18}&&rect->rgb==std::array<int,3>{255,153,55})++selected;
+            }
+            if(const auto *image=std::get_if<StartupSkinDraw>(&draw)) {
+                if(image->image==103&&image->sprite==12&&image->frame==20&&image->offset==std::array<int,2>{204,70})++unit;
+                if(image->image==70&&image->sprite==21&&image->frame==-1&&image->offset==std::array<int,2>{21,181})++fingers;
+            }
+        }
+        const auto names=labels(*plan,R::row_name),totals=labels(*plan,R::tax_total_label);
+        check(bodies==(count?5:0)&&clips==2*bodies&&numbers==bodies+1&&unit==1&&selected==(count?1:0)&&fingers==(count?1:0)&&
+            names.size()==static_cast<std::size_t>(bodies)&&totals.size()==1&&totals[0].position==std::array<int,2>{30,200},"90五行末窗/空目录输出规模与合计、手形明确");
+        for(int row=0;row<bodies;++row) {
+            check(names[row].slot==row+1&&names[row].value=="住户"+std::to_string(row+1)&&names[row].position==std::array<int,2>{48,97+19*row}&&
+                names[row].mode==SteamInformationTextMode::plain,"90姓名原普通文本，保留冻结绝对行号");
+            const auto &touch=plan->touches[row];
+            check(touch.component==11&&touch.value==(0x20000|(row+1))&&touch.option==0&&touch.margin==std::array<int,4>{}&&
+                touch.rectangle==std::array<int,4>{3,94+19*row,231,18},"90行无marker/额外margin，命中框保留绝对索引");
+        }
+        const auto &bar=plan->touches[bodies],&track=plan->touches[bodies+1],&confirm=plan->touches.back();
+        check(bar.component==12&&bar.rectangle==std::array<int,4>{221,85,3,111}&&bar.margin==std::array<int,4>{3,20,0,0}&&
+            bar.scroll_arguments==std::array<int,3>{count,5,0x20000}&&track.component==25&&track.option==4&&
+            confirm.component==2&&!confirm.rectangle&&confirm.option==2,"90 H111源滚动注册与末确认Touch2；不添加猜测确认按钮");
+        if(count) {
+            auto bad=in;bad.rows[0].definition=bad.rows[1].definition;
+            check(!steam_tax_information_skin(bad,options),"90隐藏行重复源也拒绝");
+            bad=in;bad.rows[0].sex=2;check(!steam_tax_information_skin(bad,options),"90隐藏坏身体身份拒绝");
+            bad=in;bad.first_visible=0;check(!steam_tax_information_skin(bad,options),"90选择不在五行首窗拒绝，不隐式修游标");
+        }
+    }
+    auto state=test_support::page_fixture(90);const auto page=state.scripts.pages.back().id;
+    check(!steam_tax_information_skin(state,page,options),"90未初始化皮肤不得借实时枚举兜底");
+    for(int row=0;row<6;++row) {
+        state.human_presence.at(row)=1;state.human_homes.at(row)[2]=1;
+        state.human_calendar.at(row).legacy_G=(row+1)*10;
+    }
+    const auto initialized=prepare_startup_world_runtime(state);
+    check(initialized.candidate.has_value(),"90皮肤夹具走真实框架Init，不直接将pending页当已准入页");
+    state=*initialized.candidate;
+    check(state.scripts.pages.back().lifecycle==2&&
+        act_startup_world_tax_page(state,page,StartupWorldTaxAction::select,5)==StartupWorldRuntimeError::none,"90真实初始化冻结名单/已存在选择跟随消费者");
+    state.human_calendar.at(5).legacy_G=90;state.human_homes.at(5)[2]=0;
+    const auto before=startup_world_state_digest(state);const auto plan=steam_tax_information_skin(state,page,options);
+    check(plan.has_value(),"90Owner桥沿冻结身份读取currentG，不重枚举入住资格");
+    int current=-1,total=-1;for(const auto &draw:plan->draws)if(const auto *n=std::get_if<SteamFacilityNumber>(&draw)) {
+        if(n->position==std::array<int,2>{212,174})current=n->value;
+        if(n->position==std::array<int,2>{212,201})total=n->value;
+    }
+    check(current==90&&total==240,"90末行 currentG与全冻结名单合计接线，税务计算沿pages主责");
+    const auto same=steam_tax_information_skin(state,page,options);
+    check(same&&same->draws.size()==plan->draws.size()&&same->touches.size()==plan->touches.size()&&
+        startup_world_state_digest(state)==before,"90重复查询无资金/随机/页/输出改变且资源规模不增长");
+    for(int fault=0;fault<7;++fault) {
+        auto bad=state;
+        if(fault==0)bad.tax_page_residents.erase(page);
+        if(fault==1)bad.tax_page_selection.erase(page);
+        if(fault==2)bad.tax_page_scroll.erase(page);
+        if(fault==3)bad.page_counters.erase(page);
+        if(fault==4)bad.tax_page_residents.at(page)[0]=99999;
+        if(fault==5)bad.scene.world.world.ai.growth.erase(1);
+        if(fault==6)bad.scripts.pages.back().legacy_page=35;
+        check(!steam_tax_information_skin(bad,page,options),"90缺初始化/错页/未知冻结人或坏身体源明确拒绝");
+    }
+    options.title_widths.reset();check(!steam_tax_information_skin(state,page,options),"90缺标题实测宽拒绝");
+    options.title_widths=std::array<int,2>{48,50};
+    check(act_startup_world_tax_page(state,page,StartupWorldTaxAction::confirm)==StartupWorldRuntimeError::none&&
+        !steam_tax_information_skin(state,page,options),"90确认退休后桥拒引用，不在皮肤执行98入账");
+}
 void town_facility_information_skin(Checks &check,const std::filesystem::path &root) {
     using Role=SteamInformationTextRole;using Mode=SteamInformationTextMode;
     using Asset=SteamFacilityAsset;using Number=SteamFacilityNumberKind;
@@ -2842,6 +2947,7 @@ int check_startup_skin(const std::filesystem::path &source_root,
     equipment_information_icons(check,source_root);
     information_directory_skin(check,source_root);
     adventurer_information_skin(check,source_root);
+    tax_information_skin(check);
     town_facility_information_skin(check,source_root);
     information_menu_skin(check,source_root);
     system_menu_skin(check);

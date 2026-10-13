@@ -403,7 +403,8 @@ class ChineseFont {
                              "设施情报品质魅力维护费收入建设完毕加成返回图范围"
                              "信息距下一等级还有达到最高级周围设施的奖励没有使用道具"
                              "按确认键赠送礼物习得魔法精通特定职业可以一种两种三种全部"
-                             "南瓜商会欢迎光临购买出售道具设施所持金了解已价格可使用村子点数";
+                             "南瓜商会欢迎光临购买出售道具设施所持金了解已价格可使用村子点数"
+                             "税金收入住宅所有者合计";
         for (int i = 32; i < 127; ++i)
             glyphs += static_cast<char>(i);
         for (const auto &v : startup_evidence().definitions)
@@ -942,6 +943,86 @@ void draw_facility_detail(const SteamFacilityDetailSkinPlan &plan,SourceSprites 
     font.text("返回",188,272); // 框架右软标签研究适配；左侧不再伪造确定/返回。
 }
 constexpr Vector2 human_overview_origin{0,40};
+std::optional<SteamInformationSkinPlan> window_tax_plan(const StartupWorldRuntimeState &state,
+    std::uint64_t page,const ChineseFont &font,bool first_touch=false) {
+    SteamInformationSkinOptions options;options.view_y=23;options.scroll_first_touch=first_touch;
+    options.title_widths=std::array<int,2>{int(font.measure("税金收入")),int(font.measure("税金收入"))};
+    return steam_tax_information_skin(state,page,options);
+}
+// 90研究执行器保持图元顺序；中文/字体与当前静态SEB手形帧仍属平台适配。
+void draw_tax_information(const SteamInformationSkinPlan &plan,SourceSprites &sprites,const ChineseFont &font,
+                          Vector2 origin=human_overview_origin,int finger_frame=0) {
+    if(plan.raw!=90||plan.soft_labels!=std::array<int,2>{0,0}||finger_frame<0||finger_frame>5)
+        throw std::runtime_error("税收皮肤执行器来源拒绝");
+    const auto color=[](std::array<int,3> rgb){return Color{static_cast<unsigned char>(rgb[0]),
+        static_cast<unsigned char>(rgb[1]),static_cast<unsigned char>(rgb[2]),255};};
+    bool clipped=false;
+    for(const auto &draw:plan.draws) {
+        if(const auto *r=std::get_if<StartupSkinRect>(&draw)) {
+            const Rectangle rectangle{origin.x+r->rect[0],origin.y+r->rect[1],float(r->rect[2]),float(r->rect[3])};
+            if(r->outline)DrawRectangleLinesEx(rectangle,1,color(r->rgb));else DrawRectangleRec(rectangle,color(r->rgb));
+        } else if(const auto *image=std::get_if<StartupSkinDraw>(&draw)) {
+            if(image->package!=StartupSkinPackage::common)throw std::runtime_error("税收资源组拒绝");
+            if(image->image==103&&image->sprite==12)
+                sprites.facility_image({SteamFacilityAsset::number05,image->offset,image->frame,{}},origin);
+            else if(image->image==70&&image->sprite==21)
+                sprites.facility_image({SteamFacilityAsset::finger,image->offset,image->frame<0?finger_frame:image->frame,{}},origin);
+            else {
+                if(image->sprite<0&&(!image->crop[2]||!image->crop[3]))continue;
+                sprites.visual({StartupVisualResource::common,image->sprite,image->image,image->frame,
+                    image->layer,image->crop,image->offset},origin);
+            }
+        } else if(const auto *text=std::get_if<SteamInformationText>(&draw)) {
+            using R=SteamInformationTextRole;
+            std::string value;
+            switch(text->role) {
+            case R::tax_title:value="税金收入";break;
+            case R::tax_owner_header:value="住宅所有者";break;
+            case R::tax_income_header:value="收入";break;
+            case R::tax_total_label:value="合计";break;
+            case R::row_name:value=text->value;break;
+            default:throw std::runtime_error("税收文字角色未接");
+            }
+            if(text->mode!=SteamInformationTextMode::plain)throw std::runtime_error("税收文字方法拒绝");
+            const float size=text->font_size?float(text->font_size):12.F;
+            float x=origin.x+text->position[0];
+            if(text->anchor.value_or(0)&2)x-=font.measure(value,size)/2;
+            else if(text->anchor.value_or(0)&4)x-=font.measure(value,size);
+            font.text(value,x,origin.y+text->position[1],color(text->rgb),size);
+        } else if(const auto *clip=std::get_if<SteamFacilityClip>(&draw)) {
+            if(clip->kind==SteamFacilityClipKind::push_intersect) {
+                if(clipped)throw std::runtime_error("税收头像嵌套裁剪未接");
+                const auto &r=clip->rectangle;BeginScissorMode(int(origin.x)+r[0],int(origin.y)+r[1],r[2],r[3]);clipped=true;
+            } else {if(!clipped)throw std::runtime_error("税收头像裁剪下溢");EndScissorMode();clipped=false;}
+        } else if(const auto *body=std::get_if<SteamInformationHumanBody>(&draw))
+            sprites.actor(false,body->body.sprite,body->body.image,body->body.frame,
+                {origin.x+body->position[0],origin.y+body->position[1]});
+        else if(const auto *number=std::get_if<SteamFacilityNumber>(&draw))sprites.menu_number(*number,origin);
+        else throw std::runtime_error("税收皮肤未知图元");
+    }
+    if(clipped){EndScissorMode();throw std::runtime_error("税收头像裁剪未闭合");}
+    // 原soft90两项皆空；Touch2无矩形，不在画面中伪造确定/返回按钮。
+}
+std::optional<SteamInformationSkinPlan> tax_information_example(bool tail,const ChineseFont &font) {
+    StartupSession initial;StartupWorldRuntimeSession runtime(initial.state(),ref::WorldRandomStream::from_java_seed(1));
+    auto state=runtime.state();state.scripts.pages.front().lifecycle=3;state.scripts.executing_page.reset();
+    // 仅六个居民定义/年度税额是条件，不补人物实例、住宅或伪称自然年度收入。
+    for(int row=0;row<6;++row) {
+        state.human_presence.at(row)=1;state.human_homes.at(row)[2]=1;
+        state.human_calendar.at(row).legacy_G=(row+1)*10;
+    }
+    ref::WorldScriptPage page;page.kind=ref::WorldScriptPageKind::raw_page;page.legacy_page=90;
+    const auto opened=ref::prepare_world_script_page(startup_world_runtime_scripts(state),page);
+    if(!opened.candidate||opened.candidate->inserted_pages.size()!=1||
+       !write_startup_world_runtime_scripts(state,opened.candidate->state))return {};
+    const auto ready=prepare_startup_world_runtime(state);if(!ready.candidate)return {};
+    state=*ready.candidate;const auto id=state.scripts.pages.back().id;
+    if(tail) {
+        StartupWorldTaxInput input;input.selection=5;
+        if(input_startup_world_tax_page(state,id,input)!=StartupWorldRuntimeError::none)return {};
+    }
+    return window_tax_plan(state,id,font);
+}
 const char *human_overview_label(SteamHumanOverviewTextRole role,bool recovery,int argument) {
     switch(role) {
     case SteamHumanOverviewTextRole::satisfaction:return "满意度";
@@ -2163,6 +2244,7 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
     const bool deadline_fixture=inspect_page=="task-deadline"||inspect_page=="task-deadline-battle"||inspect_page=="task-deadline-continue";
     const bool residence_fixture=inspect_page=="residence-candidates"||inspect_page=="residence-completed"||inspect_page=="residence-reward";
     const bool award_fixture=inspect_page=="award-contribution"||inspect_page=="award-income"||inspect_page=="award-residents";
+    const bool tax_fixture=inspect_page=="tax-income"||inspect_page=="tax-income-tail";
     const bool effort_fixture=inspect_page=="effort-result";
     const bool mastery_fixture=inspect_page=="mastery-announcement"||inspect_page=="mastery-bonus"||inspect_page=="mastery-choice";
     const bool clear_fixture=inspect_page=="clear-count"||inspect_page=="clear-score"||inspect_page=="clear-record"||inspect_page=="clear-closing";
@@ -2231,10 +2313,17 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
         reputation_glyphs+="设施信息种类武器防具饰品出售中查看商品价格品质会给周围带来好的影响返回研究绘制夹具无自然触发认证";
         for(const auto &d:startup_world_rules().facilities)reputation_glyphs+=d.name;
     }
+    if(tax_fixture) {
+        reputation_glyphs+="税金收入住宅所有者合计研究绘制夹具无自然触发认证";
+        for(const auto &human:startup_world_rules().humans)reputation_glyphs+=human.name;
+    }
     ChineseFont font(font_path,reputation_glyphs);
-    if(magic_fixture||task_fixture||residence_fixture||award_fixture||effort_fixture||award_result_fixture||mastery_fixture||gift_claim_fixture||clear_fixture||new_game_fixture||config_fixture||commerce_fixture||commerce_result_fixture||commerce_facility_fixture||commerce_preview_fixture||facility_special_fixture) {
-        std::variant<SteamMagicPotPlan,SteamTaskSelectionPlan,SteamTaskRosterPlan,SteamTaskResultPlan,SteamTaskVictoryPlan,SteamTaskDeadlinePlan,SteamHumanOverviewPlan,SteamTownProgressPlan,SteamNewGamePlan,SteamConfigSkinPlan,SteamCommerceSkinPlan,SteamFacilityDetailSkinPlan> plan;
-        if(facility_special_fixture) {
+    if(magic_fixture||task_fixture||residence_fixture||award_fixture||tax_fixture||effort_fixture||award_result_fixture||mastery_fixture||gift_claim_fixture||clear_fixture||new_game_fixture||config_fixture||commerce_fixture||commerce_result_fixture||commerce_facility_fixture||commerce_preview_fixture||facility_special_fixture) {
+        std::variant<SteamMagicPotPlan,SteamTaskSelectionPlan,SteamTaskRosterPlan,SteamTaskResultPlan,SteamTaskVictoryPlan,SteamTaskDeadlinePlan,SteamHumanOverviewPlan,SteamTownProgressPlan,SteamNewGamePlan,SteamConfigSkinPlan,SteamCommerceSkinPlan,SteamFacilityDetailSkinPlan,SteamInformationSkinPlan> plan;
+        if(tax_fixture) {
+            const auto value=tax_information_example(inspect_page=="tax-income-tail",font);
+            if(!value)throw std::runtime_error("Tax income example rejected");plan=*value;
+        } else if(facility_special_fixture) {
             const auto value=facility_special_example(inspect_page,font);
             if(!value)throw std::runtime_error("Facility special example rejected");plan=*value;
         } else if(commerce_preview_fixture) {
@@ -2306,6 +2395,7 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
             BeginTextureMode(canvas.value);ClearBackground(Color{83,141,77,255});
             font.text("研究绘制夹具",8,10,WHITE,10);std::visit([&](const auto &value){
                 if constexpr(std::is_same_v<std::decay_t<decltype(value)>,SteamFacilityDetailSkinPlan>)draw_facility_detail(value,sprites,font);
+                else if constexpr(std::is_same_v<std::decay_t<decltype(value)>,SteamInformationSkinPlan>)draw_tax_information(value,sprites,font);
                 else draw_facility_ceremony(value,sprites,font,info_fixture?Vector2{0,0}:human_overview_origin);
             },plan);
             font.text("无自然触发认证",8,new_game_fixture?300:260,WHITE,9);EndTextureMode();BeginDrawing();ClearBackground(BLACK);
@@ -3519,12 +3609,14 @@ int run_startup_world_window(const std::filesystem::path &assets,
     struct FacilityScrollDrag {std::uint64_t page;float start_y;int first;float grid;};
     std::optional<FacilityScrollDrag> facility_scroll_drag; // 只绑定当前页，释放/切页/退休清理。
     std::optional<FacilityScrollDrag> human_scroll_drag; // 只保存平台拖动手势，目录游标在唯一Owner。
+    std::optional<FacilityScrollDrag> tax_scroll_drag; // raw90只存H111平台拖动，首行/选择在Owner。
     std::optional<std::pair<std::uint64_t,int>> human_catalogue_marker;
     std::optional<std::pair<std::uint64_t,int>> facility_item_marker; // raw75 marker16，同页同绝对行的第二次UP。
     std::optional<std::pair<std::uint64_t,int>> task_item_marker; // raw27同一行第二次UP，覆盖/暂停/失焦释放。
     std::optional<std::pair<std::uint64_t,int>> magic_item_marker; // raw42 marker16，跨页／拖动／暂停清除。
     std::optional<std::pair<std::uint64_t,int>> commerce_item_marker; // raw85只保存鼠标标记，真实选择归Owner。
     bool human_scroll_gesture{};
+    bool tax_scroll_gesture{};
     bool facility_scroll_gesture{}; // 即使切页清引用，仍吞掉本次拖动的最终release。
     auto build_orientation = ref::FacilityOrientation::first;
     std::string command_feedback;
@@ -3532,7 +3624,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
     while (!WindowShouldClose()) {
         const Vector2 mouse{GetMousePosition().x / scale, GetMousePosition().y / scale};
         const bool pressed = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
-        if(pressed){facility_scroll_gesture=false;facility_scroll_drag.reset();human_scroll_gesture=false;human_scroll_drag.reset();}
+        if(pressed){facility_scroll_gesture=false;facility_scroll_drag.reset();human_scroll_gesture=false;human_scroll_drag.reset();tax_scroll_gesture=false;tax_scroll_drag.reset();}
         if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT))facility_arrow_press.reset();
         const auto current_top=std::find_if(session.state().scripts.pages.rbegin(),session.state().scripts.pages.rend(),
                                             [](const auto &page){return page.lifecycle!=4;});
@@ -3541,6 +3633,10 @@ int run_startup_world_window(const std::filesystem::path &assets,
         if(human_scroll_drag&&(session.state().scene.framework_paused||
            current_top==session.state().scripts.pages.rend()||current_top->id!=human_scroll_drag->page||
            (current_top->legacy_page!=22&&current_top->legacy_page!=25&&current_top->legacy_page!=26&&current_top->legacy_page!=27&&current_top->legacy_page!=31&&current_top->legacy_page!=32&&current_top->legacy_page!=42&&current_top->legacy_page!=43&&current_top->legacy_page!=51&&current_top->legacy_page!=54&&current_top->legacy_page!=60&&current_top->legacy_page!=61&&current_top->legacy_page!=64&&current_top->legacy_page!=75&&current_top->legacy_page!=79&&current_top->legacy_page!=85)))human_scroll_drag.reset();
+        if(tax_scroll_drag&&(session.state().scene.framework_paused||!IsWindowFocused()||
+           current_top==session.state().scripts.pages.rend()||current_top->id!=tax_scroll_drag->page||
+           current_top->legacy_page!=90))tax_scroll_drag.reset();
+        if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT)&&!IsMouseButtonReleased(MOUSE_BUTTON_LEFT))tax_scroll_gesture=false;
         if(task_item_marker&&(session.state().scene.framework_paused||current_top==session.state().scripts.pages.rend()||
            current_top->id!=task_item_marker->first||current_top->legacy_page!=27||!IsWindowFocused()))task_item_marker.reset();
         if(magic_item_marker&&(session.state().scene.framework_paused||current_top==session.state().scripts.pages.rend()||
@@ -3551,7 +3647,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
            current_top->id!=human_catalogue_marker->first))human_catalogue_marker.reset();
         if(facility_item_marker&&(session.state().scene.framework_paused||current_top==session.state().scripts.pages.rend()||
            current_top->id!=facility_item_marker->first||current_top->legacy_page!=75))facility_item_marker.reset();
-        bool pointer_consumed=facility_scroll_gesture||human_scroll_gesture;
+        bool pointer_consumed=facility_scroll_gesture||human_scroll_gesture||tax_scroll_gesture;
         const auto hit = [&](Rectangle r) { return pressed && !pointer_consumed && CheckCollisionPointRec(mouse, r); };
         if (!application_clear && hit({4, 295, 44, 22})) {
             pointer_consumed=true;
@@ -4307,16 +4403,41 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     }
                 }
             } else if (raw == 90) {
-                const auto act = [&](StartupWorldTaxAction a) {
-                    if (session.act_tax_page(page->id, a) != StartupWorldRuntimeError::none)
-                        throw std::runtime_error("税收页面输入失败");
-                };
-                if (IsKeyPressed(KEY_UP))
-                    act(StartupWorldTaxAction::previous);
-                if (IsKeyPressed(KEY_DOWN))
-                    act(StartupWorldTaxAction::next);
-                if (IsKeyPressed(KEY_ENTER) || hit({176, 265, 58, 24}))
-                    act(StartupWorldTaxAction::confirm);
+                const auto pid=page->id;
+                const auto view=inspect_startup_world_tax_page(session.state(),pid);
+                const auto plan=window_tax_plan(session.state(),pid,font,tax_scroll_drag&&tax_scroll_drag->page==pid);
+                if(view&&plan&&IsWindowFocused()) {
+                    StartupWorldTaxInput input;input.up=IsKeyPressed(KEY_UP);input.down=IsKeyPressed(KEY_DOWN);
+                    input.confirm=IsKeyPressed(KEY_ENTER); // 源Touch2无矩形，不把任意release当全屏确认。
+                    const int count=static_cast<int>(view->rows.size()),denominator=std::max(count,5);
+                    const int top=85+static_cast<int>(std::int64_t(111)*view->first_visible/denominator);
+                    const int length=555/denominator;
+                    const auto point=[&](std::array<int,4> r){return Rectangle{human_overview_origin.x+r[0],human_overview_origin.y+r[1],float(r[2]),float(r[3])};};
+                    // 原组件12最终thumb与源Margin；拖动量是研究平台输入，不写入应用快照。
+                    const std::array<int,4> thumb{218,top,28,length};
+                    if(count>5&&hit(point(thumb))) {
+                        tax_scroll_drag=FacilityScrollDrag{pid,mouse.y,view->first_visible,float(111)/denominator};
+                        tax_scroll_gesture=true;pointer_consumed=true;
+                    } else if(count>5&&hit(point({221,85,3,111}))) {
+                        input.scroll=StartupWorldTaxInput::Scroll{false,mouse.y<human_overview_origin.y+top?-5:5};
+                        tax_scroll_gesture=true;pointer_consumed=true;
+                    }
+                    const float wheel=GetMouseWheelMove();
+                    if(count>5&&wheel!=0)input.scroll=StartupWorldTaxInput::Scroll{false,wheel>0?-1:1};
+                    if(tax_scroll_drag&&tax_scroll_drag->page==pid) {
+                        const double wanted=tax_scroll_drag->first+std::trunc(double(mouse.y-tax_scroll_drag->start_y)/tax_scroll_drag->grid);
+                        input.scroll=StartupWorldTaxInput::Scroll{true,int(std::clamp(wanted,0.,double(std::max(count-5,0))))};
+                    }
+                    for(const auto &touch:plan->touches)if(touch.component==11&&touch.rectangle&&
+                        !input.scroll&&!pointer_consumed&&IsMouseButtonReleased(MOUSE_BUTTON_LEFT)&&
+                        CheckCollisionPointRec(mouse,point(*touch.rectangle))) {
+                        input.selection=touch.value&0xffff;input.confirm=true; // 原无marker，单次行release合成选择与确认。
+                    }
+                    if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT))tax_scroll_drag.reset();
+                    if(input.up||input.down||input.confirm||input.selection||input.scroll)
+                        if(session.input_tax_page(pid,input)!=StartupWorldRuntimeError::none)
+                            throw std::runtime_error("税收同轮输入拒绝");
+                } else if(!plan&&page->lifecycle!=0)throw std::runtime_error("税收输入来源缺失");
             } else if (raw == 21) {
                 const auto &groups = session.state().build_page_catalogs.at(page->id);
                 if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT)) {
@@ -5135,6 +5256,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
             const bool steam_commerce_top=page->legacy_page==83;
             const bool steam_commerce_result=page->legacy_page==86;
             const bool steam_commerce_facility=page->legacy_page==85;
+            const bool steam_tax=page->legacy_page==90;
             const bool steam_reputation=page->legacy_page==82;
             const bool steam_effect=page->legacy_page>=75&&page->legacy_page<=77;
             const bool steam_facility=page->legacy_page==74&&
@@ -5148,7 +5270,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
             const bool steam_gift_result=page->legacy_page==66&&startup_world_human_page_ready(state,page->id);
             const bool steam_attribute_result=(page->legacy_page==68||page->legacy_page==69)&&startup_world_human_page_ready(state,page->id);
             const bool steam_profession=(page->legacy_page==62||page->legacy_page==63)&&startup_world_human_page_ready(state,page->id);
-            if (page->legacy_page != 21&&!steam_commerce_top&&!steam_commerce_result&&!steam_commerce_facility&&!steam_gift_claim&&!steam_info&&!steam_task&&!steam_residence&&!steam_magic&&!steam_reputation&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result) DrawRectangle(5, 170, 230, 119, paper);
+            if (page->legacy_page != 21&&!steam_tax&&!steam_commerce_top&&!steam_commerce_result&&!steam_commerce_facility&&!steam_gift_claim&&!steam_info&&!steam_task&&!steam_residence&&!steam_magic&&!steam_reputation&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result) DrawRectangle(5, 170, 230, 119, paper);
             std::string title = page->title;
             if (title.empty() && page->kind == ref::WorldScriptPageKind::raw_page) {
                 if (page->legacy_page == 30 || page->legacy_page == 31 || page->legacy_page == 32)
@@ -5169,7 +5291,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                          page->monster_definition)
                     title = rules.monsters.at(*page->monster_definition).name;
             }
-            if (page->legacy_page != 21&&!steam_commerce_top&&!steam_commerce_result&&!steam_commerce_facility&&!steam_gift_claim&&!steam_info&&!steam_task&&!steam_residence&&!steam_magic&&!steam_reputation&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result)
+            if (page->legacy_page != 21&&!steam_tax&&!steam_commerce_top&&!steam_commerce_result&&!steam_commerce_facility&&!steam_gift_claim&&!steam_info&&!steam_task&&!steam_residence&&!steam_magic&&!steam_reputation&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result)
                 font.text(title, 12, 177, ink, font.measure(title) > 208 ? 10 : 12);
             if(steam_gift_claim) {
                 const auto plan=window_town_progress_plan(state,page->id,font);
@@ -5524,21 +5646,9 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 if(!plan)throw std::runtime_error("Steam attribute result payload rejected");
                 draw_human_overview(*plan,sprites,font);
             } else if (page->legacy_page == 90) {
-                const auto view = inspect_startup_world_tax_page(state, page->id);
-                if (!view)
-                    throw std::runtime_error("税收详情缺失");
-                font.text("居民税收", 16, 48);
-                for (int n = view->first_visible;
-                     n < std::min(static_cast<int>(view->rows.size()), view->first_visible + 5);
-                     ++n) {
-                    const float y = 78 + (n - view->first_visible) * 27;
-                    if (n == view->selection)
-                        DrawRectangle(12, y - 4, 216, 26, {219, 232, 204, 255});
-                    font.text(human_name(view->rows[n].definition), 16, y, ink, 11);
-                    font.text(std::to_string(view->rows[n].amount) + "G", 164, y, ink, 10);
-                }
-                font.text("合计 " + std::to_string(view->total) + "G", 16, 226, ink, 11);
-                font.text("确定", 190, 272);
+                const auto plan=window_tax_plan(state,page->id,font,tax_scroll_drag&&tax_scroll_drag->page==page->id);
+                if(plan)draw_tax_information(*plan,sprites,font);
+                else if(page->lifecycle!=0)throw std::runtime_error("税收正式皮肤载荷拒绝");
             } else if (page->legacy_page == 81) {
                 font.text("设施升级", 17, 66);
                 for (int n = 0; n < 3; ++n)

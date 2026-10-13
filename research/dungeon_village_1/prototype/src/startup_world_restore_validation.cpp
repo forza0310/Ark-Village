@@ -13,6 +13,7 @@
 #include "dungeon_village_prototype/startup_world_commerce.hpp"
 #include "dungeon_village_prototype/startup_world_village_activity.hpp"
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
+#include "dungeon_village_prototype/startup_world_tax.hpp"
 #include "dungeon_village_reference/actor_control.hpp"
 #include "dungeon_village_reference/world_perception.hpp"
 
@@ -1162,17 +1163,8 @@ struct Validation {
             } else if (raw==48||raw==49||raw==50||raw==95) {
                 if(!valid_startup_world_town_progress_page(s,p))return fail("town progress: 初始化/选择/庆典/领取载荷非法");
             }
-            if (raw == 90 && (s.tax_page_selection.count(id) || s.tax_page_scroll.count(id)) &&
-                !s.tax_page_residents.count(id))
-                return fail("tax page: 初始化名单缺失");
-            if (raw == 90 && s.tax_page_residents.count(id)) {
-                const auto &list = s.tax_page_residents.find(id)->second;
-                const auto sel = get(s.tax_page_selection, id), scroll = get(s.tax_page_scroll, id);
-                if (!sel || !scroll || !s.page_counters.count(id) ||
-                    !scrolling(*sel, *scroll, list.size(), 5) ||
-                    !unique_references(list, [&](int n) { return human(n); }))
-                    return fail("tax page: 已初始化名单/选择非法");
-            }
+            if (raw == 90 && !valid_startup_world_tax_page(s, p))
+                return fail("tax page: 生命周期/四键/冻结名单或游标非法");
             if (raw == 87 &&
                 (s.award_announced.count(id) || s.award_termination_pending.count(id) ||
                  s.award_pending_humans.count(id)) &&

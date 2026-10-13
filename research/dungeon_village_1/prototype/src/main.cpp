@@ -156,6 +156,7 @@ Options parse_options(int argc, char **argv) {
           options.inspect_page != "award-giving" && options.inspect_page != "award-lift" &&
           options.inspect_page != "award-celebration" && options.inspect_page != "award-reward" &&
           options.inspect_page != "award-contribution" && options.inspect_page != "award-income" && options.inspect_page != "award-residents" &&
+          options.inspect_page != "tax-income" && options.inspect_page != "tax-income-tail" &&
           options.inspect_page != "residence-completed" && options.inspect_page != "residence-reward" &&
           options.inspect_page != "task-deadline" && options.inspect_page != "task-deadline-battle" && options.inspect_page != "task-deadline-continue" &&
           options.inspect_page != "task-roster" && options.inspect_page != "task-extra" && options.inspect_page != "task-extra-stats" &&

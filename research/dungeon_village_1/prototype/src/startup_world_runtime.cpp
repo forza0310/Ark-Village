@@ -1095,6 +1095,10 @@ StartupWorldRuntimeError StartupWorldRuntimeSession::act_tax_page(std::uint64_t 
                                                                   int selection) {
     return act_startup_world_tax_page(state_, page, action, selection);
 }
+StartupWorldRuntimeError StartupWorldRuntimeSession::input_tax_page(
+    std::uint64_t page, const StartupWorldTaxInput &input) {
+    return input_startup_world_tax_page(state_, page, input);
+}
 std::vector<StartupAudioRequest> StartupWorldRuntimeSession::take_audio_requests() {
     std::vector<StartupAudioRequest> result;
     result.swap(state_.sound_requests);
@@ -1239,6 +1243,16 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
                 {}};
     // 暂停不初始化菜单/信息页/人物详情，也不把缺载荷的生命周期0页改成已就绪2。
     const auto &pending = admitted.scripts.pages.back();
+    if (admitted.scene.framework_paused && pending.kind == ref::WorldScriptPageKind::raw_page &&
+        pending.legacy_page == 90) {
+        if (!valid_startup_world_tax_page(admitted, pending))
+            return {StartupWorldRuntimeError::missing_source, {}, ref::WorldSceneError::missing_consumer,
+                    ref::WorldScheduleError::none, {}};
+        admitted.scripts.executing_page.reset();
+        admitted.scene.top_is_main = false;
+        return {StartupWorldRuntimeError::none, std::move(admitted), ref::WorldSceneError::none,
+                ref::WorldScheduleError::none, {}};
+    }
     if(admitted.scene.framework_paused&&pending.kind==ref::WorldScriptPageKind::raw_page&&
        ((pending.legacy_page>=25&&pending.legacy_page<=28)||(pending.legacy_page>=31&&pending.legacy_page<=33))) {
         admitted.scripts.executing_page.reset();admitted.scene.top_is_main=false;
@@ -1282,7 +1296,8 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
         !initialize_startup_world_facility_item_pages(admitted) ||
         !initialize_startup_world_facility_catalog_pages(admitted) ||
         !initialize_startup_world_magic_pot_pages(admitted) ||
-        !initialize_startup_world_information_pages(admitted))
+        !initialize_startup_world_information_pages(admitted) ||
+        !initialize_startup_world_tax_pages(admitted))
         return {StartupWorldRuntimeError::missing_source,
                 {},
                 ref::WorldSceneError::missing_consumer,

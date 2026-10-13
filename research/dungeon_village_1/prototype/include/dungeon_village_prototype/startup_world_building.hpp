@@ -103,6 +103,10 @@ struct StartupFacilityBonusWindow {
 std::optional<StartupFacilityBonusWindow>
 startup_world_facility_bonus_window(const StartupWorldRuntimeState &state, std::uint64_t page,
                                    std::size_t first);
+// 原EnumerateMyHomeChara：全部定义原序，仅p/C/g/D2资格，不创建人物或刷新申请脚本。
+// 合法空名单与缺失目录明确分开；74只消费计数，80保留名单身份。
+std::optional<std::vector<int>>
+startup_world_residence_candidates(const StartupWorldRuntimeState &state);
 // raw80实际住户名单和替换事务；入住收费与住宅建设造价不是两笔扣款。
 StartupBuildResult act_startup_world_residence_page(StartupWorldRuntimeState &state,
                                                     std::uint64_t page, int human,

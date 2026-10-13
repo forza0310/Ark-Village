@@ -822,14 +822,45 @@ void residence() {
     check(tick.candidate && adapter.facilities.write(s, tick.candidate->state) &&
               s.scene.world.world.facilities.at(*build.created).status == 1,
           "actual recruitment construction completes at original threshold");
+    const auto empty_candidates=startup_world_residence_candidates(s);
+    check(empty_candidates&&empty_candidates->empty(),"residence enumeration keeps legal empty candidates distinct from missing source");
     // 住户申请资格夹具：仅提高真实定义满足度到原表门槛，不补人物实例或改原表。
     s.shop_humans.at(1).satisfaction = s.rules->humans.at(1).residence_threshold;
+    const auto candidates=startup_world_residence_candidates(s);
+    check(candidates&&*candidates==std::vector<int>{1},"residence shared query uses source state/satisfaction/home qualification");
+    auto query=s;query.human_flags.at(1)|=2U;
+    check(startup_world_residence_candidates(query)==candidates&&query.scene.world.world.ai.battle.actors.empty(),
+          "residence enumeration does not filter flags or require a live actor");
+    query=s;query.shop_humans.at(2).satisfaction=query.rules->humans.at(2).residence_threshold;
+    const auto ordered=startup_world_residence_candidates(query);
+    check(ordered&&*ordered==std::vector<int>({1,2}),"residence enumeration retains definition source order");
+    for(int fault=0;fault<3;++fault) {
+        query=s;
+        if(fault==0)query.human_presence.at(1)=0;
+        if(fault==1)query.shop_humans.at(1).satisfaction=query.rules->humans.at(1).residence_threshold-1;
+        if(fault==2)query.human_homes.at(1)[2]=1;
+        const auto excluded=startup_world_residence_candidates(query);
+        check(excluded&&excluded->empty(),"residence enumeration independently applies each source qualification predicate");
+    }
     for (auto &page : s.scripts.pages)
         if (page.kind != ref::WorldScriptPageKind::scene)
             page.lifecycle = 4;
     check(open_startup_world_facility_page(s, *build.created) == StartupWorldRuntimeError::none,
           "source recruitment facility opens details74");
     const auto detail = s.scripts.pages.back().id;
+    for(int fault=0;fault<3;++fault) {
+        auto bad=s;
+        if(fault==0)bad.human_presence.erase(0);
+        if(fault==1)bad.shop_humans.erase(0);
+        if(fault==2)bad.human_homes.erase(0);
+        const auto before=startup_world_state_digest(bad);
+        check(!startup_world_residence_candidates(bad)&&
+              act_startup_world_facility_page(bad,detail,StartupFacilityPageAction::confirm)==StartupWorldRuntimeError::missing_source&&
+              startup_world_state_digest(bad)==before,"residence missing source rejects enumeration and 74-to-80 without partial page publication");
+    }
+    const auto before_query=startup_world_state_digest(s);
+    check(startup_world_residence_candidates(s)==candidates&&startup_world_state_digest(s)==before_query,
+          "residence qualification read does not refresh requests, random or page output");
     check(act_startup_world_facility_page(s, detail, StartupFacilityPageAction::confirm) ==
                   StartupWorldRuntimeError::none &&
               s.scripts.pages.back().legacy_page == 80 &&

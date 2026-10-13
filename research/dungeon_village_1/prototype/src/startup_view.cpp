@@ -789,7 +789,7 @@ std::string facility_detail_text(const SteamFacilityDetailText &t) {
     case R::bonus_value:return std::string(t.argument==0?"价格":t.argument==1?"品质":"魅力")+t.value;
     case R::bottom:return !t.value.empty()?t.value:t.argument==0?"使用道具":"周围设施的奖励";
     case R::equipment_count:return "种类";
-    case R::sale_description:case R::plant_description:return t.value;
+    case R::sale_description:case R::plant_description:case R::recruitment_status:return t.value;
     case R::plant_price:return t.argument==0?"价格":t.value;
     case R::plant_quality:return t.argument==0?"品质":t.value;
     }
@@ -829,8 +829,8 @@ bool special_facility_page(const StartupWorldRuntimeState &s,const ref::WorldScr
     if(!s.rules||page.legacy_page!=74)return false;
     const auto d=std::find_if(s.rules->facilities.begin(),s.rules->facilities.end(),
         [&](const auto &value){return value.id==page.legacy_f;});
-    return d!=s.rules->facilities.end()&&d->kind!=12&&d->detail!=6&&
-        (d->detail==1||d->detail==4||d->detail==5||d->kind==2);
+    return d!=s.rules->facilities.end()&&d->kind!=12&&
+        (d->detail==1||d->detail==4||d->detail==5||d->detail==6||d->kind==2);
 }
 // Steam MyFormBase.YEN("G",long)：有符号三位逗号串+半角G；外层'+'由皮肤保留。
 std::string facility_gold_text(std::int64_t amount) {
@@ -851,6 +851,12 @@ std::optional<SteamFacilityDetailSkinPlan> window_facility_special_plan(
     if(d->detail==1||d->detail==4||d->detail==5) {
         options.sale_text=std::string(d->detail==1?"武器":d->detail==4?"防具":"饰品")+"出售中";
         if(p->legacy_g!=1) {options.bottom_text="查看商品";options.bottom_width=int(font.measure(*options.bottom_text));}
+    } else if(d->detail==6) {
+        const auto candidates=startup_world_residence_candidates(s);
+        if(!candidates)return {};
+        options.applicant_text=candidates->empty()?"现在没有希望入住的人":
+            "现在有"+std::to_string(candidates->size())+"人希望入住";
+        if(p->legacy_g!=1) {options.bottom_text="入住希望者";options.bottom_width=int(font.measure(*options.bottom_text));}
     } else {
         if(d->neighbour_effects.size()<2)return {};
         options.plant_money_text=facility_gold_text(d->neighbour_effects[0].delta);
@@ -1624,6 +1630,26 @@ std::optional<SteamCommerceSkinPlan> window_commerce_facility_plan(
 std::optional<StartupWorldRuntimeState> commerce_facility_example_state(const std::string &name) {
     StartupSession initial;StartupWorldRuntimeSession session(initial.state(),ref::WorldRandomStream::from_java_seed(1));
     auto s=session.state();s.scripts.pages.front().lifecycle=3;s.scripts.executing_page.reset();
+    if(name=="facility-recruitment"||name=="facility-recruitment-ready") {
+        // 原24募集的100G与一次施工调用；不跳多年经营，不伪造设施实例。
+        const auto started=begin_startup_world_build(s,24);
+        if(started.error!=StartupWorldRuntimeError::none||started.denial!=StartupBuildDenial::none)return {};
+        std::optional<std::uint64_t> site;
+        for(int y=0;y<24&&!site;++y)for(int x=0;x<24&&!site;++x) {
+            const auto placed=confirm_startup_world_build(s,{x,y},ref::FacilityOrientation::first);
+            if(placed.error!=StartupWorldRuntimeError::none)return {};
+            site=placed.created;
+        }
+        if(!site||cancel_startup_world_build(s)!=StartupWorldRuntimeError::none)return {};
+        const auto adapter=startup_world_runtime_adapter();
+        const auto built=ref::prepare_world_facility_update(adapter.facilities.read(s),*site,adapter.catalog);
+        if(!built.candidate||!adapter.facilities.write(s,built.candidate->state))return {};
+        if(name=="facility-recruitment-ready")
+            s.shop_humans.at(1).satisfaction=s.rules->humans.at(1).residence_threshold;
+        // ready只设满足度资格条件；不补人物实例、住宅、资金或原表，不宣称自然申请。
+        if(open_startup_world_facility_page(s,*site)!=StartupWorldRuntimeError::none)return {};
+        return s;
+    }
     if(name=="facility-shop"||name=="facility-plant") {
         const int definition=name=="facility-shop"?30:66;
         const auto instance=std::find_if(s.scene.world.world.facilities.begin(),s.scene.world.world.facilities.end(),
@@ -2147,6 +2173,7 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
     const bool commerce_facility_fixture=inspect_page=="commerce-buildings"||inspect_page=="commerce-buildings-funded"||inspect_page=="commerce-buildings-tail";
     const bool commerce_preview_fixture=inspect_page=="commerce-building-preview";
     const bool facility_special_fixture=inspect_page=="facility-shop"||inspect_page=="facility-plant"||
+        inspect_page=="facility-recruitment"||inspect_page=="facility-recruitment-ready"||
         inspect_page=="commerce-shop-preview"||inspect_page=="commerce-plant-preview";
     const bool gift_claim_fixture=inspect_page=="gift-facility"||inspect_page=="gift-profession"||inspect_page=="gift-equipment"||inspect_page=="gift-item";
     const bool award_result_fixture=inspect_page=="award-giving"||inspect_page=="award-lift"||inspect_page=="award-celebration"||inspect_page=="award-reward";
@@ -2200,6 +2227,7 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
         for(const auto &d:startup_world_rules().facilities)if(d.id==34)reputation_glyphs+=d.name;
     }
     if(facility_special_fixture) {
+        reputation_glyphs+="现在没有希望入住的人现在有人希望入住入住希望者";
         reputation_glyphs+="设施信息种类武器防具饰品出售中查看商品价格品质会给周围带来好的影响返回研究绘制夹具无自然触发认证";
         for(const auto &d:startup_world_rules().facilities)reputation_glyphs+=d.name;
     }
@@ -3142,7 +3170,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
     } else if (inspect_page == "world-building") {
         if (session.open_build_menu() != StartupWorldRuntimeError::none)
             throw std::runtime_error("真实新局建设目录检查入口失败");
-    } else if (inspect_page == "world-goods" || inspect_page == "world-goods-attributes" || inspect_page == "world-equipment-info") {
+    } else if (inspect_page == "world-goods" || inspect_page == "world-goods-attributes" || inspect_page == "world-equipment-info" || inspect_page == "world-shop-details") {
         // 真实新局已有武器设施优先；没有时按当前建设/施工消费者形成，不注入实例或资金。
         std::optional<std::uint64_t> shop;
         const auto find_shop = [&]() {
@@ -3174,18 +3202,20 @@ int run_startup_world_window(const std::filesystem::path &assets,
         }
         if (session.open_facility_page(*shop) != StartupWorldRuntimeError::none)
             throw std::runtime_error("真实武器店74打开失败");
-        const auto parent = session.state().scripts.pages.back().id;
-        if (session.act_facility_page(parent, StartupFacilityPageAction::confirm) != StartupWorldRuntimeError::none)
-            throw std::runtime_error("真实武器店74商品选择失败");
-        const auto goods = session.state().scripts.pages.back().id;
-        if (!inspect_startup_world_facility_catalog_page(session.state(), goods))
-            throw std::runtime_error("自然79检查未形成合法目录");
-        if(inspect_page=="world-goods-attributes"&&session.act_facility_catalog_page(goods,StartupFacilityCatalogAction::next_tab)!=StartupWorldRuntimeError::none)
-            throw std::runtime_error("商品属性页检查失败");
-        if (inspect_page == "world-equipment-info") {
-            if (session.act_facility_catalog_page(goods, StartupFacilityCatalogAction::inspect) != StartupWorldRuntimeError::none ||
-                !session.update().committed)
-                throw std::runtime_error("自然79信息72检查失败");
+        if(inspect_page!="world-shop-details") {
+            const auto parent = session.state().scripts.pages.back().id;
+            if (session.act_facility_page(parent, StartupFacilityPageAction::confirm) != StartupWorldRuntimeError::none)
+                throw std::runtime_error("真实武器店74商品选择失败");
+            const auto goods = session.state().scripts.pages.back().id;
+            if (!inspect_startup_world_facility_catalog_page(session.state(), goods))
+                throw std::runtime_error("自然79检查未形成合法目录");
+            if(inspect_page=="world-goods-attributes"&&session.act_facility_catalog_page(goods,StartupFacilityCatalogAction::next_tab)!=StartupWorldRuntimeError::none)
+                throw std::runtime_error("商品属性页检查失败");
+            if (inspect_page == "world-equipment-info") {
+                if (session.act_facility_catalog_page(goods, StartupFacilityCatalogAction::inspect) != StartupWorldRuntimeError::none ||
+                    !session.update().committed)
+                    throw std::runtime_error("自然79信息72检查失败");
+            }
         }
     } else if (inspect_page == "world-details") {
         if (session.open_facility_page(4) != StartupWorldRuntimeError::none)
@@ -5108,7 +5138,8 @@ int run_startup_world_window(const std::filesystem::path &assets,
             const bool steam_reputation=page->legacy_page==82;
             const bool steam_effect=page->legacy_page>=75&&page->legacy_page<=77;
             const bool steam_facility=page->legacy_page==74&&
-                (startup_world_facility_page_count(state,*page)==2||ordinary_facility_preview(state,*page));
+                (startup_world_facility_page_count(state,*page)==2||ordinary_facility_preview(state,*page)||
+                 special_facility_page(state,*page));
             const auto human_view=page->legacy_page==60?inspect_startup_world_human_presentation(state,page->id):std::nullopt;
             const bool steam_human=human_view.has_value();
             const bool steam_equipment=page->legacy_page==73&&startup_world_human_page_ready(state,page->id);
@@ -5292,10 +5323,10 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     draw_facility_detail(*plan,sprites,font);
                 } else if(special_facility_page(state,*page)) {
                     const auto plan=window_facility_special_plan(state,page->id,font);
-                    if(!plan)throw std::runtime_error("Steam装备/植物定义预览载荷拒绝");
+                    if(!plan)throw std::runtime_error("Steam特殊设施定义预览载荷拒绝");
                     draw_facility_detail(*plan,sprites,font);
                 } else {
-                // 住宅/入住仍属旧研究显示，不作为已接正式模板的失败兜底。
+                // 住宅仍属旧研究显示，不作为已接正式模板的失败兜底。
                     const int definition = state.facility_definition_page_bindings.at(page->id);
                     const auto &d = rules.facilities.at(definition);
                     DrawRectangle(5, 42, 230, 216, paper);
@@ -5327,7 +5358,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                         facility_scroll_drag&&facility_scroll_drag->page==page->id);
                 } else if(special_facility_page(state,*page)) {
                     const auto plan=window_facility_special_plan(state,page->id,font);
-                    if(!plan)throw std::runtime_error("Steam装备/植物实例详情载荷拒绝");
+                    if(!plan)throw std::runtime_error("Steam特殊设施实例详情载荷拒绝");
                     draw_facility_detail(*plan,sprites,font);
                 } else {
                     const auto id = state.facility_page_bindings.at(page->id);

@@ -749,6 +749,69 @@ int check_steam_facility_skin(const std::filesystem::path &source_root) {
             bad=in;bad.bottom_text=std::string(4097,'x');if(!is_preview)
                 check(!steam_facility_special_skin(bad),"特殊实例输出文本预算拒超限，不累计字符串");
         }
+    const auto &recruitment_source=special_source(24);
+    for(const int applicants:{0,2})for(const bool japanese:{false,true})for(const bool is_preview:{false,true}) {
+        SteamFacilitySpecialSkinInput in;in.definition=24;in.mapchip=recruitment_source.display_id;
+        in.icon=recruitment_source.legacy_icon;in.name=recruitment_source.name;
+        in.japanese=japanese;in.definition_preview=is_preview;in.title_widths=std::array<int,2>{48,50};
+        in.applicant_count=applicants;in.applicant_text=applicants?"现在有2人希望入住":"现在没有希望入住的人";
+        if(!is_preview){in.bottom_text="入住申请者";in.bottom_width=60;}
+        // 定义24原初p2；preview这里只认证静态绘制分支，不伪造85中的未开放资格。
+        const auto plan=steam_facility_special_skin(in);
+        check(plan.has_value(),"入住74零/多人数及两语言静态模板；预览条件绘制不认证自然入口");
+        const auto status=detail_labels(*plan,DR::recruitment_status);
+        check(status.size()==1&&status[0].argument==applicants&&status[0].value==*in.applicant_text&&
+            status[0].rectangle==std::array<int,4>{120,172,0,0}&&status[0].anchor==2&&status[0].font_size==0&&
+            status[0].method==SteamFacilityTextMethod::draw_string&&status[0].rgb==std::array<int,3>{92,51,31}&&
+            detail_labels(*plan,DR::equipment_count).empty()&&detail_labels(*plan,DR::plant_price).empty()&&
+            detail_labels(*plan,DR::parameter).empty(),"入住仅计数译文居中普通棕字，不借种类/数值/植物或人物布局");
+        int touch4=0,touch2=0,numbers=0;
+        for(const auto &op:plan->operations) {
+            if(const auto *draw=std::get_if<SteamFacilityDraw>(&op))numbers+=std::holds_alternative<SteamFacilityNumber>(*draw);
+            if(const auto *touch=std::get_if<SteamStartupTouch>(&op)) {
+                if(touch->component==4){++touch4;check(touch->value==20&&touch->rectangle==std::array<int,4>{62,177,116,56},"入住底钮真实测宽及原Touch4边距");}
+                if(touch->component==2){++touch2;check(!touch->rectangle&&touch->option==2,"入住静态预览末Touch2不猜坐标");}
+            }
+        }
+        check(numbers==0&&touch4==(is_preview?0:1)&&touch2==(is_preview?1:0)&&
+            preview_images(*plan,A::finger)==(is_preview?0:1)&&detail_labels(*plan,DR::bottom).size()==(is_preview?0U:1U),
+            "入住零人也保留实例底钮/手形，不隐藏或禁用确认；preview跳互动");
+        for(int fault=0;fault<5;++fault) {
+            auto bad=in;
+            if(fault==0)bad.applicant_count.reset();
+            if(fault==1)bad.applicant_count=-1;
+            if(fault==2)bad.applicant_text.reset();
+            if(fault==3)bad.equipment_count=0;
+            if(fault==4)bad.plant_deltas=std::array<int,2>{0,0};
+            check(!steam_facility_special_skin(bad),"入住拒缺/负人数、缺译文或混入其他模板载荷");
+        }
+    }
+    auto recruitment_base=test_support::world_fixture();
+    const auto recruited=install_startup_world_facility(recruitment_base,24,{8,4},ref::FacilityOrientation::first);
+    check(recruited.created.has_value(),"入住皮肤条件夹具用现Owner安装真实募集定义，不另造实例字段");
+    const auto residence_adapter=startup_world_runtime_adapter();
+    const auto recruitment_finished=ref::prepare_world_facility_update(residence_adapter.facilities.read(recruitment_base),
+        *recruited.created,residence_adapter.catalog);
+    check(recruitment_finished.candidate&&residence_adapter.facilities.write(recruitment_base,recruitment_finished.candidate->state),
+        "入住皮肤仅复用募集实际施工完成，100G收费/整链仍由building residence主责");
+    for(const bool applicant:{false,true}) {
+        auto state=recruitment_base;
+        if(applicant)state.shop_humans.at(1).satisfaction=state.rules->humans.at(1).residence_threshold;
+        check(open_startup_world_facility_page(state,*recruited.created)==StartupWorldRuntimeError::none,"入住真实募集实例打开74");
+        const auto page=state.scripts.pages.back().id;
+        SteamFacilitySpecialSkinOptions options;options.title_widths=std::array<int,2>{48,50};options.bottom_width=60;
+        options.bottom_text="入住申请者";options.applicant_text=applicant?"现在有1人希望入住":"现在没有希望入住的人";
+        const auto before=startup_world_state_digest(state);const auto plan=steam_facility_special_skin(state,page,options);
+        check(plan&&detail_labels(*plan,DR::recruitment_status)[0].argument==(applicant?1:0)&&
+            startup_world_state_digest(state)==before,"入住Owner完整资格计数只读投影，不创建人物/申请事件/随机或输出");
+        const auto same=steam_facility_special_skin(state,page,options);
+        check(same&&same->operations.size()==plan->operations.size(),"入住重复查询输出规模稳定");
+        auto bad=state;bad.human_homes.erase(0);
+        check(!steam_facility_special_skin(bad,page,options),"入住缺资格字段明确拒绝，不靠map.at或少算人数");
+        bad=state;bad.page_phases.at(page)=1;check(!steam_facility_special_skin(bad,page,options),"入住单页拒第二页载荷");
+        check(act_startup_world_facility_page(state,page,StartupFacilityPageAction::cancel)==StartupWorldRuntimeError::none&&
+            !steam_facility_special_skin(state,page,options),"入住取消后皮肤引用退休；80问答不在本批重造");
+    }
     for(const int definition:{30,66}) {
         auto state=test_support::world_fixture();
         const auto installed=std::find_if(state.scene.world.world.facilities.begin(),state.scene.world.world.facilities.end(),

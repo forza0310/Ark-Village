@@ -956,6 +956,24 @@ Error open_startup_world_facility_page(State &s, std::uint64_t id) {
     s = std::move(next);
     return Error::none;
 }
+std::optional<std::vector<int>> startup_world_residence_candidates(const State &s) {
+    if(!s.rules||s.rules->humans.empty()||s.rules->humans.size()>static_cast<std::size_t>(std::numeric_limits<int>::max())||
+       s.human_presence.size()!=s.rules->humans.size()||s.shop_humans.size()!=s.rules->humans.size()||
+       s.human_homes.size()!=s.rules->humans.size())return {};
+    std::vector<int> result,seen;
+    for(const auto &h:s.rules->humans) {
+        const auto presence=s.human_presence.find(h.identity);
+        const auto profile=s.shop_humans.find(h.identity);
+        const auto home=s.human_homes.find(h.identity);
+        if(h.identity<0||std::find(seen.begin(),seen.end(),h.identity)!=seen.end()||
+           presence==s.human_presence.end()||profile==s.shop_humans.end()||home==s.human_homes.end())return {};
+        seen.push_back(h.identity);
+        // 原谓词不看人物实例、flags、资金、是否展示过申请事件。
+        if(presence->second!=0&&profile->second.satisfaction>=h.residence_threshold&&home->second[2]==0)
+            result.push_back(h.identity);
+    }
+    return result;
+}
 Error act_startup_world_facility_page(State &s, std::uint64_t id,
                                       StartupFacilityPageAction action) {
     if (action != StartupFacilityPageAction::previous &&
@@ -1007,6 +1025,8 @@ Error act_startup_world_facility_page(State &s, std::uint64_t id,
                 return Error::none;
             return Error::missing_source; // 75/79/人物60尚有各自操作，不能通用关页。
         }
+        const auto candidates=startup_world_residence_candidates(next);
+        if(!candidates)return Error::missing_source;
         ref::WorldScriptPage p;
         p.kind = ref::WorldScriptPageKind::raw_page;
         p.legacy_page = 80;
@@ -1017,11 +1037,7 @@ Error act_startup_world_facility_page(State &s, std::uint64_t id,
         const auto page = r.candidate->inserted_pages.front().id;
         next.facility_page_bindings[page] = next.facility_page_bindings.at(id);
         auto &list = next.residence_page_candidates[page];
-        for (const auto &h : next.rules->humans)
-            if (next.human_presence.at(h.identity) != 0 &&
-                next.shop_humans.at(h.identity).satisfaction >= h.residence_threshold &&
-                next.human_homes.at(h.identity)[2] == 0)
-                list.push_back(h.identity);
+        list=*candidates;
         if (list.empty()) {
             const auto event = ref::prepare_world_script(
                 startup_world_runtime_catalog(), startup_world_runtime_scripts(next), {16, {}, {}});

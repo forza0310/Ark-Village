@@ -720,7 +720,13 @@ SaveAll已证true→false→system的顺序保留，完整生命周期上游仍�
 
 普通暂停的通知旁支现另有局部排除：`OnApplicationPause(true)`在VA `0x10787E44`调用已有通知实例的`DoNotify`，后于`0x10787E64`调用`SetNotificationBackground(true)`。`DoNotify`（RVA `0x8CE560`）要求KairoBase实例非空且`isPlaying_ +0x64`为真；这里读的是游玩标志，**不是**`reserveSaveEnable +0x0C`。它先调用`CancelNotifications(false,true)`，再于`0x108CE5E3`分派通知实例槽4。`MyNotify.GetInstance`在`0x101DE9AC`登记到同一`NotifyManager.instance_`；该游戏类的槽4 `OnNotify`明确使用`0x101C9750`的空返回实现。两个插件包装所取委托槽`0x110EBD98`／`0x110EC8C4`已分别解码为MethodDef4915 `<CancelNotifications>b__125_0`／4924 `<SetNotificationBackground>b__134_0`，均为同一空返回；包装通过`RunOnUiThread(wait=true)`提交它们，不产生保存请求或修改保存使能。此结论只覆盖已登记MyNotify及这两个具体回调；不把等待空回调当作档案刷新，也不认证整个UI线程队列、账号服务、OS退出或强制终止。源码仍是上述固定DLL及metadata，未操作游戏／存档、未新增分析产物。
 
-因此已闭合正常尾段及所核异常续体的预留保存分派，并排除上述具体游戏表单暂停／恢复链；普通暂停／退出／后台还有何入口提出值2、停止运行后是否有消费机会、OS关闭／暂停／强制终止是否触发保存仍未知。五处Billing setter记录不等于完整入口清单或玩家动态认证。
+2026-10-14同身份续核将**窗口失焦与应用暂停分开**。`IApplication.OnApplicationFocus`（RVA `0x7877C0`）先要求静态`bootError_`为空；原TypeInfo槽`0x110F77B4`映射IApplication（TypeDef925），`+0x30`是此异常引用，不能按实例同偏移的viewportWidth解释。`0x110F404C`映射Config（TypeDef551），静态`+0x28`为`UNITY_EDITOR`；仅该标志及`openBrowsing_`特殊分支才能到`0x1078788A`调用`OnApplicationPause(!focusStatus)`，不能把任意失焦当作前述暂停链。非编辑器的失焦路径在`0x10787906`调用管理器`Deactivate`，随后`0x1078791D`分派应用槽8 `OnStop`、`0x10787933`调用`SoundPlayer.Suspend`；复焦在`0x10787959`分派槽7 `OnRestart`。本游戏Main未覆盖槽7／8，继承实现为`0x101C9750`空返回；Deactivate（`0x107E52A0..0x107E52BE`）只清`endUpdateForm_ +0x68`引用，SoundPlayer.Suspend（`0x107C8B40..0x107C8B51`）只设置自身`suspend2_ +0x20`。这些具体接收者不提出预留保存请求；字段改变不等于世界已保存，也不单独证明后台更新是否继续。固定APK的Main继承IApplication且无onPause／onStop／onDestroy覆盖，基类的既有暂停／停止／销毁边界仍保持独立，不套Steam焦点协议。
+
+同轮补核退出的两条平台收尾：`OnApplicationQuit`于`0x107884F8`调用`SteamInputManager.Dipose`（RVA `0x7B6670`），它先`StopVibration`，再在`Config.USE_STEAM`与输入已初始化时调用`SteamInput.Shutdown`（`0x107B66FA`）。StopVibration（RVA `0x7B7F60`）枚举已连接控制器、投递双零振动并清`vibrationStopTime_`；Shutdown在`0x106CFC74`转到原生`ISteamInput_Shutdown`，不是Steam云提交或游戏记录写器。退出另于`0x1078867B`调用XboxManager.Finish（`0x1075C7D0..0x1075C825`），其局部在非UNITY_EDITOR时只向TypeInfo槽`0x110E8288`的静态`+0x04`写true；此字段名未在本分支认证，不据偏移猜成预留保存字段。所核托管路径均无SaveGame／SaveSystem／SetReserveSave或保存虚槽分派；原生SDK、OS最终关闭回调与异常展开未由这些局部认证，不能将平台收尾成功当作档案已刷新。
+
+退出并非零文件写：除已核PlayerPrefs显示配置外，`0x10788721`检查`ActionReplay.mode_==1`后于`0x10788781`调用动作回放Save（RVA `0x7443F0`）并导出记录；随后`0x1078887D`调用Restore（RVA `0x744180`），该方法在`0x10744240..0x10744245`要求`backupExist_`为真才删除／回写动作回放所留文件备份。这些明确的回放记录／备份I/O不调用业务Save／SaveAll或SetReserveSave，不能据文件变化认定退出提交了最新游戏状态，也不把调试回放存取纳入普通玩家自动存档。
+
+在**固定DLL、已登记Main／游戏表单／MyNotify接收者、普通暂停true与退出托管回调**这一静态范围内，上游已闭合为不提出新的业务预留保存请求；非编辑器焦点链同样如此。这里没有待命名的游戏暂停／退出delegate可据猜测补成SaveAll；既有Billing／其它服务请求可能已在进入回调前预留，不由本结论否定。当前可实施的是已有显式请求的条件分派，不能自行给失焦／关闭增加SaveAll。真正剩余的是OS实际回调顺序及平台／SDK事件输入、使能运行期赋值、已预留请求在停止更新前是否获准消费的动态证据；整个库的间接／内联调用穷尽、恢复false的账号协程和强制终止保证不属于这条已闭合的普通暂停true／退出链。五处Billing setter记录仍不是全程序入口清单或玩家动态认证。
 
 ## 当前C++边界与持续存取
 

@@ -113,7 +113,7 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 71 | EQUIP_INFO | 装备详情 | 仅声明；更新／绘制／动态链待逐项 |
 | 72 | EQUIP_INFO_FROM_TENANT | 装备详情 | 静态及维护：单项装备说明、原1/1／双箭头和79真实父绑定已接；原动态另验，见[商品合同](../rules/COMMERCE.md) |
 | 73 | EQUIP_INFO_FROM_PRESENT | 装备详情 | 静态及维护：只读装备信息、资源／数值与赠礼目录返回已交付；原字体／OS另验，见[人物合同](STEAM_HUMAN_DETAIL.md) |
-| 74 | TENANT_INFO | 设施 | 静态：[普通实例两页与交接](STEAM_FACILITY_DETAIL.md)及GameView即时滚动条已核，维护有序计划／窗口已接；定义预览和住宅／装备／入住／植物特殊模板仍待接。动态：S043/S047/S054及[S069–S071](../references/README.md#steam普通设施两页2026-10-11)补两行来源、鼠标翻页／选择／返回；空／长列表、OS拖动及键输入消费仍未闭合，HTML视觉未验 |
+| 74 | TENANT_INFO | 设施 | 静态：[普通两页／特殊布局与交接](STEAM_FACILITY_DETAIL.md)及GameView即时滚动条已核；维护普通实例／85定义预览、装备店与植物计划／窗口已接，入住人数模板／严格资格查询与现80交接已接并短验。住宅模板文字／帧及共享副作用已局部核，三个已核正常producer未产生有效住宅74，维护不造入口或演员请求；不等于全程序不可达。动态：S043/S047/S054及[S069–S071](../references/README.md#steam普通设施两页2026-10-11)补两行来源、鼠标翻页／选择／返回；空／长列表、OS拖动及键输入消费仍未闭合，HTML视觉未验 |
 | 75 | TENANT_ITEMSELECT | 设施 | 静态及维护：五行道具／marker16、Owner首行与整轮输入／恢复已交付；S044/S046/S055仅局部动态，见[页面合同](PAGES.md) |
 | 76 | TENANT_ANIME1 | 设施 | 静态及维护：投物、共享J／价格刷新、49自动转页与正式皮肤已接；38声音为Owner一次请求适配，原连续演出另验，见[效果合同](../rules/FACILITY_EFFECTS.md) |
 | 77 | TENANT_ANIME2 | 设施 | 静态及维护：49快进／55关闭、前后数字与角色资源计划已接；S045仅结果局部，完整OS动态另验，见[效果合同](../rules/FACILITY_EFFECTS.md) |
@@ -124,7 +124,7 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 82 | TENANT_STREN_BONUS | 设施 | 静态及维护：两阶段口碑／人气、有序皮肤、独立双钟／恢复与条件参考已交付；未认证自然36个月触发、完整scratch或原OS动态，见[效果合同](../rules/FACILITY_EFFECTS.md) |
 | 83 | SHOPPING_TOP | 商会 | Steam完整局部合同、只读皮肤／Owner NEW查询及同轮输入已接研究窗口：三入口、等级、私有南瓜、两NEW、上→下→确认优先返回；见[合同](../rules/COMMERCE.md#steam-commerce-top)与[接口](../prototype/include/dungeon_village_prototype/steam_commerce_skin.hpp)。字体／共享手形调度及原OS动态独立，未由条件图认证 |
 | 84 | SHOPPING_ITEMSELECT | 商会 | Steam局部Init／输入／绘制与APK差异已核，见[目录合同](../rules/COMMERCE.md#steam-commerce-items)。已有交易Owner；冻结反馈金额缺载荷，不能用当前选项价替代。皮肤与整轮反馈次序接线待补，原动态未验 |
-| 85 | SHOPPING_TENANT | 商会 | Steam三行／Mapchip2／点价／滚动／NEW、详情74及先扣点再93领取已核，见[设施合同](../rules/COMMERCE.md#steam-commerce-facilities)。维护原序皮肤／三行滚动／marker接线与同轮Owner输入已接，保留p0策略及85付点→93独立领取。74定义预览仍为已有业务／简化皮肤，原动态未验 |
+| 85 | SHOPPING_TENANT | 商会 | Steam三行／Mapchip2／点价／滚动／NEW、详情74及先扣点再93领取已核，见[设施合同](../rules/COMMERCE.md#steam-commerce-facilities)。维护原序皮肤／三行滚动／marker接线与同轮Owner输入已接，保留p0策略及85付点→93独立领取。普通／装备店／植物74定义预览已接独立皮肤与只读桥，原动态未验 |
 | 86 | SHOPPING_ACT_AFTER | 商会 | Steam完整局部已核：已交易后创建，下一获准更新直接Pop，虽画了解但不等待确认；所持金标签旁实际绘本笔差额。见[反馈合同](../rules/COMMERCE.md#steam-commerce-result)。维护只读皮肤／真实图标／实际测宽及研究窗口已接，保留原自动关闭；原动态未验 |
 | 87 | MEDAL_LIST | 授勋／怪物／住宅 | [局部合同与纯计划](PAGES.md#steam住宅候选80与授勋目录87)及显式游标helper已接：三页签、五行、各数值列／勋章与住宅图；现奖励消费者不等于原dialog父子页，Owner游标／页签／问答接线及原动态待补 |
 | 88 | MEDAL_CELEMONY | 授勋／怪物／住宅 | [合同与有序皮肤](STEAM_HUMAN_DETAIL.md#human-reward-followups)：Steam背景／演员／奖章／气泡／陪衬和mentalUp偏移135、严格Owner桥／窗口／恢复已接；共享scratch附效、字体及原动态待证 |

@@ -118,7 +118,8 @@ std::optional<SteamFacilitySkinPlan> steam_facility_upgrade_skin(
 enum class SteamFacilityDetailTextRole {
     title, name, price, parameter, remaining, maximum_level, no_effects,
     bonus_title, maintenance, no_bonus, bonus_name, bonus_value, bottom,
-    equipment_count, sale_description, plant_price, plant_quality, plant_description
+    equipment_count, sale_description, plant_price, plant_quality, plant_description,
+    recruitment_status
 };
 enum class SteamFacilityTextMethod { draw_string, draw_string2, text_layout };
 struct SteamFacilityDetailText {
@@ -203,25 +204,27 @@ std::optional<SteamFacilityDetailSkinPlan> steam_facility_definition_skin(
     const StartupWorldRuntimeState &state,std::uint64_t page,
     const SteamFacilityDetailSkinOptions &options);
 
-// raw74装备店/植物单页与普通两页分开；货币翻译及实测宽由表现后端提供。
+// raw74装备店/植物/入住单页与普通两页分开；翻译及实测宽由表现后端提供。
 struct SteamFacilitySpecialSkinInput {
     int definition{}, mapchip{}, icon{}, frame{}, view_y{}, finger_frame{};
     std::string name;
     bool japanese{}, definition_preview{};
     std::optional<int> equipment_count; // 已开放定义种类，零种合法，不是库存总数。
+    std::optional<int> applicant_count; // 入住模板仅消费资格计数，不绘人物或目录。
+    std::optional<std::string> applicant_text; // 零人/有N人的原翻译结果，普通居中文本。
     std::optional<std::array<int,2>> plant_deltas; // 原邻接定义前两项，非经济/使用属性。
     std::optional<std::string> plant_money_text; // YEN("G",delta0)结果，不包含源前缀'+'。
     std::optional<std::string> sale_text; // 装备类别译文填入销售说明后的完整字符串。
     std::optional<std::string> bottom_text; // 装备互动提示或植物实例非互动说明。
     std::optional<std::array<int,2>> title_widths;
-    std::optional<int> bottom_width; // 仅装备实例Draw_btmMsg使用。
+    std::optional<int> bottom_width; // 装备/入住实例Draw_btmMsg使用，零人也保留互动。
 };
 std::optional<SteamFacilityDetailSkinPlan> steam_facility_special_skin(
     const SteamFacilitySpecialSkinInput &input);
 struct SteamFacilitySpecialSkinOptions {
     int view_y{}, finger_frame{};
     bool japanese{};
-    std::optional<std::string> plant_money_text, sale_text, bottom_text;
+    std::optional<std::string> plant_money_text, sale_text, bottom_text, applicant_text;
     std::optional<std::array<int,2>> title_widths;
     std::optional<int> bottom_width;
 };

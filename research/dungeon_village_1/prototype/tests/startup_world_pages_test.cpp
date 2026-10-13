@@ -2479,6 +2479,79 @@ void task_focus_and_introduction() {
     check(!consume_startup_world_runtime_encounter_request(test_support::world_fixture(),
         {ref::EncounterCreationRequestKind::page89,99999}),"raw89 producer refuses unknown definition before publishing a pending page");
 }
+void monster_details() {
+    using E=StartupWorldRuntimeError;
+    ref::EncounterCreationInput input;input.kind=0;input.center={10,18};input.year_index=0;input.month_index=3;
+    const auto spawned=prepare_startup_world_runtime_encounter(test_support::world_fixture(),input);
+    check(spawned&&!spawned->scene.world.world.ai.monster_order.empty(),"92入口使用真实遭遇生成的当前怪物");
+    const auto actor=spawned->scene.world.world.ai.monster_order.front();
+    const int definition=spawned->scene.world.world.ai.battle.actors.at(actor).definition;
+    for(int fault=0;fault<5;++fault) {
+        auto bad=*spawned;
+        if(fault==0)bad.scene.framework_paused=true;
+        if(fault==1)bad.scene.scene_state=4;
+        if(fault==2)bad.scene.world.world.ai.monster_order.clear();
+        if(fault==3)bad.scene.world.world.ai.battle.actors.at(actor).kind=ref::ActorKind::human;
+        if(fault==4)bad.scripts.next_page_id=0;
+        const auto before=startup_world_state_digest(bad);
+        check(open_startup_world_monster_detail_page(bad,actor)!=E::none&&startup_world_state_digest(bad)==before,
+            "92暂停/非主场景/陈旧名单/非怪物/晚插页失败均不提交半个父页或随机");
+    }
+    auto dying=*spawned;dying.scene.world.world.ai.battle.actors.at(actor).control.state=3;
+    dying.scene.world.world.ai.battle.actors.at(actor).hp.target=0;
+    check(open_startup_world_monster_detail_page(dying,actor)==E::none,"92不新增HP或死亡状态门槛，仍在名单的死亡演出怪物可查看");
+    auto s=*spawned;const auto random=s.scene.random.draws();const auto updates=s.scene.world.updates;
+    const auto events=s.scripts.event_calls;const auto funds=s.scene.world.world.ai.accounting.funds();
+    check(open_startup_world_monster_detail_page(s,actor)==E::none,"92正常实例入口绑定其共享定义");
+    const auto id=s.scripts.pages.back().id;
+    check(s.scripts.pages.back().monster_definition==definition&&s.scripts.pages.back().lifecycle==0&&
+        !s.page_counters.count(id)&&valid_startup_world_monster_detail_page(s,s.scripts.pages.back())&&
+        !s.scene.world.world.ai.external_actor_roots.count(actor),"92pending仅持定义及既有页身份，不新增actor根或提前计数");
+    const auto pending=s;auto paused=s;paused.scene.framework_paused=true;
+    const auto frozen=prepare_startup_world_runtime(paused);
+    check(frozen.candidate&&frozen.candidate->scripts.pages.back().lifecycle==0&&!frozen.candidate->page_counters.count(id)&&
+        acknowledge_startup_world_runtime_page(s,id)==E::missing_source,"92暂停pending不Init，未Init确认不能补钟");
+    page_tick(s);const auto ready=s;
+    check(s.page_counters.at(id)==1&&s.scripts.pages.back().lifecycle==2&&
+        s.scene.random.draws()==random&&s.scene.world.updates==updates&&s.scripts.event_calls==events&&
+        s.scene.world.world.ai.accounting.funds()==funds,"92真实Init只推进页主钟，不营业/发奖/重触发介绍或抽随机");
+    // 页面是定义查询：所选实例退出后，不要求为显示持有或复活该实例。
+    auto no_instance=s;no_instance.scene.world.world.ai.monster_order.clear();
+    no_instance.scene.world.world.ai.battle.actors.erase(actor);
+    check(valid_startup_world_monster_detail_page(no_instance,no_instance.scripts.pages.back()),"92页校验不反查已经退休的选中实例");
+    for(int fault=0;fault<7;++fault) {
+        auto bad=s;
+        if(fault==0)bad.scripts.pages.back().monster_definition.reset();
+        if(fault==1)bad.page_counters.erase(id);
+        if(fault==2)bad.scene.world.world.ai.monster_growth.erase(definition);
+        if(fault==3)bad.scene.world.world.ai.battle.monsters.erase(definition);
+        if(fault==4)bad.page_phases.emplace(id,0);
+        if(fault==5)bad.page_secondary_counters.emplace(id,0);
+        if(fault==6)bad.scripts.pages.back().task_definition=0;
+        const auto before=startup_world_state_digest(bad);
+        check(!prepare_startup_world_runtime(bad).candidate&&acknowledge_startup_world_runtime_page(bad,id)==E::missing_source&&
+            cancel_startup_world_runtime_page(bad,id)==E::missing_source&&startup_world_state_digest(bad)==before,
+            "92缺定义/钟/共享统计及异页载荷显式拒绝，取消不旁路校验");
+    }
+    for(bool cancel:{false,true}) {
+        auto closed=ready;closed.page_counters.at(id)=0; // 原无最小等待，零主钟即允许关闭。
+        check((cancel?cancel_startup_world_runtime_page(closed,id):acknowledge_startup_world_runtime_page(closed,id))==E::none&&
+            closed.scripts.pages.back().lifecycle==4&&closed.scene.random.draws()==random&&closed.scripts.event_calls==events,
+            "92确认/返回都立即关闭，零主钟也不快进40或改变介绍标志");
+        auto bad=closed;bad.page_counters.erase(id);
+        check(!prepare_startup_world_runtime(bad).candidate,"92损坏关闭载荷先拒绝，不靠退休隐藏");
+        const auto retired=prepare_startup_world_runtime(closed);
+        check(retired.candidate&&!retired.candidate->page_counters.count(id)&&
+            std::none_of(retired.candidate->scripts.pages.begin(),retired.candidate->scripts.pages.end(),[=](const auto &p){return p.id==id;}),
+            "92真实框架退休定义页与主钟");
+    }
+    auto late=ready;late.scripts.professions.emplace(static_cast<int>(late.scene.world.world.ai.professions.size()),ref::WorldScriptUnlockDefinition{});
+    const auto before=startup_world_state_digest(late);
+    check(cancel_startup_world_runtime_page(late,id)==E::script_failed&&startup_world_state_digest(late)==before,
+        "92关闭后投影写回失败仍保留原父页、主钟和输出");
+    auto preinstalled=pending;preinstalled.page_counters.emplace(id,0);
+    check(!prepare_startup_world_runtime(preinstalled).candidate,"92pending预装主钟拒绝，不默认为ready");
+}
 void rank_conditions() {
     for(int raw:{48,49,50,95})for(int fault=0;fault<3;++fault) {
         auto pending=fixture(raw);const auto id=pending.scripts.pages.back().id;
@@ -5680,6 +5753,7 @@ int main() {
         rank_conditions();
         rank_promotion();
         task_focus_and_introduction();
+        monster_details();
         annual_termination();
         annual_award();
         task_display();

@@ -117,6 +117,116 @@ void monster_introduction_skin(Checks &check,const std::filesystem::path &root) 
         acknowledge_startup_world_runtime_page(*state,id)==StartupWorldRuntimeError::none&&
         !steam_monster_introduction_skin(*state,id,options),"89已关闭页不能继续产生皮肤");
 }
+void monster_detail_skin(Checks &check,const std::filesystem::path &root) {
+    SteamMonsterSkinOptions options;options.view_y=23;options.title_widths=std::array<int,2>{48,48};
+    options.name_width=37;
+    const SteamMonsterDetailInput input{31,2,7,3,200,12,3,12,175,4,"原怪物名","真实定义说明"};
+    for(const int language:{0,1,2}) {
+        options.japanese=language==0;
+        options.statistic_labels=language==1?std::optional<std::array<std::string,2>>{{" 	 defeated third","lost heroes extra"}}:
+            std::optional<std::array<std::string,2>>{{"no-space","split words"}};
+        const auto plan=steam_monster_detail_skin(input,options);
+        check(plan&&plan->soft_labels==std::array<int,2>{0,2},"92独立立即返回软标签，不沿89等40确认");
+        int levels{},points{},counts{},bodies{},backgrounds{},exp{},money{};
+        std::size_t shadow_at{},body_at{},first_count{},money_at{},description_at{};
+        std::vector<SteamHumanOverviewText> labels;
+        for(std::size_t i=0;i<plan->operations.size();++i) {
+            const auto &op=plan->operations[i];
+            if(const auto *v=std::get_if<SteamFacilityImage>(&op)) {
+                if(v->asset==SteamFacilityAsset::level_label) {++levels;check(v->position==std::array<int,2>{68,70},"92等级标签读取实测名宽加31");}
+            } else if(const auto *v=std::get_if<SteamCommerceImage>(&op)) {
+                ++points;const auto r=steam_commerce_resource(v->asset);
+                check(r&&r->image==31&&r->sprite==44&&std::string(r->published_image)=="steam-common/icon_result00.png"&&
+                      v->frame==4&&v->position==std::array<int,2>{language==0?142:166,67},"92点数图必须消费Steam差异图和原frame4");
+            } else if(const auto *v=std::get_if<SteamHumanImage>(&op)) {
+                if(v->asset==SteamHumanAsset::residence_background){++backgrounds;check(v->position==std::array<int,2>{23,89}&&v->crop==std::array<int,4>{0,0,93,82},"92地板整图，不套89三段铺底");}
+                if(v->asset==SteamHumanAsset::shadow){shadow_at=i;check(v->frame==3&&v->position==std::array<int,2>{70,158},"92原定义独立影子");}
+                if(v->asset==SteamHumanAsset::experience_label){++exp;check(v->position==std::array<int,2>{42,178}&&v->frame==0,"92经验SEB60 frame0原锚");}
+            } else if(const auto *v=std::get_if<SteamMonsterBody>(&op)) {
+                ++bodies;body_at=i;check(v->image==67&&v->sprite==9&&v->frame==3&&v->position==std::array<int,2>{70,157},"92方向1与实际body速度，非89方向2");
+            } else if(const auto *v=std::get_if<SteamInformationNumber>(&op)) {
+                if(counts==0)first_count=i;
+                check(v->value==(counts==0?200:12)&&v->kind==(counts==0?SteamInformationNumberKind::monster_count:SteamInformationNumberKind::person_count)&&
+                      v->position==std::array<int,2>{210,counts==0?(language==1?104:110):(language==1?138:144)}&&v->japanese==(language==0),
+                      "92两统计分段资格共同控制几何，非JP后备仍不加日文单位");
+                ++counts;
+            } else if(const auto *v=std::get_if<SteamFacilityNumber>(&op)) {
+                if(v->position==std::array<int,2>{86,70})check(v->value==3&&v->anchor==1,"92等级数字与文字实测基准同源");
+                if(v->position==std::array<int,2>{210,70})check(v->value==4&&v->kind==(language==0?SteamFacilityNumberKind::number:SteamFacilityNumberKind::plus_value),"92点数非JP仍无条件加号");
+                if(v->position==std::array<int,2>{95,177})check(v->value==12&&v->kind==SteamFacilityNumberKind::number,"92经验使用普通数字");
+                if(v->position==std::array<int,2>{200,177})check(v->value==175&&v->kind==SteamFacilityNumberKind::money,"92金币保留money内部dx减9");
+            } else if(const auto *v=std::get_if<SteamMonsterImage>(&op)) {
+                const auto resource=steam_monster_resource(v->asset);
+                ++money;money_at=i;check(resource&&std::string(resource->group)=="common2"&&
+                    resource->sprite==0&&resource->image==1&&v->frame==1&&
+                    std::string(resource->published_image)=="original/common2/monster_money.png"&&
+                    v->position==std::array<int,2>{147,189},"92原AppData.resCom2身份，不可误绑resWeapon");
+            } else if(const auto *v=std::get_if<SteamHumanOverviewText>(&op)) {
+                if(v->rectangle[0]==125)labels.push_back(*v);
+                if(v->value==input.description){description_at=i;check(v->rectangle==std::array<int,4>{120,198,0,0}&&v->anchor==2&&!v->layout,"92说明为普通居中文字，不造文本框");}
+            }
+        }
+        check(levels==1&&points==1&&counts==2&&bodies==1&&backgrounds==1&&exp==1&&money==1&&
+              shadow_at<body_at&&body_at<first_count&&first_count<money_at&&money_at<description_at,"92图元原序及有限资源输出");
+        check(labels.size()==(language==1?4U:2U),"92两句均至少两段才用双行布局");
+        for(const auto &label:labels)check(label.anchor==0,"92普通DrawString保留源默认anchor0");
+        if(language==1)check(labels[0].value.empty()&&labels[1].value.empty()&&labels[2].value=="lost"&&labels[3].value=="heroes"&&
+              labels[0].font_size==10,"92Split保留前导/连续空段、trim控制字符、不消费第三段");
+        else check(labels[0].value=="倒した数…"&&labels[1].value=="倒された人数…"&&labels[0].font_size==0,
+                   "92非JP后备仍取静态日文，不借LT残片或APK中文替换源literal");
+    }
+    options.japanese=false;options.statistic_labels.reset();
+    auto no_level=input;no_level.level=1;options.name_width.reset();
+    check(steam_monster_detail_skin(no_level,options).has_value()&&!steam_monster_detail_skin(input,options),
+          "92Lv1不消费名宽，Lv2起缺实测宽明确拒绝");
+    options.name_width=37;
+    const auto coin=tools::parse_legacy_seb(read_bytes(root/"common2/monster_money.seb"));
+    auto money_image=LoadImage((root/"common2/monster_money.png").string().c_str());
+    int coin_parts{};
+    for(const auto &layer:coin.layers)for(const auto &part:layer.parts)if(part.frame==1&&part.image_index>=0) {
+        ++coin_parts;check(money_image.data&&money_image.width==28&&money_image.height==18&&
+            part.image_index==1&&part.source_x==14&&part.source_y==0&&part.width==14&&part.height==18&&
+            part.offset_x==-7&&part.offset_y==-18&&part.source_x+part.width<=money_image.width&&part.height<=money_image.height,
+            "92掉钱图原common2裁片及(-7,-18)内部offset独立oracle");
+    }
+    check(coin_parts==1,"92掉钱只消费已核frame1裁片");UnloadImage(money_image);
+    auto state=test_support::page_fixture(92);const auto id=state.scripts.pages.back().id;
+    state.scripts.pages.back().lifecycle=0;state.scripts.pages.back().monster_definition=3;
+    check(!steam_monster_detail_skin(state,id,options),"92只读桥不初始化pending页");
+    const auto initialized=prepare_startup_world_runtime(state);
+    check(initialized.candidate.has_value(),"92调用点夹具经真实框架准入");state=*initialized.candidate;
+    auto &growth=state.scene.world.world.ai.monster_growth.at(3);
+    check(growth.base_death_reward==9&&growth.base_cash_reward==125,"92源表兔子R9/S125独立oracle");
+    growth.growth=200;growth.defeats=1;state.scene.world.world.ai.battle.monsters.at(3).human_kills=7;
+    const auto before=startup_world_state_digest(state);const auto plan=steam_monster_detail_skin(state,id,options);
+    check(plan.has_value(),"92当前定义累计成长/击倒人数可只读投影");
+    int values{};
+    for(const auto &op:plan->operations) {
+        if(const auto *v=std::get_if<SteamFacilityNumber>(&op)) {
+            if(v->position==std::array<int,2>{95,177}){++values;check(v->value==12,"92累计200经验140%向零取整，不读实例旧奖励");}
+            if(v->position==std::array<int,2>{200,177}){++values;check(v->value==175,"92累计200金币140%独立oracle");}
+        } else if(const auto *v=std::get_if<SteamInformationNumber>(&op))
+            check(v->value==(v->kind==SteamInformationNumberKind::monster_count?200:7),"92累计k.v与月计k.u分开，倒下人数读k.x");
+    }
+    check(values==2&&steam_monster_detail_skin(state,id,options)&&startup_world_state_digest(state)==before,
+          "92重复皮肤查询不改变当前定义、页面、随机或输出");
+    auto boss=state;boss.scripts.pages.back().monster_definition=30;
+    boss.scene.world.world.ai.monster_growth.at(30).growth=4;
+    const auto boss_plan=steam_monster_detail_skin(boss,id,options);check(boss_plan.has_value(),"92BOSS读取独立成长倍率");
+    int boss_values{};
+    for(const auto &op:boss_plan->operations)if(const auto *v=std::get_if<SteamFacilityNumber>(&op)) {
+        if(v->position==std::array<int,2>{95,177}){++boss_values;check(v->value==144,"92BOSS累计4经验144而非普通成长100%");}
+        if(v->position==std::array<int,2>{200,177}){++boss_values;check(v->value==1440,"92BOSS金币基础1000按144%独立oracle");}
+        if(v->position==std::array<int,2>{86,70}){++boss_values;check(v->value==5,"92BOSS等级min(count+1,10)不同普通百次一档");}
+    }
+    check(boss_values==3,"92BOSS等级与两收益均由当前共享定义展示");
+    for(int fault=0;fault<5;++fault) {
+        auto bad=state;if(fault==0)bad.page_counters.erase(id);if(fault==1)bad.scene.world.world.ai.monster_growth.erase(3);
+        if(fault==2)bad.scene.world.world.ai.battle.monsters.erase(3);if(fault==3)bad.scripts.pages.back().lifecycle=4;
+        if(fault==4)bad.scene.world.world.ai.monster_growth.at(3).growth=-1;
+        check(!steam_monster_detail_skin(bad,id,options),"92坏Owner来源/计数与退休页拒绝，不补演示数值");
+    }
+}
 void income_information(Checks &check) {
     // 条件夹具只检验raw36统计口径，不声称这些现金桶由自然经营获得。
     StartupInformationCash buckets{};
@@ -2996,6 +3106,7 @@ int check_startup_skin(const std::filesystem::path &source_root,
     phases(check);
     steam_clear_score_skin_checks(check);
     monster_introduction_skin(check,source_root);
+    monster_detail_skin(check,source_root);
     steam_new_game_skin_checks(check);
     steam_config_skin_checks(check);
     steam_commerce_skin_checks(check,source_root);

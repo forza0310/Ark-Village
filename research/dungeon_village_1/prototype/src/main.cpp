@@ -158,6 +158,7 @@ Options parse_options(int argc, char **argv) {
           options.inspect_page != "award-contribution" && options.inspect_page != "award-income" && options.inspect_page != "award-residents" &&
           options.inspect_page != "tax-income" && options.inspect_page != "tax-income-tail" &&
           options.inspect_page != "monster-introduction" && options.inspect_page != "monster-introduction-early" &&
+          options.inspect_page != "monster-detail" && options.inspect_page != "monster-detail-grown" &&
           options.inspect_page != "residence-completed" && options.inspect_page != "residence-reward" &&
           options.inspect_page != "task-deadline" && options.inspect_page != "task-deadline-battle" && options.inspect_page != "task-deadline-continue" &&
           options.inspect_page != "task-roster" && options.inspect_page != "task-extra" && options.inspect_page != "task-extra-stats" &&

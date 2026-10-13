@@ -14,7 +14,7 @@
 | `startup_world_magic_pot`、`steam_magic_pot_skin`／`steam_magic_pot_effect_skin` | 41–47壶目录、投入／处理演出、配方发现／制作确认；[操作与表现](../ui/STEAM_MAGIC_POT.md) |
 | `startup_world_commerce`、`steam_commerce_skin` | 83主页三入口同轮事务、原序只读皮肤及真实NEW查询；85三行图块目录／整轮输入、86交易反馈已接，保留独立93领取和86自动关闭；84金额及皮肤另列；[商会合同](../rules/COMMERCE.md#steam-commerce-top) |
 | `startup_world_menu`／`information`／`manual`／`save`、`steam_information_skin` | 菜单、34–39信息、90税收、13说明及14保存；[信息合同](../ui/INFORMATION_MENU.md)、[菜单](../ui/PAGES.md) |
-| `startup_world_runtime_pages`、`steam_monster_skin` | 89怪物介绍的严格单主钟业务、有序正常皮肤／Owner只读桥与研究窗口；92局部合同已核、维护后继待接；[共享显示前提](../rules/STEAM_MONSTER_PROGRESSION.md) |
+| `startup_world_runtime_pages`、`steam_monster_skin` | 89怪物介绍、92当前怪物共享定义详情：严格单主钟业务、有序正常皮肤／Owner只读桥与研究窗口；92允许仍在当前名单的死亡演出，不保留实例根；[共享显示前提与入口](../rules/STEAM_MONSTER_PROGRESSION.md) |
 | `startup_application`、应用存储／标题／回放模块 | [应用](STARTUP_APPLICATION.md)、[存储事务](APPLICATION_STORAGE.md)、[标题](TITLE_MENU.md)、[完整回放](APPLICATION_REPLAY.md) |
 | `startup_world_persistence`／codec／restore_validation | [正常文件、精确回放及字段政策](PERSISTENCE.md) |
 | `startup_world_presentation`／`visuals`、`startup_view`／`startup_window_host` | [显式表现请求](../ui/INPUT_RENDER_REQUESTS.md)、只读计划与平台执行；[声音一次输出](AUDIO_REQUESTS.md) |

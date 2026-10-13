@@ -96,13 +96,37 @@ SetDrawParam会写Character2共享临时字段及scratch `draw_param[5…10]`；
 
 ## raw92怪物信息：共享定义入口与局部皮肤
 
-Steam `GameForm._update`在VA `103052F3–10305305`接确认脉冲`0x100000`，按已选人物→怪物→设施顺序处理。怪物分支`10305985–103059F7`创建92，由`Character2.GetMonsterData()`取共享定义写入页`+0x198`后Push；不是冻结当前怪物实例。APK `b/c.java`约1600行同为选中实例→定义→`g(92).ah`。公共Init归零主钟；Init2没有92专支，cctor `1032A85B–1032A8B0`给软标签`{0,2}`。Update在`10318645–1031865D`确认立即转Pop，另在`1031F640–1031F680`接受soft2；无本页等待门槛、目录／滚动、奖励或随机，公共Update／框架声音仍独立。
+Steam `GameForm._update`仅state0进入正常分支（VA `10303546–10303551`）；条件／延迟脚本先行，`UserData.Update`在`103052CF–103052E0`先于输入。`103052F3–10305305`接确认脉冲`0x100000`，按已选人物→怪物→设施→任务处理（`103054AD–103054CF`），无确认才查菜单／保存；暂停与覆盖由外框架控制。怪物分支`10305985–103059F7`创建92，由`Character2.GetMonsterData()`取共享定义写入页`+0x198`后Push；不是冻结当前怪物实例。该分支及Camera.Collision的怪物扫描`1029E1D0–1029E36F`不加HP、死亡、introduced、开放或星级门槛。APK `b/c.java`约1600行同为选中实例→定义→`g(92).ah`。公共Init归零主钟；Init2没有92专支，cctor `1032A85B–1032A8B0`给软标签`{0,2}`。Update在`10318645–1031865D`确认立即转Pop，另在`1031F640–1031F680`接受soft2；无本页等待门槛、目录／滚动、奖励或随机，公共Update／框架声音仍独立。
 
-Draw分派`10347779–1034777C→1034937C`，取定义name`+1C`、flags`+0C`、body／variant／shadow`+20/+28/+2C`、description`+50`、累计击杀`+5C`与倒下人数`+64`。普通显示Lv按累计击杀100／200／300／400分1–5档；BOSS为`min(count+1,10)`。`GetExp` RVA21C580和`GetDropMoney` RVA21C4D0分别从基础`+40/+4C`按flags4选普通／BOSS奖励倍率，沿[已核奖励合同](ai/ENCOUNTERS.md)，不把Lv档数直接当收益倍率。这些具名helper不消费随机或写共享进度。
+Draw分派`10347779–1034777C→1034937C`，取定义name`+1C`、flags`+0C`、body／variant／shadow`+20/+28/+2C`、description`+50`、支给点数`+44`、累计击杀`+5C`与倒下人数`+64`。`10349448`检查flags bit4；普通调用`GetDieRateValue(definition,0,2)`（`1034946F`），BOSS调用`GetDieRateBossValue(definition,0,2)`（`1034948C`）。普通显示Lv按累计击杀100／200／300／400分1–5档；BOSS为`min(count+1,10)`。`GetExp` RVA21C580和`GetDropMoney` RVA21C4D0分别从基础`+40/+4C`按flags4选普通／BOSShelper的root1奖励倍率，沿[已核奖励合同](ai/ENCOUNTERS.md)，不把Lv档数直接当收益倍率。这些具名helper不消费随机或写共享进度。
 
-窗220×168、Box(17,74,219,184)，名字(26,69)，Lv为common38及SEB12，common39地板(23,89)，定义shadow帧在(70,158)，身体(70,157)面向1并沿原speed数组计步，经验(42,178)／数值(95,177)，掉钱图标(147,189)／数值(200,177)，说明(120,198)。Steam字面独立解码：标题槽110F3EC0为“モンスター情報”、110F7190为“支給”，110F4DB0／110F4D5C为“倒した数…”／“倒された人数…”。本节中文仅为说明，维护中文显示仍须注明汉化APK适配。
+完整局部绘制`1034937C–10349D4D`按下列顺序请求，均为原240逻辑平面；数值沿[数字／金额helper](../ui/STEAM_FACILITY_DRAW_HELPERS.md)，没有`Draw_icon`的mode调用或额外图标底板。
 
-非JP布局先将两条LT标签按空格分段，只有**两条都至少两段**（`10349906–10349924`）才临时用字号10：击杀文字(125,98)/(125,112)、count3(210,104)，倒下文字(125,132)/(125,146)、count4(210,138)，随后ResetFont。分段不足则走JP后备`10349AD5–10349BA7`：两标签分别(125,95)/(125,129)，计数(210,110)/(210,144)。APK非JP直接索引前两段，没有此后备，不能为两版统一去掉Steam资格检查。92与89复用共享显示对象，但方向／统计布局／退出门槛独立；当前只完成上述局部合同，尚无92维护目录入口、皮肤或原窗口动态认证。
+| 顺序 | 精确请求 |
+| --- | --- |
+| 窗／名字 | DrawWindow(220,168,top0,标题)、Box(17,74,219,184)；SC_WINDOW_BLACK，DrawString(name,26,69,anchor1)，继承当前字号，不设文本宽高 |
+| Lv | 等级≥2才画；实际`Font.StringWidth(name)+29`为base（`103494B1`），common image38 `wnd_lv.png`整17×10于(base+2,70)，再DrawNumImage(SEB12,等级,base+20,70,padding0,anchor1)，不是Comma |
+| 支给点数 | Jp真：common SEB44/image31 frame4于(142,67)，DrawString(支給,160,69,anchor1)，DrawNumImage(SEB12,定义+44,210,70,p0,anchor4)；Jp假：同图元于(166,67)，再Draw_plusValue(210,70,定义+44,12)，加号无条件，包括0 |
+| 背景／阴影 | common image39 `mp_back.png`整93×82于(23,89)，不是89的三裁片，无附加边框；common SEB25/image3 `shadow00`于(70,158)，frame取定义shadow |
+| 身体 | 写共享显示size／bodyImg后，SetDispMonsterData(action0,body×30+variant,外层步帧,dir1,counter)，DrawDispMonster(g,70,157,外层步帧)；实际身体沿前述speed数组重新算，不把外层步帧直接裁PNG |
+| 两组统计 | SC_WINDOW_BLACK；原count3读累计击杀+5C，count4读倒下人数+64，语言布局与单位规则见下文 |
+| 经验 | common SEB60/image50 `wnd_exp` frame0于(42,178)，裁(0,0,17,8)、offset(0,0)；再DrawNumImage(SEB12,GetExp(),95,177,p0,anchor4)，无逗号／单位 |
+| 掉钱 | **common2** SEB0 `monster_money.seb`／image1 `monster_money.png`、frame1于(147,189)，裁(14,0,14,18)、offset(−7,−18)，最终左上(140,171)；再Draw_money(200,177,GetDropMoney(),12)，实际Comma右锚191，随后同锚SEB12 frame20货币符号 |
+| 说明／触摸 | SC_WINDOW_BLACK，DrawString(description,120,198,anchor2)，无width／height／字号变化；随后跳`103477DA–10347824`公共Touch尾：id2、option2、无显式矩形，无继续箭头 |
+
+Steam字面独立解码：标题槽110F3EC0为“モンスター情報”、110F7190为“支給”，110F4DB0／110F4D5C为“倒した数…”／“倒された人数…”。本节中文仅为说明，维护中文显示仍须注明汉化APK适配。
+
+非JP布局先将两条LT标签按ASCII空格分段，只有**两条都至少两段**（`10349906–10349924`）才临时用字号10：每条仅取前两段，击杀文字(125,98)/(125,112)、count3(210,104)，倒下文字(125,132)/(125,146)、count4(210,138)，普通DrawString默认anchor0，随后ResetFont。`StringUtil.Split`两参RVA86A4D0委托trim=true／excludeZeroLength=false／escape=false；RVA86A510用ordinal查分隔符，保留连续／头尾空段，每段只去头尾UTF-16字符≤0x20，空原串返回0段；不是默认压掉空段的提词算法。APK `kairo/android/i/m.java:44/226`同义。
+
+Jp真或分段不足走后备`10349AD5–10349BA7`：**直接用两条静态日文字面**，不用之前LT结果，标签分别(125,95)/(125,129)，计数(210,110)/(210,144)，继承默认字号。count3（RVA252EA0）／count4（RVA252FA0）的单位仍检查实际Jp位，后备不将非JP变成JP：非JP只Comma右锚210；JP先Comma右锚200，再common SEB76/image85 `menuRT01`同锚200画单位，count3 frame1裁(10,0,10,10)，count4 frame4裁(38,0,9,10)，offset均0。APK92非JP直接索引前两段，没有Steam后备，不能统一删除资格检查；固定汉化APK标签为“打倒头数…”／“扑街人数…”。
+
+掉钱资源归属另经字段／加载器交叉：`10349C64/10349C8F`取AppData `+0x18`，metadata字段offset表明确为`resCom2_`，`resWeapon_`实际在`+0x28`。BootForm.Load于`101FD980–101FD9BC`创建并写该字段、读取RecordStore(1,7)再ResourceManager.Load；APK `b/a.java:475`的`av.q`亦加载(1,7)，`d/a.java:118`资源名目录第7项为common2。两字段不能混用；锚189包含真实SEB的−18偏移，不能按表面锚或截图改帧。
+
+本页所需PNG／SEB均已出版；common31／85沿Steam通用差异图[icon_result00](../assets/steam-common/icon_result00.png)／[menuRT01](../assets/steam-common/menuRT01.png)，SEB12绑定的image103沿[建设差异包](../assets/steam-build-common/README.md)，掉钱沿同字节原副本[monster_money PNG](../assets/original/common2/monster_money.png)／[SEB](../assets/original/common2/monster_money.seb)，其余上述同字节资源沿原副本。Steam img.inf的`wnd_lv,e20x10`后缀消费者未展开，原PNG仍17×10，不能据后缀拉伸或新造素材。92与89复用共享显示对象，但方向／统计布局／退出门槛独立；原窗口动态仍未认证。
+
+维护`open_startup_world_monster_detail_page`只接未暂停state0真实主场景和当前名单中的稳定CharacterId，确认实例类型／唯一成员及共享定义后，同候选挂起主场景、插入pending92；不加HP／死亡过滤。拒绝仅retired保留或已撤除的身份是维护安全检查，不声称原对象引用入口也重验名单。页面只持已有`monster_definition`和准入后主钟，无新增actor根或持久字段；统一validator在输入／更新／恢复及退休前拒绝缺定义／共享统计／钟、异页载荷与pending预装钟，确认／返回均可在主钟0立即关闭，失败保留完整旧Owner。静态`StartupWorldMonster.description`从原列14出版，不保存到世界codec或更改schema。
+
+`steam_monster_detail_skin`与严格Owner只读桥已在同模块接入，等级／经验／金币复用现成长规则，累计读取当前growth而非月击败数或某实例的旧奖励缓存。研究窗口按人物→怪物→设施顺序适配鼠标选取，Enter／Esc／右返回交同Owner；20×26选取框是研究PC适配，不认证原Camera物理命中或Touch2。现套件覆盖源布局／两版差异／资源、当前共享统计、缺载荷拒绝、回滚、恢复与退休；[两态图例](../ui/examples/steam-monster-detail.png)只证明维护绘制。公共副钟／SEB、完整字体和原物理输入动态继续独立。
 
 ## 新局与复发关系
 

@@ -399,6 +399,9 @@ bool initialize_startup_world_gift_notice_pages(StartupWorldRuntimeState &candid
 // raw89仅怪物定义与主钟业务边界：pending无钟，准入后完整；不代表共享怪物表现已还原。
 // 查询/恢复不补钟，关闭待退休仍保留完整载荷到框架Finish。
 bool valid_startup_world_monster_intro_page(const StartupWorldRuntimeState &state,const ref::WorldScriptPage &page);
+// raw92绑定共享怪物定义；实例只用于正常入口资格，页面不保留实例引用。
+bool valid_startup_world_monster_detail_page(const StartupWorldRuntimeState &state,const ref::WorldScriptPage &page);
+StartupWorldRuntimeError open_startup_world_monster_detail_page(StartupWorldRuntimeState &state,ref::CharacterId actor);
 // raw17由应用Owner推进。page_counters是阶段钟bp，secondary保存独立frame主钟。
 bool valid_startup_world_clear_page(const StartupWorldRuntimeState &state,const ref::WorldScriptPage &page);
 StartupWorldRuntimeError input_startup_world_runtime_rank_page(StartupWorldRuntimeState &state,
@@ -500,6 +503,7 @@ class StartupWorldRuntimeSession {
                                                        int selection = 0);
     StartupWorldRuntimeError input_village_activity_page(std::uint64_t page,const StartupVillageActivityInput &input);
     StartupWorldRuntimeError open_human_page(int human);
+    StartupWorldRuntimeError open_monster_detail_page(ref::CharacterId actor);
     StartupWorldRuntimeError act_human_page(std::uint64_t page, StartupHumanPageAction action,
                                             int selection = 0);
     StartupWorldRuntimeError input_human_catalogue_page(std::uint64_t page,const StartupHumanCatalogueInput &input);

@@ -1052,6 +1052,9 @@ struct Validation {
             if(p.kind==ref::WorldScriptPageKind::raw_page&&p.legacy_page==89&&
                !valid_startup_world_monster_intro_page(s,p))
                 return fail("monster intro89: 缺怪物定义/真实Init主钟或关闭待退休载荷非法");
+            if(p.kind==ref::WorldScriptPageKind::raw_page&&p.legacy_page==92&&
+               !valid_startup_world_monster_detail_page(s,p))
+                return fail("monster detail92: 缺共享定义/统计/真实Init主钟或关闭待退休载荷非法");
             if (p.kind == ref::WorldScriptPageKind::raw_page &&
                 p.legacy_page == 17 && !valid_startup_world_clear_page(s,p))
                 return fail("clear page: 初始化/阶段钟/独立主钟或关闭待退休载荷非法");

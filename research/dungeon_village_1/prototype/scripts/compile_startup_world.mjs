@@ -130,7 +130,7 @@ export function compileStartupWorld(tables, map, sources, state) {
     return `{${n(row[0])},${text(row[1])},${flag},${n(row[12])},${n(row[11])},`+
       `{0,0,${n(row[10])},${n(row[13])},${n(row[7])},${n(row[2])},${n(row[4])},`+
       `${n(row[6])},${opened?1:0},${truth(opened)},${truth(opened)},${truth(row[15]!=='')},${n(row[8])},${n(row[9])}},`+
-      (row[15]===''?'{}':`{${row[15].split('&').map(op=>array(op.split(','))).join(',')}}`)+`,${n(row[5])}}`;
+      (row[15]===''?'{}':`{${row[15].split('&').map(op=>array(op.split(','))).join(',')}}`)+`,${n(row[5])},${text(row[14])}}`;
   });
   const taskOutput = rows['questData.txt'].map(row=>{
     const sites=values(row[7]), monster=n(row[11]),flag=n(row[16]), normal=values(row[10]);

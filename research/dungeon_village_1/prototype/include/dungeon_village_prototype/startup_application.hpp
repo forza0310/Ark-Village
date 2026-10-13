@@ -151,6 +151,7 @@ class StartupApplication {
     StartupApplicationTaskResult act_task_page(std::uint64_t page, StartupWorldTaskAction action,
                                                int selection = 0);
     std::string open_human_page(int human);
+    std::string open_monster_detail_page(ref::CharacterId actor);
     std::string open_information_menu();
     std::string open_main_menu();
     std::string input_menu_page(std::uint64_t page, const StartupWorldMenuInput &input);

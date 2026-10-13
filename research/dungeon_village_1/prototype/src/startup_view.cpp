@@ -1319,6 +1319,21 @@ template<class Plan> void draw_facility_ceremony(const Plan &plan,SourceSprites 
             sprites.draw(value.sprite,value.frame,{origin.x+value.position[0],origin.y+value.position[1]});
         } else if constexpr(std::is_same_v<T,SteamTaskDeadlineMonster>||std::is_same_v<T,SteamMonsterBody>) {
             sprites.actor(true,value.sprite,value.image,value.frame,{origin.x+value.position[0],origin.y+value.position[1]});
+        } else if constexpr(std::is_same_v<T,SteamMonsterImage>) {
+            const auto resource=steam_monster_resource(value.asset);
+            if(!resource)throw std::runtime_error("怪物信息资源身份拒绝");
+            sprites.published_sprite(resource->image,resource->published_image,resource->published_sprite,
+                value.position,value.frame,{},origin);
+        } else if constexpr(std::is_same_v<T,SteamInformationNumber>) {
+            const auto draws=steam_information_number_draws(value);
+            if(!draws)throw std::runtime_error("怪物统计数字请求拒绝");
+            for(const auto &draw:*draws) {
+                if(draw.image==103&&draw.sprite==12)
+                    sprites.facility_image({SteamFacilityAsset::number05,draw.offset,draw.frame,{}},origin);
+                else if(draw.image==85&&draw.sprite==76)
+                    sprites.published_sprite(85,"steam-common/menuRT01.png","steam-common/menuRT01.seb",draw.offset,draw.frame,{},origin);
+                else throw std::runtime_error("怪物统计数字资源映射拒绝");
+            }
         } else if constexpr(std::is_same_v<T,SteamFacilityEffectImage>) {
             const auto r=steam_facility_effect_resource(value.asset);
             if(!r)throw std::runtime_error("设施改良特效映射缺失");
@@ -1387,6 +1402,32 @@ std::optional<SteamMonsterSkinPlan> monster_introduction_example(bool early,cons
     // 原型调用点夹具：定义来自原表，真正Init后冻结主钟观察展开，不认证自然出现。
     ready.candidate->page_counters.at(id)=early?20:40;
     return steam_monster_introduction_skin(*ready.candidate,id,window_monster_options(font));
+}
+std::optional<SteamMonsterSkinPlan> window_monster_detail_plan(
+    const StartupWorldRuntimeState &s,std::uint64_t id,const ChineseFont &font) {
+    const auto page=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[=](const auto &p){return p.id==id;});
+    if(page==s.scripts.pages.end()||!valid_startup_world_monster_detail_page(s,*page))return {};
+    const auto d=std::find_if(s.rules->monsters.begin(),s.rules->monsters.end(),
+        [&](const auto &m){return m.identity==*page->monster_definition;});
+    if(d==s.rules->monsters.end())return {};
+    SteamMonsterSkinOptions o;o.view_y=23;
+    o.title_widths=std::array<int,2>{int(font.measure("怪物情报")),int(font.measure("怪物情报"))};
+    o.name_width=int(font.measure(d->name));
+    return steam_monster_detail_skin(s,id,o);
+}
+std::optional<SteamMonsterSkinPlan> monster_detail_example(bool grown,const ChineseFont &font) {
+    StartupSession startup;StartupWorldRuntimeSession world(startup.state(),ref::WorldRandomStream{});
+    ref::EncounterCreationInput input;input.kind=0;input.center={10,18};input.year_index=0;input.month_index=3;
+    auto s=prepare_startup_world_runtime_encounter(world.state(),input);
+    if(!s||s->scene.world.world.ai.monster_order.empty())return {};
+    const auto actor=s->scene.world.world.ai.monster_order.front();
+    const int definition=s->scene.world.world.ai.battle.actors.at(actor).definition;
+    // 右图的累计击杀／倒下人数是显示条件；怪物及开页都由实际消费者创建。
+    if(grown){s->scene.world.world.ai.monster_growth.at(definition).growth=100;
+        s->scene.world.world.ai.battle.monsters.at(definition).human_kills=2;}
+    if(open_startup_world_monster_detail_page(*s,actor)!=StartupWorldRuntimeError::none)return {};
+    const auto ready=prepare_startup_world_runtime(*s);if(!ready.candidate)return {};
+    return window_monster_detail_plan(*ready.candidate,ready.candidate->scripts.pages.back().id,font);
 }
 std::optional<SteamFacilityEffectPlan> window_facility_effect_plan(
     const StartupWorldRuntimeState &s,std::uint64_t id,const ChineseFont &font,bool first_touch=false) {
@@ -2263,6 +2304,7 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
     const bool award_fixture=inspect_page=="award-contribution"||inspect_page=="award-income"||inspect_page=="award-residents";
     const bool tax_fixture=inspect_page=="tax-income"||inspect_page=="tax-income-tail";
     const bool monster_fixture=inspect_page=="monster-introduction"||inspect_page=="monster-introduction-early";
+    const bool monster_detail_fixture=inspect_page=="monster-detail"||inspect_page=="monster-detail-grown";
     const bool effort_fixture=inspect_page=="effort-result";
     const bool mastery_fixture=inspect_page=="mastery-announcement"||inspect_page=="mastery-bonus"||inspect_page=="mastery-choice";
     const bool clear_fixture=inspect_page=="clear-count"||inspect_page=="clear-score"||inspect_page=="clear-record"||inspect_page=="clear-closing";
@@ -2335,14 +2377,17 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
         reputation_glyphs+="税金收入住宅所有者合计研究绘制夹具无自然触发认证";
         for(const auto &human:startup_world_rules().humans)reputation_glyphs+=human.name;
     }
-    if(monster_fixture) {
-        reputation_glyphs+="新型怪物出现了研究绘制夹具无自然触发认证!!";
-        for(const auto &monster:startup_world_rules().monsters)reputation_glyphs+=monster.name;
+    if(monster_fixture||monster_detail_fixture) {
+        reputation_glyphs+="新型怪物怪物情报支给打倒头数扑街人数倒した数倒された人数出现了研究绘制夹具无自然触发认证!!…";
+        for(const auto &monster:startup_world_rules().monsters)reputation_glyphs+=monster.name+monster.description;
     }
     ChineseFont font(font_path,reputation_glyphs);
-    if(magic_fixture||task_fixture||residence_fixture||award_fixture||tax_fixture||monster_fixture||effort_fixture||award_result_fixture||mastery_fixture||gift_claim_fixture||clear_fixture||new_game_fixture||config_fixture||commerce_fixture||commerce_result_fixture||commerce_facility_fixture||commerce_preview_fixture||facility_special_fixture) {
+    if(magic_fixture||task_fixture||residence_fixture||award_fixture||tax_fixture||monster_fixture||monster_detail_fixture||effort_fixture||award_result_fixture||mastery_fixture||gift_claim_fixture||clear_fixture||new_game_fixture||config_fixture||commerce_fixture||commerce_result_fixture||commerce_facility_fixture||commerce_preview_fixture||facility_special_fixture) {
         std::variant<SteamMagicPotPlan,SteamTaskSelectionPlan,SteamTaskRosterPlan,SteamTaskResultPlan,SteamTaskVictoryPlan,SteamTaskDeadlinePlan,SteamHumanOverviewPlan,SteamTownProgressPlan,SteamNewGamePlan,SteamConfigSkinPlan,SteamCommerceSkinPlan,SteamFacilityDetailSkinPlan,SteamInformationSkinPlan,SteamMonsterSkinPlan> plan;
-        if(monster_fixture) {
+        if(monster_detail_fixture) {
+            const auto value=monster_detail_example(inspect_page=="monster-detail-grown",font);
+            if(!value)throw std::runtime_error("Monster detail example rejected");plan=*value;
+        } else if(monster_fixture) {
             const auto value=monster_introduction_example(inspect_page=="monster-introduction-early",font);
             if(!value)throw std::runtime_error("Monster introduction example rejected");plan=*value;
         } else if(tax_fixture) {
@@ -2844,8 +2889,8 @@ int run_startup_world_window(const std::filesystem::path &assets,
         glyphs += equipment.name;
     for (const auto &job : rules.jobs)
         glyphs += job.name;
-    glyphs+="新型怪物出现了!!";
-    for(const auto &monster:rules.monsters)glyphs+=monster.name;
+    glyphs+="新型怪物怪物情报支给打倒头数扑街人数倒した数倒された人数出现了!!…";
+    for(const auto &monster:rules.monsters)glyphs+=monster.name+monster.description;
     for (const auto &activity : rules.activities)
         glyphs += activity.name + activity.detail + activity.description;
     for (const auto &recipe : rules.magic_pot_recipes)
@@ -4429,6 +4474,13 @@ int run_startup_world_window(const std::filesystem::path &assets,
                             act(A::confirm);
                     }
                 }
+            } else if (raw == 92) {
+                if(page->lifecycle==2&&IsWindowFocused()&&
+                   (IsKeyPressed(KEY_ENTER)||IsKeyPressed(KEY_ESCAPE)||hit({176,265,58,24}))) {
+                    ++confirmation_inputs;
+                    if(session.acknowledge_page(page->id)!=StartupWorldRuntimeError::none)
+                        throw std::runtime_error("怪物详情返回载荷拒绝");
+                }
             } else if (raw == 89) {
                 // 原Touch2无显式矩形；仅接已知确认键，不造底栏按钮或把Esc当确认。
                 if(page->lifecycle==2&&IsWindowFocused()&&IsKeyPressed(KEY_ENTER)) {
@@ -4830,7 +4882,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                                    : result.denial == StartupBuildDenial::unavailable ? "移动未开放"
                                                                                       : "";
             } else if (pressed && mouse.y >= 35 && mouse.y < 265) {
-                bool selected_human{};
+                bool selected_character{};
                 for (const auto actor : session.state().scene.world.world.ai.human_order) {
                     const auto &a = session.state().scene.world.world.ai.battle.actors.at(actor);
                     const auto projection = startup_world_raw_projection(a.position);
@@ -4841,10 +4893,20 @@ int run_startup_world_window(const std::filesystem::path &assets,
                         continue;
                     if (session.open_human_page(a.definition) != StartupWorldRuntimeError::none)
                         throw std::runtime_error("人物详情打开失败");
-                    selected_human = true;
+                    selected_character = true;
                     break;
                 }
-                if (!selected_human)
+                if(!selected_character)for(const auto actor:session.state().scene.world.world.ai.monster_order) {
+                    const auto &a=session.state().scene.world.world.ai.battle.actors.at(actor);
+                    const auto projection=startup_world_raw_projection(a.position);
+                    const Vector2 point{120+projection.x-camera.x,160-projection.y+camera.y};
+                    // 研究PC选取框；原Camera.Collision物理热区独立，不能加HP／死亡过滤。
+                    if(!CheckCollisionPointRec(mouse,{point.x-10,point.y-24,20,26}))continue;
+                    if(session.open_monster_detail_page(actor)!=StartupWorldRuntimeError::none)
+                        throw std::runtime_error("怪物详情打开失败");
+                    selected_character=true;break;
+                }
+                if (!selected_character)
                     if (const auto cell = pick(mouse, camera)) {
                         const auto &map = session.state().scene.world.world.map;
                         const auto &binding = map.cells.at(cell->y * map.width + cell->x).facility;
@@ -5291,7 +5353,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
             const bool steam_commerce_result=page->legacy_page==86;
             const bool steam_commerce_facility=page->legacy_page==85;
             const bool steam_tax=page->legacy_page==90;
-            const bool steam_monster=page->legacy_page==89;
+            const bool steam_monster=page->legacy_page==89||page->legacy_page==92;
             const bool steam_reputation=page->legacy_page==82;
             const bool steam_effect=page->legacy_page>=75&&page->legacy_page<=77;
             const bool steam_facility=page->legacy_page==74&&
@@ -5681,7 +5743,8 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 if(!plan)throw std::runtime_error("Steam attribute result payload rejected");
                 draw_human_overview(*plan,sprites,font);
             } else if (steam_monster) {
-                const auto plan=steam_monster_introduction_skin(state,page->id,window_monster_options(font));
+                const auto plan=page->legacy_page==92?window_monster_detail_plan(state,page->id,font):
+                    steam_monster_introduction_skin(state,page->id,window_monster_options(font));
                 if(plan)draw_facility_ceremony(*plan,sprites,font);
                 else if(page->lifecycle!=0)throw std::runtime_error("怪物介绍正式皮肤载荷拒绝");
             } else if (page->legacy_page == 90) {

@@ -217,6 +217,9 @@ class StartupWindowHost {
     StartupWorldRuntimeError open_human_page(int human) {
         return command([&](auto &owner) { return owner.open_human_page(human); });
     }
+    StartupWorldRuntimeError open_monster_detail_page(ref::CharacterId actor) {
+        return command([&](auto &owner) { return owner.open_monster_detail_page(actor); });
+    }
     StartupWorldRuntimeError open_facility_page(std::uint64_t facility) {
         return command([&](auto &owner) { return owner.open_facility_page(facility); });
     }

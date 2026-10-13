@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ark/simulation/presentation/steam_task_result_skin.hpp"
 #include "ark/simulation/world/startup_world_runtime.hpp"
 #include "world_panels.hpp"
 
@@ -12,15 +13,18 @@ struct ReportPortrait {
 };
 struct WorldVictoryView {
     bool initialized{};
-    std::uint64_t task{};
+    std::uint64_t page{}, task{};
     int definition{};
     std::string name;
     int experience{}, popularity{}, phase{}, counter{};
     std::vector<ReportPortrait> members;
+    std::optional<simulation::SteamTaskVictoryPlan> skin;
 };
 WorldVictoryView world_victory_view(const simulation::StartupWorldRuntimeState &state,
                                     const simulation::rules::WorldScriptPage &page);
 WorldPageLayout world_victory_layout(Extent extent);
+void prepare_world_victory(WorldVictoryView &, const simulation::StartupWorldRuntimeState &,
+                           const Skin &);
 void draw_world_victory(const WorldVictoryView &view, const WorldPageLayout &layout,
                         const Skin &skin, bool interactive);
 struct WorldMonthView {

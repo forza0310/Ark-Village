@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ark/simulation/presentation/steam_task_selection_skin.hpp"
+#include "ark/simulation/presentation/steam_task_roster_skin.hpp"
 #include "ark/simulation/presentation/startup_world_visuals.hpp"
 
 namespace ark::simulation {
@@ -42,4 +43,35 @@ struct SteamTaskResultPlan {
 };
 // 无Owner桥；调用方须提供真实游标、完整冻结名单和已解析图标，不在绘制时补页面字段。
 std::optional<SteamTaskResultPlan> steam_task_result_skin(const SteamTaskResultInput &);
+
+// 30沿实时m、当前职业／性别／主武器绘演员，仅经验share与q绑定冻结于页面。
+struct SteamTaskVictoryHuman { int identity{},profession{},sex{},weapon{-1}; };
+struct SteamTaskVictoryActor {
+    int profession{},sex{},weapon{-1},action{};
+    std::array<int,2> position{};
+};
+// 30仅action0／6，step0、facing2；不创建W或修改人物。
+std::optional<StartupTitleActorSkin> steam_task_victory_actor_skin(const SteamTaskVictoryActor &);
+struct SteamTaskVictoryOptions {
+    int view_y{};
+    std::optional<std::array<int,2>> title_widths;
+    std::optional<int> reputation_suffix_width; // 原Font.StringWidth("上升了!")，不是数字测宽。
+};
+struct SteamTaskVictoryInput {
+    int phase{},counter{},secondary{},experience{},reputation{};
+    std::string task_name; // QuestData.GetName(true)，与列表GetName(false)后缀时点不同。
+    std::vector<SteamTaskVictoryHuman> humans; // 实时m原序，重复身份合法。
+    SteamTaskVictoryOptions options;
+};
+using SteamTaskVictoryOperation=std::variant<SteamStartupFrameDraw,SteamTaskSelectionText,
+    SteamTaskSelectionClip,SteamHumanImage,SteamFacilityNumber,SteamTaskRosterImage,
+    SteamTaskVictoryActor,SteamStartupTouch>;
+struct SteamTaskVictoryPlan {
+    std::vector<SteamTaskVictoryOperation> operations;
+    std::string title;
+    std::array<int,2> soft_labels{0,2}; // 原另注册无显式矩形的组件2／option2。
+};
+std::optional<SteamTaskVictoryPlan> steam_task_victory_skin(const SteamTaskVictoryInput &);
+std::optional<SteamTaskVictoryPlan> steam_task_victory_skin(
+    const StartupWorldRuntimeState &,std::uint64_t page,const SteamTaskVictoryOptions &);
 } // namespace ark::simulation

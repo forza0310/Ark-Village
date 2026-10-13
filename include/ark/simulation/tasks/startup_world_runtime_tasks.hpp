@@ -79,6 +79,9 @@ bool consume_startup_world_runtime_task_encounter_request(StartupWorldRuntimeSta
                                                           const ref::EncounterRequest &request);
 bool initialize_startup_world_runtime_task_result_page(StartupWorldRuntimeState &state,
                                                        std::uint64_t page);
+// raw30已结算成果：主钟可被确认清零，副钟只随获准更新推进；关闭待退休仍须完整。
+bool valid_startup_world_runtime_task_victory_page(const StartupWorldRuntimeState &state,
+                                                  const ref::WorldScriptPage &page);
 void configure_startup_world_runtime_task_adapter(
     ref::WorldRuntimeAdapter<StartupWorldRuntimeState> &adapter);
 // 局部L/P可在人物c期间真实生成怪物；同轮怪物d前同步其构造时的渲染元数据。

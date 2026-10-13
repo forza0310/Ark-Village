@@ -1,5 +1,7 @@
 # desktop
 
+`ui/tasks/world_task_result`执行30胜利的主钟裁剪/经验/人气、独立副钟跳跃和当前职业/性别/主武器，退休旧静态胜利绘制。`ui/actors/world_residence_result`执行96住宅完成及共享奖励计划，复用人物GPU末端的富文本、clip和Mapchip2；二者只读真实栈顶，既有PC确认经Session提交，不按绘制FPS改计数/重发奖励。80候选与33期限目前只冻结纯接口，完整输入桥单列。
+
 `ui/tasks/world_task_selection`共用有序图元末端；`world_task_tracking`准备scene4/raw29信息计划并记录实际按钮/箭头热区，scene5只移动镜头。热区绑定冻结任务目录、当前目录规模、选择与窗口尺寸，换代/过期/pending拒绝命中；确认仍通过Session交唯一Owner。2112dd7的31/32纯计划已冻结，完整冻结f/g与游标桥另待，不能从实时队伍补造。文字队列每帧flush清理是本产品生命周期；未实现原Image文字缓存及重复重放，不把它混成GLText退休。
 
 `ui/actors/world_human`按只读投影、输入、布局和源计划执行分文件。61五行/两统计页、64四行/五分类及68/69冻结结果复用同一执行器；测宽来自实际字体，列表游标与输入次序由模拟Owner保持。`world_human_input`只保留带语义标签的已画热区、普通道具标记和短寿命拖条捕获，通过Session一次提交整帧输入；pending、换代、键盘及过期几何清理/拒绝相应手势。初始化载荷早于可绘生命周期时等待真实框架更新，不由绘制补初始化或推进时钟。共享人物帧由755fdf2的entry_updates桥提供；手形静态0与原OS动态分别记，阶段证据见[B1](../../docs/stages/B1-playable-prototype.md#research-4c7a490-human-catalogues)。

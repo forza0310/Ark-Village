@@ -1,9 +1,9 @@
 #pragma once
 
 // Short-lived GPU/font execution for maintained ordered plans; no Owner or animation clock.
+#include "ark/presentation/script_text.hpp"
 #include "ark/simulation/presentation/steam_human_skin.hpp"
 #include "ark/simulation/presentation/steam_manual_skin.hpp"
-#include "ark/presentation/script_text.hpp"
 #include "skin.hpp"
 #include <algorithm>
 #include <filesystem>
@@ -96,11 +96,14 @@ class SteamPlanDraw {
     void replace_clip(const std::array<int, 4> &r) {
         clips_.push_back({origin_.x + r[0], origin_.y + r[1], float(r[2]), float(r[3])});
     }
-    void whole_image(const char *png,std::array<int,2> position) const {
-        const std::string source=png;
-        const auto group=source.rfind("original/event/",0)==0?Sprites::Binding::event:
-            source.rfind("original/common/",0)==0?Sprites::Binding::common:Sprites::Binding::steam_common;
-        skin_.sprites.full_image(std::filesystem::path(png).filename().string(),point(position),group,active_clip());
+    void whole_image(const char *png, std::array<int, 2> position) const {
+        const std::string source = png;
+        const auto group = source.rfind("original/event/", 0) == 0 ? Sprites::Binding::event
+                           : source.rfind("original/common/", 0) == 0
+                               ? Sprites::Binding::common
+                               : Sprites::Binding::steam_common;
+        skin_.sprites.full_image(std::filesystem::path(png).filename().string(), point(position),
+                                 group, active_clip());
     }
     void mapchip(const sim::SteamFacilityMapchip2 &p) const {
         const auto pieces = sim::steam_facility_mapchip2_draws(p);
@@ -185,6 +188,10 @@ class SteamPlanDraw {
     }
     void text(const sim::SteamHumanOverviewText &p, const std::string &measured_value) const {
         const auto &value = measured_value;
+        if (p.rich) {
+            literal(value, p.rectangle, p.anchor, p.font_size, p.layout, p.rgb, 200, true);
+            return;
+        }
         const auto &r = p.rectangle;
         float size = p.font_size ? float(p.font_size) : 12.F;
         // Desktop Chinese typography fits the complete text into source columns.
@@ -254,11 +261,10 @@ class SteamPlanDraw {
             return;
         }
         for (const auto &run : decoded.runs) {
-            const Color color = run.rgb
-                ? Color{static_cast<unsigned char>(*run.rgb >> 16),
-                        static_cast<unsigned char>(*run.rgb >> 8),
-                        static_cast<unsigned char>(*run.rgb), 255}
-                : steam_plan_color(rgb);
+            const Color color = run.rgb ? Color{static_cast<unsigned char>(*run.rgb >> 16),
+                                                static_cast<unsigned char>(*run.rgb >> 8),
+                                                static_cast<unsigned char>(*run.rgb), 255}
+                                        : steam_plan_color(rgb);
             plain(run.text, x, y, color, size);
             x += skin_.text.width(run.text, size);
         }

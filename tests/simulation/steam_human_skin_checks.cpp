@@ -1,6 +1,7 @@
 #include "ark/simulation/presentation/steam_human_skin.hpp"
 #include "ark/simulation/world/startup.hpp"
 #include "ark/simulation/actors/startup_world_human.hpp"
+#include "ark/simulation/facilities/startup_world_building.hpp"
 #include "ark/simulation/persistence/startup_world_persistence.hpp"
 #include "support/world_fixture.hpp"
 #include "ark/assets/sprite.hpp"
@@ -1092,9 +1093,95 @@ void profession_catalogue_checks(Checks &check) {
     bad=owner;bad.scripts.pages.back().lifecycle=4;check(!steam_human_profession_catalogue_skin(bad,id,options),"61退休页无目录表现引用");
 }
 }
+namespace {
+void residence_result_checks(Checks &check,const std::filesystem::path &source_root) {
+    const auto &facilities=startup_world_rules().facilities;
+    const auto home=std::find_if(facilities.begin(),facilities.end(),[](const auto &d){return d.kind==12;});
+    check(home!=facilities.end(),"真实目录住宅定义");
+    SteamHumanResidenceResultInput in;in.mapchip=home->display_id;
+    in.human={0,1,0,0,0,"住宅条件",{{{95,90},{100,100},{20,15}}}};
+    SteamHumanOverviewOptions o;o.title_widths=std::array<int,2>{48,48};
+    auto plan=steam_human_residence_result_skin(in,o);check(bool(plan),"96第一段不需未消费的共享人物钟");
+    check(plan->title=="自宅完成"&&plan->soft_labels==std::array<int,2>{0,0},"96无返回软标签");
+    const auto touch=parts<SteamStartupTouch>(*plan);
+    check(touch.size()==1&&touch[0].component==2&&!touch[0].rectangle&&touch[0].option==2,"96原全域Touch2无显式按钮");
+    for(const auto sample:std::array<std::array<int,2>,4>{{{5,0},{6,1},{39,46},{40,48}}}) {
+        in.counter=sample[0];plan=steam_human_residence_result_skin(in,o);
+        const auto clip=parts<SteamHumanClip>(*plan);const auto text=parts<SteamHumanOverviewText>(*plan);
+        check(clip.size()==2&&clip[0].kind==SteamHumanClipKind::push_intersect&&
+            clip[0].rectangle==std::array<int,4>{0,158,240,sample[1]}&&clip[1].kind==SteamHumanClipKind::pop,
+            "96底文5..40展开、顶部不裁且成对释放");
+        check(text.size()==2&&text[0].rich&&!text[1].rich&&text[0].rectangle==std::array<int,4>{120,165,0,0}&&
+              text[1].rectangle==std::array<int,4>{120,187,0,0},"96原DrawString2与普通DrawString资格、基点分开");
+    }
+    for(const auto sample:std::array<std::array<int,2>,5>{{{49,0},{50,1},{64,1},{65,0},{75,1}}}) {
+        in.counter=sample[0];plan=steam_human_residence_result_skin(in,o);
+        const auto images=parts<SteamHumanImage>(*plan);
+        check(std::count_if(images.begin(),images.end(),[](const auto &v){return v.asset==SteamHumanAsset::continue_cursor;})==sample[1],
+            "96首段箭头50开始并用原main模25，不是确认40或偏移后钟");
+    }
+    for(const auto sample:std::array<std::array<int,3>,7>{{{9,2,142},{10,10,142},{11,10,140},{12,10,139},{17,10,134},{25,10,142},{26,2,142}}}) {
+        in.secondary=sample[0];plan=steam_human_residence_result_skin(in,o);
+        const auto actors=parts<SteamHumanPortrait>(*plan);const auto imgs=parts<SteamHumanImage>(*plan);
+        check(actors.size()==1&&actors[0].actor.body.sprite==sample[1]&&actors[0].actor.body.frame==0&&
+            actors[0].position==std::array<int,2>{175,sample[2]}&&!actors[0].actor.weapon,
+            "96顶人物无武器、副钟26槽、float32跳高独立oracle");
+        check(std::any_of(imgs.begin(),imgs.end(),[](const auto &v){return v.asset==SteamHumanAsset::shadow&&v.position==std::array<int,2>{175,142};}),
+            "96固定阴影不跟身体跳");
+    }
+    const auto map=parts<SteamFacilityMapchip2>(*plan);
+    check(map.size()==1&&map[0].position==std::array<int,2>{120,113}&&map[0].orientation==0,"96调用Mapchip2固定锚和朝向");
+    bool border=false;for(const auto &op:plan->operations)if(const auto *d=std::get_if<SteamStartupFrameDraw>(&op))
+        if(const auto *r=std::get_if<StartupSkinRect>(d))border|=r->outline&&r->rect==std::array<int,4>{30,66,180,82}&&r->rgb==std::array<int,3>{148,148,148};
+    check(border,"原DrawRect179/81转换半开180/82，不双加边界");
+    const auto map_at=std::find_if(plan->operations.begin(),plan->operations.end(),[](const auto &v){return std::holds_alternative<SteamFacilityMapchip2>(v);});
+    check(map_at!=plan->operations.end()&&std::holds_alternative<SteamHumanImage>(*(map_at+1))&&
+        std::get<SteamHumanImage>(*(map_at+1)).asset==SteamHumanAsset::shadow&&std::holds_alternative<SteamHumanPortrait>(*(map_at+2)),
+        "Mapchip2后先阴影再人物，不重排层次");
+    in.phase=1;in.counter=77;check(!steam_human_residence_result_skin(in,o),"96第二段缺共享钟显式拒绝");
+    o.character_frame=12;plan=steam_human_residence_result_skin(in,o);check(bool(plan),"96复用mentalUp已冻结奖励");
+    const auto actors=parts<SteamHumanPortrait>(*plan);
+    check(actors.size()==2&&actors[0].position==std::array<int,2>{62,181}&&actors[0].actor.weapon&&
+        actors[0].actor.body.frame==3&&!actors[1].actor.weapon,"底人物共享钟12帧3、顶人物副钟独立，无武器资格不同");
+    const auto values=parts<SteamFacilityNumber>(*plan);
+    check(std::any_of(values.begin(),values.end(),[](const auto &v){return v.kind==SteamFacilityNumberKind::plus_value&&v.value==20;})&&
+        std::any_of(values.begin(),values.end(),[](const auto &v){return v.kind==SteamFacilityNumberKind::plus_value&&v.value==15;}),
+        "封顶后仍显示原请求20/15，不用实际差5/10");
+    auto bad=in;bad.secondary=-1;check(!steam_human_residence_result_skin(bad,o),"96负副钟拒绝");
+    bad=in;bad.mapchip=999;check(!steam_human_residence_result_skin(bad,o),"96坏住宅图绑定拒绝");
+    bad=in;bad.human.rewards[0][0]=-1;check(!steam_human_residence_result_skin(bad,o),"96坏冻结值拒绝");
+    for(int i=0;i<8;++i)check(steam_human_residence_result_skin(in,o)->operations.size()==plan->operations.size(),"96重复投影规模稳定");
+    for(const auto a:{SteamHumanAsset::residence_background,SteamHumanAsset::shadow}) {
+        const auto r=steam_human_resource(a);check(bool(r),"96资源具名映射");
+        auto img=LoadImage(packaged(source_root,r->published_image).string().c_str());
+        check(img.data!=nullptr&&img.width==(a==SteamHumanAsset::shadow?123:93)&&img.height==(a==SteamHumanAsset::shadow?3:82),"96复用原PNG尺寸");UnloadImage(img);
+    }
+    // 旧Owner mentalUp入口与纯DTO只在取数边界分离，主动画断言仍由既有profession/gift负责。
+    const auto owner=test_support::world_fixture();const auto h=startup_world_human_details(owner,1);check(bool(h),"真实人物reward投影");
+    SteamHumanRewardInput reward{h->profession,h->sex,h->equipment[0].value_or(-1),1,77,h->name,owner.reward_display};
+    const auto old=steam_human_reward_skin(owner,1,1,77,o),pure=steam_human_reward_skin(reward,o);
+    check(old&&pure&&old->operations.size()==pure->operations.size()&&parts<SteamFacilityNumber>(*old).size()==parts<SteamFacilityNumber>(*pure).size(),
+        "旧入口仍复用同mentalUp输出结构");
+    auto bound=test_support::page_fixture(96);const auto id=bound.scripts.pages.back().id;
+    bound.scripts.pages.back().lifecycle=2;bound.scripts.pages.back().legacy_f=home->id;
+    bound.page_human_bindings[id]=1;bound.page_counters[id]=77;bound.page_phases[id]=1;bound.page_secondary_counters[id]=18;
+    bound.reward_display=in.human.rewards;
+    check(valid_startup_world_runtime_residence_result_page(bound,bound.scripts.pages.back()),"96明确已完成住宅演出的绑定夹具");
+    const auto digest=startup_world_state_digest(bound);
+    o.character_frame=steam_human_shared_character_frame(bound);
+    const auto result=steam_human_residence_result_skin(bound,id,o);check(bool(result),"96真实Owner字段严格桥");
+    for(int i=0;i<8;++i)check(steam_human_residence_result_skin(bound,id,o)->operations.size()==result->operations.size()&&
+        startup_world_state_digest(bound)==digest,"96只读桥不改字段、奖励、随机或一次输出");
+    auto broken=bound;broken.page_secondary_counters.erase(id);check(!steam_human_residence_result_skin(broken,id,o),"96缺副钟不能代用main");
+    broken=bound;broken.scripts.pages.back().legacy_f=33;check(!steam_human_residence_result_skin(broken,id,o),"96不是任意设施定义");
+    broken=bound;broken.page_human_bindings[id]=999;check(!steam_human_residence_result_skin(broken,id,o),"96错人物显式拒绝");
+    broken=bound;broken.scripts.pages.back().lifecycle=4;check(!steam_human_residence_result_skin(broken,id,o),"96退休后不能再绘制");
+}
+}
 // 复用既有visuals执行文件；本层只验表现边界，不重测人物成长/战斗/职业业务。
 int check_steam_human_skin(const std::filesystem::path &source_root) {
     Checks check;power_checks(check);medal_bubble_checks(check);resources(check,source_root);owner_checks(check);overview_checks(check);attributes_checks(check);equipment_magic_checks(check);equipment_detail_checks(check);gift_confirmation_checks(check);profession_skin_checks(check);gift_result_skin_checks(check);
     gift_catalogue_checks(check);profession_catalogue_checks(check);attribute_result_checks(check);shared_character_clock_checks(check);
+    residence_result_checks(check,source_root);
     return check.count;
 }

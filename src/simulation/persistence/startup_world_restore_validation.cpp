@@ -721,7 +721,7 @@ struct Validation {
             if (!counter(n))
                 return fail("page: 计数非法");
         for (const auto &[id, n] : s.page_secondary_counters)
-            if (!counter(n)||!page_kind(id,{22,24,28,44,50,81,82})||
+            if (!counter(n)||!page_kind(id,{22,24,28,30,44,50,81,82,96})||
                 (page_kind(id,{82})&&(!s.facility_catalog_pages_initialized.count(id)||n==std::numeric_limits<int>::max())))
                 return fail("page: 独立计数非法");
         for (const auto &[id, n] : s.page_phases)
@@ -1068,6 +1068,12 @@ struct Validation {
             if (p.kind == ref::WorldScriptPageKind::raw_page && p.legacy_page >= 22 && p.legacy_page <= 28 &&
                 !valid_startup_world_runtime_task_page(s,p))
                 return fail("task page: 目录/选择/独立计数/演出载荷非法");
+            if(p.kind==ref::WorldScriptPageKind::raw_page&&p.legacy_page==30&&
+               !valid_startup_world_runtime_task_victory_page(s,p))
+                return fail("task victory page: 成果绑定/主阶段/双计数及关闭待退休载荷非法");
+            if(p.kind==ref::WorldScriptPageKind::raw_page&&p.legacy_page==96&&
+               !valid_startup_world_runtime_residence_result_page(s,p))
+                return fail("residence result page: 住户/住宅定义/双计数及关闭待退休载荷非法");
             if (p.lifecycle == 4 || p.kind == ref::WorldScriptPageKind::scene)
                 continue;
             const auto id = p.id;

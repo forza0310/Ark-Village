@@ -1,3 +1,4 @@
+#include "../ui/actors/world_residence_result.hpp"
 #include "../ui/tasks/world_task_tracking.hpp"
 // Canonical world owns simulation and page effects; this adapter owns only window/input/raster.
 #include "../input/world_management.hpp"
@@ -483,9 +484,15 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                 const int visible = ui::world_crew_summary_visible_rows(crew_layout);
                 scroll = std::clamp(scroll, 0,
                                     std::max(0, static_cast<int>(crew.rows.size()) - visible));
+            } else if (page->legacy_page == 96) {
+                if (page->lifecycle == 2 && !desired_pause && !failed && !pending_ack &&
+                    (hit(ui::world_victory_layout(extent).confirm) || IsKeyPressed(KEY_ENTER) ||
+                     back))
+                    pending_ack = session.ack_page(page->id);
             } else if (page->legacy_page == 30) {
                 const auto victory = ui::world_victory_view(current, *page);
-                if (victory.initialized && !desired_pause && !failed && !pending_ack &&
+                if (page->lifecycle == 2 && victory.initialized && !desired_pause && !failed &&
+                    !pending_ack &&
                     (hit(ui::world_victory_layout(extent).confirm) || IsKeyPressed(KEY_ENTER)))
                     pending_ack = session.ack_page(page->id);
             } else if (ui::world_page_regular_confirmation(*page) &&
@@ -627,9 +634,15 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                 ui::draw_world_crew_summary(crew, crew_layout, skin, scroll,
                                             !desired_pause && !failed && !pending_ack);
             } else if (page->legacy_page == 30) {
-                ui::draw_world_victory(ui::world_victory_view(current, *page),
-                                       ui::world_victory_layout(extent), skin,
+                auto victory = ui::world_victory_view(current, *page);
+                ui::prepare_world_victory(victory, current, skin);
+                ui::draw_world_victory(victory, ui::world_victory_layout(extent), skin,
                                        !desired_pause && !failed && !pending_ack);
+            } else if (page->legacy_page == 96) {
+                ui::draw_world_residence_result(
+                    ui::prepare_world_residence_result(current, *page, skin),
+                    ui::world_victory_layout(extent), skin,
+                    !desired_pause && !failed && !pending_ack);
             } else if (!ui::world_page_automatic(*page)) {
                 // Timed waits and camera pages draw the world only; they do not expose a fake modal
                 // or a confirmation capable of skipping their source-owned counter/focus consumer.

@@ -69,6 +69,9 @@ StartupWorldRuntimeError act_startup_world_facility_page(StartupWorldRuntimeStat
                                                          StartupFacilityPageAction action);
 bool valid_startup_world_facility_page(const StartupWorldRuntimeState &state,
                                        const ref::WorldScriptPage &page);
+// 原96持有住户/住宅定义与独立双钟；含待Init和待Finish，不从当前实例重造绑定。
+bool valid_startup_world_runtime_residence_result_page(const StartupWorldRuntimeState &state,
+                                                       const ref::WorldScriptPage &page);
 // 详情只读当前共享成长/职业及实例邻接；不刷新提示、不扣款、不升级。
 std::optional<ref::FacilityEconomyValues>
 startup_world_facility_values(const StartupWorldRuntimeState &state, std::uint64_t facility);

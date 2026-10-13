@@ -68,10 +68,85 @@ std::filesystem::path packaged(const std::filesystem::path &root,const char *pub
         return root/"steam_common"/path.filename();
     throw std::runtime_error("Unsupported published Steam fixture path: "+relative);
 }
+
+template<class T> std::vector<T> residence_parts(const SteamHumanOverviewPlan &p) {
+    std::vector<T> out;
+    for(const auto &op:p.operations)if(const auto *v=std::get_if<T>(&op))out.push_back(*v);
+    return out;
+}
+void residence_checks(Checks &check) {
+    // 原Update2四行／Draw2_3五行的独立坐标例，不用被测helper生成期望。
+    struct CursorCase { SteamResidenceCursor before;int count;bool up,down;SteamResidenceCursor after; };
+    for(const auto &v:std::array<CursorCase,6>{{
+        {{0,0},7,true,false,{6,3}},{{6,3},7,false,true,{0,0}},
+        {{3,0},6,false,true,{4,1}},{{4,1},6,true,true,{4,1}},
+        {{4,0},6,false,false,{4,1}},{{0,0},1,true,true,{0,0}}}}) {
+        const auto got=steam_residence_cursor(v.before,v.count,v.up,v.down);
+        check(got&&got->selection==v.after.selection&&got->first==v.after.first,
+              "80上后下、循环与四行首行修正保留源顺序");
+    }
+    check(!steam_residence_cursor({0,0},0,false,false)&&
+          !steam_residence_cursor({7,0},7,false,false)&&
+          !steam_residence_cursor({0,-1},7,false,false),"80空目录与越界游标helper拒绝");
+    SteamResidenceInput in;in.cursor={3,0};in.order={5,1,4,2,0,3};
+    in.options.title_widths=std::array<int,2>{60,60};in.options.bottom_width=84;
+    for(int id=0;id<6;++id)in.humans.push_back({id,0,id%2,100+id,"人物"+std::to_string(id),id%2==0});
+    const auto plan=steam_residence_skin(in);check(bool(plan),"80显式冻结顺序与当前人数据纯计划");
+    check(plan->title=="选择入住者"&&plan->soft_labels==std::array<int,2>{0,2},"80独立标题与软返回");
+    const auto rows=residence_parts<SteamHumanEquipmentRow>(*plan);
+    const auto portraits=residence_parts<SteamHumanPortrait>(*plan);
+    const auto fees=residence_parts<SteamFacilityNumber>(*plan);
+    check(rows.size()==5&&portraits.size()==5&&fees.size()==5,"80四行更新仍输出五行，不能少末行");
+    constexpr std::array<int,5> ys{{97,116,135,154,173}};
+    constexpr std::array<int,5> values{{105,101,104,102,100}};
+    for(int i=0;i<5;++i) {
+        check(rows[i].touch.component==11&&rows[i].touch.value==(0x20000|i)&&rows[i].touch.option==16&&
+              rows[i].touch.rectangle==std::optional<std::array<int,4>>{{23,ys[i]-2,191,16}}&&
+              rows[i].margin==std::array<int,4>{29,29,0,0},"80行热区marker16与双29 margin不套商品79");
+        check(portraits[i].position==std::array<int,2>{37,ys[i]+20}&&
+              portraits[i].clip==std::optional<std::array<int,4>>{{29,ys[i]-1,15,14}}&&
+              portraits[i].actor.body.sprite==1,"80人物脚底与窄clip独立锚");
+        check(fees[i].kind==SteamFacilityNumberKind::money&&fees[i].value==values[i]&&
+              fees[i].position==std::array<int,2>{212,ys[i]+1}&&fees[i].asset==
+              (i<2?SteamFacilityAsset::number12:SteamFacilityAsset::number08),
+              "80费用沿冻结身份顺序，实时足额与不足色分别消费");
+    }
+    int selected=0;
+    for(const auto &frame:residence_parts<SteamStartupFrameDraw>(*plan))if(const auto *r=std::get_if<StartupSkinRect>(&frame))
+        if(r->rgb==std::array<int,3>{255,153,55})selected+=r->rect==std::array<int,4>{23,152,191,16};
+    const auto pictures=residence_parts<SteamFacilityImage>(*plan);
+    check(selected==1&&pictures.size()==1&&pictures[0].asset==SteamFacilityAsset::finger&&
+          pictures[0].position==std::array<int,2>{21,162},"80仅第四行橙底与手形");
+    const auto scroll=residence_parts<SteamHumanCatalogueScroll>(*plan);
+    check(scroll.size()==1&&scroll[0].rectangles[1].rect==std::array<int,4>{220,85,5,93}&&
+          scroll[0].arguments==std::array<int,3>{6,5,0x20000},"80滚条largeChange5、六人thumb93保留绘制合同");
+    const auto texts=residence_parts<SteamHumanOverviewText>(*plan);
+    check(!texts.empty()&&texts.back().rectangle==std::array<int,4>{70,197,100,16}&&texts.back().anchor==34&&texts.back().layout&&
+          residence_parts<SteamStartupTouch>(*plan).empty(),"80底提示原TextLayout，不补Touch4或Touch2");
+    const auto size=plan->operations.size();
+    for(int i=0;i<12;++i)check(steam_residence_skin(in)->operations.size()==size,"80重复查询图元规模不累计");
+    auto altered=in;altered.cursor={4,1};altered.options.scroll_first_touch=true;
+    const auto moved=steam_residence_skin(altered);
+    const auto moved_scroll=residence_parts<SteamHumanCatalogueScroll>(*moved);
+    check(moved_scroll[0].rectangles[1].rect==std::array<int,4>{220,103,5,93}&&
+          moved_scroll[0].rectangles[1].rgb==std::array<int,3>{246,129,0},"80显式首行1滚条位置103与触摸色");
+    altered=in;altered.options.bottom_width=300;
+    check(residence_parts<SteamHumanOverviewText>(*steam_residence_skin(altered)).back().rectangle==
+          std::array<int,4>{12,197,216,16},"80单文字底宽按源夹200加16");
+    altered=in;altered.order.clear();check(!steam_residence_skin(altered),"80原空X已关闭，不造活页");
+    altered=in;altered.order.back()=999;check(!steam_residence_skin(altered),"80不可见末候选缺定义也拒绝");
+    altered=in;altered.order.back()=altered.order.front();check(!steam_residence_skin(altered),"80定义遍历名单不接受重复候选");
+    altered=in;altered.humans.push_back(altered.humans.front());check(!steam_residence_skin(altered),"80实时定义重复拒绝");
+    altered=in;altered.cursor={4,0};check(!steam_residence_skin(altered),"80纯绘制不隐式修正first");
+    altered=in;altered.humans.back().fee=-1;check(!steam_residence_skin(altered),"80负费拒绝");
+    altered=in;altered.humans.back().sex=2;check(!steam_residence_skin(altered),"80不可见坏性别拒绝");
+    altered=in;altered.options.bottom_width.reset();check(!steam_residence_skin(altered),"80缺真实底文测宽拒绝");
+}
 }
 // 挂既有visuals套件；只验页面只读计划和资源绑定，不复制升级/声音/Owner状态机。
 int check_steam_facility_skin(const std::filesystem::path &source_root) {
     Checks check;
+    residence_checks(check);
     // 此层只补Owner到皮肤的绑定与矩阵方向；完整升级业务／暂停／恢复由既有套件主责。
     auto owner=test_support::world_fixture();
     const auto facility=std::uint64_t{4};

@@ -493,6 +493,12 @@ void report_below_timed_page() {
 void sound_output_sink() {
     auto state = initial(true);
     using Operation = sim::StartupAudioOperation;
+    const auto made =
+        rules::prepare_world_task_creation(sim::startup_world_runtime_factory(state), 0);
+    check(made.candidate && made.candidate->created_task &&
+              sim::write_startup_world_runtime_factory(state, made.candidate->state),
+          "Sound fixture uses a valid source task and retained victory binding");
+    const auto task = *made.candidate->created_task;
     state.sound_requests = {{Operation::jingle, 4}, {Operation::ordinary_play, 11}};
     state.scripts.pages.front().lifecycle = 3;
     rules::WorldScriptPage page;
@@ -500,6 +506,11 @@ void sound_output_sink() {
     page.kind = rules::WorldScriptPageKind::raw_page;
     page.legacy_page = 30; // The source requests sound4 exactly at counter1.
     state.scripts.pages.push_back(page);
+    state.exploration_summaries.emplace(
+        page.id, rules::WorldExplorationSummary{30, task, state.tasks.at(task).definition, {}});
+    state.page_counters[page.id] = 0;
+    state.page_phases[page.id] = 0;
+    state.page_secondary_counters[page.id] = 0;
     app::WorldSession session(state);
     const auto first = session.frame();
     check(first->consumed_sound_requests == 2 && first->state->sound_requests.empty() &&

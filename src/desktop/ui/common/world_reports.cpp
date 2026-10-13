@@ -27,10 +27,13 @@ WorldVictoryView world_victory_view(const State &s, const simulation::rules::Wor
     if (p.legacy_page != 30 || p.kind != simulation::rules::WorldScriptPageKind::raw_page)
         throw std::invalid_argument("Victory view requires raw30");
     WorldVictoryView v;
+    v.page = p.id;
     const auto bound = s.exploration_summaries.find(p.id);
     if (bound == s.exploration_summaries.end())
         return v;
-    if (p.task_identity != bound->second.task || p.task_definition != bound->second.definition)
+    if (bool(p.task_identity) != bool(p.task_definition) ||
+        (p.task_identity &&
+         (p.task_identity != bound->second.task || p.task_definition != bound->second.definition)))
         throw std::invalid_argument("Victory page and retained summary identities disagree");
     const auto task =
         std::find_if(s.rules->tasks.begin(), s.rules->tasks.end(),
@@ -55,42 +58,6 @@ WorldVictoryView world_victory_view(const State &s, const simulation::rules::Wor
 WorldPageLayout world_victory_layout(Extent e) {
     const float x = (e.width - 222.F) / 2, y = (e.height - 196.F) / 2;
     return {{x, y, 222, 170}, {x + 12, y + 110, 198, 53}, {x + 154, y + 176, 68, 20}};
-}
-void draw_world_victory(const WorldVictoryView &v, const WorldPageLayout &l, const Skin &skin,
-                        bool interactive) {
-    skin.window(l.panel, "胜利！");
-    const float x = l.panel.x, y = l.panel.y;
-    // Image39 contains the original sky/grass strip, extended using source pixels, not the map.
-    skin.tile("mp_back.png", {1, 1, 91, 79}, {x + 21, y + 27, 179, 79});
-    DrawRectangleLinesEx({x + 20, y + 26, 181, 81}, 1, ink);
-    skin.content(l.body);
-    if (v.initialized) {
-        skin.sprites.draw("wnd_exp.seb", 0, {x + 67, y + 34}, WHITE, Sprites::Binding::common);
-        skin.number(v.experience, {x + 145, y + 33}, "number05.seb");
-        const float spacing = 166.F / std::max<std::size_t>(1, v.members.size());
-        for (std::size_t i = 0; i < v.members.size(); ++i) {
-            const Vector2 foot{x + 28 + spacing * (i + .5F), y + 99};
-            skin.sprites.draw("shadow00.seb", 0, foot, WHITE, Sprites::Binding::common);
-            // The published body binding is current profession/sex. Precise jump trajectory
-            // and held-weapon composition are not supplied by this static contract.
-            skin.sprites.actor(false, v.members[i].sprite, v.members[i].image, 0, foot);
-        }
-        const float revealed = std::clamp((v.counter - 5) / 35.F, 0.F, 1.F) * l.body.height;
-        const Rectangle clip{l.body.x, l.body.y, l.body.width, revealed};
-        const auto line = [&](const std::string &text, float yy, Color color = ink) {
-            skin.text.clipped(text, x + 111 - skin.text.width(text, 11) / 2, yy, clip, color, 11);
-        };
-        if (v.phase == 0) {
-            line(v.name, y + 117);
-            line("完成!!", y + 140);
-        } else {
-            line("因为完成任务", y + 112);
-            line("街道的人气 " + std::to_string(v.popularity), y + 129, blue);
-            line("上升了!", y + 146);
-        }
-    }
-    // Early presses fast-forward only. Each phase retains its own source >=40 close gate.
-    skin.button(l.confirm, v.counter < 40 ? "显示全文" : "确定", interactive && v.initialized);
 }
 WorldMonthView world_month_view(const State &s) {
     WorldMonthView v;

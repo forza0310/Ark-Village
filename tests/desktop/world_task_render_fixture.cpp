@@ -1,11 +1,14 @@
 // Optional actual-window task callsites. Conditions are explicit, not natural unlock evidence.
 #include "../../src/desktop/scene/projection.hpp"
 #include "../../src/desktop/scene/world_canvas.hpp"
+#include "../../src/desktop/ui/actors/world_residence_result.hpp"
 #include "../../src/desktop/ui/common/skin.hpp"
+#include "../../src/desktop/ui/common/world_reports.hpp"
 #include "../../src/desktop/ui/tasks/world_task_tracking.hpp"
 #include "../../src/desktop/ui/tasks/world_tasks.hpp"
 #include "../support/world_fixture.hpp"
 #include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
+#include "ark/simulation/facilities/startup_world_building.hpp"
 #include <algorithm>
 #include <cstdlib>
 #include <filesystem>
@@ -83,6 +86,54 @@ void world_task_render_fixture() {
     info.task_identity = selected_task;
     info.task_definition = information.tasks.at(selected_task).definition;
     samples.emplace_back("task-info-raw29", std::move(information));
+    // Explicit complete display payloads; these do not certify natural success or residence.
+    auto victory = listing;
+    auto &result = victory.scripts.pages.back();
+    result.legacy_page = 30;
+    result.task_identity.reset(); // Exploration binds its summary rather than encounter fields.
+    result.task_definition.reset();
+    result.legacy_f = 347;
+    victory.exploration_summaries.emplace(
+        result.id, sim::rules::WorldExplorationSummary{
+                       30, selected_task, victory.tasks.at(selected_task).definition, {}});
+    victory.page_secondary_counters[result.id] = 8;
+    victory.page_phases[result.id] = 0;
+    victory.page_counters[result.id] = 5;
+    for (int i = 0; i < 3; ++i)
+        victory.participants.push_back(victory.rules->humans.at(i).identity);
+    require(sim::valid_startup_world_runtime_task_victory_page(victory, result),
+            "Conditional victory payload rejected");
+    samples.emplace_back("task30-early", victory);
+    for (int second : {10, 18, 25}) {
+        auto s = victory;
+        s.page_counters[result.id] = 40;
+        s.page_secondary_counters[result.id] = second;
+        samples.emplace_back("task30-jump" + std::to_string(second), std::move(s));
+    }
+    victory.page_counters[result.id] = 40;
+    victory.page_phases[result.id] = 1;
+    samples.emplace_back("task30-reputation", std::move(victory));
+    auto house = listing;
+    auto &complete = house.scripts.pages.back();
+    complete.legacy_page = 96;
+    const auto definition =
+        std::find_if(house.rules->facilities.begin(), house.rules->facilities.end(),
+                     [](const auto &d) { return d.kind == 12; });
+    require(definition != house.rules->facilities.end(), "Missing source residence definition");
+    complete.legacy_f = definition->id;
+    house.page_human_bindings[complete.id] = house.rules->humans.front().identity;
+    house.page_secondary_counters[complete.id] = 18;
+    house.page_counters[complete.id] = 50;
+    house.page_phases[complete.id] = 0;
+    house.reward_display = {{{9, 18}, {11, 23}, {2, 5}}};
+    require(sim::valid_startup_world_runtime_residence_result_page(house, complete),
+            "Conditional residence payload rejected");
+    samples.emplace_back("house96-complete", house);
+    house.page_phases[complete.id] = 1;
+    for (int counter : {0, 57, 77}) {
+        house.page_counters[complete.id] = counter;
+        samples.emplace_back("house96-reward" + std::to_string(counter), house);
+    }
     auto long_list = listing;
     auto &ids = long_list.task_page_lists.at(top(long_list).id);
     const auto first = ids.front();
@@ -107,7 +158,8 @@ void world_task_render_fixture() {
     } scope;
     Sprites sprites(ARK_TEST_ASSETS);
     std::string glyphs = "任务选择寻求！冒险者姓名费用请选择任务募集冒险者返回选择追踪加速合计人交"
-                         "给我!多指教来了!我会加油的!我要参加!好期待攻略了解";
+                         "给我!多指教来了!我会加油的!我要参加!好期待攻略了解自宅完成的满意度努力"
+                         "胜利！因为完成任务街道人气上升了!!显示全文确定";
     for (const auto &t : listing.rules->tasks)
         glyphs += t.name;
     for (const auto &p : listing.rules->humans)
@@ -131,8 +183,18 @@ void world_task_render_fixture() {
                 BeginTextureMode(canvas.texture);
                 ClearBackground({145, 211, 247, 255});
                 BeginMode2D(raster);
-                if (s.scene.scene_state == 4 || s.scene.scene_state == 5 ||
-                    top(s).legacy_page == 29) {
+                if (top(s).legacy_page == 30) {
+                    auto v = ui::world_victory_view(s, top(s));
+                    ui::prepare_world_victory(v, s, skin);
+                    require(bool(v.skin), "Victory Owner bridge unavailable");
+                    ui::draw_world_victory(v, ui::world_victory_layout(extent), skin, true);
+                } else if (top(s).legacy_page == 96) {
+                    const auto plan = ui::prepare_world_residence_result(s, top(s), skin);
+                    require(bool(plan), "Residence Owner bridge unavailable");
+                    ui::draw_world_residence_result(plan, ui::world_victory_layout(extent), skin,
+                                                    true);
+                } else if (s.scene.scene_state == 4 || s.scene.scene_state == 5 ||
+                           top(s).legacy_page == 29) {
                     auto v = top(s).legacy_page == 29 ? ui::world_task_information_view(s, top(s))
                                                       : *ui::world_task_tracking_view(s);
                     ui::prepare_world_task_tracking(v, s, skin);

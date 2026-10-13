@@ -163,8 +163,8 @@ void prepare_world_human_detail(WorldHumanView &v, const sim::StartupWorldRuntim
 }
 void draw_world_human_skin(const sim::SteamHumanOverviewPlan &plan, Vector2 origin,
                            const Skin &skin) {
-    const SteamPlanDraw draw(origin, skin, plan.title.empty() ? "冒险者信息" : plan.title,
-                             world_human_down_text);
+    SteamPlanDraw draw(origin, skin, plan.title.empty() ? "冒险者信息" : plan.title,
+                       world_human_down_text);
     for (const auto &op : plan.operations) {
         if (const auto *p = std::get_if<sim::SteamStartupFrameDraw>(&op))
             draw.frame(*p);
@@ -188,6 +188,13 @@ void draw_world_human_skin(const sim::SteamHumanOverviewPlan &plan, Vector2 orig
                 draw.rectangle(r);
         else if (const auto *p = std::get_if<sim::SteamHumanLearningText>(&op))
             draw.learning(*p);
+        else if (const auto *p = std::get_if<sim::SteamHumanClip>(&op))
+            draw.clip({p->kind == sim::SteamHumanClipKind::push_intersect
+                           ? sim::SteamFacilityClipKind::push_intersect
+                           : sim::SteamFacilityClipKind::pop,
+                       p->rectangle});
+        else if (const auto *p = std::get_if<sim::SteamFacilityMapchip2>(&op))
+            draw.mapchip(*p);
         else if (const auto *p = std::get_if<sim::SteamFacilityArrowTouch>(&op)) {
             const auto expanded = steam_plan_arrow(*p, skin);
             const auto &c = expanded.crop;
@@ -198,6 +205,7 @@ void draw_world_human_skin(const sim::SteamHumanOverviewPlan &plan, Vector2 orig
         }
         // Source touch components are metadata. PC intents stay in world_human_input.
     }
+    draw.finish();
 }
 std::optional<WorldHumanPaintedControls> world_human_painted_controls(const WorldHumanView &v,
                                                                       const WorldHumanLayout &base,

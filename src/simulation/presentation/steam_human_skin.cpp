@@ -66,6 +66,8 @@ std::optional<SteamHumanResource> steam_human_resource(Asset asset) {
     case Asset::gift_flash:return SteamHumanResource{6,6,"original/effect/dropItem00.png","original/effect/dropItem00.seb"};
     case Asset::recovery_effect:return SteamHumanResource{2,2,"original/effect/eff02.png","original/effect/eff02.seb"};
     case Asset::recovery_number:return SteamHumanResource{108,18,"original/common/number11.png","original/common/number11.seb"};
+    case Asset::residence_background:return SteamHumanResource{39,-1,"original/common/mp_back.png",nullptr};
+    case Asset::shadow:return SteamHumanResource{3,25,"original/common/shadow00.png","original/common/shadow00.seb"};
     }
     return {};
 }
@@ -655,17 +657,25 @@ std::optional<SteamHumanOverviewPlan> steam_human_profession_preview_skin(
 std::optional<SteamHumanOverviewPlan> steam_human_reward_skin(
     const StartupWorldRuntimeState &s,int human,int page,int frame,const SteamHumanOverviewOptions &o) {
     const auto h=startup_world_human_details(s,human);
-    if(!h||(page!=0&&page!=1)||frame<0||!o.character_frame||*o.character_frame<0)return {};
+    if(!h)return {};
+    return steam_human_reward_skin(SteamHumanRewardInput{h->profession,h->sex,
+        h->equipment[0].value_or(-1),page,frame,h->name,s.reward_display},o);
+}
+std::optional<SteamHumanOverviewPlan> steam_human_reward_skin(
+    const SteamHumanRewardInput &in,const SteamHumanOverviewOptions &o) {
+    const int page=in.phase,frame=in.counter;
+    if((page!=0&&page!=1)||frame<0||!o.character_frame||*o.character_frame<0||
+       in.name.empty()||in.name.size()>4096)return {};
     SteamHumanOverviewPlan out;out.soft_labels={0,0};
     out.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{{23,156,78,51},{223,239,255},false}});
-    if(!append_portrait(out,h->profession,h->sex,h->equipment[0].value_or(-1),(*o.character_frame%16)/4,1,{62,181}))return {};
-    append_text(out,SteamHumanOverviewTextRole::name,h->name,{62,189,0,0},2,o.japanese?0:11);
+    if(!append_portrait(out,in.profession,in.sex,in.weapon,(*o.character_frame%16)/4,1,{62,181}))return {};
+    append_text(out,SteamHumanOverviewTextRole::name,in.name,{62,189,0,0},2,o.japanese?0:11);
     out.operations.emplace_back(SteamHumanImage{Asset::smile,{o.japanese?145:137,178},0,{}});
     for(int i=0;i<2;++i) {
         const auto role=i?SteamHumanOverviewTextRole::effort:SteamHumanOverviewTextRole::satisfaction;
         append_text(out,role,{},o.japanese?std::array<int,4>{106,165+21*i,0,0}:
             std::array<int,4>{107,165+21*i,i?50:22,12},o.japanese?0:32,0,!o.japanese);
-        const int before=s.reward_display[0][i],after=s.reward_display[1][i],request=s.reward_display[2][i],y=166+21*i;
+        const int before=in.rewards[0][i],after=in.rewards[1][i],request=in.rewards[2][i],y=166+21*i;
         if(before<0||after<0||request<0)return {};
         int shown=before;
         if(page==1&&frame>=67)shown=after;

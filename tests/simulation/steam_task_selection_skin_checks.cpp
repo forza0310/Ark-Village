@@ -1,6 +1,7 @@
 #include "ark/simulation/presentation/steam_task_selection_skin.hpp"
 #include "ark/simulation/presentation/steam_task_roster_skin.hpp"
 #include "ark/simulation/presentation/steam_task_result_skin.hpp"
+#include "ark/simulation/presentation/steam_task_deadline_skin.hpp"
 #include "ark/simulation/persistence/startup_world_persistence.hpp"
 #include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
 #include "ark/assets/sprite.hpp"
@@ -553,6 +554,159 @@ void results(Checks &c,const std::filesystem::path &source_root) {
             "空结果保留f/g与确认，不能因无行而猜人物或剥掉返回");
     }
 }
+void victory(Checks &c) {
+    // Steam30局部调用点：经验与人气是显示条件，不触发任何任务或奖励。
+    SteamTaskVictoryInput in;in.task_name="任务条件";in.experience=123;in.reputation=20;
+    in.options.title_widths=std::array<int,2>{24,24};in.options.reputation_suffix_width=48;
+    in.humans={{0,0,0,0},{1,0,1,0},{0,0,0,0}};
+    auto plan=steam_task_victory_skin(in);c(bool(plan),"30当前演员计划与合法重复参与者");
+    bool border=false;for(const auto &op:plan->operations)if(const auto *f=std::get_if<SteamStartupFrameDraw>(&op))
+        if(const auto *r=std::get_if<StartupSkinRect>(f))border|=r->outline&&r->rect==std::array<int,4>{30,66,180,82}&&r->rgb==std::array<int,3>{148,148,148};
+    c(border,"30原DrawRect179/81含端点，半开计划180/82");
+    const auto confirm=parts<SteamStartupTouch>(*plan);
+    c(plan->title=="胜利！"&&confirm.size()==1&&confirm[0].component==2&&confirm[0].value==0&&
+      !confirm[0].rectangle&&confirm[0].option==2,"30标题胜利且无条件注册无显式矩形Touch2/option2");
+    auto actors=parts<SteamTaskVictoryActor>(*plan);
+    c(actors.size()==3&&actors[0].position==std::array<int,2>{80,134}&&
+      actors[1].position==std::array<int,2>{120,134}&&actors[2].position==std::array<int,2>{160,134},
+      "30三人80/120/160，重复引用不去重");
+    const auto numbers=parts<SteamFacilityNumber>(*plan);
+    c(numbers.size()==1&&numbers[0].value==123&&numbers[0].position==std::array<int,2>{119,73}&&
+      numbers[0].asset==SteamFacilityAsset::number05&&numbers[0].anchor==1,
+      "30三位经验宽46、EXP左97、原数点119，不按Font测数字");
+    for(const auto sample:std::array<std::array<int,3>,7>{{{9,0,134},{10,6,134},{11,6,132},{12,6,131},{17,6,126},{25,6,134},{26,0,134}}}) {
+        in.secondary=sample[0];plan=steam_task_victory_skin(in);c(bool(plan),"30副钟动画边界");
+        actors=parts<SteamTaskVictoryActor>(*plan);
+        c(actors[0].action==sample[1]&&actors[0].position[1]==sample[2],"30 float32抛物线与26周期独立oracle");
+        const auto skin=steam_task_victory_actor_skin(actors[0]);
+        c(skin&&skin->body.sprite==(sample[1]==6?10:2)&&skin->body.frame==0,
+          "30喜悦用action6方向2 SEB10帧0，不沿举手22或walk动画");
+        const auto it=std::find_if(plan->operations.begin(),plan->operations.end(),[](const auto &v){return std::holds_alternative<SteamTaskVictoryActor>(v);});
+        c(it!=plan->operations.begin()&&std::holds_alternative<SteamTaskRosterImage>(*(it-1))&&
+          std::get<SteamTaskRosterImage>(*(it-1)).position[1]==134,"人物跳起阴影不随跳，且在身体武器前消费");
+    }
+    for(const auto sample:std::array<std::array<int,3>,5>{{{4,0,0},{5,0,0},{39,46,0},{40,48,0},{50,48,1}}}) {
+        in.counter=sample[0];plan=steam_task_victory_skin(in);
+        const auto clip=parts<SteamTaskSelectionClip>(*plan);
+        c(clip.size()==2&&clip[0].push&&!clip[1].push&&clip[0].rectangle==std::array<int,4>{0,158,240,sample[1]},
+          "30只裁底文，5..40线性展开后配对释放");
+        const auto images=parts<SteamHumanImage>(*plan);
+        const auto arrow=std::count_if(images.begin(),images.end(),[](const auto &v){return v.asset==SteamHumanAsset::continue_cursor;});
+        c(arrow==sample[2],"30箭头同时受40门槛和25模15限制");
+    }
+    in.phase=1;plan=steam_task_victory_skin(in);const auto result=parts<SteamFacilityNumber>(*plan);
+    c(result.size()==2&&result[1].value==20&&result[1].position==std::array<int,2>{85,194}&&
+      result[1].asset==SteamFacilityAsset::number09,"30人气数两位20宽＋2＋48，锚85不是实际封顶差");
+    auto invalid=in;invalid.options.reputation_suffix_width.reset();c(!steam_task_victory_skin(invalid),"30第二段缺后缀测宽拒绝");
+    invalid.phase=0;c(bool(steam_task_victory_skin(invalid)),"第一段不要求未读取测宽");
+    invalid=in;invalid.humans.back().profession=999;c(!steam_task_victory_skin(invalid),"30末演员坏源拒绝全部计划");
+    invalid=in;invalid.secondary=-1;c(!steam_task_victory_skin(invalid),"30负副钟拒绝");
+    invalid=in;invalid.phase=2;c(!steam_task_victory_skin(invalid),"30坏阶段拒绝");
+    invalid=in;invalid.humans.resize(10,in.humans.front());c(!steam_task_victory_skin(invalid),"30拒绝超出九人的维护参加契约");
+    const auto count=plan->operations.size();for(int i=0;i<8;++i)c(steam_task_victory_skin(in)->operations.size()==count,"30重复只读查询不积累图元");
+    in.humans.clear();c(parts<SteamTaskVictoryActor>(*steam_task_victory_skin(in)).empty(),"原空实时m不造演员");
+}
+void victory_owner(Checks &c) {
+    auto s=test_support::world_fixture();
+    const auto made=ref::prepare_world_task_creation(startup_world_runtime_factory(s),0);
+    c(made.candidate&&made.candidate->created_task&&write_startup_world_runtime_factory(s,made.candidate->state),"30源任务绑定准备");
+    s.active_task=*made.candidate->created_task;
+    c(consume_startup_world_runtime_task_encounter_request(s,{ref::EncounterRequestKind::page30,{},30,70}),"30实际战斗请求producer");
+    s.active_task.reset();const auto id=s.scripts.pages.back().id;
+    const auto tick=prepare_startup_world_runtime(s);c(bool(tick.candidate),"30进入真实框架");s=*tick.candidate;
+    SteamTaskVictoryOptions options;options.title_widths=std::array<int,2>{24,24};options.reputation_suffix_width=48;
+    s.participants={0,1,0}; // 明确实时m条件，绘制桥不要求重新报名。
+    const auto before=startup_world_state_digest(s);const auto draws=s.scene.random.draws();
+    auto p=steam_task_victory_skin(s,id,options);c(p&&parts<SteamTaskVictoryActor>(*p).size()==3,"30实际producer只读桥读取m原序");
+    for(int i=0;i<8;++i)c(steam_task_victory_skin(s,id,options)->operations.size()==p->operations.size()&&
+        startup_world_state_digest(s)==before&&s.scene.random.draws()==draws,"30桥不颁奖、发声音、抽随机或写页面");
+    auto bad=s;bad.page_secondary_counters.erase(id);c(!steam_task_victory_skin(bad,id,options),"30缺副钟不默认置零");
+    bad=s;bad.participants.back()=999;c(!steam_task_victory_skin(bad,id,options),"30实时m悬空拒绝");
+    bad=s;bad.scripts.pages.back().lifecycle=1;c(!steam_task_victory_skin(bad,id,options),"30未就绪不绘制");
+    bad=s;bad.scripts.pages.back().task_identity.reset();bad.scripts.pages.back().task_definition.reset();
+    c(bool(steam_task_victory_skin(bad,id,options)),"30探索summary绑定合法，不强加战斗optional");
+    bad.exploration_summaries.at(id).definition=999;c(!steam_task_victory_skin(bad,id,options),"30错summary显式拒绝");
+    for(const auto flags:{2U,4U}) {
+        const auto d=std::find_if(s.rules->tasks.begin(),s.rules->tasks.end(),[=](const auto &v){return (v.factory.flags&flags)&&(!(flags==4U)||!(v.factory.flags&2U));});
+        c(d!=s.rules->tasks.end(),"原表提供两种成果名称分支");
+        auto named=s;const auto task=named.exploration_summaries.at(id).task;
+        named.exploration_summaries.at(id).definition=d->factory.identity;
+        named.tasks.at(task).definition=d->factory.identity;named.scripts.pages.back().task_definition=d->factory.identity;
+        if(flags==2U)named.scene.world.world.ai.monster_growth.at(d->factory.monster).growth=3;
+        else named.task_progress.definitions.at(d->factory.identity).completed=3;
+        const auto named_plan=steam_task_victory_skin(named,id,options);c(bool(named_plan),"30原已结算命名条件");
+        const auto texts=parts<SteamTaskSelectionText>(*named_plan);
+        c(std::any_of(texts.begin(),texts.end(),[&](const auto &t){return t.value==d->name+(flags==2U?"3":"+4");}),
+          "GetName(true)使用已增进度：boss3或三次完成+4，不借目录的下一次后缀");
+    }
+}
+SteamTaskDeadlineInput deadline_input() {
+    SteamTaskDeadlineInput in;in.task_name="期限条件";in.progress=35;in.fee=100;in.affordable=true;
+    in.participants={0,1,2,0};in.humans={{0,0,0,2},{1,0,0,1},{2,0,0,3}};
+    in.options.title_widths=std::array<int,2>{72,72};in.options.down_number_width=6;
+    in.options.prediction_width=72;in.options.button_widths={24,24};in.options.bubble_width=36;
+    return in;
+}
+void deadline(Checks &c,const std::filesystem::path &source_root) {
+    auto in=deadline_input();in.counter=4;in.active_humans={{0,7,30,100},{0,0,100,100},{1,0,31,100}};
+    auto plan=steam_task_deadline_skin(in);c(bool(plan),"33期限只读输入");
+    const auto people=parts<SteamHumanPortrait>(*plan);const auto images=parts<SteamHumanImage>(*plan);
+    c(people.size()==3&&people[0].position==std::array<int,2>{49,145}&&people[2].position==std::array<int,2>{89,145}&&
+      people[0].actor.body.sprite==13&&!people[0].actor.weapon,
+      "33最多前三、首同定义实例动作7倒下无武器，不误读状态枚举");
+    const auto male=startup_title_actor_skin(0,0,0,1,1,false);
+    c(male&&people[1].actor.body.image==male->body.image,"33无sex参数固定职业男图");
+    c(std::count_if(images.begin(),images.end(),[](const auto &v){return v.asset==SteamHumanAsset::pinch;})==1,
+      "HPafter30%显示、31%不显示、无实例不造HP");
+    const auto numbers=parts<SteamFacilityNumber>(*plan);
+    c(std::any_of(numbers.begin(),numbers.end(),[](const auto &v){return v.kind==SteamFacilityNumberKind::comma_number&&v.value==8;}),
+      "33倒下总数包含第四位重复m，不只可见三人");
+    const auto touch=parts<SteamStartupTouch>(*plan);
+    c(touch.size()==2&&touch[0].rectangle==std::optional<std::array<int,4>>{{31,175,98,56}}&&
+      touch[1].rectangle==std::optional<std::array<int,4>>{{121,175,98,56}}&&touch[0].component==3&&touch[1].value==0x20001,
+      "33独立DLGSEL扩张矩形，不沿28底按钮位置");
+    in.active_humans={{0,0,150,100},{1,0,-1,100}};plan=steam_task_deadline_skin(in);
+    c(bool(plan),"HP高于新max及负HP合法，不把显示钳回");
+    in.phase=1;in.answer=0;in.counter=12;plan=steam_task_deadline_skin(in);
+    const auto raised=parts<SteamHumanPortrait>(*plan);
+    c(raised[0].actor.body.sprite==21&&raised[0].actor.body.frame==0&&parts<SteamStartupTouch>(*plan).size()==2,
+      "33继续12帧举手方向1，与phase1仍注册按钮");
+    in.answer=1;in.selection=1;plan=steam_task_deadline_skin(in);
+    c(parts<SteamHumanPortrait>(*plan)[0].actor.body.frame==0,"33中止固定walk0");
+    auto bad=in;bad.answer.reset();c(!steam_task_deadline_skin(bad),"33第二段缺答案拒绝");
+    bad=in;bad.participants.back()=999;c(!steam_task_deadline_skin(bad),"33不可见第四人坏ID也拒绝");
+    bad=in;bad.active_humans[0].hp_maximum=0;c(!steam_task_deadline_skin(bad),"33除零HP源拒绝");
+    bad=in;bad.active_humans[0].hp_after=std::numeric_limits<int>::max();c(!steam_task_deadline_skin(bad),"33源HP乘100溢出拒绝");
+    in=deadline_input();in.kind=1;in.progress.reset();in.remaining=3;in.main_monster=10;
+    in.encounter_monsters={11,12};in.monsters={{10,2,0,2},{11,1,0,1},{12,3,0,3}};in.counter=12;
+    plan=steam_task_deadline_skin(in);c(bool(plan),"33三个不同体型的条件编组");
+    const auto monsters=parts<SteamTaskDeadlineMonster>(*plan);
+    c(monsters.size()==3&&monsters[0].image==90&&monsters[0].position==std::array<int,2>{186,145}&&
+      monsters[1].image==30&&monsters[1].position==std::array<int,2>{144,145}&&monsters[2].image==60&&monsters[2].position==std::array<int,2>{165,145},
+      "33怪物逆2/1/0绘制、间距取主怪body2");
+    c(monsters[0].requested_step==3&&monsters[0].frame==1&&monsters[1].frame==2&&monsters[2].frame==1,
+      "传入末人step3与最终主钟/10、6、8生成帧1/2/1独立");
+    in.participants.clear();plan=steam_task_deadline_skin(in);c(parts<SteamTaskDeadlineMonster>(*plan)[0].requested_step==0,
+      "33空人物传入step0而仍使用主钟计算怪物动画");
+    bad=in;bad.monsters[2].variant=6;c(!steam_task_deadline_skin(bad),"33大体型只有六图，拒绝虚构槽");
+    in=deadline_input();const auto &facilities=startup_world_rules().facilities;
+    const auto map=std::find_if(facilities.begin(),facilities.end(),[](const auto &f){return f.shape==2;});
+    c(map!=facilities.end(),"固定源存在四片Mapchip");in.mapchip=map->display_id;
+    plan=steam_task_deadline_skin(in);c(bool(plan),"33普通地图切片");
+    const auto tiles=parts<SteamFacilityMapchipDraw>(*plan);
+    c(tiles.size()==4&&tiles[0].position==std::array<int,2>{130,91}&&tiles[0].frame==0&&
+      tiles[1].position==std::array<int,2>{100,106}&&tiles[1].frame==2&&tiles[2].position==std::array<int,2>{160,106}&&tiles[2].frame==4&&
+      tiles[3].position==std::array<int,2>{130,121}&&tiles[3].frame==6,
+      "33普通DrawMapchip四片不引入Mapchip2居中");
+    const auto clips=parts<SteamTaskSelectionClip>(*plan);
+    c(clips.size()==2&&clips[0].rectangle==std::array<int,4>{17,85,202,110}&&!clips[1].push,"33只裁普通设施并释放");
+    const auto count=plan->operations.size();for(int i=0;i<8;++i)c(steam_task_deadline_skin(in)->operations.size()==count,"33重复只读规模稳定");
+    const auto resource=steam_task_deadline_resource(SteamTaskDeadlineAsset::progress_label);c(bool(resource),"33进度/剩余资源映射");
+    const auto root=source_root/"steam_common";auto image=LoadImage((root/std::filesystem::path(resource->published_image).filename()).string().c_str());
+    c(image.data!=nullptr,"Steam menuRT00已出版图片可解码");UnloadImage(image);
+    const auto seb=ark::assets::parse_legacy_seb(bytes(root/std::filesystem::path(resource->published_sprite).filename()));
+    c(resource->image==84&&resource->sprite==75&&seb.frame_count==4,"menuRT00 SEB75实际四帧、此页仅用0/1，不使用字体猜图标");
+}
 void task_information(Checks &c) {
     // 两独立原helper：UserData RVA2F82B0(scene4)、SubForm RVA30BED0(raw29)。
     SteamTaskInfoInput in;in.name="任务详情条件";in.treasure_level=9;in.monster_rank=4;
@@ -658,5 +812,5 @@ void task_information_owner(Checks &c) {
 int check_steam_task_selection_skins(const std::filesystem::path &source_root) {
     Checks c;directory(c);prompt(c);recruitment(c);owner(c);resources(c,source_root);
     rosters(c);departure(c);roster_resources(c,source_root);results(c,source_root);
-    task_information(c);task_information_owner(c);return c.count;
+    task_information(c);task_information_owner(c);victory(c);victory_owner(c);deadline(c,source_root);return c.count;
 }

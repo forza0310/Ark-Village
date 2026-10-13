@@ -238,6 +238,14 @@ std::optional<State> prepare_startup_world_runtime_dungeon_finish(const State &s
         next.road_patches.push_back({out.map.road_quad[n], out.map.edge_road_pair[n]});
     // 页30/32引用及地面显示是原型窗口实际待消费载荷，不能只保留页面号码。
     next.exploration_summaries = out.ui.summaries;
+    for(const auto &[id,summary]:next.exploration_summaries)
+        if(summary.legacy_page==30&&!state.exploration_summaries.count(id)) {
+            // SubForm构造frame/frame2/i均为0；只安装本次新增页，不重置已有演出。
+            if(!next.page_counters.emplace(id,0).second||!next.page_phases.emplace(id,0).second||
+               !next.page_secondary_counters.emplace(id,0).second)return {};
+            const auto page=std::find_if(next.scripts.pages.begin(),next.scripts.pages.end(),[page_id=id](const auto &p){return p.id==page_id;});
+            if(page==next.scripts.pages.end()||!valid_startup_world_runtime_task_victory_page(next,*page))return {};
+        }
     next.exploration_displays.insert(next.exploration_displays.end(),
                                      out.ui.ground_displays.begin(), out.ui.ground_displays.end());
     refresh_schedule_surface(next);
@@ -587,10 +595,15 @@ bool consume_startup_world_runtime_task_encounter_request(State &s,
             !write_startup_world_runtime_scripts(next, created.candidate->state))
             return false;
         if (r.kind == Kind::page30)
-            for (const auto &inserted : created.candidate->inserted_pages)
-                next.exploration_summaries.emplace(
+            for (const auto &inserted : created.candidate->inserted_pages) {
+                if(!next.exploration_summaries.emplace(
                     inserted.id,
-                    ref::WorldExplorationSummary{30, task.identity, task.definition, {}});
+                    ref::WorldExplorationSummary{30, task.identity, task.definition, {}}).second)return false;
+                if(!next.page_counters.emplace(inserted.id,0).second||
+                   !next.page_phases.emplace(inserted.id,0).second||
+                   !next.page_secondary_counters.emplace(inserted.id,0).second)return false;
+                if(!valid_startup_world_runtime_task_victory_page(next,inserted))return false;
+            }
     } else if (r.kind == Kind::mark_task_complete) {
         if (!next.active_task || !next.tasks.count(*next.active_task))
             return false;

@@ -79,6 +79,15 @@ void factory() {
     next.tasks.at(task).newly_available=false;
     next.scene.world.world.facilities.at(site).status = 2;
     next.dungeon_facilities.at(site).updates = 10;
+    auto victory=next;victory.active_task=task;victory.participants={1};
+    victory.scene.world.world.ai.task_active=true;
+    const auto won=prepare_startup_world_runtime_dungeon_finish(victory,site);
+    check(won.has_value(),"actual exploration completion producer supplies victory page");
+    const auto shown=std::find_if(won->scripts.pages.begin(),won->scripts.pages.end(),[](const auto &p){return p.legacy_page==30;});
+    check(shown!=won->scripts.pages.end()&&!shown->task_identity&&!shown->task_definition&&
+          valid_startup_world_runtime_task_victory_page(*won,*shown)&&won->page_counters.at(shown->id)==0&&
+          won->page_secondary_counters.at(shown->id)==0&&won->page_phases.at(shown->id)==0,
+          "exploration30 retains summary-only binding and installs distinct constructor clocks");
     const auto cleaned = prepare_startup_world_runtime_dungeon_finish(next, site);
     check(cleaned && !cleaned->scene.world.world.facilities.count(site) &&
               cleaned->task_order.empty() && cleaned->tasks.at(task).facility == site &&
@@ -700,6 +709,10 @@ void task_victory_requests() {
     check(consume_startup_world_runtime_task_encounter_request(
               state, {ref::EncounterRequestKind::page30, {}, 30, 70}),
           "task victory inserts actual source page30 without granting summary cash");
+    const auto victory_page=std::find_if(state.scripts.pages.begin(),state.scripts.pages.end(),[](const auto &p){return p.legacy_page==30;});
+    check(victory_page!=state.scripts.pages.end()&&valid_startup_world_runtime_task_victory_page(state,*victory_page)&&
+          state.page_counters.at(victory_page->id)==0&&state.page_secondary_counters.at(victory_page->id)==0,
+          "encounter30 producer installs main/secondary zero without borrowing31 counters");
     check(consume_startup_world_runtime_task_encounter_request(
               state, {ref::EncounterRequestKind::page31, {}, 1, 2}),
           "task victory inserts actual source page31 before mark/clear task");

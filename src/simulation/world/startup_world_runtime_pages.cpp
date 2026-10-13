@@ -319,6 +319,48 @@ bool consume_award_display(State &s, std::uint64_t id, bool confirm, int raw) {
 }
 } // namespace
 
+bool valid_startup_world_runtime_residence_result_page(const State &s,const ref::WorldScriptPage &p) {
+    if(!s.rules||p.id==0||p.kind!=ref::WorldScriptPageKind::raw_page||p.legacy_page!=96||
+       p.lifecycle<0||p.lifecycle>4)return false;
+    const auto count=s.page_counters.find(p.id),phase=s.page_phases.find(p.id),second=s.page_secondary_counters.find(p.id);
+    const auto human=s.page_human_bindings.find(p.id);
+    if(count==s.page_counters.end()||phase==s.page_phases.end()||second==s.page_secondary_counters.end()||
+       count->second<0||count->second==std::numeric_limits<int>::max()||
+       second->second<0||second->second==std::numeric_limits<int>::max()||phase->second<0||phase->second>1||
+       human==s.page_human_bindings.end()||!s.human_calendar.count(human->second)||
+       !s.shop_humans.count(human->second)||!s.scene.world.world.ai.growth.count(human->second)||
+       std::none_of(s.rules->humans.begin(),s.rules->humans.end(),[&](const auto &h){return h.identity==human->second;})||
+       std::none_of(s.rules->facilities.begin(),s.rules->facilities.end(),[&](const auto &d){return d.id==p.legacy_f&&d.kind==12;}))return false;
+    if(p.lifecycle==0&&(count->second!=0||second->second!=0||phase->second!=0))return false;
+    // 原n.aH是共享奖励显示，并非此页冻结的当前人物值；仅验其三行自身契约。
+    for(std::size_t column=0;column<2;++column) {
+        const int before=s.reward_display[0][column],after=s.reward_display[1][column],request=s.reward_display[2][column];
+        if(before<0||before>100||after<0||after>100||request<0||
+           after!=std::min<std::int64_t>(100,static_cast<std::int64_t>(before)+request))return false;
+    }
+    return true;
+}
+
+bool valid_startup_world_runtime_task_victory_page(const State &s,const ref::WorldScriptPage &p) {
+    if(!s.rules||p.id==0||p.kind!=ref::WorldScriptPageKind::raw_page||p.legacy_page!=30||
+       p.lifecycle<0||p.lifecycle>4||p.legacy_f<0)return false;
+    const auto summary=s.exploration_summaries.find(p.id);
+    const auto count=s.page_counters.find(p.id),phase=s.page_phases.find(p.id),second=s.page_secondary_counters.find(p.id);
+    if(summary==s.exploration_summaries.end()||summary->second.legacy_page!=30||
+       !summary->second.rewards.empty()||count==s.page_counters.end()||phase==s.page_phases.end()||
+       second==s.page_secondary_counters.end()||count->second<0||count->second==std::numeric_limits<int>::max()||
+       second->second<0||second->second==std::numeric_limits<int>::max()||phase->second<0||phase->second>1)return false;
+    const auto task=s.tasks.find(summary->second.task);
+    if(task==s.tasks.end()||task->first==0||task->second.identity!=task->first||
+       task->second.definition!=summary->second.definition||
+       std::none_of(s.rules->tasks.begin(),s.rules->tasks.end(),[&](const auto &d){return d.factory.identity==summary->second.definition;}))return false;
+    // 探索原producer仅在summary保存aa/q；战斗producer另有page绑定，不能反造缺失optional。
+    if(bool(p.task_identity)!=bool(p.task_definition)||
+       (p.task_identity&&(*p.task_identity!=task->first||*p.task_definition!=task->second.definition)))return false;
+    if(p.lifecycle==0&&(count->second!=0||second->second!=0||phase->second!=0))return false;
+    return true;
+}
+
 bool valid_startup_world_town_progress_page(const State &s,const ref::WorldScriptPage &p) {
     const int raw=p.legacy_page;const auto id=p.id;
     if(!s.rules||p.kind!=ref::WorldScriptPageKind::raw_page||
@@ -410,6 +452,12 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
         return Error::invalid_page;
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 58)
         return Error::invalid_page; // 镜头页由真实逐帧跟踪收尾，确认不提前关闭。
+    if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==30&&
+       (top->lifecycle!=2||!valid_startup_world_runtime_task_victory_page(state,*top)))
+        return Error::missing_source;
+    if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==96&&
+       (top->lifecycle!=2||!valid_startup_world_runtime_residence_result_page(state,*top)))
+        return Error::missing_source;
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 14)
         return act_startup_world_save_page(state,id);
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 13)
@@ -492,11 +540,8 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
             if (!consume_startup_world_facility_upgrade(next, id, true))
                 return Error::missing_source;
         } else if (top->legacy_page == 96) {
-            if (!next.page_human_bindings.count(id) ||
-                !next.human_calendar.count(next.page_human_bindings.at(id)))
-                return Error::missing_source;
-            auto &phase = next.page_phases[id];
-            auto &counter = next.page_counters[id];
+            auto &phase = next.page_phases.at(id);
+            auto &counter = next.page_counters.at(id);
             if (phase == 0) {
                 if (counter < 40)
                     counter = 40;
@@ -754,6 +799,10 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
         if (page != state.scripts.pages.rend() && page->kind == ref::WorldScriptPageKind::raw_page &&
             page->legacy_page == 13 && !inspect_startup_world_manual_page(state,page->id))
             return {};
+        if(page!=state.scripts.pages.rend()&&page->kind==ref::WorldScriptPageKind::raw_page&&
+           page->legacy_page==30&&!valid_startup_world_runtime_task_victory_page(state,*page))return {};
+        if(page!=state.scripts.pages.rend()&&page->kind==ref::WorldScriptPageKind::raw_page&&
+           page->legacy_page==96&&!valid_startup_world_runtime_residence_result_page(state,*page))return {};
         if (page != state.scripts.pages.rend() && page->kind == ref::WorldScriptPageKind::raw_page &&
             (page->legacy_page == 3 || page->legacy_page == 4 || page->legacy_page == 7 ||
              page->legacy_page == 10) && !valid_startup_world_menu_page(state, page->id))
@@ -764,6 +813,10 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
                                   [](const auto &p) { return p.lifecycle != 4; });
     if (top == state.scripts.pages.rend() || top->kind == ref::WorldScriptPageKind::scene)
         return {};
+    if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==30&&
+       (top->lifecycle!=2||!valid_startup_world_runtime_task_victory_page(state,*top)))return {};
+    if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==96&&
+       (top->lifecycle!=2||!valid_startup_world_runtime_residence_result_page(state,*top)))return {};
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 14)
         return update_startup_world_save_page(state,top->id);
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 13)
@@ -836,7 +889,7 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
     if (counter == std::numeric_limits<int>::max())
         return {};
     ++counter;
-    if(top->legacy_page==50) {
+    if(top->legacy_page==50||top->legacy_page==30||top->legacy_page==96) {
         auto &secondary=next.page_secondary_counters.at(top->id);
         counter%=std::numeric_limits<int>::max();
         secondary=(secondary+1)%std::numeric_limits<int>::max();
@@ -851,11 +904,7 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
             next.sound_requests.push_back({StartupAudioOperation::jingle, 5});
     }
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 96) {
-        if (!next.page_human_bindings.count(top->id) ||
-            !next.human_calendar.count(next.page_human_bindings.at(top->id)) ||
-            next.page_phases[top->id] < 0 || next.page_phases[top->id] > 1)
-            return {};
-        if (counter == 1 && next.page_phases[top->id] == 0)
+        if (counter == 1 && next.page_phases.at(top->id) == 0)
             next.sound_requests.push_back({StartupAudioOperation::jingle, 5});
     }
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 11) {

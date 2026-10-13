@@ -16,7 +16,8 @@ enum class SteamHumanAsset {
     experience_bar, experience_label, experience_remaining, smile, combat_icon,
     equipment_background, weapon_icon, armour_icon, accessory_icon, magic_icon, catalogue_new, catalogue_get, gift_tab,
     ceremony_background, curtain, continue_cursor, result_icon,
-    president, gift_box, gift_face, item_icon, gift_flash, recovery_effect, recovery_number
+    president, gift_box, gift_face, item_icon, gift_flash, recovery_effect, recovery_number,
+    residence_background, shadow
 };
 struct SteamHumanResource {
     int image{}, sprite{-1};
@@ -87,6 +88,7 @@ struct SteamHumanOverviewText {
     bool layout{};
     std::array<int,3> rgb{92,51,31}; // 固定Steam SC_WINDOW_BLACK；名称虽BLACK，实际为棕色。
     int argument{}; // attribute仅0..5，原体力／力／器用／丈夫／魔力／運顺序。
+    bool rich{}; // 原DrawString2；布局与富文本资格分别保存，不因有value就改普通DrawString。
 };
 struct SteamHumanOverviewScroll {
     std::array<StartupSkinRect,2> rectangles;
@@ -118,10 +120,12 @@ struct SteamHumanPortrait {
     std::optional<std::array<int,4>> clip;
     bool image_clip{};
 };
+enum class SteamHumanClipKind { push_intersect, pop };
+struct SteamHumanClip { SteamHumanClipKind kind; std::array<int,4> rectangle{}; };
 using SteamHumanOverviewOperation=std::variant<SteamStartupFrameDraw,SteamHumanImage,
     SteamFacilityImage,SteamFacilityNumber,SteamHumanOverviewText,SteamHumanDetailSkin,
     SteamStartupTouch,SteamHumanOverviewScroll,SteamHumanEquipmentRow,SteamFacilityArrowTouch,SteamHumanPortrait,
-    SteamHumanCatalogueScroll,SteamHumanLearningText>;
+    SteamHumanCatalogueScroll,SteamHumanLearningText,SteamHumanClip,SteamFacilityMapchip2>;
 struct SteamHumanOverviewPlan {
     std::vector<SteamHumanOverviewOperation> operations;
     std::array<int,2> soft_labels{0,2};
@@ -149,6 +153,24 @@ struct SteamHumanOverviewOptions {
     std::array<std::optional<int>,3> item_explain_widths;
     std::optional<int> result_name_width, result_suffix_width; // 68非JP在11号字测，69沿当前字号；68JP后缀固定36。
 };
+// 共用mentalUp的只读调用输入，三行仍分别为旧值／新值／原请求，不补封顶差。
+struct SteamHumanRewardInput {
+    int profession{},sex{},weapon{-1},phase{},counter{};
+    std::string name;
+    std::array<std::array<int,2>,3> rewards{};
+};
+std::optional<SteamHumanOverviewPlan> steam_human_reward_skin(
+    const SteamHumanRewardInput &,const SteamHumanOverviewOptions &);
+struct SteamHumanResidenceResultInput {
+    int phase{},counter{},secondary{},mapchip{};
+    SteamHumanRewardInput human;
+};
+// raw96上方身体不用武器；副钟跳跃，phase1底部mentalUp另读共享character_frame。
+std::optional<SteamHumanOverviewPlan> steam_human_residence_result_skin(
+    const SteamHumanResidenceResultInput &,const SteamHumanOverviewOptions &);
+// 只接受已初始化真实栈顶96；旧绑定、双钟及住宅来源由Owner共享校验器检查。
+std::optional<SteamHumanOverviewPlan> steam_human_residence_result_skin(
+    const StartupWorldRuntimeState &,std::uint64_t page,const SteamHumanOverviewOptions &);
 // ItemData.Draw_itemExplain，默认raw64底部锚(120,199)；不把description/数值拼成效果说明。
 std::optional<SteamHumanOverviewPlan> steam_human_item_explain_skin(
     const StartupWorldItem &item,const SteamHumanOverviewOptions &options);

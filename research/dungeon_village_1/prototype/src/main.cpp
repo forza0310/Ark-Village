@@ -142,6 +142,8 @@ Options parse_options(int argc, char **argv) {
             options.inspect_page != "clear-record" && options.inspect_page != "clear-closing" &&
             options.inspect_page != "new-game-village" && options.inspect_page != "new-game-name" &&
             options.inspect_page != "new-game-sex" && options.inspect_page != "new-game-start" &&
+            options.inspect_page != "config-quality" && options.inspect_page != "config-locked" &&
+            options.inspect_page != "config-speed" && options.inspect_page != "config-volume" &&
           options.inspect_page != "gift-facility" && options.inspect_page != "gift-profession" &&
           options.inspect_page != "gift-equipment" && options.inspect_page != "gift-item" &&
           options.inspect_page != "award-giving" && options.inspect_page != "award-lift" &&

@@ -16,6 +16,7 @@
 #include "dungeon_village_prototype/steam_task_deadline_skin.hpp"
 #include "dungeon_village_prototype/steam_clear_score_skin.hpp"
 #include "dungeon_village_prototype/steam_new_game_skin.hpp"
+#include "dungeon_village_prototype/steam_config_skin.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 #include "dungeon_village_prototype/startup_world_persistence.hpp"
@@ -1040,6 +1041,16 @@ template<class Plan> void draw_facility_ceremony(const Plan &plan,SourceSprites 
             const auto &r=value.crop;
             sprites.crop("event/event_backGlad.png",{float(r[0]),float(r[1]),float(r[2]),float(r[3])},
                 {origin.x+value.offset[0],origin.y+value.offset[1]});
+        } else if constexpr(std::is_same_v<T,SteamConfigImage>) {
+            const auto controls=steam_config_image_skin(value,128);
+            if(!controls)throw std::runtime_error("设置控件来源拒绝");
+            const auto &c=controls->crop;const auto &d=controls->destination;
+            sprites.crop("steam-common/buttoneffect.png",{float(c[0]),float(c[1]),float(c[2]),float(c[3])},
+                {origin.x+d[0],origin.y+d[1]},true,Vector2{d[2],d[3]});
+        } else if constexpr(std::is_same_v<T,SteamConfigTouch>) {
+            // 条件窗口只消费绘制；完整设置输入、音量输出与系统保存尚未接Owner。
+        } else if constexpr(std::is_same_v<T,SteamConfigPlatformKeyboard>) {
+            throw std::runtime_error("设置平台键盘图标尚未接资源消费者");
         } else if constexpr(std::is_same_v<T,SteamNewGameArrow>) {
             const auto arrow=steam_manual_arrow_skin(value.source,sprites.manual_arrow_bounds(value.source.bounds_frame),128);
             if(!arrow)throw std::runtime_error("新局性别箭头来源拒绝");
@@ -1449,6 +1460,22 @@ std::optional<SteamClearScorePlan> window_clear_score_plan(
     const StartupApplication &app,std::uint64_t id,const ChineseFont &font) {
     const auto input=steam_clear_score_input(app,id);
     return input?steam_clear_score_skin(*input,clear_score_options(*input,font)):std::nullopt;
+}
+std::optional<SteamConfigSkinPlan> config_example(const std::string &name,const ChineseFont &font) {
+    // 显式条件值不是平台默认设置；不创建世界或触发实际音量/画质/保存。
+    SteamConfigSkinInput in{{0,0,3,5},0,false};
+    if(name=="config-locked")in.selection=1;
+    if(name=="config-speed"){in.selection=1;in.speed_unlocked=true;in.values[1]=1;}
+    if(name=="config-volume"){in.selection=3;in.values[2]=0;in.values[3]=5;}
+    SteamConfigSkinOptions o;o.view_y=23;o.graphics_origin={0,30};o.on_top=true;
+    o.text.title="环境设置";o.text.names={"画面","速度","BGM","效果音"};
+    o.text.choices={{{"画质优先","速度优先"},{"高速","普通"}}};
+    if(in.selection==0)o.text.explanation={"优先速度时会省略部分","演出及显示效果"};
+    else if(in.selection==1)o.text.explanation={"更改游戏的运行速度","通关游戏后可以更改"};
+    else o.text.explanation={"设置游戏中的","音量大小"};
+    const int width=int(font.measure(o.text.title));o.text.title_widths=std::array<int,2>{width,width};
+    if(name=="config-volume")o.arrow_selected[1][1]=true;
+    return steam_config_skin(in,o);
 }
 std::optional<SteamNewGamePlan> new_game_example(const std::string &name,const ChineseFont &font) {
     const auto &jobs=startup_world_rules().jobs;
@@ -1888,6 +1915,7 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
     const bool mastery_fixture=inspect_page=="mastery-announcement"||inspect_page=="mastery-bonus"||inspect_page=="mastery-choice";
     const bool clear_fixture=inspect_page=="clear-count"||inspect_page=="clear-score"||inspect_page=="clear-record"||inspect_page=="clear-closing";
     const bool new_game_fixture=inspect_page=="new-game-village"||inspect_page=="new-game-name"||inspect_page=="new-game-sex"||inspect_page=="new-game-start";
+    const bool config_fixture=inspect_page=="config-quality"||inspect_page=="config-locked"||inspect_page=="config-speed"||inspect_page=="config-volume";
     const bool gift_claim_fixture=inspect_page=="gift-facility"||inspect_page=="gift-profession"||inspect_page=="gift-equipment"||inspect_page=="gift-item";
     const bool award_result_fixture=inspect_page=="award-giving"||inspect_page=="award-lift"||inspect_page=="award-celebration"||inspect_page=="award-reward";
     const bool task_fixture=info_fixture||result_fixture||victory_fixture||deadline_fixture||roster_fixture||inspect_page=="task-selection"||inspect_page=="task-offer"||inspect_page=="task-recruitment";
@@ -1928,10 +1956,14 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
     }
     if(clear_fixture)reputation_glyphs+="通关点数发表那么赶紧开始计算吧任务完成数设施发现数冒险者全员合计自宅努力度总和追加排行榜更新接下来就是这样当前最高分研究绘制夹具无自然触发认证…！";
     if(new_game_fixture)reputation_glyphs+="重新开始城镇名称冒险者姓名性别男女开始游戏口袋冒险村太郎花子研究绘制夹具无自然触发认证";
+    if(config_fixture)reputation_glyphs+="环境设置画面速度效果音画质优先高速普通更改游戏的运行通关后可以设置中大小部分演出及显示研究绘制夹具无自然触发认证省略";
     ChineseFont font(font_path,reputation_glyphs);
-    if(magic_fixture||task_fixture||residence_fixture||award_fixture||effort_fixture||award_result_fixture||mastery_fixture||gift_claim_fixture||clear_fixture||new_game_fixture) {
-        std::variant<SteamMagicPotPlan,SteamTaskSelectionPlan,SteamTaskRosterPlan,SteamTaskResultPlan,SteamTaskVictoryPlan,SteamTaskDeadlinePlan,SteamHumanOverviewPlan,SteamTownProgressPlan,SteamNewGamePlan> plan;
-        if(new_game_fixture) {
+    if(magic_fixture||task_fixture||residence_fixture||award_fixture||effort_fixture||award_result_fixture||mastery_fixture||gift_claim_fixture||clear_fixture||new_game_fixture||config_fixture) {
+        std::variant<SteamMagicPotPlan,SteamTaskSelectionPlan,SteamTaskRosterPlan,SteamTaskResultPlan,SteamTaskVictoryPlan,SteamTaskDeadlinePlan,SteamHumanOverviewPlan,SteamTownProgressPlan,SteamNewGamePlan,SteamConfigSkinPlan> plan;
+        if(config_fixture) {
+            const auto value=config_example(inspect_page,font);
+            if(!value)throw std::runtime_error("Config example rejected");plan=*value;
+        } else if(new_game_fixture) {
             const auto value=new_game_example(inspect_page,font);
             if(!value)throw std::runtime_error("New game example rejected");plan=*value;
         } else if(clear_fixture) {

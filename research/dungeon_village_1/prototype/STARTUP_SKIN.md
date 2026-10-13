@@ -16,6 +16,8 @@ Steam完整局部绘制由[steam_clear_score_skin.hpp](include/dungeon_village_p
 
 Steam新局91由[steam_new_game_skin.hpp](include/dungeon_village_prototype/steam_new_game_skin.hpp)提供独立只读计划：显式接收村名、姓名、性别、选择、主钟与真实冒险职业，返回原序窗框、event9裁片、正文、人物、按钮及Touch／Arrow。字段热区、Arrow margin和soft0／2沿Steam来源；标题／开始按钮宽度由后端测量，长按钮不擅自钳制。该接口不读写应用、不推进时钟；配置选择与主钟的Owner恢复未接，不能用默认0补齐。见[四态参考](../ui/examples/steam-new-game.png)。
 
+Steam非日文设置12由[steam_config_skin.hpp](include/dungeon_village_prototype/steam_config_skin.hpp)提供四行纯计划：显式接收实际设置值、选择、解锁资格、触摸状态、当前语言文字及真实标题测宽，返回原序图元和源／实际触摸矩形。`steam_config_image_skin`将本页控件4／5／6／7／11绑定已出版`steam-common/buttoneffect.png`，源图密度与0.75逻辑尺寸分别处理。返回描述不改变画质／音量、播放试听或保存；平台键盘另输出请求，当前研究执行器明确拒绝未接的该图标，示例只展示游戏设置主体。完整设置Owner、系统权威字段、原helper表现计数与文件事务仍独立设计，不将纯计划当作设置已经可用。
+
 ## 验证与边界
 
 后继新增`startup_window_skin`和`startup_content_skin`，分别返回标题窗的边线／木纹块／标题带／测宽后的文字锚点，以及标准内容框的填充／双线／四角。所有矩形采用半开像素大小；outline为内侧1像素线，源o.d的差1转换只做一次。字体测宽由真实平台适配器传入，本模块不补近似字体。详细原尺寸和使用顺序见[图元合同](../verification/startup-frame-font-research/README.md)。

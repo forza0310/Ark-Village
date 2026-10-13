@@ -398,11 +398,11 @@ tag24在`1032772D–10327764`创建“结束游戏”是／否询问，默认1�
 
 **冒险／村办的独立标记与正式皮肤。** `steam_navigation_menu_skin`只读真实raw4／7冻结目录及帧，逐冻结行消费实测宽，沿type1公用循环绘制；窗口不再用短列表替代。Steam `_draw`的VA `103531CA/103531DC`共同到`10356CB6`并调用`DrawMenu2`（`10308540`）。raw4灯号`103090BD–10309295`：tag7查任务NEW且无当前任务，tag9独立查装备GET；任务NEW不能短路装备。raw7 `10308FA3–103090B8`：tag11先商品再设施未阅，tag12独立查活动NEW；商会NEW不能屏蔽活动。JP偏移raw4为8、raw7为10，英语为6，非JP的GET再减3；隐藏／frame0..2不访问尚未消费的测宽和灯号源。Steam行触摸为`dx+40,width-40`；APK `b/g.java:539`同type1的整行触摸、初dx0及无上述JP额外偏移分开。NEW只读原谓词，不套维护商会p0售卖过滤，也不重筛已冻结tags；坏实际消费源显式拒绝，计划不写Owner／随机／输出。
 
-**系统目标页及返回副作用。** 设置raw12在APK `b/g:10641,11386–11467`及`b/d:117–137,191–246`读写世界／系统设置，音量立即作用，SE改值另试听7；Steam Update `1032692E–103271A0`返回实际调用`SaveSystem`，部分分支再ResetOffscreen／Pop。因此“返回”不是撤销；Steam全部选项／平台setter仍未闭合。说明raw13在APK `10593–10634,11468`从p非零人物池逐项随机交换后反向取最多4人；Steam Init `10314BF0–10314FF2`含`10314EBB`的Random调用，Update `103267E2–1032692E`翻页，不能用标题纪录装饰替代。RankForm Init／Update RVA `202E60/203420`沿p==1名单和共同随机，左右互斥、返回Pop。世界内三条入口先退休菜单，返回露出GameForm；标题入口返回标题。维护`open_records()`现仅接受标题，不能直接改变活世界的返回目标或借标题随机驱动它。
+**系统目标页及返回副作用。** 设置raw12在APK `b/g:10641,11386–11467`及`b/d:117–137,191–246`读写世界／系统设置，音量立即作用，SE改值另试听7；Steam Update `1032692E–103271A0`返回实际调用`SaveSystem`，部分分支再ResetOffscreen／Pop。因此“返回”不是撤销；Steam目录、值映射及普通setter已有下节合同，真实平台初值／输出与完整维护设置仍未闭合。说明raw13在APK `10593–10634,11468`从p非零人物池逐项随机交换后反向取最多4人；Steam Init `10314BF0–10314FF2`含`10314EBB`的Random调用，Update `103267E2–1032692E`翻页，不能用标题纪录装饰替代。RankForm Init／Update RVA `202E60/203420`沿p==1名单和共同随机，左右互斥、返回Pop。世界内三条入口先退休菜单，返回露出GameForm；标题入口返回标题。维护`open_records()`现仅接受标题，不能直接改变活世界的返回目标或借标题随机驱动它。
 
 **结束的上游边界。** `RemoveAllForms` RVA `7E8840`在`107E88E9–107E8912`排除平台`kairo.unity.form.DialogForm`，其余标退休，随后框架才Finish／删除；平台DialogForm不是游戏raw1。`GameForm.Finish` RVA `2FA040`释放地图资源并GC，未见保存。`TerminateCheck`（`78D6A0`）还需使能、空表单等门槛，`1078D806`进入Terminate后依平台路径在`1078D8DA`调用Quit或在`1078D8E9`置延迟状态。本轮未证明结束按钮设置reserveSave，不能由此认证立即关闭或立即保存；预留保存尾段沿[存档合同](../rules/PERSISTENCE.md)另核。
 
-维护菜单使用冻结tags而非每轮按当前flag重建；缓存仅与活跃3选择／位置同步，退休旧3可保留后来已改变的旧行。初始化后缺字段、错父、越界行与孤立载荷显式拒绝；精确恢复保留原目录、位置与帧，不再次刷新P/aY。普通世界无待Init菜单时不额外复制Owner。3→建设、冒险、村办、情报及魔法壶的副作用由唯一候选提交；raw10导航可用，五业务项仍因缺应用／平台消费者明确拒绝，不能用可关闭空页假装保存或结束成功。
+维护菜单使用冻结tags而非每轮按当前flag重建；缓存仅与活跃3选择／位置同步，退休旧3可保留后来已改变的旧行。初始化后缺字段、错父、越界行与孤立载荷显式拒绝；精确恢复保留原目录、位置与帧，不再次刷新P/aY。普通世界无待Init菜单时不额外复制Owner。3→建设、冒险、村办、情报及魔法壶的副作用由唯一候选提交；raw10导航可用，raw14应用保存及raw13说明后续已接；未交付的设置、游戏内纪录与结束平台消费者仍明确拒绝，不能用可关闭空页假装业务成功。
 
 raw4的tag9为赠礼人物目录40，**不是装备情报38**。APK `b/g:10809–10822,12018–12062`及Steam Init `10313753–10313A7B`／Update `1032388A–10323C82`核全人物p非零原序、仅35重算贡献、40三页签及五行滚动、两种关闭清冻结X的NEW，40确认绑定所选人物到64并保留父40。首98说明与64首99说明均走真实对话返回，不以注入seen或通用关页跳过。58则按当前任务site地图投影加(30,−15)逐更新跟踪，无任务自动关闭，严格距离小于步长才直接对齐；沿既有56／57算法，确认／取消不能跳过，坏site拒绝。
 
@@ -424,7 +424,7 @@ Update先通用计数，再对f124d额外执行(+1)%20；上／下和左／右�
 
 **Steam非日文目录只有四项。** 固定GameAssembly的`SubForm..cctor`在VA1032B68A分配CONFIG_EN_NAMES长度4，1032B7EC安装；CONFIG_EN_VALUES／REVERSE／MAX也各4项，metadata默认值分别为触摸ID`0x60000,0x70000,0x80000,0x90000`、`true,true,false,false`和`2,2,6,6`。故画质／速度／BGM／SE四行成立，虽仍有CONFIG_EN_ORIENTATION=4常量和方向setter，也不能给这个目录补第五行。APK五行和Steam四行必须分开；本条不外推所有语言／平台。
 
-Steam `MyFormBase.GetTouchValue` RVA200630／`SetTouchValue`200FC0与上表P12／P13、J3／J4／J13分属一致；J14货币setter不等于有对应菜单项。音量变化才SetVolume(value×51)、SetMute(value==0)、Reflect，SE另Play7。`SubForm.SetTouchValue`317600在未匹配类型时尾跳基类setter（VA10317643–1031764E）；此路径不是键盘Update的显示索引反向转换。键盘速度在VA10326B08–10326B37／10326F60–10326F8F检查J9==0后跳过改值，基类P13 setter没有同一检查；还须核绘制注册／组件准入，不能据键盘分支宣称所有鼠标入口共用该门控。
+Steam `MyFormBase.GetTouchValue` RVA200630／`SetTouchValue`200FC0与上表P12／P13、J3／J4／J13分属一致；J14货币setter不等于有对应菜单项。音量变化才SetVolume(value×51)、SetMute(value==0)、Reflect，SE另Play7。`SubForm.SetTouchValue`317600在未匹配类型时尾跳基类setter（VA10317643–1031764E）；此路径不是键盘Update的显示索引反向转换。键盘速度在VA10326B08–10326B37／10326F60–10326F8F检查J9==0后跳过改值，基类P13 setter没有同一检查；后续已独核绘制：J9为0时只跳过高速项Touch6、仍保留普通行选择热区，见[设置生命周期](STEAM_INTERACTIONS.md#游戏设置与标题平台按钮)；不能把键盘整行禁改外推为鼠标整行不可选。
 
 返回SaveSystem调用位于Update的VA10326D28／1032715E，非日文分支另调用ResetOffscreen后Pop；SubForm.Finish RVA1EDFA0仅返回true。SaveSystem RVA264060只序列化sysSave_至RecordStore0／record0，不顺带保存世界P。上述为现有methods／dump映射与方法入口解码，主会话另核四项分配及J9分支机器码；不是OS窗口输入证据。
 

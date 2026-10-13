@@ -79,7 +79,7 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 37 | INFO_ITEM | 情报／赠礼入口 | 静态：[正库存原序、空15、关闭清NEW及局部Draw](INFORMATION_MENU.md)已核；维护：Owner与五行／说明／滚动计划已接。动态：未全页认证；原字体、最终触摸与动态SEB执行仍独立 |
 | 38 | INFO_EQUIP | 情报／赠礼入口 | 静态：[Steam flags过滤、未知行、四页与局部Draw](INFORMATION_MENU.md)已核；维护：Owner与图标／属性／GET／滚动计划已接。动态：未全页认证；字体、实际点击和动态手形仍独立 |
 | 39 | INFO_TENANT | 情报／赠礼入口 | 静态：[kind3原序、编号／截至当月利润、scene7及局部Draw](INFORMATION_MENU.md)已核；维护：稳定ID目录／恢复、镜头交接及五行／正负金额计划已接。动态：未全页认证；字体／物理输入仍缺，确认不冒称打开商店详情 |
-| 40 | MEMBER_PRESENT | 情报／赠礼入口 | 仅声明；更新／绘制／动态链待逐项 |
+| 40 | MEMBER_PRESENT | 情报／赠礼入口 | Steam页面仍仅声明；维护赠礼人物目录及进入64已有Owner消费者，不等于35皮肤自动适用于40。独立Steam绘制／输入与原动态待核，见[页面边界](PAGES.md) |
 | 41 | DEVELMP_TOP | 魔法壶 | [局部合同](STEAM_MAGIC_POT.md)：主页壶／知识／四元素、按钮及整轮输入已接；静态来源／维护短测与原窗口动态分开，字体／OS待证 |
 | 42 | DEVELMP_ITEMSELECT | 魔法壶 | [局部合同](STEAM_MAGIC_POT.md)：五行原序库存／元素等级、Steam独立margin及marker16已接；静态来源／维护短测与原窗口动态分开，字体／OS待证 |
 | 43 | DEVELMP_RECIPESELECT | 魔法壶 | [局部合同](STEAM_MAGIC_POT.md)：未知／已知两页、成本、无marker及上下后左右顺序已接；静态来源／维护短测与原窗口动态分开，字体／OS待证 |
@@ -122,24 +122,24 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 80 | TENANT_RESIDENT_LIST | 设施 | [局部合同与纯皮肤](PAGES.md#steam住宅候选80与授勋目录87)及显式游标helper已接，保留四行更新／五行绘制及marker16；现有入住事务，Owner游标／完整窗口与原动态待接 |
 | 81 | TENANT_LVUP_ANIME | 设施 | 静态：[Init真正升级、40／55确认、独立frame2及完整局部Draw](STEAM_FACILITY_UPGRADE.md)已核；维护：Owner与数字动画／角色／框及触摸计划已接。动态：无连续原窗口认证；原字体、平台热区仍独立 |
 | 82 | TENANT_STREN_BONUS | 设施 | 静态及维护：两阶段口碑／人气、有序皮肤、独立双钟／恢复与条件参考已交付；未认证自然36个月触发、完整scratch或原OS动态，见[效果合同](../rules/FACILITY_EFFECTS.md) |
-| 83 | SHOPPING_TOP | 商会 | 仅声明；更新／绘制／动态链待逐项 |
-| 84 | SHOPPING_ITEMSELECT | 商会 | 仅声明；更新／绘制／动态链待逐项 |
-| 85 | SHOPPING_TENANT | 商会 | 仅声明；更新／绘制／动态链待逐项 |
-| 86 | SHOPPING_ACT_AFTER | 商会 | 仅声明；更新／绘制／动态链待逐项 |
+| 83 | SHOPPING_TOP | 商会 | Steam静态：公共Init、三入口保留父页、上→下→确认优先返回、南瓜肖像／等级／三行原序／NEW谓词已核，见[商会83合同](../rules/COMMERCE.md#steam-commerce-top)。维护Owner三入口及选择已有载荷；独立Steam纯皮肤、同轮输入及原动态仍待接 |
+| 84 | SHOPPING_ITEMSELECT | 商会 | Steam静态业务：原序货源／库存目录、交易即时扣款／入账、耗尽及86产生时点已核；维护Owner买卖／反馈已接。Steam有序皮肤、整轮物理输入与原动态仍缺，见[商会合同](../rules/COMMERCE.md) |
+| 85 | SHOPPING_TENANT | 商会 | Steam静态业务：排state2及售卖星级资格、先扣点再建93且不立即开放、全目录已读已核；维护Owner与定义预览已接，p0收紧仍为用户策略。Steam皮肤／原动态仍缺，见[商会合同](../rules/COMMERCE.md) |
+| 86 | SHOPPING_ACT_AFTER | 商会 | Steam静态局部：84交易完成后才创建86已核；维护自动反馈返回已有消费者。86自身Steam更新／绘制及原动态仍待核，不以创建点认证整页，见[商会合同](../rules/COMMERCE.md) |
 | 87 | MEDAL_LIST | 授勋／怪物／住宅 | [局部合同与纯计划](PAGES.md#steam住宅候选80与授勋目录87)及显式游标helper已接：三页签、五行、各数值列／勋章与住宅图；现奖励消费者不等于原dialog父子页，Owner游标／页签／问答接线及原动态待补 |
 | 88 | MEDAL_CELEMONY | 授勋／怪物／住宅 | [合同与有序皮肤](STEAM_HUMAN_DETAIL.md#human-reward-followups)：Steam背景／演员／奖章／气泡／陪衬和mentalUp偏移135、严格Owner桥／窗口／恢复已接；共享scratch附效、字体及原动态待证 |
-| 89 | MONSTER_NEWAPPEAR | 授勋／怪物／住宅 | 仅声明；更新／绘制／动态链待逐项 |
-| 90 | MYHOME_TAX | 授勋／怪物／住宅 | 仅声明；更新／绘制／动态链待逐项 |
+| 89 | MONSTER_NEWAPPEAR | 授勋／怪物／住宅 | Steam静态产生者：介绍脚本→绑定所选怪物的89请求→立即置介绍标志已核；维护同步介绍／对话身份与回滚已接。89自身Steam更新／皮肤／原动态仍缺，见[怪物介绍合同](../rules/STEAM_MONSTER_PROGRESSION.md) |
+| 90 | MYHOME_TAX | 授勋／怪物／住宅 | Steam页面仍仅声明；APK冻结居民／确认不入账合同及维护Owner、两列简化列表／滚动已接，不能升格为Steam皮肤。Steam自身Init／Update／Draw及原动态待核，见[税收合同](../rules/ACCOUNTING.md) |
 | 91 | NEWGAME | 新局／奖励／解锁／事件 | 静态：[NewGame／默认参数小方法](../rules/STARTUP_RECORDS.md#steam小方法交叉及设计决策)及[标题空栏入口](STEAM_TITLE_MENU.md)已核，[Steam Draw](STARTUP_SKIN.md#steam新局91的独立绘制交叉)已核，完整Update仍待核。维护：已有草稿／正式开始及独立Steam纯计划、四态参考；配置选择／主钟的Owner恢复尚未接；动态：空栏配置、默认联动／输入面板局部已见，未读运行页号；自定义保名／取消保留属用户批准策略，非Steam实测 |
 | 92 | MONSTER_INFO | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |
 | 93 | GET_OBJ | 新局／奖励／解锁／事件 | [共享领取合同](../rules/ACCOUNTING.md#script-rewards)：商会已维护r3的原序皮肤、严格Owner桥及窗口已接；无给予人物，85先付点、93满40确认才开放，原动态另验 |
 | 94 | GET_OBJ_FROM_CHARA | 新局／奖励／解锁／事件 | [共享领取合同](../rules/ACCOUNTING.md#script-rewards)：已维护r3–8的真实给予人、装备／道具图标、原序皮肤及严格Owner桥已接；新职业早已开放与实际领取分开，完整字体／动态另验 |
 | 95 | GET_OBJ_FROM_AWARD | 新局／奖励／解锁／事件 | 静态：共93／94绘制模板的七类图文、SetClip替换及r11择一后缀已核。维护：真实r/s/t只读皮肤、等待／40领取及拒绝已接，范围见[合同](../rules/ACCOUNTING.md#script-rewards)。动态：原窗口／字体与94其它分支仍缺 |
 | 96 | GET_MYHOME | 新局／奖励／解锁／事件 | [局部合同与维护计划](STEAM_HUMAN_DETAIL.md#human-reward-followups)：Mapchip2、独立副钟、人物抛物、mentalUp／jingle5、严格Owner桥及窗口已接；短拒绝／恢复／退休已验，完整字体与原OS动态待证 |
-| 97 | TP_LOCKOFF | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |
-| 98 | TAX_INCOME | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |
-| 99 | BOSS_APPEAR | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |
-| 100 | MANYMONSTER_APPEAR | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |
+| 97 | TP_LOCKOFF | 新局／奖励／解锁／事件 | Steam静态：第一次实际Update即清人气条锁并Pop，无确认／计数门槛已核；维护人气奖励后继已接。未由此认证Draw或完整人气演出动态，见[人气合同](../rules/ACCOUNTING.md#人气100条奖励与超过10000后的重放) |
+| 98 | TAX_INCOME | 新局／奖励／解锁／事件 | Steam页面仍仅声明；APK自动重新合计／其它收入／清全人物F/G合同及维护Owner事务已接，无玩家确认。Steam自身Update／Draw及原动态仍待核，见[税收合同](../rules/ACCOUNTING.md) |
+| 99 | BOSS_APPEAR | 新局／奖励／解锁／事件 | Steam静态产生者：特殊任务成功创建后134→99及后继事件顺序已核；APK满40确认／维护演出消费者不代证Steam自身Update／Draw。独立Steam皮肤与原动态仍缺，见[后期任务合同](../rules/PROGRESSION_ROUTES.md) |
+| 100 | MANYMONSTER_APPEAR | 新局／奖励／解锁／事件 | Steam静态产生者：复发任务成功创建后133→100及167守卫已核；APK演出数组／随机及40确认、维护消费者与Steam自身Update／Draw分开。独立Steam皮肤与原动态仍缺，见[后期任务合同](../rules/PROGRESSION_ROUTES.md) |
 
 标题菜单0／存档栏1的[菜单／选档静态合同](STEAM_TITLE_MENU.md)与维护纯计划已接；S038／S039/S062及[后继窗口](../verification/startup-ui-analysis/ANALYSIS.md)只认证局部入口／显示，不证明完整覆盖、删除或配置最终开始。独立RankForm的[双页Update及纪录getter](../rules/STARTUP_RECORDS.md#steam小方法交叉及设计决策)有Steam静态证据，[两轮窗口](../verification/skin-observation-analysis/ANALYSIS.md)补纪录外观／翻页；维护纪录计划仍有APK来源部分，Steam完整Draw与字体未核，不与SubForm的3 MAIN_MENU混号。
 GameForm 0 MAIN、1 BUILD有局部窗口证据；6 CHASE_CHARA、7 CHASE_TENANT另有[具名追踪／确认与镜头静态合同及维护接线](INFORMATION_MENU.md)，不再仅有声明，但原窗口追踪全链未认证。2 USER、3 BACK、4 DUNGEON_SELECT、5 DUNGEON_MOVE在此仍仅登记声明。

@@ -55,6 +55,33 @@ Steam85在`10319B9E`检查村点，足额`10319BC5`先扣点，`10319BE7–19C05
 维护页参数`legacy_f=定义ID,legacy_g=1`属于显式适配，不伪称原Java字段布局。
 原93另有r=0..8的领取分支，本批只消费商会实际生成的r=3，其他r显式拒绝。
 
+<a id="steam-commerce-top"></a>
+
+### Steam商会主页83：生命周期、三入口与有序绘制
+
+固定Steam2.56身份沿[交互合同](../ui/STEAM_INTERACTIONS.md#来源与证据等级)。本段只核83及实际调用的局部helper，不把84／86已有业务交叉扩大为三页完整皮肤，也不认证原窗口／字体／OS投递。来源为构造RVA`32EAD0`、公共Init `312460`、Init2 `30E570`、Update2 `317940`及`_draw2_4` `3472B0`；后两者83分派分别在`10317C49–4C`、`10347728–2B`，实际页主体为`1031A37E–1031A54F`与`1034DBD7–1034E384`。
+
+构造在`1032EBD6`置select0。公共Init调用基类、绑定当前UserData、DecideKeyState、清frame，并读该raw的两软标签；83没有专用Init分支或商品目录冻结，转Init2后走公共true尾。SubForm.cctor的`1032A563–A5B8`直接建立两零int数组、只写第二项2，再安装到下标83，因此soft为`{0,2}`。它不在此重新检查菜单开放位16、现金、点数或库存；主动菜单入口的资格与脚本插入83分开。
+
+83的Update先独立处理上repeat（`select=(select+2)%3`），再独立处理下repeat（`select=(select+1)%3`），两者同轮都成立时均消费；随后确认pulse优先于软返回2。普通确认分支不先检查价格／空目录：select0创建84并写value1=0，select1创建84并写value1=1，select2创建85，均`this.Push(child)`，父83保留，不关闭或重置选择。无确认时才沿`1031F640–F680`检查软返回2并Pop83；左右无本页消费者。另有`Config.DEBUG_CMD && keyState0x40`的调试确认旁支，正常产品输入不复制它。原Push返回值未额外判失败，维护Owner的整体回滚不能归给原程序。
+
+83局部Draw先画220×168、top0的普通窗，再Box(17,74,219,184)。标题metadata字面`ﾊﾟﾝﾌﾟｷﾝ商会`；欢迎字面`いらっしゃいませ`用棕色SC_WINDOW_BLACK、普通DrawString(45,70,anchor1)。common38 `wnd_lv`整图锚(181,71)，UserData.nowRank_加1以SEB10数字锚(202,69)、padding0、anchor1显示；这是商会等级展示，不是当前资金。左侧请求`Draw_spCharaClip(g,21,66,imgId2,direct0,18,18)`：helper先push交集clip(21,66,18,18)，按其独立三项SPCHARA数组取图后DrawSeb@(30,94)，末PopClip。cctor在`1032DC4A–DCC7`安装的SPCHARA_SEB为`[31,31,38]`、IMG为`[172,172,173]`，对应字段默认值metadata offset`2FB8D9`／`2FAF96`；故此处确为common38／173南瓜人物，不能套`Draw_spChara`的另一套公共ID2大臣映射。实际frame0源裁(18,0,18,28)、offset(−9,−28)，只显示上部18高。
+
+三行令Y=`101+26*row`，每行原序为底图→Touch→文字→可选NEW→类别图标→选中手形：
+
+| 具名消费者 | 原实参及限制 |
+| --- | --- |
+| 底图／触摸 | common19 `bar_middleWindow`在(53,Y)，选中裁(0,0,134,26)，其余裁(0,26,134,26)，两裁均在原134×52 PNG内。组件11基矩形(33,Y,174,26)，value=`0x20000\|row`，无marker16、附加Margin或方向页签，不套75／79热区。 |
+| 三名称 | 字面依次`ｱｲﾃﾑの購入／ｱｲﾃﾑの売却／施設の購入`。日文普通DrawString(127,Y+7,anchor2)；非日文临时字号11，TextLayout(99,Y+7,85,11,anchor32,lineSpace0)，随后ResetFontSize，正文棕色。 |
+| NEW | 仅row0调用IsExistShopSeeItem（RVA`2DFFD0`）：原序任一道具restNum_>0且isShopSee为false即成立；row1不查询／不画；仅row2调用IsExistShopSeeTenant（`2E0090`）：state!=2、售卖星级非−1且≤当前星级、isShopSee为false。成立画common147 `wnd_new`整图@(164,Y+14)。原设施提示谓词不收紧为维护85的p0目录资格。 |
+| 类别／手形 | common2 SEB1／image2 `icon_shopTop`取frame=row，日文锚(77,Y+4)、非日文(75,Y+4)；实际三裁片为(16*row,0,16,17)、offset0。选中行随后直接画common SEB21 `finger_r`，日文锚(68,Y+13)、非日文(66,Y+13)，不在本页强制改其当前帧。 |
+
+共尾重设棕色，在(120,198,anchor2)画当前行说明，原序字面为`アイテムを購入します／アイテムを売却します／施設を購入します`。正文没有底栏按钮、标题箭头、滚动条、价格或购买付款；三项始终可选，NEW不是资格门控。文字槽依次为title `110FC3AC`、welcome `110F09A4`、三名称`110FB7E0／110FB7B4／110F7558`、三说明`110F21BC／110F2168／110F7580`，按真实metadata usage5解得；当前语言转换／字体度量仍由文字后端消费，不以这些日文字面认证中文显示。
+
+上述common19／38／147／173、SEB21／38及common2的图2／SEB1均已有原样出版；IMAGE_COVERAGE对Steam对应具名PNG／SEB登记与固定APK字节相同。同图这里只由具名Steam实际调用认证，尚未有研究83纯计划／完整原窗口，不新增整包素材副本。
+
+现Owner已持久化`commerce_pages_initialized`、`commerce_page_data[id]`及`page_counters[id]`；83六槽为`{mode0,tab0,selection,first0,binding−1,feedback0}`，没有commerce_page_lists。已有inspect输出selection/counter，三子页、取消、保留父选择、严格拒绝及退休可复用，不需要为83再造schema。真正维护缺口是独立Steam有序皮肤及把上→下→确认优先返回纳入一次Owner输入；现逐action API不能冒称已覆盖同轮组合。Shop NEW可直接读取已有货源／item_commerce_read、facility_presence／facility_commerce_read及星级，但必须保持上文原谓词和短路消费，不用85维护策略替换提示资格。84主体下一入口为Update2 `10319CA9`、Draw `1034D218`；86为Update2 `10319895`、Draw `1034C86F`，本段不提前认证其完整表现。
+
 ### 大炮店与未开放装备的有限排除
 
 固定两版原表中，设施58大炮店的售卖星级D为−1、flags为131172（不含初始bit1）；因此新局不开放，且**升到任意星级都不会使它进入85商会目录**。Steam `SubForm.Init2`（RVA `0x30E570`）在VA `0x1030EB74`排state2、`0x1030EB7D–0x1030EB80`独立排D=−1，之后才比较当前星级。这是普通商会入口的排除证明，不是全部玩法绝对不可达证明；维护p0收紧也不改变这一结果。

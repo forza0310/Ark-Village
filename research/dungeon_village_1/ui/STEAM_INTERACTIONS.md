@@ -101,6 +101,16 @@ raw12同身份静态子批进一步核定以下生命周期；字段含义及四
 
 当前研究执行器用上述公式的独立GLSL适配，校验专用uniform存在，拒绝编译失败后的默认shader回落；只在首次高亮加载、窗口结束释放。原MaterialManager会优先查找现成shader，找不到才生成；本批没有认证运行时具体compiled shader、GPU色域、DPI或原窗口像素。四态参考中的键盘高亮因此仍是具名研究适配，不升级为Steam动态认证。
 
+**控制器附加按键图标的登记与消费。** `Canvas.SetJoystickButtonDraw RVA751DC0`写入`joystickButtonDraw_`的七整数记录`{button,registerID,disp,x,y,life,scale}`，不是即时绘制或另一个Touch组件。以`(button,registerID)`查重；首次8/24登记为`{8,24,1,x,y,4,100}`，再次只更新disp和位置，保留life与scale（`10752049–10752105`）。存储不存在时直接返回；`InitJoystick 1074CCF3–1074CD5A`仅在主机或摇杆仿真资格下建表，否则置空。Steam无控制器时button8也直接拒登记；`HasController RVA7B7D10`检查64位controllerHandle非零，不把“图标可见”当成已有控制器。`steamOffsetEnable_`为真时另给坐标加`trunc((Screen尺寸−IApplication尺寸)/2)`，不能只用窗口外框替代这些输入。
+
+`FormManagerBase.OnDraw`在BeginPaint成功后先于`107E7669`调用Reset，将旧记录disp全清0；页面绘制及触摸登记重新标活，屏幕指针之后才在`107E77AB`调用DrawJoystickButtons，随后画触摸效果。Reset不删记录，没再登记的旧项当轮隐藏；此固定8/24键反复出现复用同一记录，不逐帧新增对象。`RaiseJoystickButtonDraw`只把全部life重置4；所核输入回调`10754EBC–10755016`在对应按钮GetJoystickUp且disp非零时将life减1并夹0，普通重绘不减life。它是使用次数相关的显隐量，不是四帧倒计时；Canvas重新初始化可重建／清空登记表，不能把合法保留条目称作泄漏或迁进世界存档。
+
+`DrawJoystickButtons RVA749220`只消费disp=1且life>0，先按顺序计算单精度`(GetScaleRatio(false)/100)*240/1080`；`screenCursorDrawFrame_>=168`再乘1.1，记录scale非100再叠其百分比矩阵。透明度沿`Graph.Easing(0,255,4,life,0)`交`SetRenderMode(1,alpha)`，用登记位置调用`Kairolib.DrawButtons(buttonFrame8,layer0,autoKeyReverse=true)`，之后恢复渲染模式及矩阵。registerID24只作登记键，不是SEB帧或绘制层；button8是原ZL／`Buttons.TriggerL`，不参与仅0/1的确认取消反转。SetAutoCancelJoystick虽被调用，所核`107E3B42–107E3B65`不对button8写0..3的自动取消槽。
+
+`Kairolib._drawButtons RVA805D60`会再次拒绝Steam无控制器的button8。`USE_STEAM`有效时于`1080602A–1080604D`读取`Buttons.TriggerL.GetImage()`；有有效尺寸的动态图片以最大边60等比居中绘制，不同时叠底版。`Buttons..cctor 107A696F–107A69AA`独立核其对象为`DigialButton`、action名`TriggerL`；其`GetImage RVA7A6D70`依据当前action set／controller／digital action查询`GetDigitalActionOrigins`，取首个origin交`GetGlyphForActionOrigin_Legacy`路径；路径变化时退役旧Image，再读文件并加载新图，不能冻结为游戏内固定PNG。正常返回但没有有效动态图时走Kairolib原包后备SEB：InputType5／13取`buttons_ps4`（SEB19／图片22），1／2／3取`buttons_xbox`（SEB29／图片33），其余取`buttons_switch`（SEB13／图片15），均frame8／layer0；文件读取异常不能擅自改写成正常后备结果。后备身份与`IMAGE_COVERAGE.json`已有原包条目交叉；本批未取得实际Steam返回路径、设备按键映射或动态图文件，不将后备图冒充当前设备图。
+
+可实施边界是独立的平台登记器与只读图标计划：显式输入表是否可用、控制器资格、8/24旧记录、运行时比例及Screen／Application尺寸差、光标显示计数、动态图有效尺寸或后备InputType；输出当轮可见图元和更新后的该条记录。每轮Reset→页面重新登记→统一绘制的次序、按钮释放降低life、初次和重复登记的差异须保留。动态Steam图标provider及跨设备缓存仍是平台资源职责；当前研究窗口只消费键盘按钮，控制器附加请求尚未伪造为已完成动态后端。
+
 ## 后续业务重载观察
 
 用户交回[第二次窗口实验](../work/window-restore-observation/20261007-120056-business-reload-p/RESULT.md)，

@@ -572,6 +572,19 @@ void steam_new_game_skin_checks(Checks &check) {
         }
         check(box<background&&background<border&&border<first_label,"Steam91框helper消费VIEW_Y一半，box→背景→蓝边→标签原序");
     }
+    // 产品交回的合法维护草稿边界：村名/姓名可分别清空，纯皮肤不能要求表现占位再还原。
+    for(int empty_fields=1;empty_fields<=3;++empty_fields) {
+        auto draft=in;
+        if(empty_fields&1)draft.village.clear();
+        if(empty_fields&2)draft.name.clear();
+        const auto plan=steam_new_game_skin(draft,o);
+        check(bool(plan),"Steam91合法维护空草稿仍可绘制，不私加原版未证非空门槛");
+        const auto tx=texts(*plan);
+        check(tx[4].value==draft.village&&tx[5].value==draft.name&&
+            tx[4].rectangle==std::array<int,4>{163,135,0,0}&&tx[5].rectangle==std::array<int,4>{163,157,0,0}&&
+            portrait(*plan).actor.body.image==15,
+            "Steam91空字段原样保留，文字锚与女角色不变，不补默认名或改变草稿");
+    }
     const auto stable=*steam_new_game_skin(in,o);const auto original=in;
     for(int repeat=0;repeat<4;++repeat)check(steam_new_game_skin(in,o)->operations.size()==stable.operations.size()&&
         in.village==original.village&&in.name==original.name&&in.sex==original.sex&&in.main==16&&in.selection==0,

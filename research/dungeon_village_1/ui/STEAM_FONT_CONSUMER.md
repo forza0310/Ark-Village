@@ -133,7 +133,7 @@ APK的TAG只有前9项，`aa.java`同样先翻译、精确`<br>`换LF，再以�
 
 闪烁是块自己的`blinkCnt_`（+24），新对象初值0。`TextLayout.Frame` RVA7CACD0在107CAE0C–E23仅对周期>0的块执行`blinkCnt_=(blinkCnt_+1)%(2*blink_)`；这是每次Frame调用，不写成秒数、逻辑世界tick或由绘制推进。普通块`Draw`在107DA3A1–DA3AB检查周期：周期≤0不闪，周期>0且计数≥周期跳过普通文字绘制；仍经107DAFDA–DAFEC返回`min(len,text.Length)`的字符消费量，隐藏块不会使后面的渐显文字向前顶。例周期2从初值0可见，连续Frame到1仍见、2／3隐藏、0再次见；本页StringWidth不读blinkCnt，隐藏也保留测宽。周期乘2／递增是原32位算术，未见大周期保护；溢出及异常完整后继不在本批维护保证内。图标／按钮在块Draw更早分流，本批没有将普通块闪烁规则外推给它们。
 
-APK `aa.f()`同三组使用十进制参数，`</si>`回原Font请求`n.c()`，`</st>`回`n.d()`，`</bl>`清0；`ab`构造复制`n`并冻结周期`f552f`。`aa.c()`按每调用一次推进块`g=(g+1)%(2*f552f)`，`aa.a()`普通绘制用同半周期资格但继续扣字符预算，与Steam普通块局部一致。后端分别登记：APK `n.b(style)`用三项`[0,1,2]`映射Android Typeface.NORMAL／BOLD／ITALIC并创建Typeface；Steam交Unity GUIStyle，不能据接口语义相同认证字形／测宽相同。APK换行循环失真仍不用于补Steam完整布局；位置标签及收尾见下节；`pic/bo/btn/ff`、完整自动换行及真实中文字体仍未闭合。
+APK `aa.f()`同三组使用十进制参数，`</si>`回原Font请求`n.c()`，`</st>`回`n.d()`，`</bl>`清0；`ab`构造复制`n`并冻结周期`f552f`。`aa.c()`按每调用一次推进块`g=(g+1)%(2*f552f)`，`aa.a()`普通绘制用同半周期资格但继续扣字符预算，与Steam普通块局部一致。后端分别登记：APK `n.b(style)`用三项`[0,1,2]`映射Android Typeface.NORMAL／BOLD／ITALIC并创建Typeface；Steam交Unity GUIStyle，不能据接口语义相同认证字形／测宽相同。APK换行循环失真仍不用于补Steam完整布局；位置标签、bo／ff及pic／btn局部消费者见后节；完整自动换行、具体图标注册集合及真实中文字体仍未闭合。
 
 ### 位置标签与末行对齐收尾
 
@@ -145,7 +145,7 @@ APK `aa.f()`同三组使用十进制参数，`</si>`回原Font请求`n.c()`，`<
 
 随后对**全部块**应用当前纵对齐值（107CF4D4–F564、107CF6AF–F6B9）：设布局高A，纵值32取`(A−T)*0.5`，A=−1时`−T*0.5`；纵值64取A−T，A=−1时−T；其它值偏移0。A≠−1且所得偏移<0时改为0，A=−1则保留负偏移。`−1`是精确float32未定尺寸哨兵（常量VA10E27A90），0.5来自10DDE528；不能把“高度不够仍从顶部开始”误写成缩小字体或裁掉前块。末次po的纵值参与这次全块偏移，不是每块冻结一份纵锚；block绘制还会加调用者dx/dy，不能在计划和窗口转换里重复居中。
 
-APK `aa.f()`同样依次查l/c/r与t/m/b、缺轴保留、清纵累计，末行及最终纵偏移公式在该方法末尾（约684–718行）与上述局部一致；对应`ab.f550d/f551e/h`是x/y/已测宽，块Font `n.f()`是实际高度。该交叉不采用反编译前段失真的换行条件，尤其不能据它倒置Steam横值1／2语义。此节只闭合po选择及明确末行／纵对齐收尾；bo／ff及btn见下节，`pic`、自动换行资格、语言差异和真实字体仍分别待核。本轮只读既有源与内联反汇编，无磁盘过程产物或新增字体制品。
+APK `aa.f()`同样依次查l/c/r与t/m/b、缺轴保留、清纵累计，末行及最终纵偏移公式在该方法末尾（约684–718行）与上述局部一致；对应`ab.f550d/f551e/h`是x/y/已测宽，块Font `n.f()`是实际高度。该交叉不采用反编译前段失真的换行条件，尤其不能据它倒置Steam横值1／2语义。此节只闭合po选择及明确末行／纵对齐收尾；bo／ff及pic／btn见后节，自动换行资格、语言差异和真实字体仍分别待核。本轮只读既有源与内联反汇编，无磁盘过程产物或新增字体制品。
 
 ### 描边标签与待行收尾标记
 
@@ -159,7 +159,7 @@ APK `aa.f()`同样依次查l/c/r与t/m/b、缺轴保留、清纵累计，末行�
 
 设该次行收尾前累计纵坐标Y、该行整数高H、整数行距S、布局高A；仅在原算术有定义的输入域，令`C=int32(H+S)`、`N=trunc_toward_zero(float32(float32(A+S)/float32(C)))`。107CEFC9–CF016先算N，再算`trunc_toward_zero(float32(Y/C+0.1f))%N`；余数非0则按C逐次增加Y，直到该式余数0（107CF01A–F045）。随后先减C再加C（107CF047–F062），因此保留刚对齐的Y；已在边界时可保持原Y，不是严格跳到下一个边界。`0.1f`的原常量10DDE550位型3DCCCCCD。该分支未见C／N非0或A有效高度检查，C=0、N=0等可能走原数值异常；不能自行夹为1、将未定A=−1转成固定页高或宣称原标签安全分页。整数和float32阶段仍分别执行，不合成一次高精度ceil公式。
 
-上述ff只认证已进入该行收尾时的效果；哪些自动换行／语言／标点路径触发收尾仍待完整复核。APK既有`aa/ab`普通绘制及TAG不消费bo/ff，本批不据其缺项断言所有Android版本均不支持。btn消费者见下节；`pic`及完整自动wrap、实际中文字体仍保留。本轮只读源，无游戏操作、代码、素材或临时磁盘产物。
+上述ff只认证已进入该行收尾时的效果；哪些自动换行／语言／标点路径触发收尾仍待完整复核。APK既有`aa/ab`普通绘制及TAG不消费bo/ff，本批不据其缺项断言所有Android版本均不支持。pic／btn消费者见后节；完整自动wrap、具体图标注册集合及实际中文字体仍保留。本轮只读源，无游戏操作、代码、素材或临时磁盘产物。
 
 ### 内嵌按钮提示
 
@@ -169,7 +169,7 @@ APK `aa.f()`同样依次查l/c/r与t/m/b、缺轴保留、清纵累计，末行�
 
 块`Draw` RVA7DA1F0在普通文字闪烁／视口检查之前分流至107DA65D–DA8F6。先取本块Font的实际字号H，直接用`Int32.Parse` RVAA06440解析参数0为buttonFrame；参数1存在时同法解析为layer，缺项取0。这里没有局部解析catch或frame夹限，标签扫描入口的其他数值容错不能外推到此处。然后检查TextLayout静态`buttonVisible_`（+6）：false不绘图但仍返回消费1，布局宽也没有清0；隐藏按钮不使后文前移。
 
-可见时依次PushMatrix：平移`(float32(H)*0.5+1, float32(H)*0.5)`、缩放`(0.25,0.25)`，H不等于12再压`(H/12,H/12)`缩放；坐标先按float32计算`block.x+dx`／`block.y+dy`再向零截断为整数。107DA852–DA883调用内部`Kairolib.DrawButtons(g,x,y,buttonFrame,layer,true,true)` RVA804CA0，两个true分别是autoKeyReverse和force；包装器传给下层的末尾null是MethodInfo，不是force=false。绘制前保存`AutoCancelJoystick`并临时置false，正常收尾先弹字号缩放、恢复该布尔原值、再弹两基础矩阵。未认证异常时的联合恢复，不能将这条原链声明为事务；此路径也未注册touch。
+可见时依次PushMatrix：平移`(float32(H)*0.5+1, float32(H)*0.5)`、缩放`(0.25,0.25)`，H不等于12再压`(float32(float32(H)/12.0f),float32(float32(H)/12.0f))`缩放；坐标先按float32计算`block.x+dx`／`block.y+dy`再向零截断为整数。107DA852–DA883调用内部`Kairolib.DrawButtons(g,x,y,buttonFrame,layer,true,true)` RVA804CA0，两个true分别是autoKeyReverse和force；包装器传给下层的末尾null是MethodInfo，不是force=false。绘制前保存`AutoCancelJoystick`并临时置false，正常收尾先弹字号缩放、恢复该布尔原值、再弹两基础矩阵。未认证异常时的联合恢复，不能将这条原链声明为事务；此路径也未注册touch。
 
 内部包装转`Kairolib._drawButtons` RVA805D60。autoKeyReverse使frame0／1先分别读取`Canvas.GetJoystickKeyOK`／`GetJoystickKeyCancel`，不是固定A／B字母；layer1的frame16／17／18／19重映射为32／33／34／35，并把layer归0（10805E28–5E9E）。`Config.USE_STEAM`为真时向SteamInputManager取得按钮图像：0／1／2／3对应Select／Back／X／Y，6／7为SoftL／SoftR，8／9为TriggerL／TriggerR，10／11为Start／Option，4或29为StickL，5或30为StickR，16另走glyph helper RVA7B7960。各按钮对象的`GetImage()`虚调用决定动态图像，不是固定PNG索引；实际Steamworks glyph提供者、当前控制器及特殊frame7的额外回退仍待独立核验。
 
@@ -177,9 +177,27 @@ APK `aa.f()`同样依次查l/c/r与t/m/b、缺轴保留、清纵累计，末行�
 
 这组闭合btn的排版与绘制入口、常规glyph映射和资源回退身份；尚未发布buttons_switch／ps4／xbox的完整SEB素材绑定，不能用现有buttoneffect裁片或自画键字代替，也不将缺少维护素材副本称为原游戏资源不存在。普通中文Font及glyph仍沿前述未知边界，btn图像静态链不认证它们。本轮无游戏输入、素材导出、核对脚本或磁盘过程产物。
 
+### 内嵌SEB图标
+
+2026-10-14补核TAG9的`<pic=key[,frame[,wait[,x[,y]]]]>`。这是外部注册的SEB图标块，不从key自动加载PNG或将它转换为定义ID；固定APK九项TAG没有pic。公开`AddPictograph` RVA7C96C0接受key、Seb、Frame（默认−1）、Wait（默认1）、X／Y／Margin（默认0）、Scale（默认100）与EnableColor（默认false）。首次为key建立Pictograph并存入全局`Dictionary<string,Pictograph>`，已有key则更新同一对象的这些字段且重建单位Transform（107C9721–9810）；Wait至少1，未见Scale或Frame范围夹限。`GetPictograph` RVA7CB280只用原key向该表TryGetValue；标签处理与绘制不补资源，也不复制整个SEB，后续绘制重新查表，所以注册对象变化可影响既有块。具体页面注册了哪些键、各键的真实SEB出版入口，仍应由对应调用者合同逐项绑定。
+
+扫描生产者107CE407–E4EA将参数按逗号拆分：0为注册key，1非空时精确`∞`（U+221E，slot110EF444）写frame=−1，否则直接Int32.Parse；缺项／空项用注册Frame。布局仅另外读取参数3的X，缺项／空项用注册X，参数2的Wait和4的Y留给Draw消费。没有这组局部解析catch；不能把颜色标签的失败默认数值外推。找不到注册项时仍建立宽0的pic块（107CE814–E82E）；不把未知key字面当可见文字。107CF2B9–F300冻结参数数组、写isPictograph=true／isBold=false、计入块宽及行宽，再创建普通空块；标签不是样式开关，也没有`</pic>`。
+
+布局宽与本页已经核验的渐显宽是不同消费者。frame不为−1时，生产者仅把超过末帧的输入改成`Seb.Length−1`，取`Seb.GetBoundingRect(frame)` RVA7C0700的四项short；frame=−1取整体`GetBoundingRect()` RVA7C0650的四项int。先以`(r[0]+r[2],r[1]+r[3])`交注册Transform.`MapPoints` RVA7ABF50，设所得横分量为U，注册Margin为M、当前X为X、注册Scale为S、工作Font.usedSize为H；原宽次序是`V=trunc(float32(U+0.9f))+M+X`，S≠100时再用有符号整数`V=trunc(int32(V*S)/100)`，最后`width=trunc(float32(float32(V)*float32(float32(H)/12.0f)+0.01f))`（107CE4EA–E675）。原0.9f／0.01f常量分别为10DDE558／10DDE54C；保持float32与整数阶段，不合并舍入或按包围盒最大宽替换。纵分量也被MapPoints处理，但这条pic生产路径未据它提高本行Font行高；大图不自动撑高文字行。负帧、空SEB、异常Transform等不由此有限上界修正证明安全。
+
+渐显`StringWidth(len,out width)`和`Draw`在len=0时均返回消费0；否则pic消费1，未知key、隐藏或落在纵视口外也消费1。渐显宽只在注册项存在且pictographVisible为真时读取`Seb.GetSprites(frame)`，对有效texture记录依原序覆写原sprite宽，不读Margin／Transform／Scale／字号，也不使用Draw的动画帧推导；因此不能用测宽结果代替布局／绘制包围盒。pic分流早于普通文字blink，不外推`<bl>`半周期到图标。
+
+Draw在107DA945–DAA8A取注册Frame／Wait／X／Y，再按非空参数1／2／3／4覆盖；frame的∞特例如上，其余直接Int32.Parse。Wait再次夹为至少1；frame=−1时用`trunc(parent.draw_/Wait)%Seb.Length`取得本次帧（107DAA8A–DAABE），没有此处空帧数保护，也不由Draw递增动画计数。注册Scale和Transform不是标签参数。取字号比`Q=float32(float32(H)/12.0f)`；偏移为`dx+X*Q`、`dy+Y*Q`，另在`GetLanguageCode().ToLower()`不匹配原正则`^(ja|ko|zh)`时先将Y加1（107DAAF2–DAB6E），不能写成全部语言统一一像素补偿。纵视口资格用本次帧包围矩形和Q，在完全高于／低于视口时跳过；静态pictographVisible随后控制绘图，二者均保留消费1。
+
+实际图像来自注册Seb.Resource的`img[record[1]]`（Seb字段+58、ResourceManager字段+8），不是TextLayout自己的固定atlas。107DAC4B–DAFCF取得GetSprites并按记录原序绘制，texture索引<0跳过；源矩形为`record[2..5]`，目的位置为块位置＋上述偏移＋`record[6/7]*Q`。目的宽高分别先`trunc(float32(record[4/5]*Q+0.01f))`，S≠100再有符号整数乘S／除100；S在这条路径只进一步改目的宽高，不再乘目的偏移。注册Transform非单位时另PushMatrix；最终交`Graphics.DrawScaledImage` RVA7641B0，正常逐片收尾弹该Transform。
+
+有效sprite的`record[10]`为1／2／3时分别PushRenderMode `(1,a,255−a)`／`(1,a,255)`／`(2,a,255)`，a来自record[11]最高alpha字节；当当前renderOperator=0且当前srcRatio≠255时，先以整数`a*srcRatio/255`合成，超过255夹255。绘后PopRenderMode。record[10]=0且注册EnableColor为真时，另以`PushBlendMode(2,Graphics.color)`绘制，正常收尾PopBlendMode；没有EnableColor时不因文字块color自动染色。未知非零record[10]不能从上述三种资格推广出安全压栈／弹栈，最终像素混色仍交Graphics／shader合同，不能凭字段名画近似效果。
+
+外层TextBlock.Draw在已有局部矩阵时先压本块坐标平移并清局部x/y，随后将`Language.UnicodeToChanakyaEnable`置false；正常及所核异常尾都走helper RVA7D06C0，写该开关true并在CheckLocalMatrix成立时PopMatrix。它没有保存开关原值，不是完全无副作用；逐片render／blend／Transform的Pop只见于正常路径，helper不证明这些栈遇中途异常也恢复。产品应把已证key→SEB／源图／参数／Transform绑定作为外部提供者，缺绑定显式登记，维护拒绝与RAII作为独立策略；本批未认证完整注册键集合、自动wrap或真实字体，没有游戏操作、素材导出、核对脚本或磁盘过程产物。
+
 ## 仍需闭合及产品使用边界
 
-已核层级是资源查找顺序、GUIStyle对象切换资格、本地化公式和两种测宽调用链。仍缺当前语言真实返回值、Unity空font具体回退、局部开关／scale／offset完整设置来源、TextLayout完整标签处理及实际字形baseline。[文字后端](STEAM_FONT_BACKEND.md)已有开关资格及栈恢复，[普通DrawString](STEAM_FONT_DRAW.md)已核锚点／字号补偿／矩阵→clip→GUI位置；这些不代替当前运行字体对象和字形度量。
+已核层级是资源查找顺序、GUIStyle对象切换资格、本地化公式、两种测宽调用链及14项TAG的局部生产／消费。仍缺当前语言真实返回值、Unity空font具体回退、局部开关／scale／offset完整设置来源、完整自动换行／语言禁则、具体图标注册与素材绑定及实际字形baseline。[文字后端](STEAM_FONT_BACKEND.md)已有开关资格及栈恢复，[普通DrawString](STEAM_FONT_DRAW.md)已核锚点／字号补偿／矩阵→clip→GUI位置；这些不代替当前运行字体对象和字形度量。
 
 产品可据此分开语言字体选择、测宽与绘制，并把比例／临时字号恢复作为契约候选；不能把静态存在的字体直接发布为“原Steam中文字体”，不能在未核中文字体和真实尺寸前用截图目测常量替代测宽。本批没有导出或发布字体制品。
 

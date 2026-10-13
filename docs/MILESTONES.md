@@ -7,6 +7,8 @@
 
 桌面85/86按正式计划执行Mapchip2、交集裁剪、三行滚动、实测标题/价格/道具字宽与源触区；复用common已画几何和拖条，85 marker16沿现有两次已提交行点击映射，键盘/换页/失焦清标记、pending拒重复，整帧输入一次FIFO。83/85/86共享commerce有序绘制末端，84现有实际成交临时回执保留，不猜新feedback map或写第二套字体/WordWrap引擎。复用pages/visuals/session/commerce套件，集中两Debug标准仅排三个月、Release受影响与两尺寸条件/真实窗口及便携资源检查；自然全定义、OS输入、原字体和CI分别记。
 
+本批已完成本地检查、24条件图、真实85底栏修正、月106经营/冷载及16.41MiB便携包解压启动，代码checkpoint为8d815a0；验收与未覆盖项见[B1](stages/B1-playable-prototype.md#research-68acd7c-commerce-successors)。后继3f744f3/c982176/048b282集中接普通定义、装备店/植物、募集详情及保存生命周期，不混入本批身份。
+
 <a id="research-ea9876a-commerce-top"></a>
 ## 商会主页83正式皮肤与整帧输入（并入本轮集中验收）
 

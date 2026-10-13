@@ -97,9 +97,84 @@ int check_startup_world_restore_contracts(
         }
         const auto team=std::find_if(tasks.scripts.pages.rbegin(),tasks.scripts.pages.rend(),[](const auto &v){return v.lifecycle!=4;});
         require(team!=tasks.scripts.pages.rend()&&team->legacy_page==25,"25 becomes real top");
+        const auto team_id=team->id;
+        {
+            auto roster=tasks;
+            const auto frame=[&](auto &s){const auto next=p::prepare_startup_world_runtime(s);require(next.candidate.has_value(),"task roster admitted frame");s=*next.candidate;};
+            frame(roster);
+            const auto available=std::find_if(roster.human_presence.begin(),roster.human_presence.end(),[&](const auto &h){
+                return std::find(roster.participants.begin(),roster.participants.end(),h.first)==roster.participants.end();
+            });
+            require(available!=roster.human_presence.end(),"original human directory contains nonparticipant candidate");
+            const int added_human=available->first;roster.human_presence.at(added_human)=1; // 仅候选资格，不新增实例或改表。
+            reject(roster,"25 missing task UI",[&](auto &s){s.task_page_ui.erase(team_id);});
+            reject(roster,"25 missing final sentinel",[&](auto &s){s.task_page_ui.at(team_id).member_rows.pop_back();});
+            reject(roster,"25 invalid selected row",[&](auto &s){s.task_page_ui.at(team_id).selection=int(s.task_page_ui.at(team_id).member_rows.size());});
+            const auto open_extra=[&](auto &s){p::StartupTaskPageInput in;
+                in.selection=int(s.task_page_ui.at(team_id).member_rows.size())-1;in.confirm=true;
+                require(p::input_startup_world_runtime_task_page(s,team_id,in).error==E::none&&s.scripts.pages.back().legacy_page==27,
+                        "frozen25 sentinel opens actual27");};
+            roundtrip(roster,open_extra,"25 selected sentinel opens same27 after restore");
+            open_extra(roster);
+            const auto extra=roster.scripts.pages.back().id;
+            require(roster.scripts.pages.back().lifecycle!=4&&roster.task_extra_pages.count(extra),"27 open has actual candidates rather than automatic no-candidate close");
+            frame(roster);
+            require(roster.scripts.pages.back().legacy_page==27&&roster.task_page_ui.count(extra),"27 admitted frame retains candidate UI");
+            require(roster.task_page_ui.at(extra).parent==team_id,"27 source parent installed");
+            auto wrapped_extra=roster;wrapped_extra.page_counters.at(extra)=std::numeric_limits<int>::max()-1;
+            roundtrip(wrapped_extra,[&](auto &s){frame(s);require(s.page_counters.at(extra)==0,"27 source main moduloINTMAX");},
+                      "27 same restored boundary update wraps only original main clock");
+            reject(roster,"27 missing parent",[&](auto &s){s.task_page_ui.at(extra).parent.reset();});
+            reject(roster,"27 wrong parent kind",[&](auto &s){s.task_page_ui.at(extra).parent=id;});
+            reject(roster,"27 orphan parent",[&](auto &s){s.task_page_ui.at(extra).parent=s.scripts.next_page_id;});
+            reject(roster,"27 invalid tab",[&](auto &s){s.task_page_ui.at(extra).tab=2;});
+            reject(roster,"live27 duplicate parent answer",[&](auto &s){s.task_page_ui.at(team_id).answer=0;});
+            auto cancelled=roster;
+            const auto cancel_extra=[&](auto &s){p::StartupTaskPageInput in;in.cancel=true;
+                require(p::input_startup_world_runtime_task_page(s,extra,in).error==E::none&&s.task_page_ui.at(team_id).answer==1,
+                        "actual27 cancel writes parent answer1");};
+            roundtrip(cancelled,cancel_extra,"27 cancel answer and retained child restore together");cancel_extra(cancelled);
+            roundtrip(cancelled,frame,"closed27 retires before parent consumes cancel once");frame(cancelled);
+            require(!cancelled.task_page_ui.count(extra)&&!cancelled.task_page_ui.at(team_id).answer,
+                    "27 retirement leaves no child reference or repeated parent answer");
+            const auto candidate=std::find(roster.task_extra_pages.at(extra).begin(),roster.task_extra_pages.at(extra).end(),added_human);
+            require(candidate!=roster.task_extra_pages.at(extra).end(),"actual nonparticipant extra candidate exists");
+            const int selection=int(candidate-roster.task_extra_pages.at(extra).begin());
+            const auto hire=[&](auto &s){p::StartupTaskPageInput in;in.selection=selection;in.confirm=true;
+                require(p::input_startup_world_runtime_task_page(s,extra,in).error==E::none&&s.task_page_ui.at(team_id).answer==0,
+                        "actual hire writes answer0 after real payment");};
+            roundtrip(roster,hire,"27 successful payment/answer replay transaction");hire(roster);
+            // 关闭已取得事件64提示的调用点夹具，保留待消费父答案；不冒认动态窗口操作。
+            for(auto &page:roster.scripts.pages)if(page.id!=team_id&&page.kind!=r::WorldScriptPageKind::scene)page.lifecycle=4;
+            roundtrip(roster,frame,"retired successful27 restores parent answer without keeping child alive");frame(roster);
+            require(!roster.task_page_ui.count(extra)&&!roster.task_page_ui.at(team_id).answer&&
+                    roster.task_page_ui.at(team_id).member_rows.back()==-1&&
+                    roster.task_page_ui.at(team_id).selection==int(roster.task_page_ui.at(team_id).member_rows.size())-1,
+                    "25 success refreshes once then selects trailing sentinel");
+            auto active=baseline;
+            require(p::write_startup_world_runtime_factory(active,made.candidate->state),"reuse existing real task factory result at main");
+            active.active_task=task;active.scene.world.world.ai.task_active=true;active.participants={1};active.human_presence.at(1)=1;
+            active.task.kind=0;active.task.center=*active.tasks.at(task).site;
+            require(p::open_startup_world_runtime_task_menu(active)==E::none&&active.scripts.pages.back().legacy_page==26,"same real task source opens active26");
+            frame(active);const auto active_id=active.scripts.pages.back().id;
+            reject(active,"26 missing task UI",[&](auto &s){s.task_page_ui.erase(active_id);});
+            const auto inspect=[&](auto &s){p::StartupTaskPageInput in;in.selection=0;in.inspect=true;
+                require(p::input_startup_world_runtime_task_page(s,active_id,in).error==E::none&&s.scripts.pages.back().legacy_page==60,
+                        "26 frozen row opens original human detail");};
+            roundtrip(active,inspect,"26 frozen member inspection restores without copying current roster");
+        }
         require(!tasks.page_secondary_counters.count(team->id)&&p::act_startup_world_runtime_task_page(tasks,team->id,A::depart).error==E::none,"25 real opens28 without extra clock");
         const auto departure=tasks.scripts.pages.back().id;expect(tasks,true,"28 actual producer has independent clock");
         reject(tasks,"28 missing independent clock",[&](auto &s){s.page_secondary_counters.erase(departure);});
+        reject(tasks,"initialized28 missing UI selection",[&](auto &s){s.scripts.pages.back().lifecycle=2;s.task_page_ui.erase(departure);});
+        reject(tasks,"28 selection is not animation phase",[&](auto &s){s.task_page_ui.at(departure).selection=2;});
+        reject(tasks,"28 cannot carry frozen members",[&](auto &s){s.task_page_ui.at(departure).member_rows={1};});
+        auto wrapped_departure=tasks;wrapped_departure.scripts.pages.back().lifecycle=2;
+        wrapped_departure.page_counters.at(departure)=std::numeric_limits<int>::max()-1;
+        wrapped_departure.page_secondary_counters.at(departure)=std::numeric_limits<int>::max()-1;
+        roundtrip(wrapped_departure,[&](auto &s){const auto next=p::prepare_startup_world_runtime(s);
+            require(next.candidate&&next.candidate->page_counters.at(departure)==0&&next.candidate->page_secondary_counters.at(departure)==0,
+                    "28 source main and secondary moduloINTMAX");s=*next.candidate;},"28 exact dual-clock boundary restores without early departure");
         roundtrip(tasks,[&](auto &s){require(p::act_startup_world_runtime_task_page(s,departure,A::confirm).error==E::none,"28 begin departure");},
                   "28 main reset retains real secondary after replay");
 
@@ -117,6 +192,71 @@ int check_startup_world_restore_contracts(
         reject(tracking,"scene5 missing selection",[&](auto &s){s.page_phases.erase(scene);});
         roundtrip(tracking,[&](auto &s){const auto next=p::update_startup_world_runtime_task_tracking_scene(s);require(next.has_value(),"source camera update");s=*next;},
                   "scene5 both cameras replay from exact source snapshot");
+    }
+    {
+        // 31/32沿真实任务工厂；成果发生点及重复名单/奖励行是短调用点夹具。
+        using E=p::StartupWorldRuntimeError;
+        const auto require=[&](bool ok,const char *why){++checks;if(!ok)throw std::runtime_error(std::string("restore task result UI: ")+why);};
+        auto source=baseline;
+        const auto made=r::prepare_world_task_creation(p::startup_world_runtime_factory(source),0);
+        require(made.candidate&&made.candidate->created_task&&p::write_startup_world_runtime_factory(source,made.candidate->state),"real task factory");
+        const auto task=*made.candidate->created_task;
+        const auto roundtrip=[&](const auto &owner,const auto &consume,const char *why) {
+            expect(owner,true,why);const auto bytes=p::persistence_detail::encode_state(owner);
+            auto restored=p::persistence_detail::decode_state(bytes,*owner.rules),live=owner;
+            require(p::persistence_detail::encode_state(restored)==bytes,"six task UI fields exact roundtrip");
+            consume(live);consume(restored);expect(live,true,why);expect(restored,true,why);
+            require(p::persistence_detail::encode_state(live)==p::persistence_detail::encode_state(restored),"same result input leaves equal Owner and random");
+        };
+        const auto reject=[&](const auto &owner,const char *why,const auto &damage){auto bad=owner;damage(bad);expect(bad,false,why);};
+        auto crew=source;const auto previous=crew.active_task;crew.active_task=task;
+        crew.participants={0,1,0,1,0,1,0};
+        require(p::consume_startup_world_runtime_task_encounter_request(crew,{r::EncounterRequestKind::page31,{},0,1}),"actual31 producer");
+        crew.active_task=previous;const auto id=crew.scripts.pages.back().id;
+        expect(crew,true,"pending31 producer not yet frozen");
+        const auto initialize=[&](auto &s){const auto next=p::prepare_startup_world_runtime(s);require(next.candidate.has_value(),"result admitted Init");s=*next.candidate;};
+        roundtrip(crew,initialize,"31 pending Init freezes source duplicate X once");initialize(crew);
+        require(crew.crew_summaries.at(id)==crew.participants&&crew.task_page_ui.at(id).member_rows.empty(),"31 source X retained only in original summary");
+        reject(crew,"initialized31 missing UI",[&](auto &s){s.task_page_ui.erase(id);});
+        reject(crew,"31 out of range selection",[&](auto &s){s.task_page_ui.at(id).selection=7;});
+        reject(crew,"31 forbidden duplicate member snapshot",[&](auto &s){s.task_page_ui.at(id).member_rows={0};});
+        reject(crew,"31 forbidden parent",[&](auto &s){s.task_page_ui.at(id).parent=s.scripts.pages.front().id;});
+        reject(crew,"31 forbidden answer",[&](auto &s){s.task_page_ui.at(id).answer=0;});
+        reject(crew,"task UI orphan key",[&](auto &s){s.task_page_ui.emplace(s.scripts.next_page_id+1,p::StartupTaskPageUi{});});
+        p::StartupTaskPageInput move;move.selection=6;
+        const auto select=[&](auto &s){require(p::input_startup_world_runtime_task_page(s,id,move).error==E::none&&
+            s.task_page_ui.at(id).selection==6&&s.task_page_ui.at(id).first==2,"31 seventh row visible");};
+        roundtrip(crew,select,"31 five-row selection and first replay");select(crew);
+        // 原Update只使选中行可见；已存在的短尾窗不强制贴到最后完整五行。
+        auto short_tail=crew;short_tail.task_page_ui.at(id).first=6;
+        roundtrip(short_tail,[&](auto &s){p::StartupTaskPageInput input;input.up=true;
+            require(p::input_startup_world_runtime_task_page(s,id,input).error==E::none&&
+                        s.task_page_ui.at(id).selection==5&&s.task_page_ui.at(id).first==5,"31 short tail moves up to visible row");
+            input={};input.down=true;
+            require(p::input_startup_world_runtime_task_page(s,id,input).error==E::none&&
+                        s.task_page_ui.at(id).selection==6&&s.task_page_ui.at(id).first==5,"31 short tail remains after moving down");},
+                  "31 legal short-tail window restores and follows source visibility rule");
+        const auto close=[&](auto &s){p::StartupTaskPageInput input;input.confirm=input.cancel=true;
+            require(p::input_startup_world_runtime_task_page(s,id,input).error==E::none,"31 confirm wins and closes");};
+        roundtrip(crew,close,"31 closed payload persists until Finish");close(crew);
+        reject(crew,"closed31 missing UI",[&](auto &s){s.task_page_ui.erase(id);});
+        initialize(crew);require(!crew.task_page_ui.count(id)&&!crew.crew_summaries.count(id),"31 Finish releases UI and original summary");
+        auto rewards=source;r::WorldScriptPage page;page.kind=r::WorldScriptPageKind::raw_page;page.legacy_page=32;page.legacy_f=0;page.legacy_g=1;
+        const auto pushed=r::prepare_world_script_page(p::startup_world_runtime_scripts(rewards),page);
+        require(pushed.candidate&&pushed.candidate->last_page&&p::write_startup_world_runtime_scripts(rewards,pushed.candidate->state),"source32 page insertion");
+        const auto reward_id=*pushed.candidate->last_page;
+        rewards.exploration_summaries.emplace(reward_id,r::WorldExplorationSummary{32,task,rewards.tasks.at(task).definition,{{0,1},{0,1},{0,1},{0,1},{0,1},{0,1}}});
+        initialize(rewards);
+        const auto scroll=[&](auto &s){p::StartupTaskPageInput input;input.up=true;
+            require(p::input_startup_world_runtime_task_page(s,reward_id,input).error==E::none&&s.task_page_ui.at(reward_id).first==1,
+                    "32 six-row cycle uses modulus2, maximum first1");};
+        roundtrip(rewards,scroll,"32 reward first-only cycle replay");scroll(rewards);
+        reject(rewards,"32 one-past-modulus first",[&](auto &s){s.task_page_ui.at(reward_id).first=2;});
+        reject(rewards,"32 cannot store selection",[&](auto &s){s.task_page_ui.at(reward_id).selection=1;});
+        reject(rewards,"32 cannot store tab",[&](auto &s){s.task_page_ui.at(reward_id).tab=1;});
+        auto wrong=rewards;const auto before=p::persistence_detail::encode_state(wrong);p::StartupTaskPageInput invalid;invalid.left=true;
+        require(p::input_startup_world_runtime_task_page(wrong,reward_id,invalid).error==E::invalid_page&&
+                p::persistence_detail::encode_state(wrong)==before,"unsupported result input atomic rejection");
     }
     {
         // 30沿真实工厂/胜利producer安装；胜利时点是短条件夹具，不重复完整经营前缀。
@@ -1372,7 +1512,33 @@ int check_startup_world_restore_contracts(
     deadline.deadline_returns[page.id] = -1;
     deadline.page_counters[page.id] = 0;
     deadline.page_phases[page.id] = 0;
+    deadline.task_page_ui.emplace(page.id,p::StartupTaskPageUi{});
     expect(deadline, true, "deadline null task and unanswered");
+    {
+        auto source=deadline;
+        const auto select=[&](auto &s){p::StartupTaskPageInput input;input.right=true;
+            ++checks;if(p::input_startup_world_runtime_task_page(s,page.id,input).error!=p::StartupWorldRuntimeError::none||
+                s.task_page_ui.at(page.id).selection!=1||s.deadline_returns.at(page.id)!=-1)
+                throw std::runtime_error("33 selection must not pre-answer or pay");};
+        select(source);expect(source,true,"33 selected abort remains unanswered");
+        const auto bytes=p::persistence_detail::encode_state(source);
+        auto replay=p::persistence_detail::decode_state(bytes,*source.rules);
+        const auto funds=source.scene.world.world.ai.accounting.funds();
+        for(auto *owner:{&source,&replay}) {
+            p::StartupTaskPageInput input;input.confirm=true;
+            ++checks;if(p::input_startup_world_runtime_task_page(*owner,page.id,input).error!=p::StartupWorldRuntimeError::none||
+                owner->deadline_returns.at(page.id)!=1||owner->page_phases.at(page.id)!=1||
+                owner->scene.world.world.ai.accounting.funds()!=funds)
+                throw std::runtime_error("33 confirmation records same original K without eager settlement");
+            expect(*owner,true,"33 actual answer phase1 after same restored input");
+        }
+        ++checks;if(p::persistence_detail::encode_state(source)!=p::persistence_detail::encode_state(replay))
+            throw std::runtime_error("33 selection and answer replay differs");
+        auto bad=source;bad.task_page_ui.erase(page.id);expect(bad,false,"initialized33 missing UI");
+        bad=source;bad.task_page_ui.at(page.id).selection=2;expect(bad,false,"33 out of range choice");
+        bad=source;bad.task_page_ui.at(page.id).answer=1;expect(bad,false,"33 answer must stay in original deadline field");
+        bad=source;bad.task_page_ui.at(page.id).member_rows={0};expect(bad,false,"33 no invented frozen roster");
+    }
     {
         auto damaged = deadline;
         damaged.deadline_grades[page.id] = 5;
@@ -1395,6 +1561,7 @@ int check_startup_world_restore_contracts(
     deadline.scripts.pages.pop_back();
     deadline.page_counters.erase(page.id);
     deadline.page_phases.erase(page.id);
+    deadline.task_page_ui.erase(page.id);
     expect(deadline, true, "retired deadline awaiting main scene");
     {
         auto build = baseline;

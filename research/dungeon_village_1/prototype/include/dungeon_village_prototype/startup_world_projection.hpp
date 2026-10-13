@@ -59,6 +59,7 @@ struct StartupWorldMonster {
     int points_per_defeat{}; // a.k.l，区别于即时金币S。
     ref::RewardMonsterDefinition initial;
     ref::WorldScriptProgram introduction_program; // 原k.t，解锁介绍实际同步执行。
+    int shadow{}; // 原monster列5的独立影子索引；不得按body推导。
 };
 struct StartupWorldItem {
     int identity{};

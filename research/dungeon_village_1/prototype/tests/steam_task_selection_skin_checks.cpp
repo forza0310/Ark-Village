@@ -4,6 +4,7 @@
 #include "dungeon_village_prototype/steam_task_deadline_skin.hpp"
 #include "dungeon_village_prototype/startup_world_persistence.hpp"
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
+#include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_tools/sprite.hpp"
 #include "support/world_fixture.hpp"
 #include <raylib.h>
@@ -705,6 +706,143 @@ void deadline(Checks &c,const std::filesystem::path &source_root) {
     const auto seb=dungeon_village_tools::parse_legacy_seb(bytes(root/resource->published_sprite));
     c(resource->image==84&&resource->sprite==75&&seb.frame_count==4,"menuRT00 SEB75实际四帧、此页仅用0/1，不使用字体猜图标");
 }
+void result_owner(Checks &c) {
+    SteamTaskResultOptions options;options.title_widths=std::array<int,2>{24,24};options.bottom_width=72;
+    for(int raw:{31,32}) {
+        auto s=test_support::page_fixture(raw);const auto id=s.scripts.pages.back().id;
+        const auto made=ref::prepare_world_task_creation(startup_world_runtime_factory(s),0);
+        c(made.candidate&&made.candidate->created_task&&write_startup_world_runtime_factory(s,made.candidate->state),
+          "31/32桥绑定现真实任务工厂，摘要条件不认证自然结算");
+        const auto task=*made.candidate->created_task;auto &page=s.scripts.pages.back();
+        page.task_identity=task;page.task_definition=s.tasks.at(task).definition;
+        page.legacy_f=0;page.legacy_g=1;page.lifecycle=2;
+        s.task_page_ui.emplace(id,StartupTaskPageUi{});s.page_counters[id]=0;s.page_phases[id]=0;
+        if(raw==31) {
+            s.crew_summaries[id]={0,1,0};s.task_page_ui.at(id).selection=2;
+        } else {
+            const auto &item=s.rules->items.front();
+            s.exploration_summaries.emplace(id,ref::WorldExplorationSummary{32,task,*page.task_definition,
+                {{0,item.identity},{0,item.identity}}});
+        }
+        const auto before=startup_world_state_digest(s);const auto draws=s.scene.random.draws();
+        const auto dto=steam_task_result_input(s,id);const auto plan=steam_task_result_skin(s,id,options);
+        c(dto&&plan,"31/32严格Owner桥消费冻结源和真实字体选项");
+        c(dto->footer[0].identity==0&&dto->footer[1].identity==1,"成果底部f/g独立于重复名单");
+        if(raw==31)c(dto->crew.size()==3&&dto->crew[0].human.identity==dto->crew[2].human.identity,
+          "31原重复X保序，不去重或重新结算H");
+        else c(dto->rewards.size()==2&&dto->rewards[0].value==s.rules->items.front().commerce_price&&
+          dto->rewards[0].definition==dto->rewards[1].definition,"32奖励原序价格/图标，重复领奖行不再次发放");
+        for(int repeat=0;repeat<3;++repeat)c(steam_task_result_skin(s,id,options)->operations.size()==plan->operations.size()&&
+            startup_world_state_digest(s)==before&&s.scene.random.draws()==draws,"成果重复投影不写随机/奖励/游标且规模稳定");
+        auto bad=s;bad.task_page_ui.erase(id);c(!steam_task_result_skin(bad,id,options),"成果缺UI不得补默认游标");
+        bad=s;bad.task_page_ui.at(id).parent=s.scripts.pages.front().id;
+        c(!steam_task_result_input(bad,id),"成果不消费孤立父页载荷");
+        bad=s;bad.scripts.pages.back().legacy_g=999;c(!steam_task_result_input(bad,id),"成果缺冻结底部人物拒绝");
+        bad=s;bad.scripts.pages.back().lifecycle=1;c(!steam_task_result_skin(bad,id,options),"成果未获准页拒绝");
+        bad=s;bad.task_page_ui.at(id).first=4;c(!steam_task_result_input(bad,id),"成果越界首行显式拒绝");
+        bad=s;if(raw==31)bad.crew_summaries.at(id).back()=999;
+        else bad.exploration_summaries.at(id).rewards.back()[1]=999;
+        c(!steam_task_result_input(bad,id),"成果不可见冻结行坏引用也拒绝");
+    }
+}
+void roster_owner(Checks &c) {
+    SteamTaskRosterOptions options;options.title_widths=std::array<int,2>{72,72};
+    options.prediction_width=72;options.button_widths={48,48};
+    // 独立短条件桥：真实目录／factory任务，名单是已初始化UI条件，不冒称自然报名。
+    for(int raw:{25,26,28}) {
+        auto s=test_support::page_fixture(raw);const auto id=s.scripts.pages.back().id;
+        const auto made=ref::prepare_world_task_creation(startup_world_runtime_factory(s),0);
+        c(made.candidate&&made.candidate->created_task&&write_startup_world_runtime_factory(s,made.candidate->state),
+          "25/26/28桥准备同一真实factory身份");
+        const auto task=*made.candidate->created_task;auto &page=s.scripts.pages.back();
+        page.task_identity=task;page.task_definition=s.tasks.at(task).definition;page.lifecycle=2;
+        s.task_page_ui.emplace(id,StartupTaskPageUi{});s.page_counters[id]=12;
+        if(raw<=26) {
+            s.task_page_ui.at(id).member_rows={1,0,-1};s.participants={2};
+            if(raw==26)s.active_task=task;
+        } else {
+            s.participants={1,0};s.page_phases[id]=1;s.page_secondary_counters[id]=7;
+            s.task_page_predictions[id]=3;s.task_page_acceleration[id]=false;
+        }
+        const auto before=startup_world_state_digest(s);const auto draws=s.scene.random.draws();
+        const auto plan=steam_task_roster_skin(s,id,options);c(bool(plan),"任务后继实际Owner桥");
+        if(raw<=26) {
+            const auto words=parts<SteamTaskSelectionText>(*plan);
+            const auto one=startup_world_human_details(s,1),zero=startup_world_human_details(s,0);
+            c(words.front().value=="1名参加"&&std::any_of(words.begin(),words.end(),[&](const auto &v){return v.value==one->name;})&&
+              std::any_of(words.begin(),words.end(),[&](const auto &v){return v.value==zero->name;}),
+              "25/26上方实时m人数1，冻结X两人保序不刷新成新m");
+            const auto portraits=parts<SteamHumanPortrait>(*plan);
+            const auto expected=startup_title_actor_skin(one->profession,one->sex,-1,0,1,false);
+            c(portraits.size()==2&&expected&&portraits[0].actor.body.image==expected->body.image,
+              "25/26首次肖像沿冻结原序，仅职业/性别实时");
+        } else {
+            const auto actors=parts<SteamTaskDepartureActor>(*plan);const auto h=startup_world_human_details(s,1);
+            c(actors.size()==2&&actors.front().action==4&&actors.front().step==0&&actors.front().weapon==h->equipment[0].value_or(-1),
+              "28桥读phase1主钟12举手及当前主武器，不用窗口副本");
+            auto walking=s;walking.page_counters[id]=40;
+            const auto walk=steam_task_roster_skin(walking,id,options);const auto walking_actors=walk?parts<SteamTaskDepartureActor>(*walk):std::vector<SteamTaskDepartureActor>{};
+            c(walking_actors.size()==2&&walking_actors.front().action==0&&walking_actors.front().step==1,
+              "28主钟40走路但副钟7给step1，两个钟不互代");
+            auto bad=s;bad.page_secondary_counters.erase(id);c(!steam_task_roster_skin(bad,id,options),"28缺副钟显式拒绝");
+            bad=s;bad.task_page_predictions.erase(id);c(!steam_task_roster_skin(bad,id,options),"28缺冻结评价不得临时重算");
+        }
+        for(int repeat=0;repeat<3;++repeat)c(steam_task_roster_skin(s,id,options)->operations.size()==plan->operations.size()&&
+          startup_world_state_digest(s)==before&&s.scene.random.draws()==draws,"后继只读桥不收费、出发、推进、抽随机或积累图元");
+        auto bad=s;bad.task_page_ui.erase(id);c(!steam_task_roster_skin(bad,id,options),"后继缺Owner UI不补临时游标");
+        bad=s;bad.scripts.pages.back().lifecycle=1;c(!steam_task_roster_skin(bad,id,options),"后继未获准页不绘制");
+        bad=s;bad.scripts.pages.back().task_definition.reset();c(!steam_task_roster_skin(bad,id,options),"后继坏任务绑定拒绝");
+        if(raw==25) {
+            // 27必须覆盖同任务父目录；独立候选为0，父X仍保留1/0/追加行。
+            s.scripts.pages.back().lifecycle=3;ref::WorldScriptPage child;
+            child.id=s.scripts.next_page_id++;child.kind=ref::WorldScriptPageKind::raw_page;
+            child.legacy_page=27;child.lifecycle=2;child.task_identity=task;child.task_definition=*page.task_definition;
+            const auto child_id=child.id;s.scripts.pages.push_back(child);
+            StartupTaskPageUi ui;ui.parent=id;ui.tab=1;s.task_page_ui.emplace(child_id,std::move(ui));
+            s.page_counters[child_id]=8;s.task_extra_pages[child_id]={0};
+            const auto covered=startup_world_state_digest(s);const auto preview=steam_task_roster_skin(s,child_id,options);
+            c(preview&&parts<SteamHumanPortrait>(*preview).size()==1&&s.task_page_ui.at(id).member_rows==std::vector<int>({1,0,-1}),
+              "27严格覆盖父目录：候选tab1实时四战斗值，不改父冻结X");
+            c(!steam_task_roster_skin(s,id,options)&&startup_world_state_digest(s)==covered,"被覆盖25不误画且查询只读");
+            bad=s;bad.task_page_ui.at(child_id).parent=s.scripts.pages.front().id;
+            c(!steam_task_roster_skin(bad,child_id,options),"27错父显式拒绝");
+            bad=s;bad.task_extra_pages.erase(child_id);c(!steam_task_roster_skin(bad,child_id,options),"27候选缺失不复用实时m");
+            bad=s;bad.task_page_ui.at(child_id).selection=1;c(!steam_task_roster_skin(bad,child_id,options),"27候选选择越界拒绝");
+        }
+    }
+}
+void deadline_owner(Checks &c) {
+    auto s=test_support::page_fixture(33);const auto id=s.scripts.pages.back().id;
+    // 无aa、但有真实q的原展示分支：不伪称玩家已在探索期限自然到达。
+    const auto definition=std::find_if(s.rules->tasks.begin(),s.rules->tasks.end(),
+        [](const auto &d){return d.factory.kind==0;});
+    c(definition!=s.rules->tasks.end(),"33原表提供探索定义");
+    auto &page=s.scripts.pages.back();page.lifecycle=2;page.task_definition=definition->factory.identity;page.legacy_f=100;
+    s.task_page_ui.emplace(id,StartupTaskPageUi{});s.page_counters[id]=4;s.page_phases[id]=0;
+    s.deadline_initialized.insert(id);s.deadline_grades[id]=3;s.deadline_returns[id]=-1;s.deadline_page=id;
+    s.participants={0,1,0};
+    const auto options=deadline_input().options;const auto before=startup_world_state_digest(s);
+    const auto dto=steam_task_deadline_input(s,id);const auto plan=steam_task_deadline_skin(s,id,options);
+    c(dto&&plan&&dto->progress==70&&dto->participants==s.participants,
+      "33桥尊重原aa为空70分支，真实q/m与冻结grade独立");
+    c(dto->humans.size()==2&&dto->active_humans.empty(),"定义可重复m，无bl不制造假实例/HP");
+    for(int repeat=0;repeat<3;++repeat)c(steam_task_deadline_skin(s,id,options)->operations.size()==plan->operations.size()&&
+        startup_world_state_digest(s)==before,"期限重复只读投影不发答案或声音，规模稳定");
+    auto bad=s;bad.deadline_grades.erase(id);c(!steam_task_deadline_input(bad,id),"期限缺grade不补默认");
+    bad=s;bad.task_page_ui.erase(id);c(!steam_task_deadline_input(bad,id),"期限缺UI不借窗口选择");
+    bad=s;bad.task_page_ui.at(id).selection=2;c(!steam_task_deadline_input(bad,id),"期限选择越界显式拒绝");
+    bad=s;bad.scripts.pages.back().task_identity=999;c(!steam_task_deadline_input(bad,id),"期限悬空aa不走合法空分支");
+    bad=s;bad.scripts.pages.back().task_definition.reset();c(!steam_task_deadline_input(bad,id),"期限没有q不能猜定义0绘页");
+    s.page_phases[id]=1;s.page_counters[id]=12;s.deadline_returns[id]=0;
+    const auto answered=steam_task_deadline_skin(s,id,options);
+    c(answered&&parts<SteamHumanPortrait>(*answered).front().actor.body.sprite==21,"期限第二段读唯一K答案并演出举手");
+    bad=s;bad.deadline_returns.erase(id);c(!steam_task_deadline_input(bad,id),"期限已确认却缺K答案拒绝");
+    // 原monster表第5列是独立shadow：软软0，蘑菇子1，不按body猜。
+    const auto zero=std::find_if(s.rules->monsters.begin(),s.rules->monsters.end(),[](const auto &d){return d.identity==0;});
+    const auto mushroom=std::find_if(s.rules->monsters.begin(),s.rules->monsters.end(),[](const auto &d){return d.identity==4;});
+    c(zero!=s.rules->monsters.end()&&mushroom!=s.rules->monsters.end()&&zero->shadow==0&&mushroom->shadow==1,
+      "33怪物固定列5独立oracle，不默填0或body");
+}
 void task_information(Checks &c) {
     // 两独立原helper：UserData RVA2F82B0(scene4)、SubForm RVA30BED0(raw29)。
     SteamTaskInfoInput in;in.name="任务详情条件";in.treasure_level=9;in.monster_rank=4;
@@ -810,5 +948,6 @@ void task_information_owner(Checks &c) {
 int check_steam_task_selection_skins(const std::filesystem::path &source_root) {
     Checks c;directory(c);prompt(c);recruitment(c);owner(c);resources(c,source_root);
     rosters(c);departure(c);roster_resources(c,source_root);results(c,source_root);
-    task_information(c);task_information_owner(c);victory(c);victory_owner(c);deadline(c,source_root);return c.count;
+    task_information(c);task_information_owner(c);victory(c);victory_owner(c);deadline(c,source_root);
+    result_owner(c);deadline_owner(c);roster_owner(c);return c.count;
 }

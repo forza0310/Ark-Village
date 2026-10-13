@@ -2053,7 +2053,12 @@ void summary() {
                   StartupWorldRuntimeError::missing_source &&
               s.scripts.pages.back().lifecycle == 2 && s.page_counters.empty(),
           "missing summary is rejected without partial mutation");
-    s.exploration_summaries[missing] = {32, 1, 0, {{0, 1}}};
+    const auto source32=ref::prepare_world_task_creation(startup_world_runtime_factory(s),0);
+    check(source32.candidate&&source32.candidate->created_task&&write_startup_world_runtime_factory(s,source32.candidate->state),
+          "page32 authenticated summary uses actual source task");
+    s.scripts.pages.back().lifecycle=0;
+    s.exploration_summaries[missing] = {32, *source32.candidate->created_task,
+        s.tasks.at(*source32.candidate->created_task).definition, {{0, 1}}};
     check(acknowledge_startup_world_runtime_page(s, missing) == StartupWorldRuntimeError::none &&
               s.scripts.pages.back().lifecycle == 4,
           "page32 closes authenticated summary");

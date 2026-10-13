@@ -574,7 +574,7 @@ Steam2.56静态来源：22为`SubForm._draw` VA10353269–10353798，23／24为`
 
 ### Steam参加名单、追加与出发25–28
 
-本批[纯皮肤](../prototype/include/dungeon_village_prototype/steam_task_roster_skin.hpp)及[条件示例](examples/README.md)已提供，不等于新Owner UI载荷／输入恢复接线；新增持久布局见[已批准设计](../prototype/PERSISTENCE.md#任务后继ui载荷设计待确认)。原源为_draw1_1的25／26分支VA10331996、27分支103311DE、28分支10330630，与APK对应页交叉；不从旧粗框窗口反推精确位置。
+[只读皮肤及严格Owner桥](../prototype/include/dungeon_village_prototype/steam_task_roster_skin.hpp)已接正式窗口；独立游标、冻结名单、父子答案与恢复按[已批准持久合同](../prototype/PERSISTENCE.md#任务后继ui载荷设计待确认)维护。[条件示例](examples/README.md)仍不认证自然取得或原物理输入。原源为_draw1_1的25／26分支VA10331996、27分支103311DE、28分支10330630，与APK对应页交叉；不从旧粗框窗口反推精确位置。
 
 25／26原X为冻结人物名单＋末尾−1追加行，标题人数另读实时m.size，不能从X推算。行y97+19×offset，原行Touch11无marker、margin(0,−22,0,0)，肖像clip(29,y−1,15,14)、脚底(37,y+21)；等级10显示MAX，努力值为APK e.u／Steam CharacterData.putUp_+54（10331EC9），不混同勋章E。25软标签详情7／开始12，26详情7／返回2，详情优先取消，末尾追加行上的详情输入即便无动作也吞本轮取消。成功追加回父时才重抄m并选追加行，取消或详情返回保持X，不能在每次绘制刷新名单。
 
@@ -588,7 +588,7 @@ DTO严格区分冻结X、实时人数、候选四战斗值、费用可负担和�
 
 ### Steam任务成果与期限的后继定位
 
-29–33业务已有维护消费者；[成果皮肤](../prototype/include/dungeon_village_prototype/steam_task_result_skin.hpp)现含30纯计划／严格Owner只读桥和31／32纯计划，[期限皮肤](../prototype/include/dungeon_village_prototype/steam_task_deadline_skin.hpp)提供33完整局部纯计划。31–33新Owner UI载荷已获设计确认，接线尚未交付。29在_draw1_1 VA10330601–10330629调用`Draw_dungeonInfo RVA30BED0(mode1)`，确认／取消关闭，无新增游标。30在10330284／1033029E明确用独立frame2模26，10330321又传给人物动作；主frame只控制展开5–40／40门槛，page控制两段。维护复用现secondary保存副钟，两真实结算producer直接安装三零，切段不清副钟，不重复奖励；查询不修补未初始化载荷。
+29–33业务已有维护消费者；[成果皮肤](../prototype/include/dungeon_village_prototype/steam_task_result_skin.hpp)现含30纯计划／严格Owner只读桥和31／32纯计划，[期限皮肤](../prototype/include/dungeon_village_prototype/steam_task_deadline_skin.hpp)提供33完整局部纯计划。31–33独立Owner选择／滚动、严格取数／皮肤桥与窗口接线已实现，缺载荷显式拒绝；真正收益与续费时点仍沿原业务。29在_draw1_1 VA10330601–10330629调用`Draw_dungeonInfo RVA30BED0(mode1)`，确认／取消关闭，无新增游标。30在10330284／1033029E明确用独立frame2模26，10330321又传给人物动作；主frame只控制展开5–40／40门槛，page控制两段。维护复用现secondary保存副钟，两真实结算producer直接安装三零，切段不清副钟，不重复奖励；查询不修补未初始化载荷。
 
 31 Update VA10324073–10324126为上→下→五行修首行；Draw1032F67A–1032FDAD从first最多五人，y97+19×offset。肖像底(29,y−2)16×16，clip15×15，人物脚底(37,y+21)朝向1；手形(21,y+8)、名(48,y)，击杀H／倒下I分别用`Draw_count3 RVA252EA0`右162／`Draw_count2 RVA252E10`右210，共SEB12。第三栏标题使用DrawText(185,75,40,anchor32)，不同于APK普通文字(185,69)。110高滑条，未见整行Touch11，不能照25追加行注册。底部f/g人物分别脚底(21,220)朝向1／(218,220)朝向2，不从当前队伍猜首尾。
 
@@ -605,6 +605,10 @@ DTO严格区分冻结X、实时人数、候选四战斗值、费用可负担和�
 33的JobData.GetImage() RVA21AC60无人物参数，职业图固定男图；这与28／30尊重性别的重载不同。只画m前3人@(49/69/89,145)，却合计全部m的quest_downNum_。每人按原bl顺序找首同定义实例，**原seb_动作字段+0x24恰7**时用action7无武器，不是state_+0x64；否则phase0走路，phase1答案0按2–7／12–17／22–35举手，其余走路，答案1固定walk0。已有实例HPafter槽3×100/GetHpMax≤30且main%12/6为0时显示pinch，无实例不造假HP条或头标。两按钮在phase1仍绘制但不再读方向；确认置主50、下次Update关闭，真正续费／中止仍由父主场景下一入口消费。底预测grade0–4与秘书框按实测宽；Steam UserData.cctor RVA2F0040在102F456E–102F46C5安装五句原序为“あともう一息です!!／もうひとがんばりです!!／戦力の補充が必要です!／出直した方が良いと思います／撤退すべきです…”，维护汉语沿固定APK译义，原Steam当前语言文本另由真实本地化消费。kind0设施用普通MapchipData.DrawMapchip RVA21BCA0（不是DrawMapchip2），clip(17,85,202,110)，各tile锚((x+y)×30+130,121−(−x+y)×15)，不补居中。kind1怪物最多3个，按i2→0逆序；SetDispMonster输入step来自最后展示人物、无人为0，但最终身体帧另由DrawDispMonster RVA2CCD70→SetDrawParam RVA28AE00计算：sprite=size×4+direction，frame=(main%(speed[size]×4))/speed[size]，speed四槽独立核为6/6/8/10，不能拿传入step当最终帧。全部是只读局部计划依据，共享disp scratch的全局副作用未由此闭合。
 
 33纯输入将原m、人物定义与bl原序分开；无实例合法，HPafter可负或高于重算上限，不由皮肤夹值，源乘100溢出／除零显式拒绝。普通四片原序0／2／4／6在锚130,121下为(130,91)、(100,106)、(160,106)、(130,121)，没有Mapchip2居中。怪物影子是原monster列5的独立值，不从body猜；menuRT00为Steam图片84／SEB75，真实四帧中此页仅用0／1，日文图签保留。五种[有界参考](examples/README.md)均为局部条件，30窗口确认／返回接原消费者、鼠标画布内松开为研究适配；33没有用窗口临时选择伪充Owner恢复。共享scratch、原语言字体及OS动态另验。
+
+任务后继维护接线统一经`StartupWorldRuntimeSession::input_task_page`，同轮传方向、绝对选择／滚条和动作，不在窗口另存业务游标。25／26只用冻结member_rows定位人物，顶栏人数仍读实时m；27新增同页签与父答案，成功追加后父首次获准更新才复制新m并选末尾哨兵，取消／详情返回保留旧名单。25／26确认→25软开始→详情→取消，哨兵详情吞掉同轮取消；27确认→取消→详情。窗口27 marker16、拖动起点只是平台手势，切页／暂停／失焦清理，不入研究文件。
+
+31战绩沿crew_summaries，32宝物沿exploration_summaries，均保持f/g原底人物。32循环模数max(N−4,0)，不是可选首行上限N−4；现纯皮肤合法上界N−5正确保留。33取数桥分离参与定义／原实例顺序、真实deadline答案及原monster独立shadow列；原允许无任务绑定的局部业务夹具仍合法，但缺完整显示来源时皮肤明确拒绘。正式窗口不再画旧粗框或临时任务选择；Enter、鼠标UP／滚轮／拖动是研究适配，原OS完整投递仍待外部补证。
 
 ### Steam地图候选信息与raw29不同入口
 

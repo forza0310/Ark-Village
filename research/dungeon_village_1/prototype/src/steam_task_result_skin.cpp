@@ -153,20 +153,83 @@ int victory_jump(int tick) {
 void victory_text(SteamTaskVictoryPlan &p,std::string value,int x,int y,int anchor) {
     p.operations.emplace_back(SteamTaskSelectionText{std::move(value),{x,y,0,0},anchor,0,false,{92,51,31}});
 }
-std::optional<std::string> victory_name(const StartupWorldRuntimeState &s,const StartupWorldTask &d) {
-    // QuestData.GetName(true) RVA21D6D0：胜利时进度已增加；不能借列表false的后缀。
+}
+std::optional<std::string> steam_task_display_name(const StartupWorldRuntimeState &s,
+    const StartupWorldTask &d,bool after_completion) {
+    // QuestData.GetName(bool) RVA21D6D0：成果用已增加进度，期限用当前任务后缀。
     if(d.factory.flags&2U) {
         const auto g=s.scene.world.world.ai.monster_growth.find(d.factory.monster);
         if(g==s.scene.world.world.ai.monster_growth.end()||g->second.growth<0)return {};
-        if(g->second.growth>0)return d.name+std::to_string(g->second.growth);
+        if(g->second.growth>0) {
+            const auto value=std::int64_t(g->second.growth)+(after_completion?0:1);
+            if(value>std::numeric_limits<int>::max())return {};
+            return d.name+std::to_string(value);
+        }
     } else if(d.factory.flags&4U) {
         const auto progress=s.task_progress.definitions.find(d.factory.identity);
         if(progress==s.task_progress.definitions.end()||progress->second.completed<0)return {};
-        const auto done=std::int64_t(progress->second.completed)-1;
+        const auto done=std::int64_t(progress->second.completed)-(after_completion?1:0);
         if(done>0)return d.name+"+"+std::to_string(std::min(done*2,std::int64_t(10)));
     }
     return d.name;
 }
+std::optional<SteamTaskResultInput> steam_task_result_input(const StartupWorldRuntimeState &s,
+    std::uint64_t id) {
+    const auto page=std::find_if(s.scripts.pages.rbegin(),s.scripts.pages.rend(),
+        [](const auto &v){return v.lifecycle!=4;});
+    if(!s.rules||page==s.scripts.pages.rend()||page->id!=id||page->lifecycle!=2||
+       (page->legacy_page!=31&&page->legacy_page!=32)||
+       !valid_startup_world_runtime_task_summary_ui_page(s,*page))return {};
+    const auto ui=s.task_page_ui.find(id);if(ui==s.task_page_ui.end())return {};
+    const auto human=[&](int identity)->std::optional<SteamTaskResultHuman> {
+        const auto value=startup_world_human_details(s,identity);if(!value)return {};
+        return SteamTaskResultHuman{identity,value->profession,value->sex,value->name};
+    };
+    const auto left=human(page->legacy_f),right=human(page->legacy_g);if(!left||!right)return {};
+    SteamTaskResultInput in;in.raw=page->legacy_page;in.selection=ui->second.selection;
+    in.first=ui->second.first;in.footer={*left,*right};
+    std::optional<std::uint64_t> task_id=page->task_identity;
+    std::optional<int> definition=page->task_definition;
+    if(in.raw==32) {
+        const auto summary=s.exploration_summaries.find(id);if(summary==s.exploration_summaries.end())return {};
+        task_id=summary->second.task;definition=summary->second.definition;
+        for(const auto &row:summary->second.rewards) {
+            SteamTaskResultReward reward;reward.kind=row[0];reward.definition=row[1];
+            if(reward.kind==0) {
+                const auto item=std::find_if(s.rules->items.begin(),s.rules->items.end(),
+                    [&](const auto &v){return v.identity==reward.definition;});
+                const auto draws=startup_world_item_icon_draws(s,reward.definition);
+                if(item==s.rules->items.end()||!draws)return {};
+                reward.value=item->commerce_price;reward.name=item->name;reward.icon=*draws;
+            } else {
+                const auto equipment=std::find_if(s.rules->equipment.begin(),s.rules->equipment.end(),
+                    [&](const auto &v){return v.shop.kind==reward.kind&&v.shop.id==reward.definition;});
+                const auto draws=startup_world_equipment_icon_draws(s,reward.kind,reward.definition);
+                if(equipment==s.rules->equipment.end()||!draws)return {};
+                reward.value=equipment->shop.price;reward.name=equipment->name;reward.icon=*draws;
+            }
+            in.rewards.push_back(std::move(reward));
+        }
+    } else {
+        const auto rows=s.crew_summaries.find(id);if(rows==s.crew_summaries.end())return {};
+        for(int identity:rows->second) {
+            const auto value=human(identity);const auto stats=s.scene.world.world.ai.battle.humans.find(identity);
+            if(!value||stats==s.scene.world.world.ai.battle.humans.end())return {};
+            in.crew.push_back({*value,stats->second.task_kills,stats->second.participant_downs});
+        }
+    }
+    if(!task_id||!definition)return {};
+    const auto task=s.tasks.find(*task_id);const auto source=std::find_if(s.rules->tasks.begin(),s.rules->tasks.end(),
+        [&](const auto &v){return v.factory.identity==*definition;});
+    if(task==s.tasks.end()||task->second.definition!=*definition||source==s.rules->tasks.end())return {};
+    const auto name=steam_task_display_name(s,*source,true);if(!name)return {};
+    in.task_name=*name;in.difficulty=task->second.difficulty;
+    return in;
+}
+std::optional<SteamTaskResultPlan> steam_task_result_skin(const StartupWorldRuntimeState &s,
+    std::uint64_t id,const SteamTaskResultOptions &options) {
+    auto in=steam_task_result_input(s,id);if(!in)return {};in->options=options;
+    return steam_task_result_skin(*in);
 }
 std::optional<StartupTitleActorSkin> steam_task_victory_actor_skin(const SteamTaskVictoryActor &r) {
     if(r.action!=0&&r.action!=6)return {};
@@ -246,7 +309,7 @@ std::optional<SteamTaskVictoryPlan> steam_task_victory_skin(const StartupWorldRu
     const auto definition=std::find_if(s.rules->tasks.begin(),s.rules->tasks.end(),
         [&](const auto &d){return d.factory.identity==summary->second.definition;});
     if(task==s.tasks.end()||definition==s.rules->tasks.end())return {};
-    const auto name=victory_name(s,*definition);if(!name)return {};
+    const auto name=steam_task_display_name(s,*definition,true);if(!name)return {};
     const auto phase=s.page_phases.find(id),counter=s.page_counters.find(id),secondary=s.page_secondary_counters.find(id);
     if(phase==s.page_phases.end()||counter==s.page_counters.end()||secondary==s.page_secondary_counters.end())return {};
     SteamTaskVictoryInput in;in.phase=phase->second;in.counter=counter->second;in.secondary=secondary->second;

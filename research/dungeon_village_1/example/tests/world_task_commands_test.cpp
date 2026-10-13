@@ -398,6 +398,31 @@ void further_boundaries() {
               stable.candidate->state.page_counter == 90 &&
               !jumped.candidate->state.finish.active_task,
           "prefixed89 acceleration can overshoot to94; prefixed90 does not add5");
+    // 固定APK b/g.b及Steam10321B63–84独立oracle：入页分支前双钟模INT_MAX。
+    for(const int clock:{std::numeric_limits<int>::max()-2,std::numeric_limits<int>::max()-1}) {
+        auto boundary=start;boundary.phase=TaskCommandPhase::departure_prompt;
+        boundary.page_counter=boundary.secondary_counter=clock;
+        const auto updated=prepare_world_task_departure(boundary,{},identity());
+        const int expected=clock==std::numeric_limits<int>::max()-1?0:std::numeric_limits<int>::max()-1;
+        check(updated.candidate&&updated.candidate->state.page_counter==expected&&
+              updated.candidate->state.secondary_counter==expected&&!updated.candidate->departed&&
+              !updated.candidate->state.finish.active_task&&updated.candidate->state.random.draws()==0&&
+              updated.candidate->state.finish.dungeon.world.ai.accounting.funds()==5000,
+              "departure prompt double clocks wrap before effects without activation, cash or random changes");
+    }
+    auto wrapped=start;wrapped.page_counter=wrapped.secondary_counter=std::numeric_limits<int>::max()-1;
+    wrapped.accelerate_departure=true;
+    const auto accelerated_wrap=prepare_world_task_departure(wrapped,{},identity());
+    check(accelerated_wrap.candidate&&accelerated_wrap.candidate->state.page_counter==5&&
+          accelerated_wrap.candidate->state.secondary_counter==0&&!accelerated_wrap.candidate->departed,
+          "departing clock wraps before original acceleration adds5, retaining independent secondary");
+    for(const bool primary:{false,true})for(const int invalid:{-1,std::numeric_limits<int>::max()}) {
+        auto boundary=start;(primary?boundary.page_counter:boundary.secondary_counter)=invalid;
+        check(!prepare_world_task_departure(boundary,{},identity()).candidate&&
+              (primary?boundary.page_counter:boundary.secondary_counter)==invalid&&
+              !boundary.finish.active_task&&boundary.random.draws()==0,
+              "invalid negative or INTMAX departure clocks remain rejected, never normalized to pass");
+    }
     auto ordinary = start;
     ordinary.page_counter = 0;
     ordinary.accelerate_departure = false;

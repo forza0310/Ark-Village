@@ -1,6 +1,9 @@
 // Steam SubForm._draw1_1：25/26 RVA331996，27 RVA3311DE，28 RVA330630。
 #include "dungeon_village_prototype/steam_task_roster_skin.hpp"
+#include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
+#include "dungeon_village_prototype/startup_world_human.hpp"
 #include <algorithm>
+#include <limits>
 #include <set>
 
 namespace dungeon_village_prototype {
@@ -202,5 +205,55 @@ std::optional<Plan> steam_task_roster_skin(const SteamTaskRosterInput &in) {
         }
     }
     return p;
+}
+std::optional<Plan> steam_task_roster_skin(const StartupWorldRuntimeState &s,std::uint64_t id,
+                                          const SteamTaskRosterOptions &o) {
+    if(!s.rules)return {};
+    const auto page=std::find_if(s.scripts.pages.rbegin(),s.scripts.pages.rend(),[](const auto &p){return p.lifecycle!=4;});
+    const auto ui=s.task_page_ui.find(id);const auto counter=s.page_counters.find(id);
+    if(page==s.scripts.pages.rend()||page->id!=id||page->lifecycle!=2||page->legacy_page<25||page->legacy_page>28||
+       ui==s.task_page_ui.end()||counter==s.page_counters.end()||!valid_startup_world_runtime_task_page(s,*page)||
+       !page->task_identity||!page->task_definition)return {};
+    const auto task=s.tasks.find(*page->task_identity);
+    if(task==s.tasks.end()||task->second.definition!=*page->task_definition)return {};
+    const auto d=std::find_if(s.rules->tasks.begin(),s.rules->tasks.end(),[&](const auto &v){return v.factory.identity==task->second.definition;});
+    if(d==s.rules->tasks.end()||s.participants.size()>9)return {};
+    SteamTaskRosterInput in;in.raw=page->legacy_page;in.selection=ui->second.selection;in.first=ui->second.first;
+    in.tab=ui->second.tab;in.counter=counter->second;in.participant_count=static_cast<int>(s.participants.size());in.options=o;
+    // 上方列表／出发均调用GetName(false)，active26 IsDungeon为实际kind0谓词。
+    in.task_name=d->name;
+    if(d->factory.flags&2U) {
+        const auto growth=s.scene.world.world.ai.monster_growth.find(d->factory.monster);
+        if(growth==s.scene.world.world.ai.monster_growth.end()||growth->second.growth<0||
+           growth->second.growth==std::numeric_limits<int>::max())return {};
+        if(growth->second.growth)in.task_name+=std::to_string(growth->second.growth+1);
+    } else if(d->factory.flags&4U) {
+        const auto progress=s.task_progress.definitions.find(d->factory.identity);
+        if(progress==s.task_progress.definitions.end()||progress->second.completed<0)return {};
+        if(progress->second.completed)in.task_name+="+"+std::to_string(std::min(std::int64_t(progress->second.completed)*2,std::int64_t(10)));
+    }
+    if(in.raw<=26)in.frozen_humans=ui->second.member_rows;
+    else if(in.raw==27) {
+        const auto extra=s.task_extra_pages.find(id);if(extra==s.task_extra_pages.end())return {};in.frozen_humans=extra->second;
+    } else {
+        const auto phase=s.page_phases.find(id),secondary=s.page_secondary_counters.find(id),prediction=s.task_page_predictions.find(id);
+        if(phase==s.page_phases.end()||secondary==s.page_secondary_counters.end()||prediction==s.task_page_predictions.end())return {};
+        in.phase=phase->second;in.secondary=secondary->second;in.prediction=prediction->second;in.frozen_humans=s.participants;
+    }
+    if(in.raw==26) {
+        if(!s.active_task||*s.active_task!=*page->task_identity)return {};
+        const auto progress=s.task_progress.definitions.find(d->factory.identity);if(progress==s.task_progress.definitions.end())return {};
+        in.ongoing=progress->second.kind==0;
+    }
+    std::set<int> needed;
+    for(int id:in.frozen_humans)if(id!=-1)needed.insert(id);
+    for(int definition:needed) {
+        const auto h=startup_world_human_details(s,definition);const auto calendar=s.human_calendar.find(definition);
+        if(!h||calendar==s.human_calendar.end())return {};
+        const int fee=in.raw==27?calendar->second.continuation_cost:0;
+        in.humans.push_back({definition,h->profession,h->sex,h->equipment[0].value_or(-1),h->level,h->effort,h->medals,fee,
+            h->name,h->combat,s.scene.world.world.ai.accounting.funds()>=fee});
+    }
+    return steam_task_roster_skin(in);
 }
 } // namespace dungeon_village_prototype

@@ -60,9 +60,12 @@ StartupWorldRuntimeState fixture(int kind = 0) {
     page.task_identity = id;
     page.task_definition = s.tasks.at(id).definition;
     page.legacy_f = 500;
-    page.lifecycle = 2;
+    page.lifecycle = 0;
     s.scripts.pages.push_back(page);
     s.deadline_page = page.id;
+    if(!initialize_startup_world_runtime_deadline_page(s,page.id))
+        throw std::runtime_error("deadline fixture failed actual constructor initialization");
+    s.scripts.pages.back().lifecycle=2;
     return s;
 }
 void page_and_return() {

@@ -41,8 +41,15 @@ struct SteamTaskResultPlan {
     std::string title;
     std::array<int,2> soft_labels{0,2};
 };
-// 无Owner桥；调用方须提供真实游标、完整冻结名单和已解析图标，不在绘制时补页面字段。
+// 条件纯计划；正式Owner桥只消费真实冻结名单和游标，不在绘制时补页面字段。
 std::optional<SteamTaskResultPlan> steam_task_result_skin(const SteamTaskResultInput &);
+std::optional<std::string> steam_task_display_name(const StartupWorldRuntimeState &,
+    const StartupWorldTask &,bool after_completion);
+// 供后端按真实文案测宽；返回值未安装字体options，不推进或初始化页面。
+std::optional<SteamTaskResultInput> steam_task_result_input(const StartupWorldRuntimeState &,
+    std::uint64_t page);
+std::optional<SteamTaskResultPlan> steam_task_result_skin(const StartupWorldRuntimeState &,
+    std::uint64_t page,const SteamTaskResultOptions &);
 
 // 30沿实时m、当前职业／性别／主武器绘演员，仅经验share与q绑定冻结于页面。
 struct SteamTaskVictoryHuman { int identity{},profession{},sex{},weapon{-1}; };

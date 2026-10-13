@@ -38,10 +38,17 @@ struct StartupWorldMenuInput;
 struct StartupManualInput;
 // 任务目录/募集与主场景追踪的一轮解析输入，不持久保存设备状态。
 struct StartupTaskPageInput {
-    bool up{}, down{}, left{}, right{}, confirm{}, cancel{}, track{};
+    bool up{}, down{}, left{}, right{}, confirm{}, cancel{}, track{}, inspect{}, depart{};
     std::optional<int> selection;
     struct Scroll { bool absolute{}; int value{}; };
     std::optional<Scroll> scroll;
+};
+// 任务后继25–28/31–33的真实UI字段；各页只消费其合同允许的子集。
+struct StartupTaskPageUi {
+    int selection{}, first{}, tab{};
+    std::vector<int> member_rows;
+    std::optional<std::uint64_t> parent;
+    std::optional<int> answer;
 };
 struct StartupManualPageData {
     std::vector<int> decorations;
@@ -236,6 +243,7 @@ struct StartupWorldRuntimeState {
     std::map<std::uint64_t, StartupWorldMenuPageData> menu_page_data; // raw3/4/7/10。
     std::map<std::uint64_t, std::array<int, 2>> menu_page_positions; // 另保留实际raw3→9位置。
     std::map<std::uint64_t, std::vector<std::uint64_t>> task_page_lists; // raw22的X；scene键为StartDungeonStart另抄的当前名单。
+    std::map<std::uint64_t, StartupTaskPageUi> task_page_ui;
     std::map<std::uint64_t, ref::TaskRecruitmentAnimation>
         task_recruitment_pages;                                 // raw24 X/Y/ap/aq/ar/as。
     std::map<std::uint64_t, std::vector<int>> task_extra_pages; // raw27 X，仅页面期间存在。

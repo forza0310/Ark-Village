@@ -335,6 +335,134 @@ bool consume_award_display(State &s, std::uint64_t id, bool confirm, int raw) {
 }
 } // namespace
 
+bool valid_startup_world_runtime_task_summary_ui_page(const State &s,const ref::WorldScriptPage &p) {
+    const int raw=p.legacy_page;const auto id=p.id;
+    if(!s.rules||id==0||p.kind!=ref::WorldScriptPageKind::raw_page||raw<31||raw>33||p.lifecycle<0||p.lifecycle>4)return false;
+    const auto human=[&](int h){return h>=0&&s.human_calendar.count(h)&&s.scene.world.world.ai.battle.humans.count(h)&&
+        std::any_of(s.rules->humans.begin(),s.rules->humans.end(),[=](const auto &v){return v.identity==h;});};
+    const auto task_definition=[&](int d){return s.task_progress.definitions.count(d)&&
+        std::any_of(s.rules->tasks.begin(),s.rules->tasks.end(),[=](const auto &v){return v.factory.identity==d;});};
+    std::size_t count{};
+    if(raw==31) {
+        if(!p.task_identity||!p.task_definition||!task_definition(*p.task_definition))return false;
+        const auto task=s.tasks.find(*p.task_identity);
+        if(task==s.tasks.end()||task->first==0||task->second.identity!=task->first||task->second.definition!=*p.task_definition)return false;
+        const auto list=s.crew_summaries.find(id);
+        if(list!=s.crew_summaries.end()) {
+            count=list->second.size();
+            for(int h:list->second)if(!human(h))return false; // 原X允许重复，不能去重。
+        } else if(p.lifecycle!=0||s.task_page_ui.count(id))return false;
+    } else if(raw==32) {
+        const auto summary=s.exploration_summaries.find(id);
+        if(summary==s.exploration_summaries.end()||summary->second.legacy_page!=32||!task_definition(summary->second.definition))return false;
+        const auto task=s.tasks.find(summary->second.task);
+        if(task==s.tasks.end()||task->first==0||task->second.identity!=task->first||task->second.definition!=summary->second.definition)return false;
+        if(bool(p.task_identity)!=bool(p.task_definition)||(p.task_identity&&
+           (*p.task_identity!=summary->second.task||*p.task_definition!=summary->second.definition)))return false;
+        count=summary->second.rewards.size();
+        for(const auto &row:summary->second.rewards) {
+            if(row[0]<0||row[0]>3||row[1]<0||!s.catalog.count({row[0],row[1]}))return false;
+        }
+    } else {
+        if(p.task_definition&&!task_definition(*p.task_definition))return false;
+        if(p.task_identity) {
+            if(!p.task_definition)return false;
+            const auto task=s.tasks.find(*p.task_identity);
+            if(task==s.tasks.end()||task->first==0||task->second.identity!=task->first||task->second.definition!=*p.task_definition)return false;
+        }
+        for(int h:s.participants)if(!human(h))return false;
+    }
+    if(raw!=33&&((p.legacy_f!=-1&&!human(p.legacy_f))||(p.legacy_g!=-1&&!human(p.legacy_g))))return false;
+    if(count>65536)return false;
+    const auto ui=s.task_page_ui.find(id),end=s.task_page_ui.end();
+    const auto frame=s.page_counters.find(id),phase=s.page_phases.find(id);
+    if(s.page_secondary_counters.count(id))return false;
+    if(ui==end) {
+        return p.lifecycle==0&&frame==s.page_counters.end()&&phase==s.page_phases.end()&&
+               (raw!=31||!s.crew_summaries.count(id))&&
+               (raw!=33||(!s.deadline_initialized.count(id)&&!s.deadline_grades.count(id)&&!s.deadline_returns.count(id)));
+    }
+    const auto &v=ui->second;
+    if(v.selection<0||v.first<0||v.tab!=0||!v.member_rows.empty()||v.parent||v.answer||
+       frame==s.page_counters.end()||phase==s.page_phases.end()||frame->second<0||frame->second==std::numeric_limits<int>::max())return false;
+    if(p.lifecycle==0&&(v.selection!=0||v.first!=0||frame->second!=0||phase->second!=0))return false;
+    if(raw==31) {
+        if(!s.crew_summaries.count(id)||phase->second!=0)return false;
+        return count?(std::size_t(v.selection)<count&&v.first<=v.selection&&v.selection-v.first<5):
+                     (v.selection==0&&v.first==0);
+    }
+    if(raw==32)return phase->second==0&&v.selection==0&&v.first<=std::max(0,int(count)-5);
+    const auto grade=s.deadline_grades.find(id),answer=s.deadline_returns.find(id);
+    return v.selection<=1&&v.first==0&&s.deadline_initialized.count(id)&&phase->second>=0&&phase->second<=1&&
+           grade!=s.deadline_grades.end()&&grade->second>=0&&grade->second<=4&&
+           answer!=s.deadline_returns.end()&&answer->second>=-1&&answer->second<=1&&
+           (phase->second==0?answer->second==-1:answer->second>=0);
+}
+
+bool initialize_startup_world_runtime_task_summary_ui_page(State &s,std::uint64_t id) {
+    const auto p=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[=](const auto &v){return v.id==id;});
+    if(p==s.scripts.pages.end()||!valid_startup_world_runtime_task_summary_ui_page(s,*p))return false;
+    if(s.task_page_ui.count(id))return true;
+    if(p->lifecycle!=0)return false;
+    if(p->legacy_page==31)return initialize_startup_world_runtime_task_result_page(s,id);
+    if(p->legacy_page==33)return initialize_startup_world_runtime_deadline_page(s,id);
+    auto next=s;
+    next.task_page_ui.emplace(id,StartupTaskPageUi{});next.page_counters.emplace(id,0);next.page_phases.emplace(id,0);
+    if(!valid_startup_world_runtime_task_summary_ui_page(next,*p))return false;
+    s=std::move(next);return true;
+}
+
+StartupWorldTaskPageResult input_startup_world_runtime_task_summary_page(State &s,std::uint64_t id,const StartupTaskPageInput &input) {
+    const auto p=std::find_if(s.scripts.pages.rbegin(),s.scripts.pages.rend(),[](const auto &v){return v.lifecycle!=4;});
+    if(!s.rules||s.scene.framework_paused||p==s.scripts.pages.rend()||p->id!=id||p->kind!=ref::WorldScriptPageKind::raw_page||
+       p->legacy_page<31||p->legacy_page>33||(p->lifecycle!=0&&p->lifecycle!=2)||input.inspect||input.track||input.depart)return {Error::invalid_page};
+    const int raw=p->legacy_page;
+    if(raw!=33&&(input.left||input.right))return {Error::invalid_page};
+    if(raw==33&&(input.up||input.down||input.scroll||input.cancel))return {Error::invalid_page};
+    if(raw==32&&input.selection)return {Error::invalid_page};
+    auto next=s;
+    if(!initialize_startup_world_runtime_task_summary_ui_page(next,id))return {Error::missing_source};
+    auto page=std::find_if(next.scripts.pages.begin(),next.scripts.pages.end(),[=](const auto &v){return v.id==id;});
+    page->lifecycle=2;
+    auto &v=next.task_page_ui.at(id);
+    if(raw==31) {
+        const int count=static_cast<int>(next.crew_summaries.at(id).size());
+        if(input.selection){if(*input.selection<0||*input.selection>=count)return {Error::invalid_page};v.selection=*input.selection;}
+        if(input.scroll) {
+            const auto proposed=input.scroll->absolute?std::int64_t(input.scroll->value):std::int64_t(v.first)+input.scroll->value;
+            const int moved=static_cast<int>(std::clamp(proposed,std::int64_t(0),std::int64_t(std::max(0,count-5))));
+            v.selection+=moved-v.first;v.first=moved;
+        }
+        if(count){if(input.up)v.selection=(v.selection+count-1)%count;if(input.down)v.selection=(v.selection+1)%count;}
+        else if(input.up||input.down)return {Error::invalid_page};
+        if(v.first>v.selection)v.first=v.selection;
+        if(v.selection-v.first>=5)v.first=v.selection-4;
+    } else if(raw==32) {
+        const int modulus=std::max(0,int(next.exploration_summaries.at(id).rewards.size())-4);
+        if(input.scroll) {
+            const auto proposed=input.scroll->absolute?std::int64_t(input.scroll->value):std::int64_t(v.first)+input.scroll->value;
+            v.first=static_cast<int>(std::clamp(proposed,std::int64_t(0),std::int64_t(std::max(0,modulus-1))));
+        }
+        if(modulus){if(input.up)v.first=(v.first+modulus-1)%modulus;if(input.down)v.first=(v.first+1)%modulus;}
+    } else if(next.page_phases.at(id)==0) {
+        if(input.selection){if(*input.selection<0||*input.selection>1)return {Error::invalid_page};v.selection=*input.selection;}
+        if(input.left)v.selection=(v.selection+1)%2;
+        if(input.right)v.selection=(v.selection+1)%2;
+    } else if(input.selection)return {Error::invalid_page};
+    if(!valid_startup_world_runtime_task_summary_ui_page(next,*page))return {Error::missing_source};
+    StartupWorldTaskPageResult result;
+    if(raw==33&&input.confirm) {
+        result=act_startup_world_runtime_deadline_page(next,id,v.selection);
+        if(result.error!=Error::none)return result;
+    } else if(raw!=33&&(input.confirm||input.cancel)) {
+        next.scripts.executing_page=id;
+        const auto closed=ref::prepare_world_script_close_page(startup_world_runtime_scripts(next),id);
+        if(!closed.candidate||!write_startup_world_runtime_scripts(next,closed.candidate->state))return {Error::script_failed};
+        next.scripts.executing_page.reset();
+    }
+    s=std::move(next);return result;
+}
+
 bool valid_startup_world_runtime_award_result_page(const State &s,const ref::WorldScriptPage &p) {
     if(!s.rules||p.id==0||p.kind!=ref::WorldScriptPageKind::raw_page||p.legacy_page!=88||p.lifecycle<0||p.lifecycle>4)return false;
     const auto count=s.page_counters.find(p.id),phase=s.page_phases.find(p.id);
@@ -532,8 +660,10 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
         top->legacy_page <= 54)
         return act_startup_world_village_activity_page(state, id,
                                                        StartupVillageActivityAction::confirm);
-    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 33)
-        return act_startup_world_runtime_deadline_page(state, id, 0).error;
+    if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page>=31&&top->legacy_page<=33) {
+        StartupTaskPageInput input;input.confirm=true;
+        return input_startup_world_runtime_task_summary_page(state,id,input).error;
+    }
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 48)
         return input_startup_world_runtime_rank_page(state,id,StartupTownRankInput{false,false,true,false,{}});
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 90)
@@ -683,6 +813,11 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
 Error cancel_startup_world_runtime_page(State &state, std::uint64_t id) {
     const auto catalogue = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
                                        [](const auto &p) { return p.lifecycle != 4; });
+    if(catalogue!=state.scripts.pages.rend()&&catalogue->id==id&&catalogue->kind==ref::WorldScriptPageKind::raw_page&&
+       (catalogue->legacy_page==31||catalogue->legacy_page==32)) {
+        StartupTaskPageInput input;input.cancel=true;
+        return input_startup_world_runtime_task_summary_page(state,id,input).error;
+    }
     if (catalogue != state.scripts.pages.rend() && catalogue->id == id &&
         catalogue->kind == ref::WorldScriptPageKind::raw_page &&
         (catalogue->legacy_page == 3 || catalogue->legacy_page == 4 ||
@@ -856,6 +991,10 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
            page->legacy_page==67&&!valid_startup_world_runtime_effort_result_page(state,*page))return {};
         if(page!=state.scripts.pages.rend()&&page->kind==ref::WorldScriptPageKind::raw_page&&
            page->legacy_page==88&&!valid_startup_world_runtime_award_result_page(state,*page))return {};
+        if(page!=state.scripts.pages.rend()&&page->kind==ref::WorldScriptPageKind::raw_page&&
+           page->legacy_page>=25&&page->legacy_page<=28&&!valid_startup_world_runtime_task_ui_page(state,*page))return {};
+        if(page!=state.scripts.pages.rend()&&page->kind==ref::WorldScriptPageKind::raw_page&&
+           page->legacy_page>=31&&page->legacy_page<=33&&!valid_startup_world_runtime_task_summary_ui_page(state,*page))return {};
         if (page != state.scripts.pages.rend() && page->kind == ref::WorldScriptPageKind::raw_page &&
             (page->legacy_page == 3 || page->legacy_page == 4 || page->legacy_page == 7 ||
              page->legacy_page == 10) && !valid_startup_world_menu_page(state, page->id))
@@ -874,6 +1013,18 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
        (top->lifecycle!=2||!valid_startup_world_runtime_effort_result_page(state,*top)))return {};
     if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==88&&
        (top->lifecycle!=2||!valid_startup_world_runtime_award_result_page(state,*top)))return {};
+    if(top->kind==ref::WorldScriptPageKind::raw_page&&(top->legacy_page==25||top->legacy_page==26))
+        return update_startup_world_runtime_task_roster_page(state,top->id);
+    if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page>=31&&top->legacy_page<=33&&
+       !valid_startup_world_runtime_task_summary_ui_page(state,*top))return {};
+    if(top->kind==ref::WorldScriptPageKind::raw_page&&(top->legacy_page==31||top->legacy_page==32)) {
+        auto next=state;
+        if(!initialize_startup_world_runtime_task_summary_ui_page(next,top->id))return {};
+        auto &frame=next.page_counters.at(top->id);
+        frame=(frame+1)%std::numeric_limits<int>::max();
+        std::find_if(next.scripts.pages.begin(),next.scripts.pages.end(),[&](const auto &v){return v.id==top->id;})->lifecycle=2;
+        return next;
+    }
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 14)
         return update_startup_world_save_page(state,top->id);
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 13)
@@ -946,7 +1097,7 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
     if (counter == std::numeric_limits<int>::max())
         return {};
     ++counter;
-    if(top->legacy_page==67||top->legacy_page==88)counter%=std::numeric_limits<int>::max();
+    if(top->legacy_page==27||top->legacy_page==67||top->legacy_page==88)counter%=std::numeric_limits<int>::max();
     if(top->legacy_page==50||top->legacy_page==30||top->legacy_page==96) {
         auto &secondary=next.page_secondary_counters.at(top->id);
         counter%=std::numeric_limits<int>::max();

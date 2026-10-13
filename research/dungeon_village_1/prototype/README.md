@@ -12,7 +12,7 @@
 | `startup_world_village_activity`／runtime_pages、`steam_village_activity_skin`／`steam_town_progress_skin` | 51–54村办、48／49／50晋级及95领取；[规则与皮肤](../ui/PAGES.md#steam-village-progress) |
 | `startup_world_runtime_task_pages`、`steam_task_selection_skin`／`steam_task_roster_skin`／`steam_task_result_skin` | 22–24与scene4查看位置、raw29严格信息桥；25–28及31／32纯计划尚待Owner UI接线；[任务操作与皮肤](../ui/PAGES.md#steam任务选择与募集22–24) |
 | `startup_world_magic_pot`、`steam_magic_pot_skin`／`steam_magic_pot_effect_skin` | 41–47壶目录、投入／处理演出、配方发现／制作确认；[操作与表现](../ui/STEAM_MAGIC_POT.md) |
-| `startup_world_commerce`、`steam_commerce_skin` | 83主页三入口同轮事务、原序只读皮肤及真实NEW查询；86完整交易反馈只读桥保留自动关闭，84／85后继皮肤另列；[商会合同](../rules/COMMERCE.md#steam-commerce-top) |
+| `startup_world_commerce`、`steam_commerce_skin` | 83主页三入口同轮事务、原序只读皮肤及真实NEW查询；85三行图块目录／整轮输入、86交易反馈已接，保留独立93领取和86自动关闭；84金额及皮肤另列；[商会合同](../rules/COMMERCE.md#steam-commerce-top) |
 | `startup_world_menu`／`information`／`manual`／`save`、`steam_information_skin` | 菜单、34–39信息、13说明及14保存；[信息合同](../ui/INFORMATION_MENU.md)、[菜单](../ui/PAGES.md) |
 | `startup_application`、应用存储／标题／回放模块 | [应用](STARTUP_APPLICATION.md)、[存储事务](APPLICATION_STORAGE.md)、[标题](TITLE_MENU.md)、[完整回放](APPLICATION_REPLAY.md) |
 | `startup_world_persistence`／codec／restore_validation | [正常文件、精确回放及字段政策](PERSISTENCE.md) |

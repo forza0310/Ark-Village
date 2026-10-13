@@ -955,6 +955,126 @@ void steam_commerce_result_skin_checks(Checks &check) {
         }
     }
 }
+void steam_commerce_facility_skin_checks(Checks &check,const std::filesystem::path &root) {
+    auto initial=test_support::page_fixture(85);const auto id=initial.scripts.pages.back().id;
+    initial.rank=5; // 已知星级条件夹具，不宣称自然升星/解锁路线。
+    SteamCommerceFacilityOptions options;
+    options.text.title="购买设施";options.text.facility_header="设施";
+    options.text.price_header="价格";options.text.explanation="使用城镇点数购买";
+    options.text.title_widths=std::array<int,2>{48,50};options.text.price_width=17;
+    check(!steam_commerce_facility_skin(initial,id,options),"Steam85纯查询不补初始化或目录");
+    check(initialize_startup_world_commerce_pages(initial),"Steam85条件页真实Init生成维护p0冻结目录");
+    const auto count=static_cast<int>(initial.commerce_page_lists.at(id).size());
+    check(count>=3,"原设施目录提供至少三项，覆盖完整窗与短表不补定义");
+    for(int sample=0;sample<3;++sample) {
+        auto state=initial;options.japanese=sample==1;options.scroll_first_touch=sample!=2;
+        options.text.price_width=sample==1?19:17;
+        state.village_points=sample==0?0:999;
+        auto &cursor=state.commerce_page_data.at(id);
+        if(sample==1){cursor[2]=count-1;cursor[3]=count-3;}
+        if(sample==2){state.commerce_page_lists.at(id).resize(1);cursor[2]=0;cursor[3]=0;}
+        const auto &list=state.commerce_page_lists.at(id);
+        for(auto &read:state.facility_commerce_read)read.second=true;
+        state.facility_commerce_read.at(list[cursor[3]])=false;
+        const auto digest=startup_world_state_digest(state);
+        const auto result=steam_commerce_facility_skin(state,id,options);
+        check(bool(result),"Steam85全语言/尾窗/短表沿冻结目录可绘，村点条件不筛目录");
+        const auto &p=*result;std::vector<std::size_t> maps;
+        std::vector<SteamHumanEquipmentRow> rows;std::vector<SteamFacilityNumber> numbers;
+        std::vector<SteamHumanOverviewText> texts;std::vector<SteamHumanImage> news;
+        std::vector<SteamHumanCatalogueScroll> scrolls;std::vector<StartupSkinRect> rectangles;
+        for(std::size_t index=0;index<p.operations.size();++index) {
+            const auto &op=p.operations[index];
+            if(std::holds_alternative<SteamFacilityMapchip2>(op))maps.push_back(index);
+            if(const auto *r=std::get_if<SteamHumanEquipmentRow>(&op))rows.push_back(*r);
+            if(const auto *n=std::get_if<SteamFacilityNumber>(&op))numbers.push_back(*n);
+            if(const auto *t=std::get_if<SteamHumanOverviewText>(&op))texts.push_back(*t);
+            if(const auto *n=std::get_if<SteamHumanImage>(&op))news.push_back(*n);
+            if(const auto *s=std::get_if<SteamHumanCatalogueScroll>(&op))scrolls.push_back(*s);
+            if(const auto *f=std::get_if<SteamStartupFrameDraw>(&op))
+                if(const auto *r=std::get_if<StartupSkinRect>(f))rectangles.push_back(*r);
+        }
+        check(std::none_of(p.operations.begin(),p.operations.end(),[](const auto &op) {
+            return std::holds_alternative<SteamFacilityImage>(op);
+        }),"Steam85本页没有手形或标题箭头");
+        const int visible=sample==2?1:3;
+        check(p.soft_labels==std::array<int,2>{7,2}&&int(maps.size())==visible&&int(rows.size())==visible&&
+            int(numbers.size())==visible&&int(texts.size())==visible+3&&news.size()==1&&scrolls.size()==1,
+            "Steam85三行原序、短表一行，详情/返回软标签与NEW输出规模正确");
+        check(texts[0].rectangle==std::array<int,4>{51,69,0,0}&&
+            texts[1].rectangle==std::array<int,4>{options.japanese?162:158,69,0,0},
+            "Steam85设施/价格表头语言锚独立，不影响后续单位定位");
+        const auto unit=std::find_if(p.operations.begin(),p.operations.end(),[](const auto &op) {
+            const auto *image=std::get_if<SteamCommerceImage>(&op);return image&&image->asset==SteamCommerceAsset::point_unit;
+        });
+        check(unit!=p.operations.end()&&std::get<SteamCommerceImage>(*unit).position==
+            std::array<int,2>{166+*options.text.price_width,67}&&std::get<SteamCommerceImage>(*unit).frame==4,
+            "Steam85点单位两语言均166+实际LT价格字宽，不猜表头x+4");
+        for(int row=0;row<visible;++row) {
+            const int absolute=cursor[3]+row,y=89+34*row,definition=list[absolute];
+            const auto d=std::find_if(state.rules->facilities.begin(),state.rules->facilities.end(),
+                [&](const auto &v){return v.id==definition;});
+            const auto &map=std::get<SteamFacilityMapchip2>(p.operations[maps[row]]);
+            const auto &clip=std::get<SteamHumanClip>(p.operations[maps[row]-1]);
+            const auto &pop=std::get<SteamHumanClip>(p.operations[maps[row]+1]);
+            check(d!=state.rules->facilities.end()&&map.mapchip==d->display_id&&map.position==std::array<int,2>{65,y+11}&&
+                map.orientation==0&&clip.kind==SteamHumanClipKind::push_intersect&&clip.rectangle==std::array<int,4>{22,y+1,88,33}&&
+                pop.kind==SteamHumanClipKind::pop,"Steam85图块沿真实display_id/Mapchip2，不借实例朝向，交集clip立即退休");
+            check(rows[row].touch.component==11&&rows[row].touch.value==(0x20000|absolute)&&rows[row].touch.option==16&&
+                rows[row].touch.rectangle==std::array<int,4>{110,y,106,35}&&rows[row].margin==std::array<int,4>{29,0,0,0}&&
+                texts[row+2].value==d->name&&texts[row+2].rectangle==std::array<int,4>{116,y+5,90,11}&&
+                texts[row+2].anchor==32&&texts[row+2].layout&&texts[row+2].font_size==0,
+                "Steam85右框热区marker16/单侧左29，全部语言仍TextLayout继承字号");
+            const int cost=state.rules->facility_initial[definition].capacity;
+            check(numbers[row].kind==SteamFacilityNumberKind::number&&numbers[row].value==cost&&
+                numbers[row].position==std::array<int,2>{206,y+20}&&numbers[row].anchor==4&&numbers[row].padding==0&&
+                numbers[row].asset==(state.village_points>=cost?SteamFacilityAsset::number11:SteamFacilityAsset::number12),
+                "Steam85点价用capacity原cost，足额SEB20/不足19，金额没有G或逐行单位");
+            for(const auto expected:{std::array<int,4>{21,y,90,35},std::array<int,4>{110,y,106,35}})
+                check(std::any_of(rectangles.begin(),rectangles.end(),[&](const auto &r){return r.rect==expected&&r.outline&&r.rgb==std::array<int,3>{0,255,128};}),
+                    "Steam85两个绿框端点转半开尺寸，未画绿色实心建筑底图");
+        }
+        const int selection_y=89+34*(cursor[2]-cursor[3]);
+        check(std::count_if(rectangles.begin(),rectangles.end(),[](const auto &r){return !r.outline&&r.rgb==std::array<int,3>{255,153,55};})==1&&
+            std::any_of(rectangles.begin(),rectangles.end(),[&](const auto &r){return r.rect==std::array<int,4>{111,selection_y+1,104,33}&&r.rgb==std::array<int,3>{255,153,55};})&&
+            news[0].position==std::array<int,2>{22,114},"Steam85选择底色独立点价，NEW读isShopSee而非定义new_");
+        const int denominator=std::max(int(list.size()),3),top=85+110*cursor[3]/denominator,height=330/denominator;
+        const auto &scroll=scrolls[0];
+        check(scroll.rectangles[0].rect==std::array<int,4>{220,85,5,110}&&
+            scroll.rectangles[1].rect==std::array<int,4>{220,top,5,height+1}&&
+            scroll.rectangles[1].rgb==(options.scroll_first_touch&&list.size()>3?std::array<int,3>{246,129,0}:std::array<int,3>{48,160,255})&&
+            scroll.touch.component==12&&scroll.track_touch.component==25&&scroll.arguments==std::array<int,3>{int(list.size()),3,0x20000}&&
+            scroll.touch.rectangle==std::array<int,4>{221,85,3,110},"Steam85原三行110高滚动及12→25，没有套79的111高");
+        const auto &bottom=std::get<SteamHumanOverviewText>(p.operations[p.operations.size()-4]);
+        const auto &clip=std::get<SteamHumanClip>(p.operations[p.operations.size()-3]);
+        const auto &pumpkin=std::get<SteamCommerceImage>(p.operations[p.operations.size()-2]);
+        check(bottom.value==options.text.explanation&&bottom.rectangle==std::array<int,4>{45,199,0,0}&&bottom.anchor==1&&
+            clip.rectangle==std::array<int,4>{21,195,18,18}&&pumpkin.asset==SteamCommerceAsset::private_pumpkin&&
+            pumpkin.position==std::array<int,2>{30,223}&&std::get<SteamHumanClip>(p.operations.back()).kind==SteamHumanClipKind::pop,
+            "Steam85末说明之后私有南瓜，不创建购买/确认按钮或借公共ID2");
+        check(startup_world_state_digest(state)==digest,"Steam85绘制不扣点/清已读/改冻结目录或消费随机输出");
+    }
+    for(int fault=0;fault<7;++fault) {
+        auto state=initial;auto input=options;
+        if(fault==0)state.commerce_page_data.erase(id);
+        if(fault==1)state.commerce_page_lists.erase(id);
+        if(fault==2)state.facility_commerce_read.erase(state.commerce_page_lists.at(id)[0]);
+        if(fault==3)state.commerce_page_data.at(id)[2]=count;
+        if(fault==4)input.text.price_width.reset();
+        if(fault==5)input.text.price_width=-1;
+        if(fault==6)input.text.title_widths.reset();
+        check(!steam_commerce_facility_skin(state,id,input),"Steam85坏冻结载荷/缺已读/缺真实测宽显式拒绝，不重筛凑可画行");
+    }
+    const auto resource=steam_commerce_resource(SteamCommerceAsset::point_unit);
+    check(resource&&resource->image==31&&resource->sprite==44&&std::string(resource->published_image)=="steam-common/icon_result00.png",
+        "Steam85原单位具名绑定Steam图，不借APK同SEB不同像素");
+    CpuImage image(LoadImage((root.parent_path()/resource->published_image).string().c_str()));
+    const auto seb=tools::parse_legacy_seb(read_bytes(root.parent_path()/resource->published_sprite));
+    check(image.image.width==63&&image.image.height==48&&std::any_of(seb.layers.begin(),seb.layers.end(),[](const auto &layer) {
+        return std::any_of(layer.parts.begin(),layer.parts.end(),[](const auto &p){return p.frame==4&&p.image_index==31&&p.source_x==0&&
+            p.source_y==16&&p.width==16&&p.height==16&&p.offset_x==0&&p.offset_y==0;});
+    }),"Steam85真实Steam单位PNG解码与SEB44 frame4源裁有独立oracle");
+}
 void steam_platform_skin_checks(Checks &check,const std::filesystem::path &source_root) {
     // 原managed kairolib的显式seb23/img27及seb25/img29；与游戏common包不同。
     struct Oracle {const char *stem;int image,width,height,dx,dy;};
@@ -2712,6 +2832,7 @@ int check_startup_skin(const std::filesystem::path &source_root,
     steam_config_skin_checks(check);
     steam_commerce_skin_checks(check,source_root);
     steam_commerce_result_skin_checks(check);
+    steam_commerce_facility_skin_checks(check,source_root);
     steam_platform_skin_checks(check,source_root);
     frame_geometry(check);
     income_information(check);

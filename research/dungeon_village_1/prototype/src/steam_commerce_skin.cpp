@@ -38,6 +38,8 @@ std::optional<SteamCommerceResource> steam_commerce_resource(SteamCommerceAsset 
         return SteamCommerceResource{"common2",2,1,"original/common2/icon_shopTop.png","original/common2/icon_shopTop.seb"};
     case SteamCommerceAsset::private_pumpkin:
         return SteamCommerceResource{"common",173,38,"original/common/chara_pumpkin.png","original/common/chara_pumpkin.seb"};
+    case SteamCommerceAsset::point_unit:
+        return SteamCommerceResource{"common",31,44,"steam-common/icon_result00.png","original/common/icon_result00.seb"};
     }
     return {};
 }
@@ -140,6 +142,74 @@ std::optional<SteamCommerceSkinPlan> steam_commerce_result_skin(
     p.operations.emplace_back(SteamStartupTouch{4,20,std::array<int,4>{left-20,155,width+40,56},{},0});
     text(o.text.acknowledgement,{left,175,width,16},34,true);
     p.operations.emplace_back(SteamFacilityImage{SteamFacilityAsset::finger,{left-4,184},o.finger_frame,{}});
+    return p;
+}
+std::optional<SteamCommerceSkinPlan> steam_commerce_facility_skin(
+    const StartupWorldRuntimeState &s,std::uint64_t page,const SteamCommerceFacilityOptions &o) {
+    const auto view=inspect_startup_world_commerce_page(s,page);
+    const auto valid_text=[](const std::string &v){return !v.empty()&&v.size()<=4096;};
+    if(!view||view->raw!=85||view->entries.empty()||view->entries.size()>65536||s.village_points<0||
+       o.view_y< -65536||o.view_y>65536||!valid_text(o.text.title)||!valid_text(o.text.facility_header)||
+       !valid_text(o.text.price_header)||!valid_text(o.text.explanation)||!o.text.title_widths||
+       std::any_of(o.text.title_widths->begin(),o.text.title_widths->end(),[](int w){return w<0||w>4096;})||
+       !o.text.price_width||*o.text.price_width<0||*o.text.price_width>4096)return {};
+    const auto window=steam_startup_window_skin(
+        {220,168,0,0,SteamStartupTextRole::message_title,0},o.view_y,o.text.title_widths);
+    const auto box=steam_startup_box_skin({17,74,219,184},o.view_y);
+    if(!window||!box)return {};
+    SteamCommerceSkinPlan p;p.title=o.text.title;p.soft_labels={7,2};
+    for(const auto &op:window->draws)p.operations.emplace_back(op);
+    for(const auto &op:box->draws)p.operations.emplace_back(op);
+    const auto text=[&](const std::string &value,std::array<int,4> rect,int anchor,bool layout=false) {
+        p.operations.emplace_back(SteamHumanOverviewText{
+            SteamHumanOverviewTextRole::equipment_name,value,rect,anchor,0,layout,{92,51,31}});
+    };
+    const auto rectangle=[&](std::array<int,4> rect,std::array<int,3> rgb,bool outline) {
+        p.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{rect,rgb,outline}});
+    };
+    text(o.text.facility_header,{51,69,0,0},0);
+    text(o.text.price_header,{o.japanese?162:158,69,0,0},0);
+    p.operations.emplace_back(SteamCommerceImage{SteamCommerceAsset::point_unit,{166+*o.text.price_width,67},4,{}});
+    for(int absolute=view->first_visible;absolute<static_cast<int>(view->entries.size())&&
+        absolute<view->first_visible+3;++absolute) {
+        const int definition=view->entries[absolute],y=89+34*(absolute-view->first_visible);
+        const auto d=std::find_if(s.rules->facilities.begin(),s.rules->facilities.end(),
+            [&](const auto &f){return f.id==definition;});
+        const auto read=s.facility_commerce_read.find(definition);
+        if(d==s.rules->facilities.end()||!valid_text(d->name)||definition<0||
+           static_cast<std::size_t>(definition)>=s.rules->facility_initial.size()||
+           s.rules->facility_initial[definition].capacity<0||read==s.facility_commerce_read.end())return {};
+        const SteamFacilityMapchip2 map{d->display_id,{65,y+11},0};
+        if(!steam_facility_mapchip2_draws(map))return {};
+        // 原DrawRect端点包含边线；图块不是绿色填底，名称框独立选择色。
+        rectangle({21,y,90,35},{0,255,128},true);
+        p.operations.emplace_back(SteamHumanClip{SteamHumanClipKind::push_intersect,{22,y+1,88,33}});
+        p.operations.emplace_back(map);
+        p.operations.emplace_back(SteamHumanClip{SteamHumanClipKind::pop,{}});
+        if(!read->second)p.operations.emplace_back(SteamHumanImage{
+            SteamHumanAsset::catalogue_new,{22,y+25},0,{}});
+        rectangle({110,y,106,35},{0,255,128},true);
+        if(absolute==view->selection)rectangle({111,y+1,104,33},{255,153,55},false);
+        p.operations.emplace_back(SteamHumanEquipmentRow{
+            SteamStartupTouch{11,0x20000|absolute,std::array<int,4>{110,y,106,35},{},16},{29,0,0,0}});
+        text(d->name,{116,y+5,90,11},32,true); // Steam所有语言均TextLayout，继承字号。
+        const int cost=s.rules->facility_initial[definition].capacity;
+        p.operations.emplace_back(SteamFacilityNumber{SteamFacilityNumberKind::number,
+            s.village_points>=cost?SteamFacilityAsset::number11:SteamFacilityAsset::number12,
+            cost,{206,y+20},0,4,-1});
+    }
+    // DrawVerticalScroll2原三行、110高；同一组件12后跟25，不另生成方向箭头。
+    const int count=static_cast<int>(view->entries.size()),denominator=std::max(count,3);
+    const int top=85+110*view->first_visible/denominator,height=330/denominator;
+    p.operations.emplace_back(SteamHumanCatalogueScroll{
+        {StartupSkinRect{{220,85,5,110},{7,5,78},false},StartupSkinRect{{220,top,5,height+1},
+            o.scroll_first_touch&&count>3?std::array<int,3>{246,129,0}:std::array<int,3>{48,160,255},false}},
+        SteamStartupTouch{12,0x40000,std::array<int,4>{221,85,3,110},{},0},{3,20,0,0},
+        {count,3,0x20000},SteamStartupTouch{25,0,std::array<int,4>{221,85,3,110},{},4}});
+    text(o.text.explanation,{45,199,0,0},1);
+    p.operations.emplace_back(SteamHumanClip{SteamHumanClipKind::push_intersect,{21,195,18,18}});
+    p.operations.emplace_back(SteamCommerceImage{SteamCommerceAsset::private_pumpkin,{30,223},0,{}});
+    p.operations.emplace_back(SteamHumanClip{SteamHumanClipKind::pop,{}});
     return p;
 }
 } // namespace dungeon_village_prototype

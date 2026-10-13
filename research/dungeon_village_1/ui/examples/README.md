@@ -1,5 +1,7 @@
 # 产品侧小窗 UI 示例
 
+[设施购买三态](steam-commerce-facilities.png)（1440×640／54058字节）：左为初始条件目录、中为999村点的可负担显示条件、右为rank2目录经上键循环到末端。三态均通过实际83→85目录消费者，不支付／领取；开放位、已阅教程及后两态数值是明确夹具，不证明自然解锁。`commerce-buildings`／`commerce-buildings-funded`／`commerce-buildings-tail`各8帧、0世界更新、不加`--world`。图块原尺度裁剪、三行首行、NEW、足／不足价色及Steam点数图标沿[原合同](../../rules/COMMERCE.md#steam-commerce-facilities)；中文／Noto和绿色外背景属适配。研究字体字符集覆盖实际设施定义，图中没有占位名称；详情74完整预览皮肤和原OS输入不由此图认证。
+
 [商会交易反馈两态](steam-commerce-result.png)（960×640／22129字节）：左购买、右出售。条件开放商会并补货后，通过实际83→84单件交易产生86，读取原道具0／400G价与图标；买−400G／卖+200G显示的是本笔差额，不能因表头“所持金”改画余额。`commerce-bought`／`commerce-sold`各8帧、0世界更新、不加`--world`，明确冻结已产生86供观察，不认证原框架必然绘到它。正常消费者下一获准更新自动关闭，“了解”图元不增加一次交易或确认门槛。中文、Noto、背景和手形0属适配；[来源及接口](../../rules/COMMERCE.md#steam-commerce-result)保留字体／OS动态边界。
 
 [商会主页三种选择](steam-commerce-top.png)（1440×640／38145字节）：左至右为购买道具、出售道具、购买设施，三张480×640研究窗口原尺寸拼接。消费`steam_commerce_skin`及已出版图像，等级1、两NEW的有无与静态手形帧0为显式条件；`commerce-buy`／`commerce-sell`／`commerce-facility`各8帧、0世界更新、不加`--world`。原Owner查询与输入已另接真实商会入口；本图不证明自然开放、交易、共享手形调度或原OS输入。中文、Noto、VIEW_Y23、绿色背景与研究标签属适配，原私有南瓜裁片、三行、图标与NEW条件见[合同](../../rules/COMMERCE.md#steam-commerce-top)。

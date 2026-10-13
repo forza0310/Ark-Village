@@ -29,7 +29,7 @@ Init2的74支为0x1030F8C3–0x1030FC57：新建ary1；distinction1、4、5分�
 
 tenant非null时另外新建ary2，逐项加入tenant.tenantBonusList中的int[]对象；这一层是列表复制，**不是每条int[]深复制**。条目绘制读[0]邻接建筑定义ID、[1]编号（显示加1）。本批不把它改名为实例uid，也不猜其全部生产和退休时机。预览没有tenant则不生成该实例邻接表。
 
-原Init共同入口按softLabels[type]装配软键，再委托Init2。标签2取消消费者已证；本批没有独立解出softLabels[74]的全部初值文字，因此不补写猜测的左标签名。页面select、scroll、page与字段初始化沿构造/父页生命周期；不能由单张第一页截图证明每次Resume全部归零。
+原Init共同入口按softLabels[type]装配软键，再委托Init2。当前已由[独立标签合同](STEAM_FACILITY_LABELS.md)确认softLabels74为{0,2}，标签2取消消费者已证；不添加未注册的左软键。页面select、scroll、page与字段初始化沿构造/父页生命周期；不能由单张第一页截图证明每次Resume全部归零。
 
 ## 五种布局与共同窗框
 
@@ -100,16 +100,16 @@ Pop与Push的本地调用已证，不代表完整FormManager退休、所有父�
 
 ## 资源与交付资格
 
-本包登记20项common引用，含SEB间接图片依赖；18项逐字节对应已有出版副本，number05必须使用[Steam专用副本](../assets/steam-build-common/README.md)。两张尚无Steam出版副本，均已核与APK同名图片字节和RGBA不同：
+本包登记20项common引用，含SEB间接图片依赖；18项逐字节对应已有出版副本，number05必须使用[Steam专用副本](../assets/steam-build-common/README.md)。两张差异图现已在[设施素材包](../assets/steam-facility-common/README.md)出版，均与APK同名图片字节和RGBA不同；身份由该包清单统一维护：
 
 | 图片 | Steam身份 | 已证消费者 |
 | --- | --- | --- |
-| 37 icon_param00.png | 112×32、1790字节；SHA-256 `2b99ce3fa12e25e4d1fab78e06b6cd0ada87f8e3f4bf68c94c8421d7172c22e0` | Draw_icon(mode7)使用效果图标，第二行16×16，类型5选x96 |
-| 105 number08.png | 100×21、648字节；SHA-256 `8914321921983ba8508b86db5c499cb580df1a5468860d354a09cede9d9f8361` | SEB15的价格／维护费／品质／魅力／种类数字与使用效果frame14点数 |
+| 37 icon_param00.png | 112×32、1790字节 | Draw_icon(mode7)使用效果图标，第二行16×16，类型5选x96 |
+| 105 number08.png | 100×21、648字节 | SEB15的价格／维护费／品质／魅力／种类数字与使用效果frame14点数 |
 
-不能取APK副本冒充这两个Steam依赖。本批只登记源身份，不复制素材；完整SEB裁片／偏移及图片依赖已随EVIDENCE登记并检查范围。
+不能取APK副本冒充这两个Steam依赖。现维护普通74计划已绑定这两张正式Steam图；完整SEB裁片／偏移及图片依赖沿现素材清单，不在本页复制指纹。
 
-本批覆盖局部raw74绘制0x103453B8–0x1034728A及上述具名helper，不声称完整皮肤完成：softLabels74具体表值、未出版效果图、最终中文字体／TextLayout标签后端、场景输入到selectedTenant全部路径、表单退休仍有独立缺口。既有S043/S047/S054只能证明当时画面；本批没有原窗口逐像素验收、住宅74自然可达认证、维护C++测试或产品接入。
+静态范围为局部raw74绘制0x103453B8–0x1034728A及上述具名helper。普通实例两页的维护计划、Owner桥及短验已由[皮肤模块](../prototype/STEAM_FACILITY_SKIN.md)交付，不再列作缺口；定义预览、住宅／装备／入住／植物特殊模板、最终中文字体、场景到selectedTenant的全路径及原表单动态仍独立。既有S043/S047/S054及后继原图只证明各自已见状态，不认证逐像素一致、住宅自然可达或产品完整接入。
 
 ## 静态来源范围
 

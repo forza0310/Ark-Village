@@ -129,6 +129,7 @@ class StartupApplication {
     std::string act_commerce_page(std::uint64_t page, StartupCommerceAction action,
                                    int selection = 0);
     std::string input_commerce_top(std::uint64_t page,const StartupCommerceTopInput &input);
+    std::string input_commerce_facility(std::uint64_t page,const StartupCommerceFacilityInput &input);
     std::string act_facility_item_page(std::uint64_t page, StartupFacilityItemAction action,
                                        int selection = -1);
     std::string act_facility_catalog_page(std::uint64_t page, StartupFacilityCatalogAction action,

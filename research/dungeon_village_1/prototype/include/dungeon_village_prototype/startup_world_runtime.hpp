@@ -25,6 +25,7 @@ enum class StartupVillageActivityAction;
 enum class StartupFacilityItemAction;
 enum class StartupCommerceAction;
 struct StartupCommerceTopInput;
+struct StartupCommerceFacilityInput;
 enum class StartupFacilityCatalogAction;
 enum class StartupMagicPotEntry;
 enum class StartupMagicPotAction;
@@ -479,6 +480,7 @@ class StartupWorldRuntimeSession {
     StartupWorldRuntimeError act_commerce_page(std::uint64_t page, StartupCommerceAction action,
                                                int selection = 0);
     StartupWorldRuntimeError input_commerce_top(std::uint64_t page,const StartupCommerceTopInput &input);
+    StartupWorldRuntimeError input_commerce_facility(std::uint64_t page,const StartupCommerceFacilityInput &input);
     StartupWorldRuntimeError act_facility_item_page(std::uint64_t page,
                                                     StartupFacilityItemAction action,
                                                     int selection = -1);

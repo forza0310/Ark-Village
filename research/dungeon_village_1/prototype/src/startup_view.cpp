@@ -403,10 +403,13 @@ class ChineseFont {
                              "设施情报品质魅力维护费收入建设完毕加成返回图范围"
                              "信息距下一等级还有达到最高级周围设施的奖励没有使用道具"
                              "按确认键赠送礼物习得魔法精通特定职业可以一种两种三种全部"
-                             "南瓜商会欢迎光临购买出售道具设施所持金了解已";
+                             "南瓜商会欢迎光临购买出售道具设施所持金了解已价格可使用村子点数";
         for (int i = 32; i < 127; ++i)
             glyphs += static_cast<char>(i);
         for (const auto &v : startup_evidence().definitions)
+            glyphs += v.name;
+        // 商会包含尚未建造的定义，不能仅用开局已见设施裁字体字符集。
+        for (const auto &v : startup_world_rules().facilities)
             glyphs += v.name;
         for (const auto &v : startup_evidence().first_talk)
             glyphs += v;
@@ -1556,6 +1559,33 @@ std::optional<SteamCommerceSkinPlan> commerce_result_example(bool sale,const Chi
        !initialize_startup_world_commerce_pages(s))return {};
     return window_commerce_result_plan(s,s.scripts.pages.back().id,font);
 }
+std::optional<SteamCommerceSkinPlan> window_commerce_facility_plan(
+    const StartupWorldRuntimeState &state,std::uint64_t id,const ChineseFont &font,bool first_touch=false) {
+    SteamCommerceFacilityOptions o;o.view_y=23;o.scroll_first_touch=first_touch;
+    o.text.title="购买设施";o.text.facility_header="设施";o.text.price_header="价格";
+    o.text.explanation="可使用村子点数购买";
+    o.text.title_widths=std::array<int,2>{int(font.measure(o.text.title)),int(font.measure(o.text.title))};
+    o.text.price_width=int(font.measure(o.text.price_header));
+    return steam_commerce_facility_skin(state,id,o);
+}
+std::optional<SteamCommerceSkinPlan> commerce_facility_example(const std::string &name,const ChineseFont &font) {
+    StartupSession initial;StartupWorldRuntimeSession session(initial.state(),ref::WorldRandomStream::from_java_seed(1));
+    auto s=session.state();s.scripts.pages.front().lifecycle=3;s.scripts.executing_page.reset();
+    // 只读图例的开放位／点数／星级条件，不运行经营长前缀，不支付或领取建筑。
+    s.scripts.user_flags|=16U;s.scripts.event_calls[97]=1;
+    if(name=="commerce-buildings-funded")s.village_points=999;
+    if(name=="commerce-buildings-tail")s.rank=2;
+    if(open_startup_world_commerce(s)!=StartupWorldRuntimeError::none||!initialize_startup_world_commerce_pages(s))return {};
+    StartupCommerceTopInput input;input.selection=2;input.confirm=true;
+    if(input_startup_world_commerce_top(s,s.scripts.pages.back().id,input)!=StartupWorldRuntimeError::none||
+       !initialize_startup_world_commerce_pages(s))return {};
+    const auto id=s.scripts.pages.back().id;
+    if(name=="commerce-buildings-tail") {
+        StartupCommerceFacilityInput tail;tail.up=true;
+        if(input_startup_world_commerce_facility(s,id,tail)!=StartupWorldRuntimeError::none)return {};
+    }
+    return window_commerce_facility_plan(s,id,font);
+}
 std::optional<SteamConfigSkinPlan> config_example(const std::string &name,const ChineseFont &font) {
     // 显式条件值不是平台默认设置；不创建世界或触发实际音量/画质/保存。
     SteamConfigSkinInput in{{0,0,3,5},0,false};
@@ -2014,6 +2044,7 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
     const bool config_fixture=inspect_page=="config-quality"||inspect_page=="config-locked"||inspect_page=="config-speed"||inspect_page=="config-volume";
     const bool commerce_fixture=inspect_page=="commerce-buy"||inspect_page=="commerce-sell"||inspect_page=="commerce-facility";
     const bool commerce_result_fixture=inspect_page=="commerce-bought"||inspect_page=="commerce-sold";
+    const bool commerce_facility_fixture=inspect_page=="commerce-buildings"||inspect_page=="commerce-buildings-funded"||inspect_page=="commerce-buildings-tail";
     const bool gift_claim_fixture=inspect_page=="gift-facility"||inspect_page=="gift-profession"||inspect_page=="gift-equipment"||inspect_page=="gift-item";
     const bool award_result_fixture=inspect_page=="award-giving"||inspect_page=="award-lift"||inspect_page=="award-celebration"||inspect_page=="award-reward";
     const bool task_fixture=info_fixture||result_fixture||victory_fixture||deadline_fixture||roster_fixture||inspect_page=="task-selection"||inspect_page=="task-offer"||inspect_page=="task-recruitment";
@@ -2060,10 +2091,14 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
         reputation_glyphs+="研究绘制夹具无自然触发认证";
         for(const auto &d:startup_world_rules().items)reputation_glyphs+=d.name;
     }
+    if(commerce_facility_fixture)reputation_glyphs+="研究绘制夹具无自然触发认证详细";
     ChineseFont font(font_path,reputation_glyphs);
-    if(magic_fixture||task_fixture||residence_fixture||award_fixture||effort_fixture||award_result_fixture||mastery_fixture||gift_claim_fixture||clear_fixture||new_game_fixture||config_fixture||commerce_fixture||commerce_result_fixture) {
+    if(magic_fixture||task_fixture||residence_fixture||award_fixture||effort_fixture||award_result_fixture||mastery_fixture||gift_claim_fixture||clear_fixture||new_game_fixture||config_fixture||commerce_fixture||commerce_result_fixture||commerce_facility_fixture) {
         std::variant<SteamMagicPotPlan,SteamTaskSelectionPlan,SteamTaskRosterPlan,SteamTaskResultPlan,SteamTaskVictoryPlan,SteamTaskDeadlinePlan,SteamHumanOverviewPlan,SteamTownProgressPlan,SteamNewGamePlan,SteamConfigSkinPlan,SteamCommerceSkinPlan> plan;
-        if(commerce_result_fixture) {
+        if(commerce_facility_fixture) {
+            const auto value=commerce_facility_example(inspect_page,font);
+            if(!value)throw std::runtime_error("Commerce facility example rejected");plan=*value;
+        } else if(commerce_result_fixture) {
             const auto value=commerce_result_example(inspect_page=="commerce-sold",font);
             if(!value)throw std::runtime_error("Commerce result example rejected");plan=*value;
         } else if(commerce_fixture) {
@@ -3337,6 +3372,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
     std::optional<std::pair<std::uint64_t,int>> facility_item_marker; // raw75 marker16，同页同绝对行的第二次UP。
     std::optional<std::pair<std::uint64_t,int>> task_item_marker; // raw27同一行第二次UP，覆盖/暂停/失焦释放。
     std::optional<std::pair<std::uint64_t,int>> magic_item_marker; // raw42 marker16，跨页／拖动／暂停清除。
+    std::optional<std::pair<std::uint64_t,int>> commerce_item_marker; // raw85只保存鼠标标记，真实选择归Owner。
     bool human_scroll_gesture{};
     bool facility_scroll_gesture{}; // 即使切页清引用，仍吞掉本次拖动的最终release。
     auto build_orientation = ref::FacilityOrientation::first;
@@ -3353,11 +3389,13 @@ int run_startup_world_window(const std::filesystem::path &assets,
             current_top->kind==ref::WorldScriptPageKind::raw_page && current_top->legacy_page==17;
         if(human_scroll_drag&&(session.state().scene.framework_paused||
            current_top==session.state().scripts.pages.rend()||current_top->id!=human_scroll_drag->page||
-           (current_top->legacy_page!=22&&current_top->legacy_page!=25&&current_top->legacy_page!=26&&current_top->legacy_page!=27&&current_top->legacy_page!=31&&current_top->legacy_page!=32&&current_top->legacy_page!=42&&current_top->legacy_page!=43&&current_top->legacy_page!=51&&current_top->legacy_page!=54&&current_top->legacy_page!=60&&current_top->legacy_page!=61&&current_top->legacy_page!=64&&current_top->legacy_page!=75&&current_top->legacy_page!=79)))human_scroll_drag.reset();
+           (current_top->legacy_page!=22&&current_top->legacy_page!=25&&current_top->legacy_page!=26&&current_top->legacy_page!=27&&current_top->legacy_page!=31&&current_top->legacy_page!=32&&current_top->legacy_page!=42&&current_top->legacy_page!=43&&current_top->legacy_page!=51&&current_top->legacy_page!=54&&current_top->legacy_page!=60&&current_top->legacy_page!=61&&current_top->legacy_page!=64&&current_top->legacy_page!=75&&current_top->legacy_page!=79&&current_top->legacy_page!=85)))human_scroll_drag.reset();
         if(task_item_marker&&(session.state().scene.framework_paused||current_top==session.state().scripts.pages.rend()||
            current_top->id!=task_item_marker->first||current_top->legacy_page!=27||!IsWindowFocused()))task_item_marker.reset();
         if(magic_item_marker&&(session.state().scene.framework_paused||current_top==session.state().scripts.pages.rend()||
            current_top->id!=magic_item_marker->first||current_top->legacy_page!=42||!IsWindowFocused()))magic_item_marker.reset();
+        if(commerce_item_marker&&(session.state().scene.framework_paused||current_top==session.state().scripts.pages.rend()||
+           current_top->id!=commerce_item_marker->first||current_top->legacy_page!=85||!IsWindowFocused()))commerce_item_marker.reset();
         if(human_catalogue_marker&&(current_top==session.state().scripts.pages.rend()||
            current_top->id!=human_catalogue_marker->first))human_catalogue_marker.reset();
         if(facility_item_marker&&(session.state().scene.framework_paused||current_top==session.state().scripts.pages.rend()||
@@ -3641,7 +3679,50 @@ int run_startup_world_window(const std::filesystem::path &assets,
                         if(session.input_commerce_top(page->id,input)!=StartupWorldRuntimeError::none)
                             throw std::runtime_error("Commerce top input transaction rejected");
                 } else if(page->lifecycle!=0)throw std::runtime_error("Commerce top input source rejected");
-            } else if (raw >= 84 && raw <= 86) {
+            } else if(raw==85) {
+                const auto pid=page->id;
+                const auto view=inspect_startup_world_commerce_page(session.state(),pid);
+                const auto plan=window_commerce_facility_plan(session.state(),pid,font,human_scroll_drag&&human_scroll_drag->page==pid);
+                if(view&&plan) {
+                    StartupCommerceFacilityInput input;
+                    input.up=IsKeyPressed(KEY_UP);input.down=IsKeyPressed(KEY_DOWN);
+                    input.confirm=IsKeyPressed(KEY_ENTER);input.cancel=IsKeyPressed(KEY_ESCAPE)||hit({176,265,58,24});
+                    input.inspect=IsKeyPressed(KEY_I)||hit({8,265,58,24});
+                    if(input.up||input.down||input.confirm||input.cancel||input.inspect)commerce_item_marker.reset();
+                    const int count=static_cast<int>(view->entries.size());
+                    const auto point=[&](std::array<int,4> r){return Rectangle{human_overview_origin.x+r[0],human_overview_origin.y+r[1],float(r[2]),float(r[3])};};
+                    for(const auto &op:plan->operations)if(const auto *scroll=std::get_if<SteamHumanCatalogueScroll>(&op)) {
+                        const auto &r=scroll->rectangles[1].rect;auto expanded=r;expanded[0]-=3;expanded[2]+=23;
+                        if(count>3&&hit(point(expanded))) {
+                            const float grid=std::max(float(110-(r[3]-1))/(count-3),1.F);
+                            human_scroll_drag=FacilityScrollDrag{pid,mouse.y,view->first_visible,grid};
+                            human_scroll_gesture=true;pointer_consumed=true;
+                        } else if(count>3&&scroll->track_touch.rectangle&&hit(point(*scroll->track_touch.rectangle))) {
+                            input.scroll=StartupCommerceFacilityInput::Scroll{false,mouse.y<human_overview_origin.y+r[1]?-3:3};
+                            human_scroll_gesture=true;pointer_consumed=true;
+                        }
+                    }
+                    const float wheel=GetMouseWheelMove();
+                    if(count>3&&wheel!=0)input.scroll=StartupCommerceFacilityInput::Scroll{false,wheel>0?-1:1};
+                    if(human_scroll_drag&&human_scroll_drag->page==pid) {
+                        const double wanted=human_scroll_drag->first+std::trunc(double(mouse.y-human_scroll_drag->start_y)/human_scroll_drag->grid);
+                        input.scroll=StartupCommerceFacilityInput::Scroll{true,int(std::clamp(wanted,0.,double(std::max(count-3,0))))};
+                    }
+                    if(input.scroll||human_scroll_gesture)commerce_item_marker.reset();
+                    for(const auto &touch:management_touches(*plan,sprites))if(touch.component==11&&touch.rectangle&&
+                        !input.cancel&&!input.inspect&&!input.scroll&&!pointer_consumed&&IsMouseButtonReleased(MOUSE_BUTTON_LEFT)&&
+                        CheckCollisionPointRec(mouse,point(*touch.rectangle))) {
+                        const int row=touch.value&0xffff;
+                        input.selection=row;
+                        input.confirm=input.confirm||(commerce_item_marker==std::make_pair(pid,row)&&view->selection==row);
+                        commerce_item_marker=std::make_pair(pid,row);
+                    }
+                    if(input.up||input.down||input.confirm||input.cancel||input.inspect||input.selection||input.scroll)
+                        if(session.input_commerce_facility(pid,input)!=StartupWorldRuntimeError::none)
+                            throw std::runtime_error("Commerce facility input transaction rejected");
+                    if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT))human_scroll_drag.reset();
+                } else if(page->lifecycle!=0)throw std::runtime_error("Commerce facility input source rejected");
+            } else if (raw == 84 || raw == 86) {
                 const auto view = inspect_startup_world_commerce_page(session.state(), page->id);
                 if (view) {
                     using A = StartupCommerceAction;
@@ -3653,7 +3734,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                         if (IsKeyPressed(KEY_DOWN))
                             action = A::next;
                         const int count = static_cast<int>(view->entries.size());
-                        const int rows = raw == 84 ? 5 : 3;
+                        const int rows = 5;
                         for (int n = view->first_visible;
                              n < std::min(count, view->first_visible + rows); ++n)
                             if (hit({12, 74.F + (n - view->first_visible) * 27, 216, 26})) {
@@ -3669,8 +3750,6 @@ int run_startup_world_window(const std::filesystem::path &assets,
                         if (IsKeyPressed(KEY_RIGHT) || hit({148, 45, 80, 22}))
                             action = A::next_tab;
                     }
-                    if (raw == 85 && (IsKeyPressed(KEY_I) || hit({96, 265, 52, 24})))
-                        action = A::inspect;
                     if (raw != 86 && (IsKeyPressed(KEY_ENTER) || hit({176, 265, 58, 24})))
                         action = A::confirm;
                     if (action && session.act_commerce_page(page->id, *action, selected) !=
@@ -4899,6 +4978,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
             const bool steam_commodity=page->legacy_page==72||page->legacy_page==79;
             const bool steam_commerce_top=page->legacy_page==83;
             const bool steam_commerce_result=page->legacy_page==86;
+            const bool steam_commerce_facility=page->legacy_page==85;
             const bool steam_reputation=page->legacy_page==82;
             const bool steam_effect=page->legacy_page>=75&&page->legacy_page<=77;
             const bool steam_facility=page->legacy_page==74&&startup_world_facility_page_count(state,*page)==2;
@@ -4910,7 +4990,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
             const bool steam_gift_result=page->legacy_page==66&&startup_world_human_page_ready(state,page->id);
             const bool steam_attribute_result=(page->legacy_page==68||page->legacy_page==69)&&startup_world_human_page_ready(state,page->id);
             const bool steam_profession=(page->legacy_page==62||page->legacy_page==63)&&startup_world_human_page_ready(state,page->id);
-            if (page->legacy_page != 21&&!steam_commerce_top&&!steam_commerce_result&&!steam_gift_claim&&!steam_info&&!steam_task&&!steam_residence&&!steam_magic&&!steam_reputation&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result) DrawRectangle(5, 170, 230, 119, paper);
+            if (page->legacy_page != 21&&!steam_commerce_top&&!steam_commerce_result&&!steam_commerce_facility&&!steam_gift_claim&&!steam_info&&!steam_task&&!steam_residence&&!steam_magic&&!steam_reputation&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result) DrawRectangle(5, 170, 230, 119, paper);
             std::string title = page->title;
             if (title.empty() && page->kind == ref::WorldScriptPageKind::raw_page) {
                 if (page->legacy_page == 30 || page->legacy_page == 31 || page->legacy_page == 32)
@@ -4931,7 +5011,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                          page->monster_definition)
                     title = rules.monsters.at(*page->monster_definition).name;
             }
-            if (page->legacy_page != 21&&!steam_commerce_top&&!steam_commerce_result&&!steam_gift_claim&&!steam_info&&!steam_task&&!steam_residence&&!steam_magic&&!steam_reputation&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result)
+            if (page->legacy_page != 21&&!steam_commerce_top&&!steam_commerce_result&&!steam_commerce_facility&&!steam_gift_claim&&!steam_info&&!steam_task&&!steam_residence&&!steam_magic&&!steam_reputation&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result)
                 font.text(title, 12, 177, ink, font.measure(title) > 208 ? 10 : 12);
             if(steam_gift_claim) {
                 const auto plan=window_town_progress_plan(state,page->id,font);
@@ -4981,14 +5061,18 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 const auto plan=window_commerce_result_plan(state,page->id,font);
                 if(plan)draw_facility_ceremony(*plan,sprites,font);
                 else if(page->lifecycle!=0)throw std::runtime_error("Commerce result drawing source rejected");
-            } else if (page->legacy_page == 84 || page->legacy_page == 85) {
+            } else if(steam_commerce_facility) {
+                const auto plan=window_commerce_facility_plan(state,page->id,font,human_scroll_drag&&human_scroll_drag->page==page->id);
+                if(plan)draw_facility_ceremony(*plan,sprites,font);
+                else if(page->lifecycle!=0)throw std::runtime_error("Commerce facility drawing source rejected");
+            } else if (page->legacy_page == 84) {
                 DrawRectangle(8, 42, 224, 214, paper);
                 const auto view = inspect_startup_world_commerce_page(state, page->id);
                 font.text("南瓜商会", 16, 48);
                 if (view) {
                     const int raw = view->raw;
-                    if (raw == 84 || raw == 85) {
-                        const int rows = raw == 85 ? 3 : 5;
+                    {
+                        const int rows = 5;
                         if (raw == 84 && view->mode == 0)
                             font.text(view->tab == 0 ? "价格 >" : "持有 >", 164, 48, ink, 10);
                         for (int n = view->first_visible;
@@ -4999,20 +5083,14 @@ int run_startup_world_window(const std::filesystem::path &assets,
                             const float y = 78 + (n - view->first_visible) * 27;
                             if (n == view->selection)
                                 DrawRectangle(12, y - 4, 216, 26, {219, 232, 204, 255});
-                            const bool facility = raw == 85;
-                            if (!facility) {
+                            {
                                 const auto icon=startup_world_item_icon_draws(state,entry);
                                 if (!icon) throw std::runtime_error("商会道具图标载荷非法");
                                 for (const auto &plan:*icon) sprites.visual(plan,{18,y});
                             }
-                            font.text(facility ? rules.facilities.at(entry).name
-                                               : rules.items.at(entry).name,
-                                      facility?16:40, y, ink, 10);
+                            font.text(rules.items.at(entry).name,40,y,ink,10);
                             std::string value;
-                            if (facility)
-                                value = std::to_string(rules.facility_initial.at(entry).capacity) +
-                                        "点";
-                            else if (view->mode == 0 && view->tab == 1)
+                            if (view->mode == 0 && view->tab == 1)
                                 value = "持有" + std::to_string(state.items.at(entry).inventory);
                             else {
                                 value =
@@ -5029,15 +5107,12 @@ int run_startup_world_window(const std::filesystem::path &assets,
                         if (view->feedback_counter > 0)
                             font.text("多谢惠顾!", 16, 225);
                         else
-                            font.text(raw == 85         ? "使用村子点数"
-                                      : view->mode == 0 ? "购买一件道具"
+                            font.text(view->mode == 0 ? "购买一件道具"
                                                         : "出售一件道具",
                                       16, 225, ink, 10);
                     }
                     if (raw <= 85)
                         font.text("返回", 18, 272);
-                    if (raw == 85)
-                        font.text("详情", 100, 272);
                     font.text("确定", 190, 272);
                 }
             } else if (steam_effect) {

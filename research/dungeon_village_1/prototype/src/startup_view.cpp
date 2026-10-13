@@ -11,6 +11,7 @@
 #include "dungeon_village_prototype/steam_magic_pot_skin.hpp"
 #include "dungeon_village_prototype/steam_magic_pot_effect_skin.hpp"
 #include "dungeon_village_prototype/steam_task_selection_skin.hpp"
+#include "dungeon_village_prototype/steam_task_roster_skin.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 #include "dungeon_village_prototype/startup_world_persistence.hpp"
@@ -1029,11 +1030,12 @@ template<class Plan> void draw_facility_ceremony(const Plan &plan,SourceSprites 
                 if(clips.empty())throw std::runtime_error("城镇演出裁剪下溢");
                 clips.pop_back();EndScissorMode();apply_clip();
             }
-        } else if constexpr(std::is_same_v<T,SteamVillageActivityImage>||std::is_same_v<T,SteamTownImage>||std::is_same_v<T,SteamMagicPotImage>||std::is_same_v<T,SteamTaskSelectionImage>) {
+        } else if constexpr(std::is_same_v<T,SteamVillageActivityImage>||std::is_same_v<T,SteamTownImage>||std::is_same_v<T,SteamMagicPotImage>||std::is_same_v<T,SteamTaskSelectionImage>||std::is_same_v<T,SteamTaskRosterImage>) {
             const auto resource=[&] {
                 if constexpr(std::is_same_v<T,SteamVillageActivityImage>)return steam_village_activity_resource(value.asset);
                 else if constexpr(std::is_same_v<T,SteamMagicPotImage>)return steam_magic_pot_resource(value.asset);
                 else if constexpr(std::is_same_v<T,SteamTaskSelectionImage>)return steam_task_selection_resource(value.asset);
+                else if constexpr(std::is_same_v<T,SteamTaskRosterImage>)return steam_task_roster_resource(value.asset);
                 else return steam_town_resource(value.asset);
             }();
             if(!resource)throw std::runtime_error("城镇活动资源映射缺失");
@@ -1091,7 +1093,12 @@ template<class Plan> void draw_facility_ceremony(const Plan &plan,SourceSprites 
             SteamHumanOverviewPlan part;part.title=plan.title;part.soft_labels={0,0};
             for(const auto &r:value.skin.rectangles)part.operations.emplace_back(SteamStartupFrameDraw{r});
             draw_human_overview(part,sprites,font);
-        } else if constexpr(std::is_same_v<T,SteamFacilityEffectTouch>||std::is_same_v<T,SteamStartupTouch>) {
+        } else if constexpr(std::is_same_v<T,SteamTaskDepartureActor>) {
+            const auto actor=steam_task_departure_actor_skin(value);if(!actor)throw std::runtime_error("任务出发人物动作拒绝");
+            const Vector2 position{human_overview_origin.x+value.position[0],human_overview_origin.y+value.position[1]};
+            if(actor->weapon)sprites.visual(*actor->weapon,position);
+            sprites.actor(false,actor->body.sprite,actor->body.image,actor->body.frame,position);
+        } else if constexpr(std::is_same_v<T,SteamTaskRosterTouch>||std::is_same_v<T,SteamFacilityEffectTouch>||std::is_same_v<T,SteamStartupTouch>) {
             // 注册由窗口输入消费者执行，不在绘制时产生操作。
         } else {
             SteamHumanOverviewPlan part;part.title=plan.title;part.soft_labels={0,0};
@@ -1103,6 +1110,8 @@ template<class Plan> void draw_facility_ceremony(const Plan &plan,SourceSprites 
     },op);
     if(!clips.empty())throw std::runtime_error("设施演出裁剪未释放");
     if(plan.soft_labels[0]==6)font.text("查看位置",12,272);
+    else if(plan.soft_labels[0]==7)font.text("详细",12,272);
+    if(plan.soft_labels[1]==12)font.text("开始",188,272);
     if(plan.soft_labels[1]==2)font.text("返回",188,272);
 }
 std::optional<SteamFacilityEffectPlan> window_facility_effect_plan(
@@ -1196,6 +1205,26 @@ std::optional<SteamTaskSelectionPlan> task_selection_example(const std::string &
         animation.completion_tick=130;animation.portrait_timer=20;animation.displayed_count=1;in.recruitment=animation;
     }
     return steam_task_selection_skin(in);
+}
+std::optional<SteamTaskRosterPlan> task_roster_example(const std::string &name,const ChineseFont &font) {
+    StartupSession initial;StartupWorldRuntimeSession session(initial.state(),ref::WorldRandomStream::from_java_seed(1));
+    const auto &s=session.state();SteamTaskRosterInput in;
+    in.raw=name=="task-roster"?25:(name=="task-extra"||name=="task-extra-stats")?27:28;
+    in.tab=name=="task-extra-stats"?1:0;in.phase=name=="task-departing"?1:0;
+    in.counter=in.phase?24:0;in.secondary=10;in.participant_count=2;in.prediction=3;
+    in.task_name=s.rules->tasks.front().name;in.frozen_humans={0,1};if(in.raw==25)in.frozen_humans.push_back(-1);
+    for(int id:{0,1}) {
+        const auto h=startup_world_human_details(s,id);if(!h)return {};
+        SteamTaskRosterHuman human;human.identity=id;human.profession=h->profession;human.sex=h->sex;
+        human.weapon=h->equipment[0].value_or(-1);human.level=h->level;human.effort=h->effort;human.medals=h->medals;human.name=h->name;
+        human.fee=s.human_calendar.at(id).continuation_cost;human.affordable=s.scene.world.world.ai.accounting.funds()>=human.fee;
+        human.combat=h->combat;in.humans.push_back(human);
+    }
+    in.options.view_y=23;const std::string title=in.raw==25?"参加者名单":in.raw==27?"参加委托 "+std::to_string(in.tab+1)+"/2":"任务开始";
+    const int width=int(font.measure(title));in.options.title_widths=std::array<int,2>{width,width};
+    in.options.prediction_width=int(font.measure("我觉得会好的。"));
+    in.options.button_widths={int(font.measure("立即开始")),int(font.measure("重新考虑"))};
+    return steam_task_roster_skin(in);
 }
 std::optional<SteamMagicPotPlan> window_magic_pot_plan(
     const StartupWorldRuntimeState &s,std::uint64_t id,const ChineseFont &font,bool first_touch=false) {
@@ -1487,7 +1516,8 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
     Canvas canvas;
     SourceSprites sprites(assets / "original");
     const bool magic_fixture=inspect_page.rfind("magic-pot-",0)==0;
-    const bool task_fixture=inspect_page=="task-selection"||inspect_page=="task-offer"||inspect_page=="task-recruitment";
+    const bool roster_fixture=inspect_page=="task-roster"||inspect_page=="task-extra"||inspect_page=="task-extra-stats"||inspect_page=="task-departure"||inspect_page=="task-departing";
+    const bool task_fixture=roster_fixture||inspect_page=="task-selection"||inspect_page=="task-offer"||inspect_page=="task-recruitment";
     const bool management_fixture=inspect_page.rfind("village-",0)==0||inspect_page.rfind("town-",0)==0;
     const bool reputation_fixture=inspect_page=="facility-reputation"||inspect_page=="facility-reputation-result";
     std::string reputation_glyphs;
@@ -1508,17 +1538,20 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
         for(const auto &d:startup_world_rules().facilities)reputation_glyphs+=d.name;
     }
     if(task_fixture) {
-        reputation_glyphs+="任务选择寻求冒险者姓名费用请选择募集交给我多指教来了我会加油的我要参加好期待合计人研究绘制夹具无自然触发认证查看位置！!";
+        reputation_glyphs+="参加者名单参加委托任务开始立即开始重新考虑我觉得会好的出发追加加油详细开始。任务选择寻求冒险者姓名费用请选择募集交给我多指教来了我会加油的我要参加好期待合计人研究绘制夹具无自然触发认证查看位置！!";
         for(const auto &d:startup_world_rules().tasks)reputation_glyphs+=d.name;
         for(const auto &d:startup_world_rules().humans)reputation_glyphs+=d.name;
     }
     ChineseFont font(font_path,reputation_glyphs);
     if(magic_fixture||task_fixture) {
-        std::variant<SteamMagicPotPlan,SteamTaskSelectionPlan> plan;
+        std::variant<SteamMagicPotPlan,SteamTaskSelectionPlan,SteamTaskRosterPlan> plan;
         if(magic_fixture) {
             const auto source=magic_pot_example(inspect_page);
             const auto value=window_magic_pot_plan(source,source.scripts.pages.back().id,font);
             if(!value)throw std::runtime_error("Magic example plan rejected");plan=*value;
+        } else if(roster_fixture) {
+            const auto value=task_roster_example(inspect_page,font);
+            if(!value)throw std::runtime_error("Task roster example plan rejected");plan=*value;
         } else {
             const auto value=task_selection_example(inspect_page,font);
             if(!value)throw std::runtime_error("Task example plan rejected");plan=*value;

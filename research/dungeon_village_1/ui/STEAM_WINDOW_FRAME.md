@@ -73,7 +73,7 @@ mode0使用SEB自带图片30 `wnd_conner.png`。mode1通过DrawSeb的显式Image
 | empty_slot两行 | RGB(30,30,30)、anchor2，点(126,R+15) | 0x1020FB0F–0x1020FB50、0x1020FF0E–0x1020FF51 |
 | raw1 answer两按钮 | 每个按钮绘字前重新SetColor(SC_WINDOW_BLACK)=(92,51,31)，anchor2；选中橙底不会泄漏为文字色 | 0x1035708D–0x103570F6 |
 
-新增发现：**空手动栏且被选中时，原TitleForm还画RGB(200,200,255)底色(85,R+14,82,14)**，证据0x1020F955–0x1020F9C8。当前`steam_save_selector_skin`只给非空栏加底色，空手动分支缺这一图元。它与非空栏日文宽94／非日文宽102的矩形不同，不能复用其位置来凑齐。本页登记具体缺口，未称已修复。
+新增发现：**空手动栏且被选中时，原TitleForm还画RGB(200,200,255)底色(85,R+14,82,14)**，证据0x1020F955–0x1020F9C8。当前`steam_save_selector_skin`已补空手动选中底色，现`steam_startup_skin_checks`保留位置／颜色独立断言。它与非空栏日文宽94／非日文宽102的矩形不同，不能复用其位置来凑齐。这项维护图元已完成，原OS输入与当前字体动态仍独立。
 
 ## clip从逻辑矩形到字体队列
 

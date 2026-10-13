@@ -64,10 +64,10 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 22 | QUEST_SELECT | 任务 | [局部合同](PAGES.md#steam任务选择与募集22–24)：目录／原任务名／NEW／费用／宝箱等级及软6场景5→4已接；静态／维护短测与原窗口动态分开，字体／OS和特殊subQuest待证 |
 | 23 | QUEST_GATHER | 任务 | [局部合同](PAGES.md#steam任务选择与募集22–24)：单募集确认／费用／取消与整轮方向输入已接；静态／维护短测与原窗口动态分开，字体／OS和特殊subQuest待证 |
 | 24 | QUEST_GATHERANIME | 任务 | [局部合同](PAGES.md#steam任务选择与募集22–24)：真实X/Y报名演出／冻结发言／肖像／勋章／人数与held已接；静态／维护短测与原窗口动态分开，字体／OS和特殊subQuest待证 |
-| 25 | QUEST_GATHERLIST | 任务 | 仅声明；更新／绘制／动态链待逐项 |
-| 26 | QUEST_GATHERLIST_SELECTING | 任务 | 仅声明；更新／绘制／动态链待逐项 |
-| 27 | QUEST_GATHERLIST_ADD | 任务 | 仅声明；更新／绘制／动态链待逐项 |
-| 28 | QUEST_START | 任务 | 仅声明；更新／绘制／动态链待逐项 |
+| 25 | QUEST_GATHERLIST | 任务 | [原序纯皮肤](PAGES.md#steam参加名单追加与出发25–28)／资源及条件示例已交；原业务已维护，新UI选择／冻结名单／返回的持久接线待方案确认，原动态另验 |
+| 26 | QUEST_GATHERLIST_SELECTING | 任务 | [原序纯皮肤](PAGES.md#steam参加名单追加与出发25–28)／资源及条件示例已交；原业务已维护，新UI选择／冻结名单／返回的持久接线待方案确认，原动态另验 |
+| 27 | QUEST_GATHERLIST_ADD | 任务 | [原序纯皮肤](PAGES.md#steam参加名单追加与出发25–28)／资源及条件示例已交；原业务已维护，新UI选择／冻结名单／返回的持久接线待方案确认，原动态另验 |
+| 28 | QUEST_START | 任务 | [原序纯皮肤](PAGES.md#steam参加名单追加与出发25–28)／资源及条件示例已交；原业务已维护，新UI选择／冻结名单／返回的持久接线待方案确认，原动态另验 |
 | 29 | QUEST_INFO | 任务 | 仅声明；更新／绘制／动态链待逐项 |
 | 30 | QUEST_FINISH | 任务 | 仅声明；更新／绘制／动态链待逐项 |
 | 31 | QUEST_FINISH_MONSTER | 任务 | 仅声明；更新／绘制／动态链待逐项 |

@@ -1,4 +1,5 @@
 #include "dungeon_village_prototype/steam_task_selection_skin.hpp"
+#include "dungeon_village_prototype/steam_task_roster_skin.hpp"
 #include "dungeon_village_prototype/startup_world_persistence.hpp"
 #include "dungeon_village_tools/sprite.hpp"
 #include "support/world_fixture.hpp"
@@ -18,7 +19,7 @@ struct Checks {
         ++count;if(!ok)throw std::runtime_error(std::string("Steam任务选择皮肤：")+why);
     }
 };
-template<class T> std::vector<T> parts(const SteamTaskSelectionPlan &p) {
+template<class T,class Plan> std::vector<T> parts(const Plan &p) {
     std::vector<T> out;
     for(const auto &op:p.operations)if(const auto *v=std::get_if<T>(&op))out.push_back(*v);
     return out;
@@ -265,9 +266,173 @@ void resources(Checks &c,const std::filesystem::path &source_root) {
     c(badge&&badge->image==147&&std::filesystem::is_regular_file(root/badge->published_image),
       "任务NEW只复用正式image147，不能替换GET148");
 }
+SteamTaskRosterInput roster_input(int raw) {
+    SteamTaskRosterInput in;in.raw=raw;in.participant_count=2;in.task_name="任务条件";
+    in.options.title_widths=std::array<int,2>{60,62};in.options.prediction_width=40;
+    in.options.button_widths={240,24};
+    for(int i=0;i<6;++i) {
+        SteamTaskRosterHuman h;h.identity=i;h.profession=0;h.name="参加者条件";h.level=i==0?10:3;
+        h.effort=41;h.medals=7;h.fee=123;h.combat={101,202,303,404};h.affordable=i%2==0;
+        in.humans.push_back(h);in.frozen_humans.push_back(i);
+    }
+    if(raw<=26)in.frozen_humans.push_back(-1);
+    if(raw==28)in.participant_count=6;
+    return in;
+}
+void rosters(Checks &c) {
+    // Steam25/26 RVA331996；APK b/g:938–1001，冻结X末−1与实时m.size独立。
+    for(int raw:{25,26}) {
+        auto in=roster_input(raw);auto plan=steam_task_roster_skin(in);c(bool(plan),"25/26合法冻结名单");
+        c(plan->soft_labels==std::array<int,2>{7,raw==25?12:2},"25开始脚标与26返回不混用");
+        const auto words=parts<SteamTaskSelectionText>(*plan);
+        c(words[0].value=="2名参加"&&words[0].rectangle==std::array<int,4>{74,69,0,0}&&
+          words[1].rectangle==std::array<int,4>{161,69,60,11}&&words[1].anchor==34&&words[1].layout,
+          "人数读实时2，不用六个冻结人重算；Steam加油用TextLayout");
+        const auto touches=parts<SteamTaskRosterTouch>(*plan);
+        c(touches.size()==5&&touches[0].touch.option==0&&touches[0].touch.value==0x20000&&
+          touches[0].touch.rectangle==std::optional<std::array<int,4>>{{10,97,230,16}}&&
+          touches[0].margin==std::array<int,4>{0,-22,0,0},"25/26五行无marker、右margin−22");
+        const auto portraits=parts<SteamHumanPortrait>(*plan);
+        c(portraits.size()==5&&portraits[0].position==std::array<int,2>{37,118}&&
+          portraits[0].clip==std::optional<std::array<int,4>>{{29,96,15,14}},"25/26原Draw_chara2的y−1 clip与y+21锚");
+        const auto numbers=parts<SteamFacilityNumber>(*plan);
+        c(numbers.front().value==41&&numbers.front().position==std::array<int,2>{207,97}&&
+          numbers.front().asset==SteamFacilityAsset::number05,"加油列真实努力41，满级行不画10数");
+        const auto images=parts<SteamFacilityImage>(*plan);
+        c(std::any_of(images.begin(),images.end(),[](const auto &v){return v.asset==SteamFacilityAsset::maximum&&
+          v.position==std::array<int,2>{140,99};}),"名单十级MAX用原image129锚");
+        c(parts<SteamHumanCatalogueScroll>(*plan)[0].arguments==std::array<int,3>{7,5,0x20000},
+          "滚动count包含末行追加委托，不减哨兵");
+        in.selection=in.first=6;plan=steam_task_roster_skin(in);c(bool(plan),"末哨兵单行尾窗");
+        c(parts<SteamHumanPortrait>(*plan).empty()&&parts<SteamTaskRosterTouch>(*plan).size()==1&&
+          parts<SteamTaskRosterTouch>(*plan)[0].touch.value==(0x20000|6),"末−1只画追加委托，不造人物");
+        const auto tail=parts<SteamTaskSelectionText>(*plan);
+        c(std::any_of(tail.begin(),tail.end(),[](const auto &v){return v.value=="追加参加委托"&&v.rectangle==std::array<int,4>{29,97,0,0};}),
+          "末行复用首绘行y97与绝对选择6");
+        if(raw==26) {
+            in.ongoing=true;plan=steam_task_roster_skin(in);
+            c(parts<SteamTaskSelectionText>(*plan).back().value=="任务条件实施中","26仅原任务实施资格显示动态名后缀");
+            in.task_name.clear();c(!steam_task_roster_skin(in),"26实施中缺任务名拒绝");
+        }
+    }
+    // Steam27 RVA3311DE；APK b/g:1002–1064，四战斗值和共享E勋章槽。
+    auto in=roster_input(27);auto plan=steam_task_roster_skin(in);c(bool(plan),"27费用页");
+    const auto row=parts<SteamTaskRosterTouch>(*plan);
+    c(row[0].touch.option==16&&row[0].margin==std::array<int,4>{29,29,0,0}&&
+      row[0].touch.rectangle==std::optional<std::array<int,4>>{{23,95,191,16}},"27原marker16及双侧29，不沿25 margin");
+    const auto portraits=parts<SteamHumanPortrait>(*plan);
+    c(portraits[0].position==std::array<int,2>{37,117}&&portraits[0].clip==std::optional<std::array<int,4>>{{29,96,15,14}},
+      "27原Draw_chara调用y−1，clip与25同但锚少一行");
+    auto numbers=parts<SteamFacilityNumber>(*plan);
+    c(numbers[0].kind==SteamFacilityNumberKind::money&&numbers[0].position==std::array<int,2>{212,98}&&
+      numbers[0].asset==SteamFacilityAsset::number08&&numbers[2].asset==SteamFacilityAsset::number12,
+      "27费用按真实负担资格用SEB15/19，不以努力或勋章替代费用");
+    in.tab=1;plan=steam_task_roster_skin(in);c(bool(plan),"27四战斗值页");
+    numbers=parts<SteamFacilityNumber>(*plan);
+    for(int i=0;i<4;++i)c(numbers[i].value==101*(i+1)&&numbers[i].position==std::array<int,2>{80+36*i,99}&&
+      numbers[i].asset==SteamFacilityAsset::number08,"四战斗值按HP/攻击/防御/魔法源序，不套六属性");
+    c(numbers[4].value==7&&numbers[4].position==std::array<int,2>{211,98},"原E共享勋章数，独立于四战斗值");
+    const auto icons=parts<SteamHumanImage>(*plan);
+    c(icons.size()==5&&icons[0].asset==SteamHumanAsset::combat_icon&&icons[3].frame==3&&
+      icons[4].asset==SteamHumanAsset::medal&&icons[4].crop==std::optional<std::array<int,4>>{{14,0,14,14}},
+      "四战斗图标及原类别6勋章裁片，第二页不加人物名");
+    for(int raw:{25,26,27}) {
+        auto bad=roster_input(raw);bad.frozen_humans.push_back(0);c(!steam_task_roster_skin(bad),"重复冻结身份拒绝");
+        bad=roster_input(raw);bad.frozen_humans[0]=999;c(!steam_task_roster_skin(bad),"缺冻结人物定义拒绝");
+        bad=roster_input(raw);bad.first=1;c(!steam_task_roster_skin(bad),"首行大于选择拒绝，不改游标");
+        bad=roster_input(raw);bad.humans[0].combat[0]=-1;c(!steam_task_roster_skin(bad),"坏四战斗值拒绝");
+    }
+    in=roster_input(25);in.frozen_humans.pop_back();c(!steam_task_roster_skin(in),"25缺末−1不能补哨兵");
+    in=roster_input(27);in.frozen_humans.push_back(-1);c(!steam_task_roster_skin(in),"27禁止追加委托哨兵");
+}
+void departure(Checks &c) {
+    // Steam28 RVA330630；APK b/g:1274–1349与原bi/bh动作门槛，不读页面FPS。
+    auto in=roster_input(28);in.frozen_humans={0};in.participant_count=1;
+    auto plan=steam_task_roster_skin(in);c(bool(plan),"28单人不除零或补中心");
+    const auto actor=parts<SteamTaskDepartureActor>(*plan);
+    c(actor.size()==1&&actor[0].position==std::array<int,2>{80,134},"单人Rate同端点返回left80，不自拟120");
+    const auto words=parts<SteamTaskSelectionText>(*plan);
+    c(words[0].value=="有些困难吧"&&words[0].rectangle==std::array<int,4>{150,164,0,0}&&words[0].anchor==4,
+      "评价原索引0及实际测宽40+20的右锚");
+    const auto touch=parts<SteamStartupTouch>(*plan);
+    c(touch.size()==2&&touch[0].component==3&&touch[0].option==0&&
+      touch[0].rectangle==std::optional<std::array<int,4>>{{31,167,98,56}}&&
+      touch[1].rectangle==std::optional<std::array<int,4>>{{121,167,98,56}},"原两个固定Touch3不随文字宽变化");
+    c(std::any_of(plan->operations.begin(),plan->operations.end(),[](const auto &op){
+        const auto *f=std::get_if<SteamStartupFrameDraw>(&op);const auto *r=f?std::get_if<StartupSkinRect>(f):nullptr;
+        return r&&r->rect==std::array<int,4>{-48,187,256,16}&&r->rgb==std::array<int,3>{255,153,55};
+    }),"dx/dy按钮测宽240+16，不套底说明夹200");
+    in.options.prediction_width.reset();c(!steam_task_roster_skin(in),"phase0缺评价测宽拒绝");
+    in=roster_input(28);in.frozen_humans={0};in.participant_count=1;in.phase=1;in.secondary=12;
+    in.options.prediction_width.reset();in.options.button_widths={};
+    constexpr std::array<std::array<int,3>,13> oracle{{{1,0,80},{2,4,80},{8,0,80},{12,4,80},{18,0,80},
+        {22,4,80},{35,4,80},{36,0,80},{40,0,80},{50,0,80},{70,0,-10},{90,0,-100},{91,0,-100}}};
+    for(const auto &sample:oracle) {
+        in.counter=sample[0];plan=steam_task_roster_skin(in);c(bool(plan),"出发动作/横移独立钟合法");
+        const auto actors=parts<SteamTaskDepartureActor>(*plan);
+        c(actors.size()==1&&actors[0].action==sample[1]&&actors[0].step==(sample[1]==4?0:3)&&
+          actors[0].position==std::array<int,2>{sample[2],134},"bi2/40/50/90及bh6/10/16/20/34原边界");
+        const auto body=steam_task_departure_actor_skin(actors[0]);
+        c(body&&body->body.sprite==(sample[1]==4?22:2)&&body->body.frame==(sample[1]==4?0:3)&&!body->shadow,
+          "action4身体SEB22/帧0，阴影单列而非普通walk帧或重复内嵌");
+        const auto &ops=plan->operations;
+        const auto at=std::find_if(ops.begin(),ops.end(),[](const auto &op){return std::holds_alternative<SteamTaskDepartureActor>(op);});
+        c(at!=ops.begin()&&std::holds_alternative<SteamTaskRosterImage>(*(at-1))&&
+          std::get<SteamTaskRosterImage>(*(at-1)).asset==SteamTaskRosterAsset::shadow&&
+          std::get<SteamTaskRosterImage>(*(at-1)).position==actors[0].position,"阴影紧邻且先于当前身体/武器");
+        const auto touches=parts<SteamStartupTouch>(*plan);
+        c(touches.size()==1&&touches[0].component==2&&touches[0].option==2&&!touches[0].rectangle,
+          "出发phase1无矩形Touch2，不重用phase0按钮注册");
+        const auto clips=parts<SteamTaskSelectionClip>(*plan);
+        c(clips.size()==2&&clips[0].push&&clips[0].rectangle==std::array<int,4>{30,66,180,82}&&!clips[1].push,
+          "背景框内人物clip成对退休");
+    }
+    in.counter=8;in.secondary=4;plan=steam_task_roster_skin(in);
+    c(parts<SteamTaskDepartureActor>(*plan)[0].step==1,"页计数8不决定身体帧，真实副钟4给step1");
+    const auto weapon=std::find_if(startup_world_rules().equipment.begin(),startup_world_rules().equipment.end(),
+        [](const auto &v){return v.shop.kind==1&&v.render_style==0;});
+    c(weapon!=startup_world_rules().equipment.end(),"固定表有style0武器");
+    SteamTaskDepartureActor raised{0,0,weapon->shop.id,4,0,{80,134}};
+    const auto skin=steam_task_departure_actor_skin(raised);
+    c(skin&&skin->weapon&&skin->weapon->offset==std::array<int,2>{-19,-37}&&skin->weapon->frame==0,
+      "action4武器a/p.A样本为−19/−37及bf帧0，不沿动作0偏移");
+    raised.step=1;c(!steam_task_departure_actor_skin(raised),"未核action4额外步拒绝");
+    raised.step=0;raised.action=3;c(!steam_task_departure_actor_skin(raised),"helper不冒认其它动作已覆盖");
+    auto bad=in;bad.participant_count=2;c(!steam_task_roster_skin(bad),"28实际m人数须匹配真实顺序，不用25独立X规则");
+    bad=in;bad.prediction=7;c(!steam_task_roster_skin(bad),"评价索引越界显式拒绝");
+    bad=in;bad.secondary=-1;c(!steam_task_roster_skin(bad),"坏副钟不由页计数补齐");
+}
+void roster_resources(Checks &c,const std::filesystem::path &source_root) {
+    const auto root=source_root.parent_path();
+    for(const auto asset:{SteamTaskRosterAsset::departure_background,SteamTaskRosterAsset::secretary_face,SteamTaskRosterAsset::shadow}) {
+        const auto r=steam_task_roster_resource(asset);c(bool(r)&&std::filesystem::is_regular_file(root/r->published_image),"三资源正式路径存在");
+        auto image=LoadImage((root/r->published_image).string().c_str());c(image.data!=nullptr,"出发资源PNG可解码");
+        const int w=image.width,h=image.height;UnloadImage(image);
+        c(w==(asset==SteamTaskRosterAsset::departure_background?93:asset==SteamTaskRosterAsset::secretary_face?34:123)&&
+          h==(asset==SteamTaskRosterAsset::departure_background?82:asset==SteamTaskRosterAsset::secretary_face?27:3),
+          "原mp_back93×82/秘书34×27/阴影123×3，各裁片独立");
+        if(asset==SteamTaskRosterAsset::shadow)c(r->image==3&&r->sprite==25&&r->published_sprite&&
+          dungeon_village_tools::parse_legacy_seb(bytes(root/r->published_sprite)).frame_count==4,"阴影SEB25真实四帧，phase1只请求帧0");
+    }
+    for(int raw:{25,26,27,28}) {
+        const auto in=roster_input(raw);const auto plan=steam_task_roster_skin(in);c(bool(plan),"稳定只读计划");
+        for(int repeat=0;repeat<4;++repeat) {
+            const auto again=steam_task_roster_skin(in);
+            c(again&&again->operations.size()==plan->operations.size(),"不变DTO重复绘制规模稳定，不保留跨查询池");
+        }
+        for(const auto &op:plan->operations)if(const auto *v=std::get_if<SteamTaskRosterImage>(&op)) {
+            const auto resource=steam_task_roster_resource(v->asset);c(bool(resource),"每个新增资源图元都有消费映射");
+            auto image=LoadImage((root/resource->published_image).string().c_str());c(image.data!=nullptr,"图元资源能解码");
+            if(v->crop) {const auto &r=*v->crop;c(r[0]>=0&&r[1]>=0&&r[2]>0&&r[3]>0&&
+                r[0]+r[2]<=image.width&&r[1]+r[3]<=image.height,"背景三片及秘书16×16裁片不越原PNG");}
+            UnloadImage(image);
+        }
+    }
+}
 } // namespace
 
 // 仅扩现visuals套件；报名扣费、held推进、随机次序与回滚由pages主责。
 int check_steam_task_selection_skins(const std::filesystem::path &source_root) {
-    Checks c;directory(c);prompt(c);recruitment(c);owner(c);resources(c,source_root);return c.count;
+    Checks c;directory(c);prompt(c);recruitment(c);owner(c);resources(c,source_root);
+    rosters(c);departure(c);roster_resources(c,source_root);return c.count;
 }

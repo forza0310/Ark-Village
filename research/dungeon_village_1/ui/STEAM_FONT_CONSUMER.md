@@ -38,10 +38,29 @@ ResourceManager（`globalgamemanagers` pathID13）首个资源表共1251行。�
 
 - `IsNeedLocalizeScale`（`0x77DAA0`）：先采用本地化设置栈顶布尔值；栈计数≤0时读`Config.LOCALIZE_FONT_SCALE`。还需未锁定、非Japanese、`usedSize_≥6`。
 - `GetLocalizeScale`（`0x77D810`）：默认float32比例约0.83；`Config.ASIA_FONT_SCALE`为真且语言以`ko`或`zh`开头（`StringComparison`参数1）时改为约0.98。按float32计算`usedSize_×比例+0.1`后向零截断；`usedSize_≤9`时结果不小于`usedSize_-1`。原始float位型见机器证据，不把十进制显示写成精确实数计算。
-- `UpdateFontScale`（`0x77EB70`）：当实例`fontScale_`与静态`requestFontScale_`不同，先同步实例值，再以当前`size_`、`usePreset=true`调用`SetSize`重算。静态初始化已核`requestFontScale_=100`，但`SetSize`全部规则及后继请求值仍需另核。
+- `UpdateFontScale`（`0x77EB70`）：当实例`fontScale_`与静态`requestFontScale_`不同，先同步实例值，再以当前`size_`、`usePreset=true`调用`SetSize`重算。静态初始化已核`requestFontScale_=100`，`SetSize`局部取整与preset见下节；全部后继请求值仍独立。
 - `GetOffset`（`0x77D920`）：返回`float32(usedSize_) × requestFontOffset_ / 12`。这是返回的偏移量，不是本批已核完整DrawString基线公式；请求偏移的后继设置时机和消费位置尚未闭合。
 
 `Font._draw`（`0x77F450`）仅把当前字体压入Graphics，调用`Graphics.DrawString(text,x,y)`，然后PopFont。本页不越过该调用边界猜绘制基线、抗锯齿、裁剪或纹理坐标。
+
+## 请求字号、preset与usedSize
+
+2026-10-13补固定Steam静态链，未运行原窗口或指定中文Font对象。`Font._setSize` RVA77FD50先保存请求`size_`、`usedSize_`及`usePreset_`（VA1077FD7C–82）。仅当usePreset=true且有符号请求值小于HEIGHT.Length(3)才索引HEIGHT；此处负值仍会在数组无符号边界检查失败，不能当作接受负索引。其它请求直接用输入值。真正preset为：
+
+| 请求 | usePreset=true | usePreset=false |
+| --- | ---: | ---: |
+| 0 | 12 | 0 |
+| 1 | 24 | 1 |
+| 2 | 30 | 2 |
+| ≥3 | 请求本值 | 请求本值 |
+
+之后按原整数次序计算`usedSize_=trunc_toward_zero(int32(usedSize_×fontScale_)/100)`，VA1077FDE8–FE04先32位整数乘再有符号除100；没有float、+0.1／+0.001或最小1夹限。然后将usedSize传`GUIStyle.fontSize`（1077FE11）。GUIStyle缺失走原异常，不在此函数补Init。维护若拒负输入、非正scale或溢出，须明确标安全策略，不能称原代码有clamp；C++实现也不能直接依赖有符号溢出未定义行为。
+
+HEIGHT来自Font.cctor RVA77EDD0的实际InitializeArray调用（1077EE60，slot110F6CBC→fieldRef352／field7026／metadata dataOffset3014052），12字节为`[12,24,30]`；独立WIDTH slot110F6F08为`[6,12,15]`，_setSize不读它。构造77F2F0从当前requestFontScale复制实例比例，初次_init77FC90调用SetSize(0,true)，因此在原静态100%条件下usedSize12；这不等于所有动态页面都使用12。
+
+公开`SetSize` RVA77DF50冻结this／size／usePreset；CheckUiThread为真直接调用_setSize，否则经Font.RunOnUiThread RVA77DE20以wait=true交IApplication，lambda792CC0读取同三字段进入_setSize。此合同只给调度要求，不模拟真实平台线程。SetScale77DF00仅写静态请求，不立刻遍历实例；UpdateFontScale77EB70发现实例比例变化才同步，并用原size_、**固定usePreset=true**重算，不读取旧usePreset_。例如显式size1在比例改变后的重算会走preset1，不能擅自“保留显式模式”。
+
+可用于产品独立数值校验的源公式样例：preset0／1／2在100%为12／24／30；显式0／1／2仍为0／1／2；请求3在100%为3；显式11在98%为10，preset0在98%为11，显式11在125%为13。这些是静态公式结果，不是字形实际像素高度或运行字体测量。后继本地化比例与最终GUI比例仍分别执行，不能并成一次舍入。
 
 ## 测宽不是字数乘固定字宽
 
@@ -58,7 +77,7 @@ ResourceManager（`globalgamemanagers` pathID13）首个资源表共1251行。�
 
 ## 仍需闭合及产品使用边界
 
-已核层级是资源查找顺序、GUIStyle对象切换资格、本地化公式和两种测宽调用链。仍缺当前语言真实返回值、Unity空font具体回退、当前`useFontTexture_`赋值、局部开关／scale／offset完整设置来源、TextLayout标签处理及DrawString实际基线。
+已核层级是资源查找顺序、GUIStyle对象切换资格、本地化公式和两种测宽调用链。仍缺当前语言真实返回值、Unity空font具体回退、局部开关／scale／offset完整设置来源、TextLayout完整标签处理及实际字形baseline。[文字后端](STEAM_FONT_BACKEND.md)已有开关资格及栈恢复，[普通DrawString](STEAM_FONT_DRAW.md)已核锚点／字号补偿／矩阵→clip→GUI位置；这些不代替当前运行字体对象和字形度量。
 
 产品可据此分开语言字体选择、测宽与绘制，并把比例／临时字号恢复作为契约候选；不能把静态存在的字体直接发布为“原Steam中文字体”，不能在未核中文字体和真实尺寸前用截图目测常量替代测宽。本批没有导出或发布字体制品。
 

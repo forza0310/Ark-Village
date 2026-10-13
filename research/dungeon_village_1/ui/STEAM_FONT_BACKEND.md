@@ -55,7 +55,7 @@ OnGUI的多条正常／异常收尾调用`0x1077BDF0`。该116字节helper从当
 | 条件／落点 | 已核消费者 | 本批边界 |
 | --- | --- | --- |
 | useFontTexture=false、glRender=false | 更新GUI组后调用UnityEngine.GUI.Label(Rect,text,GUIStyle) | 最终字体栅格化／缺字回退由引擎消费，未认证 |
-| useFontTexture=false、glRender=true | 准备Graphics.GLText、传入位置／文字／GUIStyle／clip并增加glTextCount | 队列最终绘制与实际字形仍待闭合 |
+| useFontTexture=false、glRender=true | 准备Graphics.GLText、传入位置／文字／GUIStyle／clip并增加glTextCount | [队列最终消费／退休](STEAM_GLTEXT_LIFECYCLE.md)已核至GUI.Label；实际字形仍待证 |
 | useFontTexture=true | 取得FontTexture后调用DrawScaledImage，透明度不足时配对RenderMode | 纹理生成器、缓存完整生命周期与最终采样仍待闭合 |
 | 目标Image的另一分支 | 复制Font，建立Image.TextRenderTask并AddTextRenderTask | 不是即时GUI.Label；任务执行者仍待闭合 |
 
@@ -67,4 +67,4 @@ OnGUI的多条正常／异常收尾调用`0x1077BDF0`。该116字节helper从当
 
 产品可按上述契约区分字体对象、后端开关、临时GUIStyle与外层GUISkin恢复，避免SetFont误改后端或认为一次DrawString已恢复所有外部状态。默认资源的Arial引用可用于后续取证，不能直接作为中文字体交付或以另选系统字体冒充原样。
 
-仍缺：真实当前GUI.skin及中文glyph fallback、DefaultUseFontTexture完整上游、TextLayout标签与位置变换／clip全链、GLText／Image任务最终消费者、FontTexture资源退休，以及完整游戏窗框的全部页面使用资格。窗口观察可补最终画面尺寸和字形表现，但单张截图仍不能证明font对象身份。后续继续静态缩小这些边界，必要动态由既有外部提示词分支取得。
+仍缺：真实当前GUI.skin及中文glyph fallback、DefaultUseFontTexture完整上游、完整TextLayout标签、Image任务最终消费者、FontTexture资源退休，以及完整游戏窗框的全部页面使用资格。普通位置变换见[文字绘制](STEAM_FONT_DRAW.md)，GUI组／clip见[窗框](STEAM_WINDOW_FRAME.md)，GLText最终消费者／保留对象见[生命周期](STEAM_GLTEXT_LIFECYCLE.md)，不再重复列为完全未知。窗口观察可补最终画面尺寸和字形表现，但单张截图仍不能证明font对象身份。后续继续静态缩小这些边界，必要动态由既有外部提示词分支取得。

@@ -1,5 +1,7 @@
 # 产品侧小窗 UI 示例
 
+[名单／追加两页](steam-task-roster-extra.png)与[出发前后](steam-task-departure.png)由五个480×640研究窗口原尺寸并排，共79859字节。消费25–28正式纯计划，人物0／1的职业、等级、四战斗值及200G候选费用读取真实新局定义；两人名单、评价3、主24／副10和“已参加”身份是明确显示条件，未创建参与任务、付款或自然出发。五个无`--world`的有界入口为`task-roster`、`task-extra`、`task-extra-stats`、`task-departure`、`task-departing`，均世界更新0；原字体、完整共享scratch、OS动态及新Owner持久接线不由例图认证。[合同](../PAGES.md#steam参加名单追加与出发25–28)解释动作4、两种列表返回及两套Touch差异。
+
 [任务目录／费用／募集三状态](steam-task-selection-recruitment.png)为三张480×640有界研究窗口原尺寸并排，共61416字节。目录条目由原工厂在新局地图创建，名称／1000G费用／宝箱等级1来自真实定义；募集人物取原定义0，age35、发言0、肖像队列和显示人数1是明确绘制条件，未报名／扣款／出发，世界更新0。复用正式22–24计划及原资源；Noto、中文、绿色背景／研究标签与手形静态帧是适配，不认证原字体、OS动态或自然取得。无`--world`的`--inspect-page task-selection`、`task-offer`、`task-recruitment --frames 8`分别可复现；[合同](../PAGES.md#steam任务选择与募集22–24)保留真实输入／场景追踪边界。
 
 魔法壶新增[目录四状态](steam-magic-pot-catalogues.png)与[投入／处理／发现／制作](steam-magic-pot-results.png)两张960×1280拼图，八个480×640有界研究窗口按原尺寸并排，共148977字节。使用正式41–47有序计划、已出版素材和实际字体测宽；开放位／已看说明及结果前置是明确条件，世界更新0，不能认证自然解锁。42→44实际消费初始土豆；45采用满容量零待元素的原补1分支，46／47使用真实首份普通道具配方，未领取。原中文字体、完整TextLayout及OS动态未验；Noto、中文译文、绿色背景和外层提示属于研究适配。可用`--inspect-page magic-pot-main/items/recipes/recipe-costs/deposit/report/discovery/confirm --frames 8`分别取得（每次完整名称，例如`magic-pot-items`，不加`--world`），资源根和字体参数沿原型说明。[合同](../STEAM_MAGIC_POT.md)是接线依据，图片不是原Steam截图。

@@ -8,7 +8,7 @@
 
 ## 图块身份
 
-三组均为`KairoGames_Data/resources.assets`的TextAsset：title pathID1138、event pathID1140、common pathID1148。容器SHA-256为`75a7ac65688841505603393e3b013f26cd581d74f829aec9de3a55c73c21271b`。ID不是渲染层ID，归档中图片槽必须另看img.inf。
+三组均为`KairoGames_Data/resources.assets`的TextAsset：title pathID1138、event pathID1140、common pathID1148。容器与条目身份统一查[图像索引](../assets/IMAGE_COVERAGE.json)，不在本文重复指纹。ID不是渲染层ID，归档中图片槽必须另看img.inf。
 
 | 图块 | APK尺寸 | Steam尺寸 | 当前核验 |
 | --- | --- | --- | --- |
@@ -25,7 +25,7 @@
 
 同时核过六个common SEB：wnd_back、wnd_bar、wnd_conner、arrow01、arrow02、finger_r，均与APK逐字节相同。这只让相应原SEB结构可交叉复用；实际帧、偏移、翻转、时钟与输入扩大范围仍由各版调用者决定。
 
-Steam title img.inf保留前五原名称顺序，新增第6槽`upper.png`，240×9，SHA-256为`1f311279fb86d248557e3752f1d4616384492ccde9a9c838f81a38935645a18c`。APK目录没有该槽。Steam元数据`form.TitleForm`亦声明`RESTITLE_IMG_UPPER=6`，但本批未解码该槽的实际Draw调用，不由截图顶部纹理猜其用途。
+Steam title img.inf保留前五原名称顺序，新增第6槽`upper.png`，240×9；APK目录没有该槽。`form.TitleForm.RESTITLE_IMG_UPPER=6`与后继具名机器码一致：[标题Draw](STEAM_TITLE_DRAW.md)已核它在原点0、y0处从x0起按240重复至逻辑W之前，位于背景之后、人物之前。身份沿启动素材清单，不由截图顶部纹理猜用途或按APK画布拉伸。
 
 event的img.inf／seb.inf与APK字节相同。common则有扩展：img.inf行数135→136、seb.inf101→102；新增179号`bouken2_icon.png`及同名SEB，且若干旧图行的扩展修饰不同。因此不能以本批六个SEB相同宣称整个common包或加载修饰等价。机器证据保留两版完整目录行；INF行数不等于最大图片ID。
 
@@ -44,15 +44,13 @@ Unity class128共有五对象。默认资源中的Arial只有286字节对象，�
 
 本样本四个Font载荷在对齐对象名称后68字节处，前4字节为长度；这是经内部sfnt自洽校验的局部位置，不是完整Unity Font字段合同。载荷后分别剩42／46／38／58字节，保留未解码状态。五张零尺寸`Font Texture`仍是原盘点中的运行时占位，不能推断中文不支持或图集丢失。
 
-## 后续最小消费者定位
+## 消费者现状与剩余边界
 
 已有本机IL2CPP[元数据](../work/persistence-replay-analysis/exe/dumper/dump.cs:37183)给出`kairo.unity.ui.Font`，包含`defaultGUIFontLanguage_`、`invalidFontNames_`、`GUIStyle`、本地化scale／offset和纹理开关。它证明这些名字和入口存在，空方法体不证明逻辑。
 
-- 字体选择：`_getDefaultGUIFont` RVA0x77F4A0、`_updateGUIFont` RVA0x780710；先核语言→对象／系统字体回退，再核中文的实际对象。
-- 字宽与基线：`_stringWidthF` RVA0x77FFB0、`_stringWidth` RVA0x780620、`_draw` RVA0x77F450；分开整数／浮点测宽、本地化缩放、纹理或GUIStyle分支。
-- 标题：`TitleForm.Draw` RVA0x20A640与`_draw` RVA0x20DF30；核600×380背景的裁取／缩放、English.lproj选择、upper槽和层序，不能照抄APK240宽坐标。
-- 木框：从Steam实际纪录／新局／计分页追调用，再核common槽28/29与角SEB6的接收参数；现有同图证据不能证明拉伸／重复／边线策略。
+- 字体选择与测宽：[字体消费者](STEAM_FONT_CONSUMER.md)已核语言地区→基础→Japanese专属→通用资源链、GUIStyle条件替换、整数／浮点测宽及本地化公式；ResourceManager首表1251行只有en-switch／hi／ja／th四组字体路径，没有中文或通用default。不能据M+载荷猜中文实际字体。
+- 字体原生交接：[文字后端](STEAM_FONT_BACKEND.md)已核托管空font到原生默认字体的交接、开关资格与栈恢复；[普通文字绘制](STEAM_FONT_DRAW.md)已核锚点、字号补偿、矩阵→clip→GUI位置。真实当前GUI.skin、原生返回字体对象、中文glyph fallback提供者和字形度量仍未知，不能把交接闭合写成真实字体已知。
+- 标题：[标题Draw](STEAM_TITLE_DRAW.md)已核600×380背景按实际尺寸居中贴底、upper／草边重复、Logo公式、10／75／100门槛，以及语言／DPI候选首命中链。纯背景有序计划止于语言／菜单之前，保留实际人物绘制插入点；实际中文会话选择的Logo仍不由UI文字推断。
+- 菜单与木框：[标题菜单](STEAM_TITLE_MENU.md)和[Steam窗框](STEAM_WINDOW_FRAME.md)分别闭合局部菜单／选档及木纹重复、标题带、边线、角片与裁剪边界；[维护启动皮肤接口](../prototype/include/dungeon_village_prototype/steam_startup_skin.hpp)已有标题两项、两栏选档、raw20／1／14及共用窗框的只读计划。它们是已核代码消费者和维护局部交付，不能退回“仅同图”；也不代表所有页面的完整组合、真实字体或原窗口像素已经验收。
 
-后继[字体实际消费者](STEAM_FONT_CONSUMER.md)已核12个入口，闭合语言地区→基础→Japanese专属→通用资源链、GUIStyle条件替换及两种测宽分支。ResourceManager首表1251行中只有en-switch／hi／ja／th四组字体路径，没有中文或通用default；不能据M+载荷猜中文实际字体。Unity空font回退、实际语言／开关及DrawString基线仍未闭合。
-
-[Steam标题Draw](STEAM_TITLE_DRAW.md)后继已核背景按实际尺寸居中贴底、upper／草边按240逻辑宽重复、Logo参数及真实10／75／100阈值；语言／DPI候选及首命中资源链已闭合所列范围。用户中文会话的实际目录、全部菜单及最终Graphics尺度仍未认证。原窗口可补观察实际文字、框线与缩放，但截图不能单独确定字体对象、measure算法、语言回退或内部槽。
+原窗口可补观察实际文字、框线与缩放；截图不能单独确定字体对象、测宽算法、语言回退、内部槽或逻辑到物理像素的完整变换。后续沿上述合同的具名剩余边界推进，不重复扫描已核upper、木框或字体交接。

@@ -130,6 +130,8 @@ Options parse_options(int argc, char **argv) {
     if (!options.inspect_page.empty() &&
         (options.frames == 0 || options.fixture || options.check ||
          (options.inspect_page != "roads" && options.inspect_page != "shops" &&
+          options.inspect_page != "title-backdrop-early" && options.inspect_page != "title-backdrop-entry" &&
+          options.inspect_page != "title-backdrop-original" && options.inspect_page != "title-backdrop-english" &&
           options.inspect_page != "food" && options.inspect_page != "arrival" &&
           options.inspect_page != "visitor" && options.inspect_page != "facility-reputation" && options.inspect_page != "facility-reputation-result" &&
           options.inspect_page != "task-map-info" && options.inspect_page != "task-info" &&

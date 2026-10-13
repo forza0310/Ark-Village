@@ -85,6 +85,29 @@ struct SteamStartupSkinPlan {
     std::vector<SteamStartupDraw> draws; // 原局部绘制顺序；文字与图片不能各自重排。
     std::vector<SteamStartupTouch> touches; // 原AddTouch基矩形，尚未经过margin/clip/scale/hit分流。
 };
+enum class SteamTitleLogoVariant { original, english };
+struct SteamTitleBackdropInput {
+    int width{}, height{}, view_width{}, view_height{}, title_frame{};
+    std::array<int,2> background_size{}; // 实际已加载Image尺寸；固定出版图为600×380。
+    std::optional<SteamTitleLogoVariant> logo; // frame>=10才消费实际已选择资源，不由UI语言猜。
+};
+struct SteamTitleSetOrigin { std::array<int,2> value{}; }; // 绝对替换，不是Push或相对Translate。
+struct SteamTitleWholeImage {
+    int image{};const char *published_image{};
+    std::array<int,2> position{}; // 当前原点内的DrawImage，不拉伸或裁短末块。
+};
+struct SteamTitleActors {}; // 在此处按原序消费实际人物计划；本函数不生成/推进演员。
+struct SteamTitleConfirmRegistration { int component{2}, flags{2}; }; // 原无矩形AddTouch重载。
+using SteamTitleBackdropOperation=std::variant<SteamStartupFill,SteamTitleSetOrigin,
+    SteamTitleWholeImage,SteamTitleActors,SteamTitleConfirmRegistration>;
+struct SteamTitleBackdropPlan {
+    std::vector<SteamTitleBackdropOperation> operations;
+    std::array<int,2> final_origin{};
+};
+// 正常_draw前段：继承入口原点Fill→背景→upper→人物→草→Logo/确认注册。
+// 调用者随后接语言/菜单；不得在首Fill前擅自清原点，正常收尾也不恢复原点。
+// 尺寸1..65536及frame0..INT_MAX-1是维护预算，循环输出有界，不新增Owner/随机。
+std::optional<SteamTitleBackdropPlan> steam_title_backdrop_skin(const SteamTitleBackdropInput &input);
 // 只返回已可见的菜单局部，不负责背景、Logo、平台按钮或菜单Owner。
 std::optional<SteamStartupSkinPlan> steam_title_menu_skin(int width, int height,
     int title_frame, int selection);

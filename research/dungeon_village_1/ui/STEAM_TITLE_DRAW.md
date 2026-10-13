@@ -10,19 +10,24 @@
 
 机器码通过IL2CPP虚表偏移`0x12C/0x134`调用，结合`SurfaceBase`声明的slot14／15定位；它们不同于非虚的`GetWidth/GetHeight`。图片字段`+0x14/+0x18`分别是`Image.width_/height_`，资源`+0x8`为`ResourceManager.img`。整数除2均为向零截断，下面记为`half(n)`。
 
+`_draw`首个Fill之前没有清零原点：VA `1020E35A`设置颜色后直接在`1020E3D6`调用FillRect，**继承进入本方法时的Graphics原点**。首个SetOrigin在Fill之后的`1020E421`。`Graphics.SetOrigin`（RVA `774860`）直接写入originX／Y（`+188/+18C`）再更新，是绝对替换，不是累加或Push；不能擅自在首Fill前补一次SetOrigin0，也不能把表中历次原点相加。
+
 ## 已核层序与参数
 
 | 顺序 | 图层／调用 | 原点与参数 |
 | --- | --- | --- |
-| 1 | 填背景色 | `GetColorOfRGB(41,198,255)`；`FillRect(0,0,Wv,Hv)` |
+| 1 | 填背景色 | `GetColorOfRGB(41,198,255)`；`FillRect(0,0,Wv,Hv)`，继承入口原点 |
 | 2 | title图片0 | 原点`(half(Wv-240),0)`；整图`DrawImage(img[0],half(240-imageWidth),H-imageHeight)` |
 | 3 | title图片6 upper | 原点`(0,0)`；x从0开始每次加240，`x<W`继续；每次画`img[6]`于`(x,0)` |
 | 4 | 标题人物 | 原点`(half(W-240),0)`；调用`Draw_titleAnime(g)` |
 | 5 | title图片4草边 | 原点`(0,0)`；同样每240重复至`x<W`，y=`H-240+209=H-31` |
-| 6 | title图片2 Logo | 恢复原点`(half(W-240),0)`；到首动画阈值才画；局部x=2，y见下一节 |
-| 7 | 语言按钮及后续分支 | Logo后，原标题为栈顶且非存档选择状态时调用`LanguageForm.DrawButton(g,callback,20)`；再进入广告／菜单分支，未闭合全部路径 |
+| 6 | title图片2 Logo | 无条件SetOrigin为`(half(W-240),0)`，之后才检查首动画阈值；局部x=2，y见下一节 |
+| 7 | Logo后的确认注册 | 仅Logo绘制支执行`TouchOption.Create(2)`→无矩形重载`GameView.AddTouch(id2,opt)`；不由Logo图片尺寸造命中框 |
+| 8 | 语言按钮及后续分支 | Logo分支后，原标题为栈顶且非存档选择状态时调用`LanguageForm.DrawButton(g,callback,20)`；再进入广告／菜单分支，未闭合全部路径 |
 
-前景人物不会被upper覆盖：本轮已核调用序是upper先于人物，草边后于人物；人物内部阴影／身体与淡出尚须`Draw_titleAnime`单独认证，不能因APK已有合同就写成Steam已证。
+前景人物不会被upper覆盖：已核调用序是upper先于人物，草边后于人物；人物内部阴影／身体与淡出由[人物专题](STEAM_TITLE_ACTORS.md)独立认证，不能因APK已有合同就混写为Steam来源。
+
+草边后`1020E63E`无条件设置中心原点，再在`1020E67D`检查`frame≥10`；因此frame小于10也留下中心原点。frame小于75的正常早退不恢复该原点；语言按钮的Push／Pop只恢复它进入时已有的中心原点。Logo后两次调用分别位于`1020E874`及`1020E898`，只证明无矩形确认注册请求，不在本段扩证该重载的最终范围。
 
 结合已核资源：背景600×380，因此其局部坐标为`(-180,H-380)`；upper240×9、草边240×18。x步长240来自代码，尺寸来自资源，两证合并才说明两者按原图宽度铺排。最后一片仍调用整图绘制，不在本方法显式裁短；越界部分如何裁剪由Graphics／surface决定，不能宣称已核最后一片裁片矩形。
 
@@ -42,6 +47,8 @@
 - 最终局部位置为`(2, B+R+弹跳)`。
 
 `SetVStop/SetAStop`的Steam float32算术已由[金币绘制](STEAM_COIN_RENDER.md)独立核验；代入本页实参得到`V=-2400、A=400`。这是具名机器码与实参的推导，不是窗口测得的弹跳轨迹。
+
+[维护接口](../prototype/include/dungeon_village_prototype/steam_startup_skin.hpp)的`steam_title_backdrop_skin`按上述顺序返回Fill、SetOrigin、整图、实际人物绘制插入点及无矩形确认注册，止于语言／菜单之前；`SteamTitleActors`要求调用者消费真实人物计划，不生成演示人物，也不推进随机或演员状态。尺寸1..65536及标题钟0..INT_MAX−1是维护预算，实际Logo变体由调用者提供；本批功能短测和四个有界研究窗口已通过，见[前段示例](examples/steam-title-backdrop.png)；示例没有演员／菜单，不是原窗口动态。大标题钟必须先截限入场位移，不能先乘181：INT_MAX−1时R=181、余数10、p=2、弹跳−3。独立坐标核对：W479／H481、Wv301／Hv277、背景600×380时，背景原点为30、局部位置`(−180,101)`，人物及最终原点为119；Logo在frame10／73／74／101／106分别为局部`(2,−61)`／`(2,117)`／`(2,120)`／`(2,118)`／`(2,114)`。这些是静态公式oracle，不是窗口测量。
 
 这段Logo调用前未见APK的英语`-8`偏移。稍后的**广告**分支另读取Logo高度、`Language.English()`并减8，不能把广告修正移到Logo本体。`_draw`本身只拿当前`img[2]`，Logo语言选择发生在下面的资源加载链。
 

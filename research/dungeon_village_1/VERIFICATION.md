@@ -1,5 +1,13 @@
 # 当前研究验证与历史索引
 
+## Steam标题背景与Logo有序前段 2026-10-14
+
+接`9da93b8`，扩现[启动皮肤](prototype/include/dungeon_village_prototype/steam_startup_skin.hpp)的前段计划：继承入口原点Fill、区分W／Wv的背景定位、upper平铺、实际演员插入点、草边、Logo入场／弹跳与独立确认注册；SetOrigin绝对替换且不自动恢复。实际Logo变体显式输入，不把中文会话等同英语或根目录。复用已出版Steam资源，没有新素材、持久字段或target；整场演员／菜单／语言组合仍待接。
+
+单Release动态构建，现visuals **1/1通过1.62秒**，覆盖原序、独立尺寸／资源、负奇数除法、10／74／100／弹跳边界、INT_MAX−1、坏输入及最大平铺规模。四个8帧窗口均0世界更新并正常退出，[三态参考](ui/examples/steam-title-backdrop.png)1440×640／207204字节已查看；frame10与frame9在本例像素一致，未重复归档。入口原点0和空演员为显示条件，未输入、加载游戏或认证原动态，不编他人住宅在途测试、不跑长测。
+
+更新既有绘制／资源合同，删除重复长指纹及过期未核条目，无新报告／核对脚本。原图整尺寸读取，共享纹理缓存按现RAII释放；确认请求逐帧仅计数，未派业务。清理8份本轮临时图／日志651962字节；Release1376文件／145563400字节，assets863文件／9488214字节，合法历史仍可增长。构建、测试、窗口与子任务已收齐；差异／链接检查后仅研究白名单本地提交，不推送。
+
 ## Steam语言按钮、NEW与入页意图 2026-10-14
 
 接`6f946d9`，扩现[平台按钮模块](prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)，交付语言Switch资格、anchor优先级、两层原点与callback请求、按钮高亮、独立NEW、触区／手柄登记及UP入页意图。补核默认TOUCHPARAMS[3]为16／16／8／8＋1／1，NEW为SEB21显式frame8而非字体；四原素材共5426字节按现索引核源并查看，无新裁片副本或CMake目标。

@@ -513,6 +513,69 @@ int check_steam_startup_skin(const std::filesystem::path &root) {
     Checks check;
     using Asset=SteamStartupAsset;
     using Role=SteamStartupTextRole;
+    SteamTitleBackdropInput backdrop{479,481,301,277,9,{600,380},{}};
+    const auto early=steam_title_backdrop_skin(backdrop);
+    check(early&&early->operations.size()==12&&early->final_origin==std::array<int,2>{119,0},
+          "标题前段按W/Wv独立使用，frame9无Logo也留下中心原点");
+    const auto &sky=std::get<SteamStartupFill>(early->operations[0]);
+    check(sky.rectangle==std::array<double,4>{0,0,301,277}&&sky.rgb==std::array<int,3>{41,198,255},
+          "首操作直接填view尺寸继承入口原点，不能先补Set0");
+    check(std::get<SteamTitleSetOrigin>(early->operations[1]).value==std::array<int,2>{30,0}&&
+          std::get<SteamTitleWholeImage>(early->operations[2]).position==std::array<int,2>{-180,101}&&
+          std::get<SteamTitleSetOrigin>(early->operations[3]).value==std::array<int,2>{0,0}&&
+          std::get<SteamTitleWholeImage>(early->operations[4]).image==6&&
+          std::get<SteamTitleWholeImage>(early->operations[5]).position==std::array<int,2>{240,0}&&
+          std::get<SteamTitleSetOrigin>(early->operations[6]).value==std::array<int,2>{119,0}&&
+          std::holds_alternative<SteamTitleActors>(early->operations[7])&&
+          std::get<SteamTitleSetOrigin>(early->operations[8]).value==std::array<int,2>{0,0}&&
+          std::get<SteamTitleWholeImage>(early->operations[9]).position==std::array<int,2>{0,450}&&
+          std::get<SteamTitleWholeImage>(early->operations[10]).position==std::array<int,2>{240,450}&&
+          std::get<SteamTitleSetOrigin>(early->operations[11]).value==early->final_origin,
+          "整图背景→upper→实际演员插入点→草→无条件中心原点，尾片不裁短或拉伸");
+    backdrop.logo=SteamTitleLogoVariant::original;
+    for(const auto [frame,y]:std::array<std::array<int,2>,9>{{
+        {10,-61},{73,117},{74,120},{100,120},{101,118},{105,114},{106,114},{112,120},
+        {2147483646,117}}}) {
+        backdrop.title_frame=frame;
+        const auto plan=steam_title_backdrop_skin(backdrop);
+        check(plan&&plan->operations.size()==14,"Logo门槛后增加恰一幅原图与独立无矩形确认注册");
+        const auto &logo=std::get<SteamTitleWholeImage>(plan->operations[12]);
+        const auto &touch=std::get<SteamTitleConfirmRegistration>(plan->operations[13]);
+        check(logo.image==2&&logo.position==std::array<int,2>{2,y}&&touch.component==2&&touch.flags==2&&
+              std::string(logo.published_image)=="steam-startup/original/title/title_logo.png",
+              "Logo入场/负余数/弹跳/饱和钟的独立整数oracle，不附加APK英语偏移");
+    }
+    backdrop.title_frame=100;backdrop.logo=SteamTitleLogoVariant::english;
+    const auto english=steam_title_backdrop_skin(backdrop);
+    check(english&&std::string(std::get<SteamTitleWholeImage>(english->operations[12]).published_image)==
+          "steam-startup/original/title/English.lproj/title_logo.png"&&
+          std::get<SteamTitleWholeImage>(english->operations[12]).position==std::array<int,2>{2,120},
+          "实际Logo选择显式传入，英语变体不改变本体锚也不从中文UI猜资源");
+    struct BackdropAsset {const char *name;int width,height;};
+    for(const auto &asset:std::array<BackdropAsset,5>{{{"title00.png",600,380},{"upper.png",240,9},
+        {"title_grass.png",240,18},{"title_logo.png",236,115},{"English.lproj/title_logo.png",236,132}}}) {
+        const auto path=root.parent_path()/"steam-startup/original/title"/asset.name;
+        const auto image=LoadImage(path.string().c_str());
+        const bool valid=image.data&&image.width==asset.width&&image.height==asset.height;
+        if(image.data)UnloadImage(image);
+        check(valid,"背景/顶部/草边/两Logo消费真正Steam出版整图，不借APK同名图");
+    }
+    auto narrow=backdrop;narrow.width=239;narrow.view_width=239;narrow.background_size={599,379};
+    const auto odd=steam_title_backdrop_skin(narrow);
+    check(odd&&odd->final_origin==std::array<int,2>{0,0}&&
+          std::get<SteamTitleWholeImage>(odd->operations[2]).position==std::array<int,2>{-179,102},
+          "纯几何条件覆盖负奇数向零除2，背景坐标来自实际Image尺寸而非固定600假设");
+    auto wide=backdrop;wide.width=65536;
+    const auto bounded=steam_title_backdrop_skin(wide);
+    check(bounded&&bounded->operations.size()==558&&steam_title_backdrop_skin(wide)->operations.size()==558,
+          "维护最大宽度的平铺输出有界，重复查询不累计图元或推进演员");
+    for(int fault=0;fault<6;++fault) {
+        auto bad=backdrop;
+        if(fault==0)bad.width=0;if(fault==1)bad.view_height=65537;if(fault==2)bad.background_size[0]=-1;
+        if(fault==3)bad.title_frame=std::numeric_limits<int>::max();if(fault==4)bad.logo.reset();
+        if(fault==5)bad.logo=static_cast<SteamTitleLogoVariant>(-1);
+        check(!steam_title_backdrop_skin(bad),"已消费标题尺寸/钟/Logo身份错误明确拒绝");
+    }
     // Steam窗口helper独立oracle：变换前几何，不以真实字体或物理像素认证代替。
     SteamStartupWindow frame{198,146,70,-12,Role::slot_title,2};
     const auto expanded=steam_startup_window_skin(frame,0,std::array<int,2>{41,44});

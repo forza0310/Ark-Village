@@ -1,5 +1,7 @@
 # 产品侧小窗 UI 示例
 
+[Steam标题背景与两Logo](steam-title-backdrop.png)（1440×640／207204字节）：从左到右为frame9无Logo、frame100原目录Logo、frame100英语变体。三个480×640研究窗口原尺寸拼接；另验frame10，其Logo完全位于本例可视区上方，像素与frame9一致，不重复归档。`title-backdrop-early`／`title-backdrop-entry`／`title-backdrop-original`／`title-backdrop-english`各8帧、0世界更新，不加`--world`。消费Steam600×380背景、upper／草边及两原Logo，逻辑尺寸240×320；入口原点0、空演员是明确显示条件，未接演员调度、菜单／语言按钮、字体或物理输入，不代表完整标题或当前中文会话实际选中的Logo。源层序与不同W/Wv坐标见[标题合同](../STEAM_TITLE_DRAW.md)。
+
 [Steam控制器后备裁片](steam-controller-buttons.png)（680×352／44354字节）：从Switch、PS4／PS5、Xbox三套原PNG／SEB取frame0、1、7、32–35，64×64裁片不缩放，仅加研究表头。不是窗口截图、当前设备识别或实际确定／取消绑定；frame0／1先受Canvas映射影响，layer1的16–19再变32–35，所有源layer最终归0。供[后备资源接口](../../prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)和[字体消费者](../STEAM_FONT_CONSUMER.md#内嵌按钮提示)交叉，不代替Steam动态图像或无控制器frame7的鼠标图。
 
 [建设目录三类与叠图条件](steam-build-menu.png)（960×1280／69665字节）：左上设备、右上一般、左下饮食、右下全开放条件。`build-menu-equipment`／`build-menu-general`／`build-menu-food`／`build-menu-overlays`各8帧、0世界更新、不加`--world`。前三态从真实新局读取，调用正式NEW刷新后投影完整源目录；第四态的全开放／移动／住宅H1／入住／NEW／余额0及左箭头高亮仅为显示条件，不写世界。原尺寸拼接保留图块、五行空项、不足价色、Steam入住图、数量、手形与surface箭头；中文／Noto、绿色背景及画布平移40为适配。纯计划无Owner游标或原OS输入认证，详见[建设合同](../STEAM_BUILD_LIST.md#维护纯计划与产品消费)。

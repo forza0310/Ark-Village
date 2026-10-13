@@ -71,6 +71,43 @@ void dialog_buttons(SteamStartupSkinPlan &p, int count, int selection, float b) 
     }
 }
 }
+std::optional<SteamTitleBackdropPlan> steam_title_backdrop_skin(const SteamTitleBackdropInput &in) {
+    for(const int value:{in.width,in.height,in.view_width,in.view_height,in.background_size[0],in.background_size[1]})
+        if(value<=0||value>65536)return {};
+    if(in.title_frame<0||in.title_frame>std::numeric_limits<int>::max()-1)return {};
+    if(in.title_frame>=10&&(!in.logo||(*in.logo!=SteamTitleLogoVariant::original&&
+                                     *in.logo!=SteamTitleLogoVariant::english)))return {};
+    SteamTitleBackdropPlan plan;
+    auto &ops=plan.operations;
+    ops.emplace_back(SteamStartupFill{{0,0,double(in.view_width),double(in.view_height)},{41,198,255}});
+    ops.emplace_back(SteamTitleSetOrigin{{(in.view_width-240)/2,0}});
+    ops.emplace_back(SteamTitleWholeImage{0,"steam-startup/original/title/title00.png",
+        {(240-in.background_size[0])/2,in.height-in.background_size[1]}});
+    ops.emplace_back(SteamTitleSetOrigin{{0,0}});
+    for(int x=0;x<in.width;x+=240)
+        ops.emplace_back(SteamTitleWholeImage{6,"steam-startup/original/title/upper.png",{x,0}});
+    plan.final_origin={(in.width-240)/2,0};
+    ops.emplace_back(SteamTitleSetOrigin{plan.final_origin});
+    ops.emplace_back(SteamTitleActors{});
+    ops.emplace_back(SteamTitleSetOrigin{{0,0}});
+    for(int x=0;x<in.width;x+=240)
+        ops.emplace_back(SteamTitleWholeImage{4,"steam-startup/original/title/title_grass.png",{x,in.height-31}});
+    ops.emplace_back(SteamTitleSetOrigin{plan.final_origin});
+    if(in.title_frame>=10) {
+        // RateConvert先夹上端；禁止对任意大标题钟先乘181再截断。
+        const int entry=in.title_frame>=74?181:(in.title_frame-10)*181/64;
+        const int remainder=(in.title_frame-100)%44;
+        const int phase=remainder<6?remainder:remainder<12?12-remainder:0;
+        const int bounce=phase>0?(-2400*phase+(400*(phase+1)*phase)/2)/1000:0;
+        const int span=in.height<=240?in.height:240+(in.height-240)/2;
+        const int y=in.height-182-span+entry+bounce;
+        const char *path=*in.logo==SteamTitleLogoVariant::english?
+            "steam-startup/original/title/English.lproj/title_logo.png":"steam-startup/original/title/title_logo.png";
+        ops.emplace_back(SteamTitleWholeImage{2,path,{2,y}});
+        ops.emplace_back(SteamTitleConfirmRegistration{});
+    }
+    return plan;
+}
 std::optional<SteamStartupFramePlan> steam_startup_window_skin(const SteamStartupWindow &window,
     int view_y, std::optional<std::array<int, 2>> measured_title_widths) {
     const int width = window.width, height = window.height;

@@ -20,6 +20,7 @@
 #include "dungeon_village_prototype/steam_commerce_skin.hpp"
 #include "dungeon_village_prototype/steam_build_menu_skin.hpp"
 #include "dungeon_village_prototype/steam_platform_button_skin.hpp"
+#include "dungeon_village_prototype/steam_startup_skin.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 #include "dungeon_village_prototype/startup_world_persistence.hpp"
@@ -257,19 +258,13 @@ class SourceSprites {
             throw std::runtime_error("说明箭头边界源拒绝");
         return {part->offset_x,part->offset_y,part->width,part->height};
     }
-    void image(const std::filesystem::path &relative, Vector2 position) {
-        if (relative.is_absolute() || relative.string().find("..") != std::string::npos)
-            throw std::runtime_error("整图资源路径无效");
-        const auto path = root_ / relative;
-        auto found = textures_.find(path.string());
-        if (found == textures_.end()) {
-            const auto texture = LoadTexture(path.string().c_str());
-            if (!texture.id)
-                throw std::runtime_error("整图资源无法读取");
-            SetTextureFilter(texture, TEXTURE_FILTER_POINT);
-            found = textures_.emplace(path.string(), texture).first;
-        }
-        DrawTextureV(found->second, position, WHITE);
+    // 整图保留实际纹理宽高，Steam标题不套APK裁片或拉伸目标。
+    void image(const std::filesystem::path &relative, Vector2 position, bool published = false) {
+        DrawTextureV(whole_image_texture(relative,published), position, WHITE);
+    }
+    std::array<int,2> image_size(const std::filesystem::path &relative, bool published = false) {
+        const auto &texture=whole_image_texture(relative,published);
+        return {texture.width,texture.height};
     }
     void menu_number(const SteamFacilityNumber &number, Vector2 origin) {
         const auto resource = steam_facility_resource(number.asset);
@@ -370,6 +365,23 @@ void main() {
     }
 
   private:
+    const Texture2D &whole_image_texture(const std::filesystem::path &relative, bool published) {
+        if (relative.is_absolute() || relative.string().find("..") != std::string::npos)
+            throw std::runtime_error("整图资源路径无效");
+        const auto path = (published ? root_.parent_path() : root_) / relative;
+        auto found = textures_.find(path.string());
+        if (found == textures_.end()) {
+            const auto texture = LoadTexture(path.string().c_str());
+            if (!texture.id || texture.width<=0 || texture.height<=0) {
+                if(texture.id)UnloadTexture(texture);
+                throw std::runtime_error("整图资源无法读取");
+            }
+            SetTextureFilter(texture, TEXTURE_FILTER_POINT);
+            try { found = textures_.emplace(path.string(), texture).first; }
+            catch(...) { UnloadTexture(texture);throw; }
+        }
+        return found->second;
+    }
     std::filesystem::path root_;
     std::map<int, std::filesystem::path> images_;
     std::map<std::string, std::map<int, std::filesystem::path>> actor_images_;
@@ -2332,6 +2344,34 @@ struct Canvas {
     }
     ~Canvas() { UnloadRenderTexture(value); }
 };
+// 仅执行已核标题前段；演员显示条件为空，确认注册只计请求，不接物理输入。
+int draw_title_backdrop_example(const SteamTitleBackdropPlan &plan,SourceSprites &sprites) {
+    Vector2 origin{}; // 本研究画布入口原点为0，首Fill继承它。
+    int confirmations{};
+    for(const auto &operation:plan.operations) {
+        if(const auto *fill=std::get_if<SteamStartupFill>(&operation)) {
+            const auto &r=fill->rectangle;
+            DrawRectangleRec({origin.x+float(r[0]),origin.y+float(r[1]),float(r[2]),float(r[3])},
+                {static_cast<unsigned char>(fill->rgb[0]),static_cast<unsigned char>(fill->rgb[1]),
+                 static_cast<unsigned char>(fill->rgb[2]),255});
+        } else if(const auto *set=std::get_if<SteamTitleSetOrigin>(&operation))
+            origin={float(set->value[0]),float(set->value[1])}; // 绝对替换，不叠加或推栈。
+        else if(const auto *image=std::get_if<SteamTitleWholeImage>(&operation)) {
+            if(!image->published_image)throw std::runtime_error("标题整图缺出版路径");
+            sprites.image(image->published_image,
+                {origin.x+image->position[0],origin.y+image->position[1]},true);
+        } else if(std::holds_alternative<SteamTitleActors>(operation)) {
+            // 不将APK标题槽/age或世界人物注入Steam演员调度。
+        } else if(const auto *registration=std::get_if<SteamTitleConfirmRegistration>(&operation)) {
+            if(registration->component!=2||registration->flags!=2)
+                throw std::runtime_error("标题确认注册载荷非法");
+            ++confirmations;
+        }
+    }
+    if(origin.x!=plan.final_origin[0]||origin.y!=plan.final_origin[1])
+        throw std::runtime_error("标题前段未保留最终原点");
+    return confirmations;
+}
 const char *error_text(StartupError error) {
     switch (error) {
     case StartupError::none:
@@ -2373,6 +2413,38 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
     Window window;
     Canvas canvas;
     SourceSprites sprites(assets / "original");
+    const bool title_backdrop_fixture=inspect_page=="title-backdrop-early"||inspect_page=="title-backdrop-entry"||
+        inspect_page=="title-backdrop-original"||inspect_page=="title-backdrop-english";
+    if(title_backdrop_fixture) {
+        SteamTitleBackdropInput input;
+        input.width=input.view_width=width;input.height=input.view_height=height;
+        input.background_size=sprites.image_size("steam-startup/original/title/title00.png",true);
+        if(input.background_size!=std::array<int,2>{600,380})
+            throw std::runtime_error("Steam标题背景实际尺寸不匹配固定出版图");
+        input.title_frame=inspect_page=="title-backdrop-early"?9:inspect_page=="title-backdrop-entry"?10:100;
+        if(input.title_frame>=10)input.logo=inspect_page=="title-backdrop-english"?
+            SteamTitleLogoVariant::english:SteamTitleLogoVariant::original;
+        const auto plan=steam_title_backdrop_skin(input);
+        if(!plan)throw std::runtime_error("Steam标题背景条件计划拒绝");
+        int count{},confirmations{};
+        while(!WindowShouldClose()&&count<frames) {
+            BeginTextureMode(canvas.value);ClearBackground(BLACK);
+            confirmations=draw_title_backdrop_example(*plan,sprites);
+            EndTextureMode();BeginDrawing();ClearBackground(BLACK);
+            DrawTexturePro(canvas.value.texture,{0,0,width,-height},{0,0,width*scale,height*scale},{0,0},0,WHITE);
+            EndDrawing();++count;
+            if(count==frames&&screenshot) {
+                if(!screenshot->parent_path().empty())std::filesystem::create_directories(screenshot->parent_path());
+                auto pixels=LoadImageFromScreen();if(!pixels.data)throw std::runtime_error("标题示例截图缺失");
+                const bool saved=ExportImage(pixels,screenshot->string().c_str());UnloadImage(pixels);
+                if(!saved)throw std::runtime_error("标题示例截图保存失败");
+            }
+        }
+        std::cout<<"Steam背景/Logo条件示例关闭：page="<<inspect_page<<" frames="<<count
+                 <<" title_frame="<<input.title_frame<<" confirm_requests_per_draw="<<confirmations
+                 <<" world_updates=0；演员显示条件为空，未覆盖演员调度/菜单/物理输入\n";
+        return 0;
+    }
     const bool magic_fixture=inspect_page.rfind("magic-pot-",0)==0;
     const bool roster_fixture=inspect_page=="task-roster"||inspect_page=="task-extra"||inspect_page=="task-extra-stats"||inspect_page=="task-departure"||inspect_page=="task-departing";
     const bool info_fixture=inspect_page=="task-map-info"||inspect_page=="task-info";

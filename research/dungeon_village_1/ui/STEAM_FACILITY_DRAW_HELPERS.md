@@ -36,7 +36,7 @@ RVA0x2517B0的全部304字节范围已核。它没有DrawRect、FillRect、SEB�
 
 raw74合法scroll为0…max(count−5,0)。令D=max(count,5)、top=85+trunc(110×scroll/D)、len=trunc(550/D)：先FillRect(220,85,5,110)、RGB(7,5,78)，再FillRect(220,top,5,len+1)、RGB(48,160,255)。有效`CheckFirstTouch(12,0x40000)`且count>5时，后者改RGB(246,129,0)；空／短表强制非触摸色。空至五行均画111高蓝条，不因无需滚动隐藏；七行scroll0／2分别top85／116、滑块高79。这些来自具名完整绘制消费者，不由截图估比例。
 
-VA1023E590–E5B4将12最终基矩形改为(221,top,5,len)，与绘图区x220／高len+1不同，仍有原Margin。长表有效触摸分支VA1023E252追加flags0x24，登记区域扩为(x−30,−1000,125,2000)，VA1023E2A4–E2E4设置gridY=max((110−len)/(count−5),1.0f)。`OnTouchVScrollBar` RVA23D810按事件8相对旧scroll加value、9绝对value，拒绝INT_MAX后夹到上述范围；真实变化才写scroll并按delta同步selection、组件12夹到0…count−1。Surface如何将屏幕拖动合成这些逻辑事件、组件12／25最终命中优先级仍未认证；不凭基矩形造原OS热区。
+VA1023E590–E5B4将12最终基矩形改为(221,top,5,len)，与绘图区x220／高len+1不同，仍有原Margin。长表有效触摸分支VA1023E252追加flags0x24，登记区域扩为(x−30,−1000,125,2000)，VA1023E2A4–E2E4以float32分别转换分子／分母后相除得到gridY=(110−len)/(count−5)，仅结果≤0时改为1.0f；正的小数不抬到1。`OnTouchVScrollBar` RVA23D810按事件8相对旧scroll加value、9绝对value，拒绝INT_MAX后夹到上述范围；真实变化才写scroll并按delta同步selection、组件12夹到0…count−1。Surface如何将屏幕拖动合成这些逻辑事件、组件12／25最终命中优先级仍未认证；不凭基矩形造原OS热区。
 
 [维护皮肤](../prototype/STEAM_FACILITY_SKIN.md)复用既有矩形类型展开此type0，不新增Owner／存档字段或第二输出队列。TouchOption与注册池生命周期仍在框架，不把新增int[3]叫作世界泄漏，也不宣称原框架永久有界。
 

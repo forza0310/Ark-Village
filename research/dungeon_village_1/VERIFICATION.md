@@ -1,5 +1,13 @@
 # 当前研究验证与历史索引
 
+## 建设21原序皮肤与共享自动动画 2026-10-14
+
+接`964e701`，新增[建设目录纯皮肤](prototype/include/dungeon_village_prototype/steam_build_menu_skin.hpp)，复用原资源、普通Mapchip分片、住宅数字及surface箭头；按原序交付五行、颜色继承、SetClip／ClearClip、NEW／入住、软标签及触区。补核滚动原异常裁短、null仍保留轨道／12／25、长表触摸扩区和float网格，未夹首行凑通用列表。单Release动态编译及现visuals **1/1通过1.63秒**（总1.64秒），覆盖身份／测宽拒绝、有序裁剪、边界与资源；无Owner／codec／协议或target变更，不编他人三份住宅持久化测试、不跑长测。
+
+四个8帧窗口正常退出并查看，[原尺寸四态拼图](ui/examples/steam-build-menu.png)960×1280／69665字节，0世界更新。前三态为维护新局投影，第四态是明确显示条件；字体、背景与画布平移为适配，未认证原OS输入或自然建设。完整21 Owner／恢复仍待既有设计确认。并行补[共享自动动画](ui/INPUT_RENDER_REQUESTS.md#steam公共subform单轮页面钟手形与待发jingle)旧名单推进→复位→绘制登记、去重／间隔重置及尾引用保留，未把登记复位写成引用全部释放；修正共用滚动合同的非正网格回退规则。
+
+结论合现合同，无新报告／audit／指纹或素材副本；仅两份实际模块源文件和一张图例。纯计划不持Owner引用、不发随机／声音，图元逐项消费并清裁剪；合法历史不称永久有界。清理8份本轮临时图／日志131504字节，Release1375文件／144397381字节，assets850文件／9372783字节；构建、测试、窗口与三个子任务已收齐。差异／文档链接检查通过，仅本地research checkpoint，保留其他维护者改动、不推送。
+
 ## 建设目录纯游标与公共弹窗调度 2026-10-14
 
 接`7fe54fa`，建设21新增[纯游标候选](prototype/include/dungeon_village_prototype/startup_world_building.hpp)，现building套件覆盖原方向顺序、五行空选、精确绕回、独立首行、同时方向及整数／坏初态边界。单Release动态构建通过，主责CTest **1/1通过2.10秒**（总2.11秒）；不接Owner／codec或窗口，不编其它维护者三份住宅持久化测试，不跑长测。21→74源入口及父字段保持合入[业务合同](ui/STEAM_BUILD_LIST_BUSINESS.md)，新增Owner载荷仅列[待确认设计](prototype/PERSISTENCE.md#建设21目录游标与74预览恢复设计待确认)，不能据纯函数宣称完整恢复。

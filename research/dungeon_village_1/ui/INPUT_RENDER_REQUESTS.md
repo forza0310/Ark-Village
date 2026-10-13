@@ -91,11 +91,21 @@ h不含目标但旧位置在内且旧raw为DOWN0时是types0／5／1／3／6，�
 
 Seb.Frame（RVA `7BFF00`，176字节）还有实际门槛：`AutoAnimation=false`且`IApplication.commonFramesUpdate_=true`才令`currentFrame_ +0x0C=(currentFrame+1)%maxFrame_ +0x10`（`107BFF6F–107BFFAA`）；否则本次Frame不改变相位。两TypeInfo槽`110FFA5C`／`110F77B4`独立解析为Seb／IApplication。common21／22／23分别为finger_r／finger_l／finger_d，三个原SEB的maxFrame均6，图片引用分别70／70／71，沿[正式资源索引](../assets/IMAGE_COVERAGE.json)复用；6个逻辑帧不等于PNG有6列裁片。
 
-已核IApplication cctor把commonFramesUpdate_置true（`107909A7`），实际Update前段亦置true（`1078F98B`）；不能由声明的COMMON_FRAME_MAX=3推断“每三次页面更新才推进”。AutoAnimation按静态标量零默认为false，已读Seb cctor未设置它。本批只核这些生产点，尚未认证两个门槛的全部运行期写者及与框架补帧的联合时序。AutoAnimation=true时手动Frame不推进，OnGUI在共同标志成立时另调用ThisFrameRenderAnimation（`10788ED7–10788EF4`）；该自动列表／渲染后继未在本批展开，不能把手动与自动两路同时加帧。最小平台输入应明确给出这两个门槛及共享SEB当前相位，不能用FPS或页面钟猜值。
+IApplication cctor把commonFramesUpdate_置true（`107909A7`）。实际Update先更新分辨率，再令`totalFrames_ +0x2C++`（`1078F96A`），随后置共同标志true（`1078F98B`），才进入有条件的UI任务、Update任务、应用虚槽11及Updated事件回调。不能由声明的COMMON_FRAME_MAX=3推断“每三次页面更新才推进”。AutoAnimation按静态标量零默认为false，已读Seb cctor未设置它；本批未穷尽两门槛的运行期写者、回调及框架补帧联合时序，最小平台上下文仍须明确给出门槛、应用总帧和共享SEB相位，不能用FPS或页面钟猜值。
+
+自动路径与手动Frame互斥。OnGUI在共同标志为true时调用ThisFrameRenderAnimation（`10788ED7–10788EF4`），随后无论共同标志真假都调用ResetThisFrameRender（`10788F12`），再进入本次GUI绘制；正常无全局dialogue分支在`10789078`分派应用Draw。两个helper自身均要求AutoAnimation=true。因此已核正常顺序为**旧活跃名单推进→旧名单复位→本次绘制注册新名单**；不是本次刚画的对象立即在同一次OnGUI前段加帧。其它dialogue／尺寸捕获分支及实际OS调用次数不由这条正常路径认证。
+
+| 自动名单方法 | 已核效果与边界 |
+| --- | --- |
+| ThisFrameRenderAnimation（RVA `7C45C0`，400字节） | 按`thisFrameRenderSebCount_`活跃前缀顺序遍历；maxFrame≤0跳过，其余令currentFrame=(currentFrame+1)%maxFrame（`107C4731–107C4738`）。它直接推进相位，不调用手动Frame；共同标志门槛在OnGUI调用者 |
+| ResetThisFrameRender（RVA `7C41D0`，272字节） | 清旧活跃前缀每个对象的`isThisFrameRedner_ +0x64`，再置活跃count=0；不清List、旧尾引用、currentFrame或lastRenderFrame。复位不是释放全部引用，List历史容量不等于本轮活跃资源规模 |
+| PushThisFrameRender（RVA `7C2FB0`，560字节） | 自动模式才接受；marker已为true则返回false，实现同一注册周期按对象去重。应用totalFrames−`lastRenderFrame_ +0x68`的原有符号差>1才把currentFrame置0；必要时List.Add(null)扩一个槽，再覆盖活跃前缀槽、加count、置marker并记录本次totalFrames。这里不复制资源实体，也不抽游戏随机或发声 |
+
+三个当前帧Draw包装（RVA `7BF8C0`／`7BFEB0`／`7BF910`）均先Push，再读currentFrame交给`_draw`；首次或久未登记对象可能因此以重置后的帧绘制。显式帧Draw（`7BF810`）及两个DrawFrame（`7BC710`／`7BC750`）包装不调用Push，直接把指定帧交给同一`_draw`（`7C4C20`）；不能因显示同一SEB就强制自动登记。DrawAnchor／RenderAnchor的已核当前帧分支也调用Push，同周期重复调用由marker拒绝。每次真实Reset后可重新登记；冻结计划复用不能重做这组原自动副作用。上述是具名方法从入口顺序解码的调用边界，不是所有绘制入口或图形平台写集的穷尽证明。
 
 分工：页面主／副钟、wait、待发jingle及本页动作归唯一Owner的获准更新；共享SEB相位和平台门槛归共同表现上下文，皮肤只读已准备的帧，冻结计划重复展示不再Frame／发声。未来精确应用恢复若纳入该上下文须独立设计持久身份，本批没有新增载荷或编码；普通世界档也不能被描述为原来保存这些平台SEB相位。89／92正常基础皮肤使用显式身体帧、阴影定义帧及按主钟计算的继续箭头，不读取21／22／23的当前手形帧，所以该共同缺口不改变它们已交的正常基础计划；菜单／目录的手形则实际读取共享当前帧，现静态帧0适配仍不能称完整原调度。
 
-这条共同前段未见游戏随机调用；jingle出口和重画请求是明确副作用。旧wait>1的提前返回不是回滚，已经增加的双钟继续保留；维护事务若随后发生来源／页动作失败，完整候选回滚仍是维护安全策略，不能写成原程序也撤销了前段。APK只沿既有`b/g.java:11088`双钟及延迟概述比较，Steam的AutoAnimation／commonFramesUpdate门槛不外推为Android同一平台调度；完整原窗口动态和自动动画后继仍独立补证。
+这条共同前段未见游戏随机调用；jingle出口和重画请求是明确副作用。旧wait>1的提前返回不是回滚，已经增加的双钟继续保留；维护事务若随后发生来源／页动作失败，完整候选回滚仍是维护安全策略，不能写成原程序也撤销了前段。APK只沿既有`b/g.java:11088`双钟及延迟概述比较，Steam的AutoAnimation／commonFramesUpdate门槛不外推为Android同一平台调度；完整原窗口动态、门槛生产者及自动名单的长期引用退休仍独立补证。
 
 ## 已确认的维护Owner请求设计
 

@@ -1,5 +1,7 @@
 # 产品侧小窗 UI 示例
 
+[建设目录三类与叠图条件](steam-build-menu.png)（960×1280／69665字节）：左上设备、右上一般、左下饮食、右下全开放条件。`build-menu-equipment`／`build-menu-general`／`build-menu-food`／`build-menu-overlays`各8帧、0世界更新、不加`--world`。前三态从真实新局读取，调用正式NEW刷新后投影完整源目录；第四态的全开放／移动／住宅H1／入住／NEW／余额0及左箭头高亮仅为显示条件，不写世界。原尺寸拼接保留图块、五行空项、不足价色、Steam入住图、数量、手形与surface箭头；中文／Noto、绿色背景及画布平移40为适配。纯计划无Owner游标或原OS输入认证，详见[建设合同](../STEAM_BUILD_LIST.md#维护纯计划与产品消费)。
+
 [怪物详情初值／成长条件](steam-monster-detail.png)（960×640／35556字节）：`monster-detail`、`monster-detail-grown`各8帧、0世界更新、不加`--world`。实际遭遇消费者生成首只怪物，经当前实例入口打开92并真实Init；右图仅将共享累计击败设100、倒下人数设2，不制造自然战果。两图读取原定义名／说明，Lv1不画级别、Lv2按实测名宽布置；金币由50变60、经验整数截断仍4。非JP单句没有足够分段，沿原后备显示静态日文标签；中文／Noto及研究背景不认证Steam字体或翻译。钱袋使用原common2图与SEB内部偏移，定义页不保留实例、收费或发奖；见[92合同](../../rules/STEAM_MONSTER_PROGRESSION.md#raw92怪物信息共享定义入口与局部皮肤)。
 
 [怪物介绍展开／完整两态](steam-monster-introduction.png)（960×640／28390字节）：`monster-introduction-early`、`monster-introduction`各8帧、0世界更新、不加`--world`。真实介绍请求绑定原怪物定义3，经真实Init后将主钟固定为20／40，属于显示条件，不认证自然开放。原尺寸拼图消费正式窗框、三段背景、定义阴影、方向2身体、文字clip和继续箭头，未创建怪物实体、运行介绍脚本或发奖。中文／Noto、绿色背景与VIEW_Y23是研究适配；正常根游戏的共享显示前提、子应用／调试态限制、字体与OS动态仍按[合同限制](../../rules/STEAM_MONSTER_PROGRESSION.md)登记。

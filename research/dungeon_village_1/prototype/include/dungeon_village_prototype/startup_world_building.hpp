@@ -28,7 +28,7 @@ struct StartupBuildMenuDirections {
 std::optional<StartupBuildMenuCursor> prepare_startup_build_menu_cursor(
     const std::array<int, 3> &counts, StartupBuildMenuCursor cursor,
     StartupBuildMenuDirections directions);
-// 原页21普通可建子集（含募集、排除私人住宅/道路），按原定义顺序与j分组。
+// 当前21目录子集：p/flags4与住宅H过滤，按原定义序和j分组；尚排道路及撤除/移动哨兵。
 std::optional<std::array<std::vector<int>, 3>>
 startup_world_build_catalog(const StartupWorldRuntimeState &state);
 // 原c/n.w()/SetIsExistBuildNew：显式刷新P与三类NEW缓存，不是即时查询。

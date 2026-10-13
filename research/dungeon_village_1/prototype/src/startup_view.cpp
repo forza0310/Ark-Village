@@ -18,6 +18,7 @@
 #include "dungeon_village_prototype/steam_new_game_skin.hpp"
 #include "dungeon_village_prototype/steam_config_skin.hpp"
 #include "dungeon_village_prototype/steam_commerce_skin.hpp"
+#include "dungeon_village_prototype/steam_build_menu_skin.hpp"
 #include "dungeon_village_prototype/steam_platform_button_skin.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
@@ -56,6 +57,7 @@
 #include <functional>
 #include <iostream>
 #include <iterator>
+#include <limits>
 #include <memory>
 #include <set>
 #include <stdexcept>
@@ -1229,6 +1231,32 @@ template<class Plan> void draw_facility_ceremony(const Plan &plan,SourceSprites 
             const auto &r=value.crop;
             sprites.crop("event/event_backGlad.png",{float(r[0]),float(r[1]),float(r[2]),float(r[3])},
                 {origin.x+value.offset[0],origin.y+value.offset[1]});
+        } else if constexpr(std::is_same_v<T,SteamBuildMenuClip>) {
+            // raw21原SetClip／ClearClip直接替换，不恢复先前的裁剪栈。
+            clips.clear();EndScissorMode();
+            if(value.kind==SteamBuildMenuClipKind::set) {clips.push_back(value.rectangle);apply_clip();}
+        } else if constexpr(std::is_same_v<T,SteamBuildMenuLine>) {
+            const auto &p=value.endpoints;const auto &c=value.rgb;
+            if(value.width!=1||(p[0]!=p[2]&&p[1]!=p[3]))throw std::runtime_error("建设目录线段范围拒绝");
+            // 已核宽1轴向DrawLine含终点；不要丢最后一个像素或扩大成斜线策略。
+            DrawRectangle(int(origin.x)+std::min(p[0],p[2]),int(origin.y)+std::min(p[1],p[3]),
+                std::abs(p[2]-p[0])+1,std::abs(p[3]-p[1])+1,
+                {static_cast<unsigned char>(c[0]),static_cast<unsigned char>(c[1]),static_cast<unsigned char>(c[2]),255});
+        } else if constexpr(std::is_same_v<T,SteamBuildMenuImage>) {
+            const auto r=steam_build_menu_resource(value.asset);
+            if(!r)throw std::runtime_error("建设目录资源映射拒绝");
+            if(!r->published_sprite&&!value.crop) {
+                const auto path=std::filesystem::path(r->published_image).lexically_relative("original");
+                sprites.image(path,{origin.x+value.position[0],origin.y+value.position[1]});
+            } else sprites.published_sprite(r->image,r->published_image,r->published_sprite,
+                value.position,value.frame,value.crop,origin);
+        } else if constexpr(std::is_same_v<T,SteamBuildMenuArrowTouch>) {
+            const auto arrow=facility_detail_arrow({value.position,value.frame,value.value},sprites,value.selected);
+            const auto &c=arrow.crop;const auto &d=arrow.destination;
+            sprites.crop("steam-common/buttoneffect.png",{float(c[0]),float(c[1]),float(c[2]),float(c[3])},
+                {origin.x+d[0],origin.y+d[1]},true,Vector2{d[2],d[3]});
+        } else if constexpr(std::is_same_v<T,SteamBuildMenuTouch>) {
+            // 有界示例保留注册事实；不声称已接原OS触摸或完整Owner输入。
         } else if constexpr(std::is_same_v<T,SteamCommerceImage>) {
             const auto r=steam_commerce_resource(value.asset);
             if(!r)throw std::runtime_error("商会资源映射拒绝");
@@ -1343,7 +1371,8 @@ template<class Plan> void draw_facility_ceremony(const Plan &plan,SourceSprites 
             if(!r)throw std::runtime_error("口碑角色映射缺失");
             sprites.published_sprite(r->image,r->published_image,r->published_sprite,value.position,value.frame,{},origin);
         } else if constexpr(std::is_same_v<T,SteamFacilityEffectScroll>) {
-            SteamHumanOverviewPlan part;part.title=plan.title;part.soft_labels={0,0};
+            SteamHumanOverviewPlan part;part.soft_labels={0,0};
+            if constexpr(!std::is_same_v<Plan,SteamBuildMenuSkinPlan>)part.title=plan.title;
             for(const auto &r:value.skin.rectangles)part.operations.emplace_back(SteamStartupFrameDraw{r});
             draw_human_overview(part,sprites,font,origin);
         } else if constexpr(std::is_same_v<T,SteamTaskDepartureActor>||std::is_same_v<T,SteamTaskVictoryActor>) {
@@ -1357,7 +1386,8 @@ template<class Plan> void draw_facility_ceremony(const Plan &plan,SourceSprites 
         } else if constexpr(std::is_same_v<T,SteamTaskRosterTouch>||std::is_same_v<T,SteamFacilityEffectTouch>||std::is_same_v<T,SteamStartupTouch>) {
             // 注册由窗口输入消费者执行，不在绘制时产生操作。
         } else {
-            SteamHumanOverviewPlan part;part.title=plan.title;part.soft_labels={0,0};
+            SteamHumanOverviewPlan part;part.soft_labels={0,0};
+            if constexpr(!std::is_same_v<Plan,SteamBuildMenuSkinPlan>)part.title=plan.title;
             if constexpr(std::is_same_v<T,SteamHumanOverviewText>) {
                 if(value.rich) {
                     std::string visible=value.value;
@@ -1851,6 +1881,55 @@ std::optional<SteamFacilityDetailSkinPlan> facility_special_example(const std::s
     if(!state)return {};
     return window_facility_special_plan(*state,state->scripts.pages.back().id,font);
 }
+std::optional<SteamBuildMenuSkinPlan> build_menu_example(const std::string &name,const ChineseFont &font) {
+    StartupSession initial;StartupWorldRuntimeSession world(initial.state(),ref::WorldRandomStream::from_java_seed(1));
+    auto s=world.state();
+    // 正式菜单入口负责刷新NEW缓存；不把reset时的全false缓存当作菜单已刷新后的显示。
+    if(!refresh_startup_world_build_notices(s))return {};
+    SteamBuildMenuSkinInput in;in.origin={33,16}; // VIEW_X/Y/W/H=0/23/240/217；研究画布另平移40。
+    in.category_names={"设备","一般","饮食"};in.funds=s.scene.world.world.ai.accounting.funds();
+    const bool overlays=name=="build-menu-overlays";
+    // overlay只改变显示输入的目录／H／入住／NEW／余额条件，不写世界或伪称自然解锁。
+    for(const auto &d:s.rules->facilities) {
+        if(!(d.flags&4)||d.tab<0||d.tab>=3)continue;
+        if(!overlays&&(s.facility_presence.at(d.id)==0||(d.kind==12&&s.facility_free_builds.at(d.id)<=0)))continue;
+        in.catalogs[d.tab].push_back(d.id);
+    }
+    if(in.catalogs[0].empty())return {};
+    in.catalogs[0].insert(in.catalogs[0].begin()+1,-1);
+    if(overlays||(s.scripts.user_flags&32U))in.catalogs[0].insert(in.catalogs[0].begin()+2,-2);
+    in.cursor.page=name=="build-menu-general"?1:name=="build-menu-food"?2:0;
+    in.category_new=s.build_category_new;
+    if(overlays) {
+        in.category_new={true,true,true};in.funds=0;in.arrow_selected[0]=true;
+        const auto &catalog=in.catalogs[0];
+        const auto home=std::find_if(catalog.begin(),catalog.end(),[&](int id){
+            const auto d=std::find_if(s.rules->facilities.begin(),s.rules->facilities.end(),[=](const auto &v){return v.id==id;});
+            return d!=s.rules->facilities.end()&&d->kind==12;
+        });
+        if(home==catalog.end())return {};
+        in.cursor.selection=int(home-catalog.begin());in.cursor.scroll=std::max(0,in.cursor.selection-4);
+    }
+    const auto &catalog=in.catalogs[in.cursor.page];
+    const auto residents=startup_world_residence_candidates(s);if(!residents)return {};
+    for(int n=in.cursor.scroll;n<int(catalog.size())&&n<in.cursor.scroll+5;++n) {
+        SteamBuildMenuRow row;row.definition=catalog[n];
+        if(row.definition<0) {row.name=row.definition==-1?"撤除":"移动";row.quote=row.definition==-1?0:300;}
+        else {
+            const auto d=std::find_if(s.rules->facilities.begin(),s.rules->facilities.end(),[&](const auto &v){return v.id==row.definition;});
+            const auto quote=startup_world_build_quote(s,row.definition);
+            if(d==s.rules->facilities.end()||!quote||quote->construction_cost<0||
+               quote->construction_cost>std::numeric_limits<int>::max())return {};
+            row.mapchip=d->display_id;row.kind=d->kind;row.name=d->name;row.quote=int(quote->construction_cost);
+            row.remaining=overlays&&d->kind==12?1:s.facility_free_builds.at(d->id);
+            row.build_now=overlays?false:s.facility_build_present.at(d->id);
+            row.resident=overlays||!residents->empty();
+        }
+        row.price_text=facility_gold_text(row.quote);row.price_text.pop_back();row.price_text+="Ｇ";
+        row.name_width=int(font.measure(row.name,10));in.visible_rows.push_back(std::move(row));
+    }
+    return steam_build_menu_skin(in);
+}
 std::optional<SteamConfigSkinPlan> config_example(const std::string &name,const ChineseFont &font) {
     // 显式条件值不是平台默认设置；不创建世界或触发实际音量/画质/保存。
     SteamConfigSkinInput in{{0,0,3,5},0,false};
@@ -2314,6 +2393,8 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
     const bool commerce_result_fixture=inspect_page=="commerce-bought"||inspect_page=="commerce-sold";
     const bool commerce_facility_fixture=inspect_page=="commerce-buildings"||inspect_page=="commerce-buildings-funded"||inspect_page=="commerce-buildings-tail";
     const bool commerce_preview_fixture=inspect_page=="commerce-building-preview";
+    const bool build_menu_fixture=inspect_page=="build-menu-equipment"||inspect_page=="build-menu-general"||
+        inspect_page=="build-menu-food"||inspect_page=="build-menu-overlays";
     const bool facility_special_fixture=inspect_page=="facility-shop"||inspect_page=="facility-plant"||
         inspect_page=="facility-recruitment"||inspect_page=="facility-recruitment-ready"||
         inspect_page=="commerce-shop-preview"||inspect_page=="commerce-plant-preview";
@@ -2381,10 +2462,17 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
         reputation_glyphs+="新型怪物怪物情报支给打倒头数扑街人数倒した数倒された人数出现了研究绘制夹具无自然触发认证!!…";
         for(const auto &monster:startup_world_rules().monsters)reputation_glyphs+=monster.name+monster.description;
     }
+    if(build_menu_fixture) {
+        reputation_glyphs+="研究绘制夹具无自然触发认证设备一般饮食撤除移动返回详细Ｇ";
+        for(const auto &d:startup_world_rules().facilities)reputation_glyphs+=d.name;
+    }
     ChineseFont font(font_path,reputation_glyphs);
-    if(magic_fixture||task_fixture||residence_fixture||award_fixture||tax_fixture||monster_fixture||monster_detail_fixture||effort_fixture||award_result_fixture||mastery_fixture||gift_claim_fixture||clear_fixture||new_game_fixture||config_fixture||commerce_fixture||commerce_result_fixture||commerce_facility_fixture||commerce_preview_fixture||facility_special_fixture) {
-        std::variant<SteamMagicPotPlan,SteamTaskSelectionPlan,SteamTaskRosterPlan,SteamTaskResultPlan,SteamTaskVictoryPlan,SteamTaskDeadlinePlan,SteamHumanOverviewPlan,SteamTownProgressPlan,SteamNewGamePlan,SteamConfigSkinPlan,SteamCommerceSkinPlan,SteamFacilityDetailSkinPlan,SteamInformationSkinPlan,SteamMonsterSkinPlan> plan;
-        if(monster_detail_fixture) {
+    if(magic_fixture||task_fixture||residence_fixture||award_fixture||tax_fixture||monster_fixture||monster_detail_fixture||effort_fixture||award_result_fixture||mastery_fixture||gift_claim_fixture||clear_fixture||new_game_fixture||config_fixture||commerce_fixture||commerce_result_fixture||commerce_facility_fixture||commerce_preview_fixture||facility_special_fixture||build_menu_fixture) {
+        std::variant<SteamMagicPotPlan,SteamTaskSelectionPlan,SteamTaskRosterPlan,SteamTaskResultPlan,SteamTaskVictoryPlan,SteamTaskDeadlinePlan,SteamHumanOverviewPlan,SteamTownProgressPlan,SteamNewGamePlan,SteamConfigSkinPlan,SteamCommerceSkinPlan,SteamFacilityDetailSkinPlan,SteamInformationSkinPlan,SteamMonsterSkinPlan,SteamBuildMenuSkinPlan> plan;
+        if(build_menu_fixture) {
+            const auto value=build_menu_example(inspect_page,font);
+            if(!value)throw std::runtime_error("Build menu example rejected");plan=*value;
+        } else if(monster_detail_fixture) {
             const auto value=monster_detail_example(inspect_page=="monster-detail-grown",font);
             if(!value)throw std::runtime_error("Monster detail example rejected");plan=*value;
         } else if(monster_fixture) {
@@ -2468,7 +2556,7 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
                 else if constexpr(std::is_same_v<std::decay_t<decltype(value)>,SteamInformationSkinPlan>)draw_tax_information(value,sprites,font);
                 else draw_facility_ceremony(value,sprites,font,info_fixture?Vector2{0,0}:human_overview_origin);
             },plan);
-            font.text("无自然触发认证",8,new_game_fixture?300:260,WHITE,9);EndTextureMode();BeginDrawing();ClearBackground(BLACK);
+            font.text("无自然触发认证",8,(new_game_fixture||build_menu_fixture)?300:260,WHITE,9);EndTextureMode();BeginDrawing();ClearBackground(BLACK);
             DrawTexturePro(canvas.value.texture,{0,0,width,-height},{0,0,width*scale,height*scale},{0,0},0,WHITE);
             EndDrawing();++count;
             if(count==frames&&screenshot) {

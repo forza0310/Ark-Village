@@ -495,6 +495,9 @@ std::string StartupApplication::input_facility_item_page(std::uint64_t page,cons
 std::string StartupApplication::input_human_detail_page(std::uint64_t page,const StartupHumanCatalogueInput &input) {
     return apply_world_action([&](auto &world) { return world.input_human_detail_page(page,input); });
 }
+std::string StartupApplication::input_human_mastery_page(std::uint64_t page,const StartupHumanCatalogueInput &input) {
+    return apply_world_action([&](auto &world) { return world.input_human_mastery_page(page,input); });
+}
 std::string StartupApplication::act_rank_page(std::uint64_t page, int selection, bool cancel) {
     return apply_world_action([&](auto &world) { return world.act_rank_page(page, selection, cancel); });
 }

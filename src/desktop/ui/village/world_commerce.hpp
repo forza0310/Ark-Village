@@ -1,10 +1,10 @@
 #pragma once
 
-// Commerce keeps buy/sell direction, source scroll and the two payment/receipt moments separate.
+// Commerce83–86 keeps buy/sell direction and source scroll; reward93 is drawn by progression.
 #include "../../scene/world_build_placement.hpp"
+#include "../common/layout.hpp"
 #include "ark/simulation/facilities/startup_world_commerce.hpp"
 #include "ark/simulation/presentation/startup_world_visuals.hpp"
-#include "../common/layout.hpp"
 #include <optional>
 #include <string>
 #include <vector>

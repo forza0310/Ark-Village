@@ -12,7 +12,6 @@ namespace ark::desktop::ui {
 namespace {
 using State = simulation::StartupWorldRuntimeState;
 using Page = simulation::rules::WorldScriptPage;
-constexpr const char *attributes[]{"体力", "力量", "灵活", "结实", "魔力", "运气"};
 void fitted(const Skin &skin, const std::string &text, Rectangle box, Color color = ink) {
     const float size = std::min(11.F, 12.F * box.width / std::max(1.F, skin.text.width(text)));
     skin.text.draw(text, box.x, box.y, color, size);
@@ -131,7 +130,8 @@ WorldHumanView world_human_view(const State &state, const Page &page,
     view.counter = state.page_counters.at(page.id);
     view.selection = state.human_page_selections.at(page.id);
     if (view.raw == 61 || view.raw == 64) {
-        const auto cursor = simulation::inspect_startup_world_human_catalogue_cursor(state, page.id);
+        const auto cursor =
+            simulation::inspect_startup_world_human_catalogue_cursor(state, page.id);
         if (!cursor)
             return view;
         view.first_visible = cursor->first;
@@ -263,22 +263,6 @@ void draw_world_human(const WorldHumanView &view, const WorldHumanLayout &layout
             line(view.choice->name, 0, 4, blue);
             line(quote(*view.choice), 1, 4);
             line("赠送给 " + view.name + "？", 2, 4);
-        } else if (view.raw == 70) {
-            line(view.profession + " 大师", 0, 4, blue);
-            if (view.mastery_attribute >= 0 && view.mastery_attribute < 6)
-                line(std::string(attributes[view.mastery_attribute]) + " +" +
-                         std::to_string(view.mastery_value),
-                     1, 4);
-            else if (view.mastery_attribute >= 10)
-                line("魔法 " + std::to_string(view.mastery_attribute - 9), 1, 4);
-            if (view.phase == 2)
-                for (int n = 0; n < 2; ++n) {
-                    Rectangle box{layout.body.x, layout.body.y + (n + 2) * layout.body.height / 4,
-                                  layout.body.width, layout.body.height / 4};
-                    if (n == view.selection)
-                        DrawRectangleRec(box, {255, 236, 174, 255});
-                    line(n == 0 ? "转职" : "保持现状", n + 2, 4);
-                }
         }
     }
     if (view.can_cancel)

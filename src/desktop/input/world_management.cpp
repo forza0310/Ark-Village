@@ -364,7 +364,9 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
         if (const auto intent = ui::world_progression_input(
                 view, layout, {point, enter, escape, up, down}, blocked, village_controls_))
             queued(intent->input ? session.input_rank(page.id, *intent->input)
-                                 : session.ack_page(page.id));
+                   : view.raw == 93
+                       ? session.act_commerce(page.id, simulation::StartupCommerceAction::confirm)
+                       : session.ack_page(page.id));
         return true;
     }
     return false;

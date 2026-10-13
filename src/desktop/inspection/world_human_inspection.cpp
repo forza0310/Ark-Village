@@ -336,10 +336,10 @@ bool commerce_input(State &s, const rules::WorldScriptPage &page, const std::str
         act(s, page.id, choose_stay ? Action::select : Action::confirm, 1);
         return true;
     }
-    if (page.legacy_page == 31) {
-        if (s.crew_summaries.count(page.id))
+    if (page.legacy_page == 31 || page.legacy_page == 32) {
+        if (page.lifecycle == 2 && s.task_page_ui.count(page.id))
             require(simulation::acknowledge_startup_world_runtime_page(s, page.id),
-                    "close actual commerce-preparation crew result");
+                    "close actual commerce-preparation task summary");
         return true;
     }
     if (page.legacy_page == 48) {
@@ -587,6 +587,8 @@ bool apply_human_inspection_input(State &s, const std::string &mode, WorldHumanI
     if (!current)
         throw std::runtime_error("Human inspection lost real page stack");
     const auto page = *current;
+    if (page.legacy_page == 70 && page.lifecycle != 2)
+        return true; // Mastery has its own Start gate; commerce keeps its Init-only contract.
     if (commerce_mode(mode))
         return commerce_input(s, page, mode, i);
     if (facility_item_mode(mode))

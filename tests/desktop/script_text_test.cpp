@@ -13,7 +13,7 @@ int main() {
     using namespace ark::desktop::ui;
     const auto news = decode_script_text("大家的冒险通信<br>发行了");
     check(news.text == "大家的冒险通信\n发行了", "Published script newline leaked into text");
-    check(decode_script_text("<po=cm>村庄<co=0066cc>升级</co><br/>条件").text == "村庄升级\n条件",
+    check(decode_script_text("<po=cm>村庄<co=0066cc>升级</co><br>条件").text == "村庄升级\n条件",
           "Known presentation markup changed visible content");
     check(decode_script_text("<po=cm>村庄").centered, "Source centered paragraph ignored");
     const auto notice = decode_script_text("任务 <co=0064FF>沼泽</co> 追加");
@@ -21,11 +21,26 @@ int main() {
               notice.runs[1].rgb == 0x0064ff && !notice.runs[2].rgb &&
               notice.text == "任务 沼泽 追加",
           "Task name color must survive decoding without changing measured visible text");
+    // STEAM_FONT_CONSUMER: </co> resets to the layout's base, not the enclosing color.
     const auto nested = decode_script_text("<co=0000ff>A<co=ff0000>B</co>C</co>D");
-    check(nested.runs.size() == 4 && nested.runs[2].rgb == 0xff && !nested.runs[3].rgb,
-          "Closing an inner color must restore the enclosing color");
-    check(decode_script_text("A<BR>B<br />C\r\nD\rE").text == "A\nB\nC\nD\nE",
-          "Explicit break variants or CRLF produced literal markup/duplicate rows");
+    check(nested.runs.size() == 3 && nested.runs[0].rgb == 0xff && nested.runs[1].rgb == 0xff0000 &&
+              nested.runs[2].text == "CD" && !nested.runs[2].rgb,
+          "Closing a color must restore the layout base color");
+    check(decode_script_text("A<BR>B<br />C<br/>D\r\nE\rF").text == "A<BR>B<br />C<br/>D\nE\nF",
+          "Only the exact source break token is decoded; platform CRLF stays normalized");
+    const auto spelling = decode_script_text("<CO=0064FF>A<co=ff0000>B</CO>C</co >D</co>E");
+    check(spelling.text == "<CO=0064FF>AB</CO>C</co >DE" && spelling.runs.size() == 3 &&
+              !spelling.runs[0].rgb && spelling.runs[1].text == "B</CO>C</co >D" &&
+              spelling.runs[1].rgb == 0xff0000 && !spelling.runs[2].rgb,
+          "Color names and closing tokens must retain exact source spelling");
+    const auto black = decode_script_text("<co=000000>黑</co>基色");
+    check(black.runs.size() == 2 && black.runs[0].rgb == 0 && !black.runs[1].rgb,
+          "Explicit black must stay distinct from the layout base color");
+    const std::string oversized = "<co=" + std::string(29, '0') + ">保持<co=0064FF>颜色</co>";
+    const auto bounded = decode_script_text(oversized);
+    check(bounded.text == "<co=" + std::string(29, '0') + ">保持颜色" && bounded.runs.size() == 2 &&
+              bounded.runs.back().rgb == 0x0064ff,
+          "An oversized unsupported token stays visible without hiding the next source color");
     check(decode_script_text("<0> 2<3 <unknown> <co=xyz>尾").text == "<0> 2<3 <unknown> <co=xyz>尾",
           "Decoder silently removed unknown source content");
     // Uniform codepoint widths let the test independently check UTF-8 boundaries and hard breaks.

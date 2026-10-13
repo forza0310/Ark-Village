@@ -372,6 +372,14 @@ void facility_reputation_pages() {
 StartupWorldRuntimeState human_fixture(int raw) {
     auto s = fixture(raw);
     s.page_human_bindings[s.scripts.pages.back().id] = 1;
+    if (raw == 70) {
+        const auto id = s.scripts.pages.back().id;
+        s.scripts.pages.back().lifecycle = 0;
+        s.page_counters.emplace(id, 0);
+        s.page_secondary_counters.emplace(id, 0);
+        s.page_phases.emplace(id, 0);
+        s.human_page_selections.emplace(id, 0);
+    }
     // 管理页合同夹具：绕开首次说明的模态，仅避免它遮住被测栈顶。
     for (int event : {99, 111, 112, 119})
         s.scripts.event_calls[event] = 1;
@@ -2792,6 +2800,8 @@ void gift() {
     const auto id = page.id;
     page.legacy_r = 3;
     page.legacy_s = 0;
+    page.lifecycle = 0;
+    s.page_human_bindings.emplace(id, 1); // 原94构造m绑定实际赠予人。
     s.facility_presence.at(0) = 0;
     s.facility_free_builds[0] = 0;
     const auto tick = prepare_startup_world_runtime(s);

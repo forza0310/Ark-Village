@@ -455,8 +455,18 @@ app::WorldState managed_page_fixture(int raw, bool ready = true) {
         page.id = state.scripts.next_page_id++;
         page.kind = rules::WorldScriptPageKind::raw_page;
         page.legacy_page = raw;
+        if (raw == 70)
+            page.lifecycle = 0; // Mastery starts with its complete constructor, before Init.
         state.scripts.pages.push_back(page);
         state.page_human_bindings[page.id] = 1;
+        if (raw == 70) {
+            // Match the mastery producer's complete constructor payload; Init must not
+            // repair a missing clock or selection in transport fixtures either.
+            state.page_counters.emplace(page.id, 0);
+            state.page_secondary_counters.emplace(page.id, 0);
+            state.page_phases.emplace(page.id, 0);
+            state.human_page_selections.emplace(page.id, 0);
+        }
     }
     for (int event : {99, 111, 112, 119})
         state.scripts.event_calls[event] = 1;
@@ -557,6 +567,40 @@ void human_command_transactions() {
           "Composite human frame retains branch ordering; invalid selection and generation roll "
           "back");
     composed.stop();
+
+    auto mastery = managed_page_fixture(70);
+    const auto mastery_page = task_top(mastery).id;
+    mastery.scripts.pages.back().lifecycle = 2;
+    mastery.page_phases.at(mastery_page) = 2;
+    mastery.page_counters.at(mastery_page) = 40;
+    mastery.page_secondary_counters.at(mastery_page) = 17;
+    app::WorldSession mastered(mastery);
+    sim::StartupHumanCatalogueInput choose;
+    choose.selection = 1;
+    choose.left = choose.right = true;
+    const auto paused = input_frame(mastered, mastered.input_human(mastery_page, choose));
+    check(!paused->failed &&
+              input_result(*paused, paused->last_command_serial).outcome == Outcome::rejected,
+          "Mastery source frame cannot bypass explicit pause");
+    same_world(mastery, *paused->state);
+    mastered.set_paused(false);
+    const auto selected = mastered.input_human(mastery_page, choose);
+    auto unsupported = choose;
+    unsupported.up = true;
+    const auto refused = mastered.input_human(mastery_page, unsupported);
+    frame = input_frame(mastered, mastered.set_paused(true));
+    check(!frame->failed && input_result(*frame, selected).outcome == Outcome::applied &&
+              input_result(*frame, refused).outcome == Outcome::rejected &&
+              frame->state->human_page_selections.at(mastery_page) == 1 &&
+              frame->state->page_phases.at(mastery_page) == 2 &&
+              frame->state->page_counters.at(mastery_page) == 40 &&
+              frame->state->page_secondary_counters.at(mastery_page) == 17 &&
+              frame->state->scene.random.draws() == mastery.scene.random.draws() &&
+              frame->state->scene.world.world.ai.accounting.funds() ==
+                  mastery.scene.world.world.ai.accounting.funds(),
+          "Mastery routes one selection/left/right frame to its own consumer; unsupported "
+          "input rejects without clocks, rewards or random changes");
+    mastered.stop();
 
     auto report = state;
     report.report_state = 1;

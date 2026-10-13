@@ -1,15 +1,16 @@
 // Bounded source inspections and capture checks, separated from ordinary player input.
 #include "world_inspection.hpp"
-#include "ark/app/session/world_report.hpp"
-#include "ark/simulation/world/startup_world_save.hpp"
-#include "../ui/village/world_award.hpp"
-#include "../ui/common/world_panels.hpp"
-#include "../ui/tasks/world_tasks.hpp"
 #include "../scene/world_build_placement.hpp"
 #include "../scene/world_editing.hpp"
-#include "world_human_inspection.hpp"
-#include "ark/presentation/world_rest_visuals.hpp"
 #include "../scene/world_scene.hpp"
+#include "../ui/common/world_panels.hpp"
+#include "../ui/tasks/world_tasks.hpp"
+#include "../ui/village/world_award.hpp"
+#include "ark/app/session/world_report.hpp"
+#include "ark/presentation/world_rest_visuals.hpp"
+#include "ark/simulation/facilities/startup_world_commerce.hpp"
+#include "ark/simulation/world/startup_world_save.hpp"
+#include "world_human_inspection.hpp"
 #include "world_task_inspection.hpp"
 #include <algorithm>
 #include <chrono>
@@ -229,12 +230,39 @@ void prepare_world_inspection(State &state, const app::LaunchOptions &options, b
                     continue;
             }
             if (const auto *page = active_page(state);
-                page && ui::world_page_regular_confirmation(*page) &&
+                page && page->kind == simulation::rules::WorldScriptPageKind::raw_page &&
+                (page->legacy_page == 93 || page->legacy_page == 94)) {
+                // These receipts keep their own Init and claim consumers. Generic ack
+                // must not bypass the commerce bridge or guess a missing giver/clock.
+                const bool ready =
+                    page->lifecycle == 2 &&
+                    (page->legacy_page == 93
+                         ? simulation::inspect_startup_world_commerce_page(state, page->id)
+                               .has_value()
+                         : simulation::valid_startup_world_gift_notice_page(state, *page));
+                if (!ready)
+                    continue;
+                const auto result =
+                    page->legacy_page == 93
+                        ? simulation::act_startup_world_commerce_page(
+                              state, page->id, simulation::StartupCommerceAction::confirm)
+                        : simulation::acknowledge_startup_world_runtime_page(state, page->id);
+                if (result != simulation::StartupWorldRuntimeError::none)
+                    throw std::runtime_error("World inspection receipt consumer rejected input");
+                continue;
+            }
+            if (const auto *page = active_page(state);
+                page && page->lifecycle == 2 && ui::world_page_regular_confirmation(*page) &&
                 ui::world_task_related_confirmation(state, *page) &&
                 !(options.inspect_page == "world-rank" && page->legacy_page == 49)) {
-                if (simulation::acknowledge_startup_world_runtime_page(state, page->id) !=
-                    simulation::StartupWorldRuntimeError::none)
-                    throw std::runtime_error("World inspection page consumer rejected input");
+                const auto result =
+                    simulation::acknowledge_startup_world_runtime_page(state, page->id);
+                if (result != simulation::StartupWorldRuntimeError::none)
+                    throw std::runtime_error("World inspection page consumer rejected input: raw=" +
+                                             std::to_string(page->legacy_page) +
+                                             " lifecycle=" + std::to_string(page->lifecycle) +
+                                             " kind=" + std::to_string(int(page->kind)) +
+                                             " error=" + std::to_string(int(result)));
                 if (human_inspection_mode(options.inspect_page) &&
                     human_inspection_ready(state, options.inspect_page, human_inspection)) {
                     reached = true;

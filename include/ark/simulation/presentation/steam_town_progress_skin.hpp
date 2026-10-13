@@ -1,9 +1,10 @@
 #pragma once
 
 #include "ark/simulation/presentation/steam_facility_effect_skin.hpp"
+#include "ark/simulation/presentation/startup_world_visuals.hpp"
 
 namespace ark::simulation {
-// Steam48/49条件、50三段晋级、95奖励的原序纯表现。领取、声音与随机只由Owner执行。
+// Steam48/49条件、50三段晋级及93/94/95已维护奖励的原序纯表现。领取、声音与随机只由Owner执行。
 enum class SteamTownAsset { star, rank_star, rank_frame, award, president_carry, shadow,
     celebration_background, reward_background, mini1, mini2, move_facility, residence_icon, activity_icon };
 struct SteamTownResource {
@@ -73,8 +74,12 @@ struct SteamTownGiftInput {
     std::uint32_t activity_flags{};
     std::string name;
     SteamTownProgressOptions options;
+    int raw_page{95}; // 93仅已维护r3；94仅已维护r3..8；95仍保留七类。
+    struct Giver { int profession{},sex{};std::string name; };
+    std::optional<Giver> giver;
+    std::vector<StartupVisualDraw> reward_icon; // 94r5..8真实reward namespace图标，不用定义ID裁图。
 };
-// 仅既有七类0/1/3/4/9/10/11，r4 value为职业定义；不接受尚未维护的其它奖励。
+// 95限既有七类0/1/3/4/9/10/11；93仅r3，94仅r3..8，不将原共用模板其它类型默认维护。
 std::optional<SteamTownProgressPlan> steam_town_gift_skin(const SteamTownGiftInput &input);
 // 只读真实已初始化栈顶。缺计数、错绑定、退休页均拒绝，不在查询中补初始化。
 std::optional<SteamTownProgressPlan> steam_town_conditions_skin(

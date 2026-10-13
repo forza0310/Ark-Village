@@ -74,6 +74,7 @@ void prepare_world_human_detail(WorldHumanView &v, const sim::StartupWorldRuntim
                         : v.raw == 63 ? "转职"
                         : v.raw == 68 ? "装备变更"
                         : v.raw == 69 ? "能力上升"
+                        : v.raw == 70 ? "职业大师"
                         : v.raw == 65 || v.raw == 66 ? "赠送礼物"
                                                      : "冒险者信息";
     if ((v.raw == 73 && v.rows.size() > 1) || v.raw == 62)
@@ -108,7 +109,20 @@ void prepare_world_human_detail(WorldHumanView &v, const sim::StartupWorldRuntim
                       "习得";
     }
     o.message_width = int(skin.text.width(message));
-    if (v.raw == 61)
+    if (v.raw == 70) {
+        // Match the exact source labels before measuring; the plan handles attribute/magic
+        // branches, signed clocks and the final choice without advancing either Owner clock.
+        constexpr std::array<const char *, 6> attributes{"体力", "力",   "器用",
+                                                         "丈夫", "魔力", "运"};
+        constexpr std::array<const char *, 4> spells{"火魔法", "冰魔法", "雷魔法", "回复魔法"};
+        const auto name = v.mastery_attribute >= 10 ? spells.at(v.mastery_attribute - 10)
+                                                    : attributes.at(v.mastery_attribute);
+        o.mastery_widths = {int(skin.text.width(name)),
+                            int(skin.text.width(std::to_string(v.mastery_value))),
+                            int(skin.text.width("上升了!"))};
+        o.mastery_button_widths = {int(skin.text.width("转职")), int(skin.text.width("保持现状"))};
+        v.detail_page_skin = sim::steam_human_mastery_skin(state, v.page, o);
+    } else if (v.raw == 61)
         v.detail_page_skin = sim::steam_human_profession_catalogue_skin(state, v.page, o);
     else if (v.raw == 64) {
         if (v.phase == 4 && v.choice) {
@@ -229,14 +243,29 @@ std::optional<WorldHumanPaintedControls> world_human_painted_controls(const Worl
     out.back = layout.cancel;
     if (v.raw == 73)
         out.other_back = layout.confirm;
-    if (v.raw == 61 || v.raw == 64 || v.raw == 63 || v.raw == 66 || v.raw == 68 || v.raw == 69)
+    if (v.raw == 61 || v.raw == 64 || v.raw == 63 || v.raw == 66 || v.raw == 68 || v.raw == 69 ||
+        (v.raw == 70 && v.phase < 2))
         out.primary = layout.confirm;
     if (v.raw == 64 && v.phase != 4)
         out.inspect = layout.inspect;
     for (const auto &op : v.detail_page_skin->operations) {
-        if (const auto *p = std::get_if<sim::SteamHumanOverviewText>(&op);
-            p && (p->role == sim::SteamHumanOverviewTextRole::gift_accept ||
-                  p->role == sim::SteamHumanOverviewTextRole::profession_change)) {
+        if (const auto *p = std::get_if<sim::SteamStartupTouch>(&op);
+            p && v.raw == 70 && v.phase == 2 && p->component == 3 && p->rectangle) {
+            const int choice = p->value & 0xFFFF;
+            if ((p->value & 0xFFFF0000) != 0x20000 || choice > 1)
+                throw std::invalid_argument("Invalid mastery choice touch");
+            const auto &r = *p->rectangle;
+            const float left = std::max(layout.panel.x, origin.x + r[0]);
+            const float top = std::max(layout.panel.y, origin.y + r[1]);
+            const float right =
+                std::min(layout.panel.x + layout.panel.width, origin.x + r[0] + r[2]);
+            const float bottom =
+                std::min(layout.panel.y + layout.panel.height, origin.y + r[1] + r[3]);
+            out.mastery_buttons[choice] =
+                Rectangle{left, top, std::max(0.F, right - left), std::max(0.F, bottom - top)};
+        } else if (const auto *p = std::get_if<sim::SteamHumanOverviewText>(&op);
+                   p && (p->role == sim::SteamHumanOverviewTextRole::gift_accept ||
+                         p->role == sim::SteamHumanOverviewTextRole::profession_change)) {
             const auto &r = p->rectangle;
             out.primary = Rectangle{origin.x + r[0], origin.y + r[1], float(r[2]), float(r[3])};
         } else if (const auto *p = std::get_if<sim::SteamFacilityArrowTouch>(&op)) {

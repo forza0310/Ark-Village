@@ -21,7 +21,8 @@ struct WorldHumanRow {
     std::vector<simulation::StartupVisualDraw> icon;
 };
 struct WorldHumanView {
-    int raw{}, phase{}, selection{}, counter{}, human{}, portrait_image{}, first_visible{}, visible_rows{5};
+    int raw{}, phase{}, selection{}, counter{}, human{}, portrait_image{}, first_visible{},
+        visible_rows{5};
     std::uint64_t page{};
     bool initialized{}, can_confirm{}, can_cancel{}, can_track{};
     std::string title, name, profession, target_profession, message;
@@ -59,7 +60,11 @@ struct WorldHumanPaintedControls {
     Extent extent;
     Rectangle back{}, other_back{};
     std::optional<Rectangle> primary, previous, next, inspect, scroll;
-    struct Row { int index{}, identity{}; Rectangle rectangle{}; };
+    std::array<std::optional<Rectangle>, 2> mastery_buttons; // Source Touch3, raw70 phase2 only.
+    struct Row {
+        int index{}, identity{};
+        Rectangle rectangle{};
+    };
     std::vector<Row> rows;
     int scroll_count{}, scroll_visible{};
 };
@@ -73,15 +78,16 @@ struct WorldHumanIntent {
     simulation::StartupHumanPageAction action;
     std::uint64_t page{};
     int selection{}; // Source list position, not a human/equipment definition identity.
-    std::optional<simulation::StartupHumanCatalogueInput> input; // Composite source frame when present.
+    std::optional<simulation::StartupHumanCatalogueInput>
+        input; // Composite source frame when present.
 };
 bool world_human_page(const simulation::rules::WorldScriptPage &page);
 WorldHumanView world_human_view(const simulation::StartupWorldRuntimeState &state,
                                 const simulation::rules::WorldScriptPage &page,
                                 std::optional<int> down_text_width = {});
 void prepare_world_human_detail(WorldHumanView &view,
-                                const simulation::StartupWorldRuntimeState &state,
-                                const Skin &skin, bool scrollbar_active = false);
+                                const simulation::StartupWorldRuntimeState &state, const Skin &skin,
+                                bool scrollbar_active = false);
 WorldHumanLayout world_human_layout(Extent extent);
 WorldHumanLayout world_human_detail_layout(const WorldHumanLayout &base);
 bool world_human_source_child(const WorldHumanView &view);

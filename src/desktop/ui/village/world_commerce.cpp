@@ -51,7 +51,7 @@ WorldCommerceRow facility(const State &state, int id) {
 } // namespace
 bool world_commerce_page(const Page &page) {
     return page.kind == simulation::rules::WorldScriptPageKind::raw_page &&
-           ((page.legacy_page >= 83 && page.legacy_page <= 86) || page.legacy_page == 93);
+           page.legacy_page >= 83 && page.legacy_page <= 86;
 }
 WorldCommerceView world_commerce_view(const State &state, const Page &page) {
     if (!state.rules || !world_commerce_page(page))
@@ -59,7 +59,7 @@ WorldCommerceView world_commerce_view(const State &state, const Page &page) {
     WorldCommerceView out;
     out.page = page.id;
     out.raw = page.legacy_page;
-    out.title = out.raw == 85 ? "购买设施" : out.raw == 93 ? "获得设施" : "南瓜商会";
+    out.title = out.raw == 85 ? "购买设施" : "南瓜商会";
     if (!state.commerce_pages_initialized.count(page.id) && out.raw == 86) {
         const auto live = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
                                        [](const auto &p) { return p.lifecycle != 4; });
@@ -101,8 +101,7 @@ WorldCommerceView world_commerce_view(const State &state, const Page &page) {
             out.rows.push_back(out.raw == 85 ? facility(state, entry)
                                              : item(state, entry, out.mode == 1));
     } else {
-        out.choice = out.raw == 93 ? facility(state, source->binding)
-                                   : item(state, source->binding, out.mode == 1);
+        out.choice = item(state, source->binding, out.mode == 1);
     }
     if (!out.rows.empty())
         out.choice = out.rows.at(out.selection);
@@ -177,8 +176,8 @@ void draw_world_commerce(const WorldCommerceView &view, const WorldCommerceLayou
         {layout.rows.x - 2, layout.rows.y - 2, layout.rows.width + 4, layout.rows.height + 4});
     if (view.initialized) {
         fitted(skin,
-               view.raw == 85 || view.raw == 93 ? std::to_string(view.points) + "点"
-                                                : std::to_string(view.funds) + "G",
+               view.raw == 85 ? std::to_string(view.points) + "点"
+                              : std::to_string(view.funds) + "G",
                layout.heading, blue);
         if (view.raw == 84 && view.mode == 0)
             for (int n = 0; n < 2; ++n) {

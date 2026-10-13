@@ -9,6 +9,7 @@
 #include <cmath>
 #include <filesystem>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 
 namespace ark::test {
@@ -48,56 +49,124 @@ void world_human_render_fixture() {
     page.id = 901;
     page.kind = rules::WorldScriptPageKind::raw_page;
     page.legacy_page = 70;
-    page.lifecycle = 1;
-    state.scripts.pages.push_back(page);
-    state.page_human_bindings[page.id] = human;
-    state.human_pages_initialized.insert(page.id);
-    state.page_counters[page.id] = 40;
-    state.human_page_selections[page.id] = 1; // Show the actual keep-current option in phase2.
-    const auto untouched = state;
-    const auto cash = state.scene.world.world.ai.accounting.funds();
-    const auto draws = state.scene.random.draws();
+    page.lifecycle = 2;
 
     FixtureWindow window;
     desktop::Sprites sprites(ARK_TEST_ASSETS);
-    std::string glyphs = "职业大师体力力量灵活结实魔力运气魔法转职保持现状确定";
+    std::string glyphs = "职业大师体力力量灵活结实魔力运气魔法转职保持现状确定"
+                         "获得了因为奖励上升了!器用丈夫火魔法冰魔法雷魔法回复魔法学会了";
     glyphs += state.rules->humans.at(human).name;
     glyphs += state.rules->jobs.at(growth.definition.current_profession).name;
     glyphs += state.rules->jobs.at(2).name;
     glyphs += ui::world_human_down_text;
     desktop::Text text(ARK_TEST_FONT, glyphs);
     ui::Skin skin(sprites, text);
-    const auto layout = ui::world_human_layout({720, 600});
-    for (int phase = 0; phase < 3; ++phase) {
-        // Explicit fixture selection; this is not elapsed source animation time.
-        state.page_phases[page.id] = phase;
-        const auto view = ui::world_human_view(state, page);
-        if (!view.initialized || view.details.level != 10 || view.phase != phase)
-            throw std::runtime_error("Synthetic raw70 fixture did not produce its requested view");
-        for (int frame = 0; frame < 8; ++frame) {
-            if (WindowShouldClose())
-                throw std::runtime_error("Synthetic UI fixture was closed before all captures");
-            BeginDrawing();
-            ClearBackground({145, 211, 247, 255});
-            DrawRectangle(0, 0, 720, 62, {52, 55, 41, 255});
-            DrawText("UI fixture / synthetic - renderer only", 14, 10, 18, WHITE);
-            DrawText(TextFormat("raw70 phase %d / counter 40 / no simulation or rewards", phase),
-                     14, 36, 16, YELLOW);
-            ui::draw_world_human(view, layout, skin, true);
-            text.flush(1, {});
-            EndDrawing();
+    struct MasterySample {
+        int phase, counter, secondary, selection, spell;
+        const char *name;
+    };
+    constexpr MasterySample masters[]{
+        {0, 5, 0, 0, -1, "opening"},
+        {0, 40, 10, 0, -1, "jump"},
+        {0, 75, 25, 0, -1, "land"},
+        {1, 40, 1, 0, -1, "attribute"},
+        {1, 40, 23, 0, 0, "fire"},
+        {1, 40, 25, 0, 3, "recovery"},
+        {2, 0, 10, 0, -1, "change"},
+        {2, 0, 25, 1, -1, "keep"},
+        {2, 40, std::numeric_limits<int>::max() - 1, 1, -1, "rollover-tail"}};
+    for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{720, 600}}) {
+        SetWindowSize(extent.width, extent.height);
+        for (const auto &sample : masters) {
+            auto owner = initial_world();
+            const auto job = std::find_if(
+                owner.rules->jobs.begin(), owner.rules->jobs.end(), [&](const auto &j) {
+                    return sample.spell < 0 ? j.mastery_attribute >= 0 && j.mastery_attribute < 6
+                                            : j.mastery_attribute == 10 + sample.spell;
+                });
+            if (job == owner.rules->jobs.end())
+                throw std::runtime_error("Mastery fixture requires a published reward profession");
+            auto &g = owner.scene.world.world.ai.growth.at(human);
+            g.definition.current_profession = int(job - owner.rules->jobs.begin());
+            g.definition.profession_levels.at(g.definition.current_profession) = 10;
+            if (!text.include_text(job->name))
+                throw std::runtime_error("Mastery profession name font glyph missing");
+            owner.scripts.pages.push_back(page);
+            owner.page_human_bindings[page.id] = human;
+            owner.human_pages_initialized.insert(page.id);
+            owner.page_phases[page.id] = sample.phase;
+            owner.page_counters[page.id] = sample.counter;
+            owner.page_secondary_counters[page.id] = sample.secondary;
+            owner.human_page_selections[page.id] = sample.selection;
+            const auto before = owner;
+            const auto layout = ui::world_human_layout(extent);
+            auto view = ui::world_human_view(owner, page);
+            ui::prepare_world_human_detail(view, owner, skin);
+            const auto controls = ui::world_human_painted_controls(view, layout, extent, skin);
+            if (!view.initialized || view.details.level != 10 || !view.detail_page_skin ||
+                !controls ||
+                (sample.phase == 2 ? !controls->mastery_buttons[0] ||
+                                         !controls->mastery_buttons[1] || bool(controls->primary)
+                                   : !controls->primary || bool(controls->mastery_buttons[0]) ||
+                                         bool(controls->mastery_buttons[1])))
+                throw std::runtime_error("Synthetic raw70 fixture lost its source plan/controls");
+            if (sample.phase == 2) {
+                const auto panel = ui::world_human_subwindow_layout(layout, 70).panel;
+                for (int choice = 0; choice < 2; ++choice) {
+                    const auto r = *controls->mastery_buttons[choice];
+                    if (r.x < panel.x || r.y < panel.y || r.x + r.width > panel.x + panel.width ||
+                        r.y + r.height > panel.y + panel.height)
+                        throw std::runtime_error("Mastery touch escapes its source window");
+                    ui::WorldHumanInput click;
+                    click.click = Vector2{r.x + r.width / 2, r.y + r.height / 2};
+                    const auto action =
+                        ui::world_human_input(view, layout, click, false, controls, extent);
+                    if (!action || !action->input || action->input->selection != choice ||
+                        !action->input->confirm)
+                        throw std::runtime_error(
+                            "Painted mastery choice lost select/confirm frame");
+                }
+            } else {
+                const auto r = *controls->primary;
+                ui::WorldHumanInput click;
+                click.click = Vector2{r.x + r.width / 2, r.y + r.height / 2};
+                const auto action =
+                    ui::world_human_input(view, layout, click, false, controls, extent);
+                if (!action || !action->input || !action->input->confirm ||
+                    action->input->selection)
+                    throw std::runtime_error(
+                        "Mastery PC footer lost its source confirmation frame");
+            }
+            for (int frame = 0; frame < 8; ++frame) {
+                if (WindowShouldClose())
+                    throw std::runtime_error("Synthetic UI fixture was closed before all captures");
+                BeginDrawing();
+                ClearBackground({145, 211, 247, 255});
+                DrawText("SYNTHETIC mastery UI", 4, 4, 12, BLACK);
+                ui::draw_world_human(view, layout, skin, true);
+                text.flush(1, {});
+                EndDrawing();
+            }
+            const auto file = output / ("synthetic-raw70-" + std::to_string(extent.width) + "-" +
+                                        sample.name + ".png");
+            capture(file);
+            if (!same_world_clock(owner, before) ||
+                owner.scene.world.world.ai.accounting.funds() !=
+                    before.scene.world.world.ai.accounting.funds() ||
+                owner.scene.random.draws() != before.scene.random.draws() ||
+                owner.page_counters != before.page_counters ||
+                owner.page_secondary_counters != before.page_secondary_counters ||
+                owner.page_phases != before.page_phases ||
+                owner.human_page_selections != before.human_page_selections ||
+                owner.reward_display != before.reward_display ||
+                owner.sound_requests != before.sound_requests ||
+                owner.scene.world.world.ai.growth.at(human).definition.extra !=
+                    before.scene.world.world.ai.growth.at(human).definition.extra)
+                throw std::runtime_error(
+                    "Rendering synthetic mastery unexpectedly changed world state");
+            std::cout << "UI fixture / synthetic raw70 sample=" << sample.name
+                      << " frames=8 screenshot=" << file.string() << '\n';
         }
-        const auto file = output / ("synthetic-raw70-phase" + std::to_string(phase) + ".png");
-        capture(file);
-        if (!same_world_clock(state, untouched) ||
-            state.scene.world.world.ai.accounting.funds() != cash ||
-            state.scene.random.draws() != draws || state.page_counters.at(page.id) != 40 ||
-            state.scene.world.world.ai.growth.at(human).definition.extra !=
-                untouched.scene.world.world.ai.growth.at(human).definition.extra)
-            throw std::runtime_error(
-                "Rendering synthetic mastery unexpectedly changed world state");
-        std::cout << "UI fixture / synthetic raw70 phase=" << phase
-                  << " frames=8 screenshot=" << file.string() << '\n';
     }
     // Display snapshots cover all four pages, page0 recovery/down and long page1 text/numbers.
     // They deliberately do not claim natural combat, acquisitions or job progression.
@@ -323,8 +392,10 @@ void world_human_render_fixture() {
             owner.human_pages_initialized.insert(current.id);
             const int phase = sample < 2 ? sample : sample < 7 ? sample - 2 : sample == 7 ? 4 : 0;
             owner.page_phases[current.id] = phase;
-            owner.page_counters[current.id] = sample < 8 ? 16 :
-                std::array<int, 3>{0, sample < 11 ? 52 : 24, sample < 11 ? 73 : 45}.at((sample - 8) % 3);
+            owner.page_counters[current.id] =
+                sample < 8 ? 16
+                           : std::array<int, 3>{0, sample < 11 ? 52 : 24, sample < 11 ? 73 : 45}.at(
+                                 (sample - 8) % 3);
             owner.human_page_selections[current.id] = 0;
             owner.human_page_scroll[current.id] = 0;
             if (current.legacy_page == 64)
@@ -333,7 +404,8 @@ void world_human_render_fixture() {
                 for (int job = 0; job < 8; ++job) {
                     owner.human_page_catalogs[current.id].push_back(job);
                     owner.scripts.professions.at(job).status = 1;
-                    owner.scene.world.world.ai.growth.at(human).definition.profession_levels.at(job) = job + 1;
+                    owner.scene.world.world.ai.growth.at(human).definition.profession_levels.at(
+                        job) = job + 1;
                 }
                 catalogue.jobs.at(6).name = "名称较长的测试职业";
             } else if (current.legacy_page == 64 && sample != 7) {
@@ -343,39 +415,49 @@ void world_human_render_fixture() {
                         list.push_back(item.identity);
                         owner.items.at(item.identity).inventory = 3;
                         owner.catalog.at({0, item.identity}) = owner.items.at(item.identity);
-                        if (list.size() == 8) break;
+                        if (list.size() == 8)
+                            break;
                     }
                 } else {
                     const int kind = phase == 0 ? 1 : phase == 3 ? 3 : 2;
                     for (const auto &item : catalogue.equipment) {
-                        if (item.shop.kind != kind || (kind == 2 && (item.shop.type == 2 ? 1 : 2) != phase)) continue;
+                        if (item.shop.kind != kind ||
+                            (kind == 2 && (item.shop.type == 2 ? 1 : 2) != phase))
+                            continue;
                         list.push_back(item.shop.id);
                         auto &stock = owner.catalog.at({kind, item.shop.id});
                         stock.status = 3;
                         stock.free_purchases = list.size() == 7 ? 2 : 0;
                         stock.newly_unlocked = true;
-                        if (list.size() == 8) break;
+                        if (list.size() == 8)
+                            break;
                     }
                 }
             } else if (current.legacy_page == 68) {
                 owner.human_equipment_choices[current.id] = {0, 1};
-                owner.equipment_attribute_display = {{{100, 20, 30, 40}, {90, 25, 30, 42}, {-10, 5, 0, 2}}};
+                owner.equipment_attribute_display = {
+                    {{100, 20, 30, 40}, {90, 25, 30, 42}, {-10, 5, 0, 2}}};
             } else if (current.legacy_page == 69) {
                 const auto item = std::find_if(catalogue.items.begin(), catalogue.items.end(),
                                                [](const auto &d) { return d.effect == 2; });
-                if (item == catalogue.items.end()) throw std::runtime_error("Attribute item fixture missing");
+                if (item == catalogue.items.end())
+                    throw std::runtime_error("Attribute item fixture missing");
                 owner.human_equipment_choices[current.id] = {4, item->identity};
-                owner.human_attribute_display = {{{100, 20, 30, 40, 50, 60}, {100, 20, 34, 40, 50, 60}, {0, 0, 4, 0, 0, 0}}};
+                owner.human_attribute_display = {
+                    {{100, 20, 30, 40, 50, 60}, {100, 20, 34, 40, 50, 60}, {0, 0, 4, 0, 0, 0}}};
             }
             if (sample < 7) {
-                const auto count = current.legacy_page == 61 ? owner.human_page_catalogs.at(current.id).size()
-                    : owner.equipment_page_catalogs.at(current.id).at(phase).size();
+                const auto count =
+                    current.legacy_page == 61
+                        ? owner.human_page_catalogs.at(current.id).size()
+                        : owner.equipment_page_catalogs.at(current.id).at(phase).size();
                 if (count > 6) {
                     owner.human_page_selections[current.id] = 6;
                     owner.human_page_scroll[current.id] = 3;
                 }
             }
-            if (!text.include_text("名称较长的测试职业")) throw std::runtime_error("Catalogue fixture font missing");
+            if (!text.include_text("名称较长的测试职业"))
+                throw std::runtime_error("Catalogue fixture font missing");
             const auto before = owner;
             const auto frame = ui::world_human_layout(extent);
             auto view = ui::world_human_view(owner, current);
@@ -386,29 +468,40 @@ void world_human_render_fixture() {
                 throw std::runtime_error("Directory/result fixture lost its measured controls");
             for (const auto &row : controls->rows) {
                 ui::WorldHumanInput click;
-                click.click = Vector2{row.rectangle.x + row.rectangle.width / 2, row.rectangle.y + row.rectangle.height / 2};
+                click.click = Vector2{row.rectangle.x + row.rectangle.width / 2,
+                                      row.rectangle.y + row.rectangle.height / 2};
                 ui::WorldHumanGesture gesture;
-                const auto input = ui::world_human_input(view, frame, click, false, controls, extent, &gesture);
+                const auto input =
+                    ui::world_human_input(view, frame, click, false, controls, extent, &gesture);
                 if (!input || !input->input || input->input->selection != row.index ||
                     input->input->confirm != (current.legacy_page == 61 || phase != 4))
-                    throw std::runtime_error("Source-painted catalogue row lost select/confirm mapping");
+                    throw std::runtime_error(
+                        "Source-painted catalogue row lost select/confirm mapping");
             }
             for (int draw = 0; draw < 8; ++draw) {
-                if (WindowShouldClose()) throw std::runtime_error("Directory fixture closed before capture");
-                BeginDrawing(); ClearBackground({145, 211, 247, 255});
+                if (WindowShouldClose())
+                    throw std::runtime_error("Directory fixture closed before capture");
+                BeginDrawing();
+                ClearBackground({145, 211, 247, 255});
                 DrawText("SYNTHETIC catalogue/result UI", 4, 4, 12, BLACK);
                 ui::draw_world_human(view, frame, skin, true);
-                text.flush(1, {}); EndDrawing();
+                text.flush(1, {});
+                EndDrawing();
             }
-            const auto file = output / ("synthetic-human-management-" + std::to_string(extent.width) + "-" + std::to_string(sample) + ".png");
+            const auto file =
+                output / ("synthetic-human-management-" + std::to_string(extent.width) + "-" +
+                          std::to_string(sample) + ".png");
             capture(file);
-            if (!same_world_clock(owner, before) || owner.human_page_scroll != before.human_page_scroll ||
-                owner.page_counters != before.page_counters || owner.scene.random.draws() != before.scene.random.draws() ||
+            if (!same_world_clock(owner, before) ||
+                owner.human_page_scroll != before.human_page_scroll ||
+                owner.page_counters != before.page_counters ||
+                owner.scene.random.draws() != before.scene.random.draws() ||
                 owner.human_attribute_display != before.human_attribute_display ||
                 owner.equipment_attribute_display != before.equipment_attribute_display)
-                throw std::runtime_error("Catalogue/result drawing changed cursor, reward or clock");
-            std::cout << "UI fixture / synthetic raw=" << current.legacy_page << " sample=" << sample
-                      << " frames=8 screenshot=" << file.string() << '\n';
+                throw std::runtime_error(
+                    "Catalogue/result drawing changed cursor, reward or clock");
+            std::cout << "UI fixture / synthetic raw=" << current.legacy_page
+                      << " sample=" << sample << " frames=8 screenshot=" << file.string() << '\n';
         }
     }
     struct ResultSample {

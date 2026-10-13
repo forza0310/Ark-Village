@@ -2,6 +2,7 @@
 #include "../actors/world_human_ceremony.hpp"
 #include "../common/skin.hpp"
 #include "ark/simulation/actors/startup_world_profile.hpp"
+#include "ark/simulation/facilities/startup_world_commerce.hpp"
 #include "ark/simulation/village/rules/world_calendar_tasks.hpp"
 #include "world_village_skin.hpp"
 #include <algorithm>
@@ -11,6 +12,8 @@ namespace ark::desktop::ui {
 namespace {
 using State = simulation::StartupWorldRuntimeState;
 using Page = simulation::rules::WorldScriptPage;
+bool reward_page(int raw) { return raw == 93 || raw == 94 || raw == 95; }
+bool town_page(int raw) { return raw == 48 || raw == 49 || raw == 50 || reward_page(raw); }
 bool hit(std::optional<Vector2> p, Rectangle r) {
     return p && p->x >= r.x && p->y >= r.y && p->x < r.x + r.width && p->y < r.y + r.height;
 }
@@ -26,7 +29,9 @@ bool world_progression_page(const Page &page) {
     if (page.kind != simulation::rules::WorldScriptPageKind::raw_page)
         return false;
     const int raw = page.legacy_page;
-    return raw == 48 || raw == 49 || raw == 50 || raw == 67 || raw == 88 || raw == 95 || raw == 96;
+    return raw == 48 || raw == 49 || raw == 50 || raw == 67 || raw == 88 || raw == 95 ||
+           raw == 96 || (raw == 93 && page.legacy_r == 3) ||
+           (raw == 94 && page.legacy_r >= 3 && page.legacy_r <= 8);
 }
 WorldProgressionView world_progression_view(const State &state, const Page &page) {
     if (!state.rules || !world_progression_page(page))
@@ -35,12 +40,17 @@ WorldProgressionView world_progression_view(const State &state, const Page &page
     view.page = page.id;
     view.raw = page.legacy_page;
     view.rank = state.rank;
-    view.title = view.raw == 48   ? "晋级申请"
-                 : view.raw == 49 ? "城镇等级"
-                 : view.raw == 50 ? "晋级庆典"
-                 : view.raw == 67 ? "努力奖励"
-                 : view.raw == 88 ? "勋章授予式"
-                                  : "自宅完成";
+    if (reward_page(view.raw)) {
+        view.reward_kind = page.legacy_r;
+        view.reward_value = page.legacy_s;
+    }
+    view.title = view.raw == 48          ? "晋级申请"
+                 : view.raw == 49        ? "城镇等级"
+                 : view.raw == 50        ? "晋级庆典"
+                 : view.raw == 67        ? "努力奖励"
+                 : view.raw == 88        ? "勋章授予式"
+                 : reward_page(view.raw) ? "活动"
+                                         : "自宅完成";
     const auto counter = state.page_counters.find(page.id);
     if (counter == state.page_counters.end())
         return view;
@@ -48,14 +58,25 @@ WorldProgressionView world_progression_view(const State &state, const Page &page
     const auto phase = state.page_phases.find(page.id);
     if (phase != state.page_phases.end())
         view.phase = phase->second;
-    if (view.raw == 48 || view.raw == 49 || view.raw == 50 || view.raw == 95) {
-        if (page.lifecycle == 0 || page.lifecycle == 4 ||
-            !simulation::valid_startup_world_town_progress_page(state, page))
+    // Their producers publish clocks before Init/Start. Keyboard input must wait for
+    // the same lifecycle2 required by both the source ceremony plan and acknowledgement.
+    if ((view.raw == 67 || view.raw == 88 || view.raw == 96) && page.lifecycle != 2)
+        return view;
+    if (town_page(view.raw)) {
+        const bool valid =
+            view.raw == 93   ? simulation::valid_startup_world_commerce_claim_page(state, page)
+            : view.raw == 94 ? simulation::valid_startup_world_gift_notice_page(state, page)
+                             : simulation::valid_startup_world_town_progress_page(state, page);
+        if (page.lifecycle == 0 || page.lifecycle == 4 || !valid ||
+            ((view.raw == 93 || view.raw == 94) && page.lifecycle != 2))
             return view;
         if (view.raw == 48 || view.raw == 49)
             view.selection = view.phase;
-        if (view.raw == 95) {
-            view.title = "活动";
+        if (reward_page(view.raw)) {
+            if (view.raw == 94) {
+                view.giver = state.page_human_bindings.at(page.id);
+                view.human = human_name(state, view.giver);
+            }
             view.confirm_enabled = true;
             view.initialized = true;
             return view;
@@ -111,8 +132,7 @@ WorldProgressionLayout world_progression_layout(Extent extent, int raw) {
         throw std::invalid_argument("Unsupported progression viewport");
     WorldProgressionLayout out;
     out.extent = extent;
-    const bool source =
-        raw == 48 || raw == 49 || raw == 50 || raw == 95 || raw == 67 || raw == 88 || raw == 96;
+    const bool source = town_page(raw) || raw == 67 || raw == 88 || raw == 96;
     const float width = source ? (raw == 48 || raw == 49 || raw == 67 ? 220.F : 222.F)
                                : std::min(310.F, extent.width - 16.F);
     const float height = source ? (raw == 48 || raw == 49 || raw == 67 ? 168.F : 170.F)
@@ -136,7 +156,7 @@ void prepare_world_progression(WorldProgressionView &v, const State &s, const Sk
         v.ceremony = prepare_world_human_ceremony(s, *page, skin);
         return;
     }
-    if (v.raw != 48 && v.raw != 49 && v.raw != 50 && v.raw != 95)
+    if (!town_page(v.raw))
         return;
     simulation::SteamTownProgressOptions o;
     o.view_y = 23;
@@ -155,7 +175,8 @@ void prepare_world_progression(WorldProgressionView &v, const State &s, const Sk
         throw std::invalid_argument("Town plan lost its page");
     o.reward_number_width = int(skin.text.width(std::to_string(page->legacy_s)));
     o.bubble_widths = {int(skin.text.width("恭喜!")), int(skin.text.width("太好了!")),
-                       int(skin.text.width("万岁")), int(skin.text.width("请"))};
+                       int(skin.text.width("万岁")),
+                       int(skin.text.width(v.raw == 94 && v.reward_kind == 4 ? "注目!" : "请"))};
     v.skin = v.raw == 48 || v.raw == 49 ? simulation::steam_town_conditions_skin(s, v.page, o)
              : v.raw == 50              ? simulation::steam_town_celebration_skin(s, v.page, o)
                                         : simulation::steam_town_gift_skin(s, v.page, o);
@@ -168,9 +189,12 @@ world_progression_input(const WorldProgressionView &v, const WorldProgressionLay
                         const std::optional<WorldFacilityPaintedControls> &painted) {
     if (blocked || !v.initialized)
         return {};
-    if (v.raw == 48 || v.raw == 49 || v.raw == 50 || v.raw == 95) {
+    if (town_page(v.raw)) {
         const bool fresh = painted && painted->page == v.page && painted->raw == v.raw &&
                            painted->phase == v.phase && painted->selection == v.selection &&
+                           (!reward_page(v.raw) ||
+                            (painted->first == v.reward_kind && painted->choice == v.reward_value &&
+                             painted->count == v.giver)) &&
                            painted->extent.width == l.extent.width &&
                            painted->extent.height == l.extent.height;
         simulation::StartupTownRankInput f;
@@ -206,7 +230,7 @@ std::optional<WorldFacilityPaintedControls> draw_world_progression(const WorldPr
                                   enabled && v.initialized && v.confirm_enabled, v.title);
         return {};
     }
-    if (v.raw == 48 || v.raw == 49 || v.raw == 50 || v.raw == 95) {
+    if (town_page(v.raw)) {
         if (!v.initialized) {
             skin.window(l.panel, v.title);
             return {};
@@ -218,6 +242,11 @@ std::optional<WorldFacilityPaintedControls> draw_world_progression(const WorldPr
         c.raw = v.raw;
         c.phase = v.phase;
         c.selection = v.selection;
+        if (reward_page(v.raw)) {
+            c.first = v.reward_kind;
+            c.choice = v.reward_value;
+            c.count = v.giver;
+        }
         c.extent = l.extent;
         c = draw_world_town_skin(*v.skin, l.panel, skin, std::move(c));
         if (v.raw == 48) {
@@ -227,7 +256,8 @@ std::optional<WorldFacilityPaintedControls> draw_world_progression(const WorldPr
         // Original coordinate-free confirmations use the established PC soft key.
         if (v.raw != 48 && c.confirm.width <= 0) {
             c.confirm = l.confirm;
-            skin.choice(l.confirm, v.raw == 95 ? (v.counter >= 40 ? "领取" : "继续") : "确定",
+            skin.choice(l.confirm,
+                        reward_page(v.raw) ? (v.counter >= 40 ? "领取" : "继续") : "确定",
                         enabled && v.confirm_enabled);
         }
         return c;

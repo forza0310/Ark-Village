@@ -4,11 +4,21 @@
 #include <cctype>
 
 namespace ark::desktop::ui {
+namespace {
+// The source scans C# strings: the tag's bracket index difference is in UTF-16 units.
+std::size_t tag_code_units(std::string_view text) {
+    std::size_t units{};
+    for (const unsigned char byte : text) {
+        if ((byte & 0xc0U) != 0x80U)
+            units += byte >= 0xf0U ? 2 : 1;
+    }
+    return units;
+}
+} // namespace
 ScriptText decode_script_text(std::string_view source) {
     ScriptText result;
-    std::vector<std::uint32_t> colors;
+    std::optional<std::uint32_t> color;
     const auto append = [&](char c) {
-        const auto color = colors.empty() ? std::optional<std::uint32_t>{} : colors.back();
         result.text += c;
         if (result.runs.empty() || result.runs.back().rgb != color)
             result.runs.push_back({{}, color});
@@ -17,24 +27,26 @@ ScriptText decode_script_text(std::string_view source) {
     for (std::size_t i = 0; i < source.size();) {
         if (source[i] == '<') {
             const auto end = source.find('>', i + 1);
-            if (end != std::string_view::npos) {
+            if (end != std::string_view::npos && tag_code_units(source.substr(i, end - i)) <= 32) {
                 std::string tag(source.substr(i + 1, end - i - 1));
-                std::transform(tag.begin(), tag.end(), tag.begin(),
-                               [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-                if (tag == "br" || tag == "br/" || tag == "br /") {
+                // Published tags keep their spelling; HTML aliases are not source tokens.
+                if (tag == "br") {
                     append('\n');
                     i = end + 1;
                     continue;
                 }
-                const bool color = tag.size() == 9 && tag.compare(0, 3, "co=") == 0 &&
-                                   std::all_of(tag.begin() + 3, tag.end(),
-                                               [](unsigned char c) { return std::isxdigit(c); });
-                if (color || tag == "/co" || tag == "po=cm") {
-                    if (color)
-                        colors.push_back(
-                            static_cast<std::uint32_t>(std::stoul(tag.substr(3), nullptr, 16)));
-                    else if (tag == "/co" && !colors.empty())
-                        colors.pop_back();
+                // This adapter consumes the maintained six-digit hex form, not all TextLayout
+                // parameters.
+                const bool opens_color =
+                    tag.size() == 9 && tag.compare(0, 3, "co=") == 0 &&
+                    std::all_of(tag.begin() + 3, tag.end(),
+                                [](unsigned char c) { return std::isxdigit(c); });
+                if (opens_color || tag == "/co" || tag == "po=cm") {
+                    if (opens_color)
+                        color = static_cast<std::uint32_t>(std::stoul(tag.substr(3), nullptr, 16));
+                    else if (tag == "/co")
+                        color.reset(); // Source closes to the layout base color, without a nested
+                                       // stack.
                     result.centered = result.centered || tag == "po=cm";
                     i = end + 1;
                     continue;

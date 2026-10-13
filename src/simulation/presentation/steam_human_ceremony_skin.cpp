@@ -35,6 +35,95 @@ bool bubble(SteamHumanOverviewPlan &out,const char *value,std::array<int,2> posi
         {position[0],position[1]+3,0,0},2,0,false,{0,0,0}});return true;
 }
 }
+std::optional<SteamHumanOverviewPlan> steam_human_mastery_skin(
+    const SteamHumanMasteryInput &in,const SteamHumanOverviewOptions &o) {
+    // Steam raw70 VA1033F7E8–10340506；奖励真正应用仍在最后确认，由Owner执行。
+    if(in.phase<0||in.phase>2||!clock(in.counter)||!clock(in.secondary)||in.selection<0||in.selection>1||
+       (in.phase<2&&in.selection!=0)||o.finger_frame<0||o.finger_frame>5||
+       in.value<0||!((in.bonus>=0&&in.bonus<6)||(in.bonus>=10&&in.bonus<14))||
+       in.human_name.empty()||in.human_name.size()>4096||in.profession_name.empty()||in.profession_name.size()>4096||!o.title_widths)return {};
+    const auto base=startup_title_actor_skin(in.profession,in.sex,-1,0,1,false);if(!base)return {};
+    // Steam cctor RVA3285E0 的 raw70 项直接保存零初始化 int[2]（VA1032A107–143）。
+    SteamHumanOverviewPlan out;out.title="职业大师";out.soft_labels={0,0};
+    const auto window=steam_startup_window_skin({222,170,0,0,SteamStartupTextRole::message_title,0},o.view_y,o.title_widths);
+    const auto box=steam_startup_box_skin({15,139,224,202},o.view_y);if(!window||!box)return {};
+    for(const auto &d:window->draws)out.operations.emplace_back(d);
+    for(const auto &d:box->draws)out.operations.emplace_back(d);
+    image(out,SteamHumanAsset::ceremony_background,30,67,std::array<int,4>{0,0,180,80});
+    out.operations.emplace_back(SteamHumanImage{SteamHumanAsset::president,{164,139},5+2*(in.counter%8/4),{}});
+    out.operations.emplace_back(SteamHumanImage{SteamHumanAsset::secretary,{76,139},4+2*(in.counter%8/4),{}});
+    image(out,SteamHumanAsset::shadow,120,139);
+    auto actor=*base;const int cycle=in.secondary%26,height=cycle<10?0:jump(cycle-10);
+    if(cycle>=10)actor.body.sprite=9;
+    out.operations.emplace_back(SteamHumanPortrait{actor,{120,139-height},{},false});
+    const auto measured=[](std::optional<int> v){return v&&*v>=0&&*v<=4096;};
+    if(in.phase==2) {
+        constexpr const char *labels[]{"转职","保持现状"};
+        for(int i=0;i<2;++i) {
+            if(!measured(o.mastery_button_widths[i]))return {};
+            const int w=std::min(*o.mastery_button_widths[i],60)+16,x=80+i*80-w/2;
+            if(in.selection==i)out.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{{x,174,w,16},{255,153,55},false}});
+            out.operations.emplace_back(SteamStartupTouch{3,0x20000|i,std::array<int,4>{x-20,154,w+40,56},{},0});
+            out.operations.emplace_back(SteamHumanOverviewText{SteamHumanOverviewTextRole::result_message,labels[i],
+                {x,174,w,16},34,0,true,{92,51,31}});
+            if(in.selection==i)out.operations.emplace_back(SteamFacilityImage{SteamFacilityAsset::finger,{x-4,183},o.finger_frame,{}});
+        }
+        return out;
+    }
+    const int clip_height=in.counter<=5?0:in.counter>=40?48:48*(in.counter-5)/35;
+    out.operations.emplace_back(SteamHumanClip{SteamHumanClipKind::push_intersect,{0,158,240,clip_height}});
+    if(in.phase==0) {
+        text(out,in.human_name,120,165);text(out,"获得了"+in.profession_name+"职业大师!",120,187);
+    } else {
+        constexpr const char *attributes[]{"体力","力","器用","丈夫","魔力","运"};
+        constexpr const char *spells[]{"火魔法","冰魔法","雷魔法","回复魔法"};
+        const bool magic=in.bonus>=10;const int index=in.bonus%10;
+        if(!measured(o.mastery_widths[0]))return {};
+        const std::string name=magic?spells[index]:attributes[index];
+        text(out,"因为奖励",120,o.japanese||magic?158:166);
+        int w=*o.mastery_widths[0]+32;
+        if(!magic&&!o.japanese) {
+            if(!measured(o.mastery_widths[1])||!measured(o.mastery_widths[2]))return {};
+            w=*o.mastery_widths[0]+24+*o.mastery_widths[1]*10/6+*o.mastery_widths[2];
+        }
+        const int left=120-w/2,y=!magic&&!o.japanese?182:174;
+        out.operations.emplace_back(SteamHumanImage{magic?SteamHumanAsset::magic_icon:SteamHumanAsset::combat_icon,{left,y},0,
+            magic?std::array<int,4>{16*(index==3?4:index),0,16,16}:
+                std::array<int,4>{index==5?96:index*16,16,16,16}});
+        out.operations.emplace_back(SteamHumanOverviewText{SteamHumanOverviewTextRole::result_message,name,
+            {left+18,y+2,0,0},0,0,false,{0,100,255}});
+        if(o.japanese)out.operations.emplace_back(SteamHumanOverviewText{SteamHumanOverviewTextRole::result_message,
+            magic?"を":"が",{left+*o.mastery_widths[0]+20,176,0,0},0,0,false,{92,51,31}});
+        if(magic)text(out,"学会了!",120,194);
+        else if(o.japanese) {
+            if(!measured(o.mastery_widths[2]))return {};
+            // Steam1034039C GetFig，而APK用字符串测宽；两个版本分别登记。
+            const int number_w=static_cast<int>(std::to_string(in.value).size())*10+2+*o.mastery_widths[2];
+            out.operations.emplace_back(SteamFacilityNumber{SteamFacilityNumberKind::number,SteamFacilityAsset::number09,in.value,{120-number_w/2,193},0,1,-1});
+            out.operations.emplace_back(SteamHumanOverviewText{SteamHumanOverviewTextRole::result_message,"上升了!",{120+number_w/2,194,0,0},4});
+        } else {
+            out.operations.emplace_back(SteamFacilityNumber{SteamFacilityNumberKind::number,SteamFacilityAsset::number09,in.value,{left+*o.mastery_widths[0]+22,183},0,1,-1});
+            out.operations.emplace_back(SteamHumanOverviewText{SteamHumanOverviewTextRole::result_message,"上升了!",{120+w/2,184,0,0},4});
+        }
+    }
+    out.operations.emplace_back(SteamHumanClip{SteamHumanClipKind::pop,{}});
+    if(in.counter>=40&&in.counter%25<15)out.operations.emplace_back(SteamHumanImage{SteamHumanAsset::continue_cursor,{212,204},0,{}});
+    out.operations.emplace_back(SteamStartupTouch{2,0,{},{},2});return out;
+}
+std::optional<SteamHumanOverviewPlan> steam_human_mastery_skin(
+    const StartupWorldRuntimeState &s,std::uint64_t id,const SteamHumanOverviewOptions &o) {
+    const auto p=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[=](const auto &v){return v.id==id;});
+    if(p==s.scripts.pages.end()||s.scripts.pages.empty()||s.scripts.pages.back().id!=id||p->lifecycle!=2||
+       !valid_startup_world_human_mastery_page(s,*p))return {};
+    const auto human=s.page_human_bindings.find(id),phase=s.page_phases.find(id),counter=s.page_counters.find(id),
+        secondary=s.page_secondary_counters.find(id),selection=s.human_page_selections.find(id);
+    if(human==s.page_human_bindings.end()||phase==s.page_phases.end()||counter==s.page_counters.end()||
+       secondary==s.page_secondary_counters.end()||selection==s.human_page_selections.end())return {};
+    const auto h=startup_world_human_details(s,human->second);if(!h||h->profession<0||h->profession>=static_cast<int>(s.rules->jobs.size()))return {};
+    const auto &job=s.rules->jobs[h->profession];
+    return steam_human_mastery_skin(SteamHumanMasteryInput{h->profession,h->sex,phase->second,counter->second,secondary->second,
+        selection->second,job.mastery_attribute,job.mastery_value,h->name,job.name},o);
+}
 std::optional<SteamHumanOverviewPlan> steam_human_award_result_skin(
     const SteamHumanAwardResultInput &in,const SteamHumanOverviewOptions &o) {
     // SubForm._draw2_4 VA1034B396–1034BC4B；门槛数组由Steam cctor独立核为30/60/75/95/135。

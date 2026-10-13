@@ -97,6 +97,10 @@ bool reward_page(State &s, int human, const ref::HumanRewardCandidate &r) {
     return valid_startup_world_runtime_effort_result_page(s,*page);
 }
 bool initialize(State &s, std::uint64_t id, int raw) {
+    if(raw==70) {
+        const auto p=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[=](const auto &v){return v.id==id;});
+        if(p==s.scripts.pages.end()||!valid_startup_world_human_mastery_page(s,*p))return false;
+    }
     const auto h = s.page_human_bindings.find(id);
     if (h == s.page_human_bindings.end() || !startup_world_human_details(s, h->second) ||
         (raw == 60 && !valid_startup_world_human_detail_context(s, id)))
@@ -243,7 +247,7 @@ bool initialize(State &s, std::uint64_t id, int raw) {
         const int visible=raw==61?5:4;
         if(selected>=visible)first->second=selected-visible+1;
     }
-    if (raw == 60) {
+    if (raw == 60 || raw == 70) {
         // Init可压入首次说明111，栈顶已不是60；完成Init的本页仍须进入Start阶段。
         // 不能靠框架仅更新back()把已初始化却被遮住的60遗留为生命周期0。
         for (auto &page : s.scripts.pages)
@@ -587,6 +591,24 @@ bool resume_answer(State &s, std::uint64_t id, int raw, int human) {
     return raw == 64 && commit_gift(s, id, human);
 }
 } // namespace
+bool valid_startup_world_human_mastery_page(const State &s,const ref::WorldScriptPage &p) {
+    const auto id=p.id;
+    if(!s.rules||p.kind!=ref::WorldScriptPageKind::raw_page||p.legacy_page!=70||p.lifecycle<0||p.lifecycle>4)return false;
+    const auto human=s.page_human_bindings.find(id),main=s.page_counters.find(id),secondary=s.page_secondary_counters.find(id),
+               phase=s.page_phases.find(id),selection=s.human_page_selections.find(id);
+    if(human==s.page_human_bindings.end()||!startup_world_human_details(s,human->second)||
+       main==s.page_counters.end()||secondary==s.page_secondary_counters.end()||phase==s.page_phases.end()||
+       selection==s.human_page_selections.end()||main->second<0||main->second==std::numeric_limits<int>::max()||
+       secondary->second<0||secondary->second==std::numeric_limits<int>::max()||phase->second<0||phase->second>2||
+       selection->second<0||selection->second>1||(phase->second<2&&selection->second!=0))return false;
+    // 这些载荷属于其它人物页，原70没有父答案、职业选择目录或滚动窗口。
+    if(s.human_page_parents.count(id)||s.human_page_answers.count(id)||s.human_page_catalogs.count(id)||
+       s.equipment_page_catalogs.count(id)||s.page_job_bindings.count(id)||s.human_page_scroll.count(id)||
+       s.human_equipment_choices.count(id))return false;
+    if(!s.human_pages_initialized.count(id))
+        return p.lifecycle==0&&main->second==0&&secondary->second==0&&phase->second==0&&selection->second==0;
+    return p.lifecycle!=0;
+}
 
 bool synchronize_startup_world_human_capacity(State &s, int human) {
     auto &ai = s.scene.world.world.ai;
@@ -859,6 +881,7 @@ bool startup_world_human_page_ready(const State &s, std::uint64_t id) {
         !s.human_page_selections.count(id))
         return false;
     const int raw = p->legacy_page;
+    if(raw==70&&!valid_startup_world_human_mastery_page(s,*p))return false;
     if((raw==61||raw==64)&&!inspect_startup_world_human_catalogue_cursor(s,id))return false;
     if (raw == 60 && !valid_startup_world_human_detail_context(s, id))
         return false;
@@ -1033,6 +1056,27 @@ Error input_startup_world_human_detail_page(State &s,std::uint64_t id,const Star
         }
     } else if(input.cancel) {
         const auto error=act_startup_world_human_page(next,id,StartupHumanPageAction::cancel);
+        if(error!=Error::none)return error;
+    }
+    s=std::move(next);return Error::none;
+}
+Error input_startup_world_human_mastery_page(State &s,std::uint64_t id,const StartupHumanCatalogueInput &input) {
+    const auto *p=top(s);
+    if(!p||p->id!=id||p->kind!=ref::WorldScriptPageKind::raw_page||p->legacy_page!=70||
+       p->lifecycle!=2||s.scene.framework_paused||input.up||input.down||input.scroll||input.inspect_equipment)
+        return Error::invalid_page;
+    if(!valid_startup_world_human_mastery_page(s,*p))return Error::missing_source;
+    const int phase=s.page_phases.at(id);
+    if(input.selection&&phase!=2)return Error::invalid_page;
+    if(input.selection&&(*input.selection<0||*input.selection>1))return Error::invalid_page;
+    auto next=s;
+    auto &selected=next.human_page_selections.at(id);
+    if(input.selection)selected=*input.selection;
+    if(phase==2&&input.left)selected=(selected+1)%2;
+    if(phase==2&&input.right)selected=(selected+1)%2;
+    // APK Back2与确认等价；Steam专属Update仅证确认，窗口不能据此推断Esc映射。
+    if(input.confirm||input.cancel) {
+        const auto error=act_startup_world_human_page(next,id,StartupHumanPageAction::confirm);
         if(error!=Error::none)return error;
     }
     s=std::move(next);return Error::none;
@@ -1388,6 +1432,11 @@ std::optional<State> update_startup_world_human_page(const State &s, std::uint64
     if (counter < 0 || counter == std::numeric_limits<int>::max())
         return {};
     ++counter;
+    if(raw==70) {
+        counter%=std::numeric_limits<int>::max();
+        auto &secondary=next.page_secondary_counters.at(id);
+        secondary=(secondary+1)%std::numeric_limits<int>::max();
+    }
     if (raw == 60 && !valid_startup_world_human_detail_context(next, id))
         return {};
     if (!resume_answer(next, id, raw, next.page_human_bindings.at(id)) ||
@@ -1408,7 +1457,8 @@ StartupWorldResourceUsage startup_world_resource_usage(const State &s) {
     r.pending_tasks = s.task_order.size();
     r.retained_tasks = s.tasks.size();
     r.pages = s.scripts.pages.size();
-    r.page_payloads = s.page_counters.size() + s.page_secondary_counters.size() +
+    // 只统计已列载荷容器的实例数，不含vector动态字节，也不是完整内存审计。
+    r.page_payloads = s.page_counters.size() + s.page_secondary_counters.size() + s.task_page_ui.size() +
                       s.menu_page_data.size() + s.menu_page_positions.size() +
                       s.page_phases.size() + s.page_human_bindings.size() +
                       s.human_pages_initialized.size() + s.human_page_catalogs.size() +

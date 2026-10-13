@@ -480,8 +480,10 @@ void apply_world_decision(WorldState &state, const WorldCommand &command,
                     simulation::startup_world_human_page_ready(state, command.page)
                 ? (page->legacy_page == 60 ? simulation::input_startup_world_human_detail_page(
                                                  state, command.page, command.human_input)
-                                           : simulation::input_startup_world_human_catalogue_page(
-                                                 state, command.page, command.human_input))
+                   : page->legacy_page == 70 ? simulation::input_startup_world_human_mastery_page(
+                                                   state, command.page, command.human_input)
+                                             : simulation::input_startup_world_human_catalogue_page(
+                                                   state, command.page, command.human_input))
                 : Error::invalid_page;
         break;
     }

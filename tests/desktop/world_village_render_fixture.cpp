@@ -2,6 +2,7 @@
 #include "../../src/desktop/scene/projection.hpp"
 #include "../../src/desktop/scene/world_canvas.hpp"
 #include "../../src/desktop/ui/common/skin.hpp"
+#include "../../src/desktop/ui/village/world_commerce.hpp"
 #include "../../src/desktop/ui/village/world_progression.hpp"
 #include "../../src/desktop/ui/village/world_village_activity.hpp"
 #include "../support/world_fixture.hpp"
@@ -43,17 +44,39 @@ State callsite(int raw, int reward = 0) {
                  : reward == 4  ? 0
                  : reward == 11 ? 0
                                 : 1;
+    if (raw == 93) {
+        // A paid blueprint receipt always binds a still-unopened definition. Initial
+        // bakery35 is already available and cannot stand in for this source callsite.
+        const auto unopened =
+            std::find_if(s.rules->facilities.begin(), s.rules->facilities.end(),
+                         [&](const auto &d) { return s.facility_presence.at(d.id) == 0; });
+        require(unopened != s.rules->facilities.end(), "Receipt needs an unopened facility");
+        p.legacy_s = unopened->id;
+    }
+    if (reward >= 5 && reward <= 7) {
+        const auto equipment =
+            std::find_if(s.rules->equipment.begin(), s.rules->equipment.end(),
+                         [&](const auto &d) { return d.shop.kind == reward - 4; });
+        require(equipment != s.rules->equipment.end(), "Reward namespace fixture missing");
+        p.legacy_s = equipment->shop.id;
+    } else if (reward == 8)
+        p.legacy_s = s.rules->items.front().identity;
     const auto page =
         sim::rules::prepare_world_script_page(sim::startup_world_runtime_scripts(s), p);
     require(page.candidate && sim::write_startup_world_runtime_scripts(s, page.candidate->state),
             "Village render callsite insertion failed");
-    if ((raw >= 48 && raw <= 50) || raw == 95)
+    if (raw == 94) {
+        s.page_human_bindings[top(s).id] = 1;
+        require(sim::initialize_startup_world_gift_notice_pages(s), "Character gift Init failed");
+    } else if (raw == 93)
+        require(sim::initialize_startup_world_commerce_pages(s), "Facility claim Init failed");
+    else if ((raw >= 48 && raw <= 50) || raw == 95)
         require(sim::initialize_startup_world_town_progress_pages(s), "Town render Init failed");
     else
         require(sim::initialize_startup_world_village_activity_pages(s),
                 "Village render Init failed");
-    // Explicit presentation callsite: lifecycle1, with all actual Init payload already present.
-    s.scripts.pages.back().lifecycle = 1;
+    // Explicit presentation callsite, with all actual Init payload already present.
+    s.scripts.pages.back().lifecycle = raw == 93 || raw == 94 ? 2 : 1;
     return s;
 }
 } // namespace
@@ -123,6 +146,15 @@ void world_village_render_fixture() {
             samples.emplace_back("gift95-" + std::to_string(kind) + "-" + std::to_string(frame),
                                  std::move(s));
         }
+    for (int raw : {93, 94})
+        for (int kind = 3; kind <= (raw == 93 ? 3 : 8); ++kind)
+            for (int frame : {0, 39, 40}) {
+                auto s = callsite(raw, kind);
+                s.page_counters.at(top(s).id) = frame;
+                samples.emplace_back("gift" + std::to_string(raw) + "-" + std::to_string(kind) +
+                                         "-" + std::to_string(frame),
+                                     std::move(s));
+            }
     InitWindow(480, 512, "Ark-Village village / explicit UI callsites");
     struct WindowScope {
         ~WindowScope() { CloseWindow(); }
@@ -131,7 +163,7 @@ void world_village_render_fixture() {
     std::string glyphs =
         "街道升级等级上升恭喜太好了万岁请活动获得满足上升了辛苦春夏秋冬还有价格姓名的条件申请了解居"
         "住数建设设施任务完成人气举办实施中开展不品质力器用丈夫体力魔运冒险者们结束完毕魔法壶配置更"
-        "替勋章可以转职街道点数Ｇ○×返回领取继续确定";
+        "替勋章可以转职街道点数Ｇ○×返回领取继续确定注目因为的介绍被了可为";
     for (const auto &a : samples.front().second.rules->activities)
         glyphs += a.name + a.detail + a.description;
     for (const auto &f : samples.front().second.rules->facilities)
@@ -140,6 +172,10 @@ void world_village_render_fixture() {
         glyphs += h.name;
     for (const auto &j : samples.front().second.rules->jobs)
         glyphs += j.name;
+    for (const auto &e : samples.front().second.rules->equipment)
+        glyphs += e.name;
+    for (const auto &i : samples.front().second.rules->items)
+        glyphs += i.name;
     Text text(ARK_TEST_FONT, glyphs);
     ui::Skin skin(sprites, text);
     WorldCanvas canvas;
@@ -179,6 +215,28 @@ void world_village_render_fixture() {
                             view, ui::world_progression_layout(extent, 49), click, false, controls);
                         require(input && !input->rank_action,
                                 "49 drawn acknowledge must close, never promote");
+                    } else if (view.raw == 93 || view.raw == 94) {
+                        require(
+                            controls && controls->confirm.width > 0 &&
+                                !ui::world_commerce_page(top(owner)),
+                            "93/94 must use one source-reward UI route and its painted soft key");
+                        ui::WorldProgressionInput click;
+                        click.click = Vector2{controls->confirm.x + controls->confirm.width / 2,
+                                              controls->confirm.y + controls->confirm.height / 2};
+                        const auto layout = ui::world_progression_layout(extent, view.raw);
+                        require(
+                            ui::world_progression_input(view, layout, click, false, controls)
+                                    .has_value() &&
+                                !ui::world_progression_input(view, layout, click, true, controls),
+                            "93/94 painted soft key forwards one command and preserves pending");
+                        auto stale = controls;
+                        ++stale->choice;
+                        require(!ui::world_progression_input(view, layout, click, false, stale),
+                                "Reward hot area must reject changed source reward identity");
+                        stale = controls;
+                        ++stale->count;
+                        require(!ui::world_progression_input(view, layout, click, false, stale),
+                                "Reward hot area must reject changed real giver binding");
                     }
                 }
                 EndMode2D();

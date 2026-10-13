@@ -1,7 +1,7 @@
 #pragma once
 
-// Read-only views of rank/award/residence presentations. Simulation counters and rewards are
-// owned by the runtime; input sends one command and drawing never advances the source pages.
+// Read-only views of rank/source-reward/residence presentations. Simulation counters and rewards
+// are owned by the runtime; input sends one command and drawing never advances the source pages.
 #include "../common/layout.hpp"
 #include "../common/world_list_controls.hpp"
 #include "ark/simulation/presentation/steam_human_skin.hpp"
@@ -16,6 +16,7 @@ class Skin;
 struct WorldProgressionView {
     std::uint64_t page{};
     int raw{}, rank{}, counter{}, phase{}, selection{};
+    int reward_kind{-1}, reward_value{-1}, giver{-1}; // Source namespace and frozen giver binding.
     bool initialized{}, confirm_enabled{};
     std::string title, human;
     std::vector<std::string> rows;

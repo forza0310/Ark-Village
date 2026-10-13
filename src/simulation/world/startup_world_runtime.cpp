@@ -785,8 +785,16 @@ ref::WorldRuntimeAdapter<State> startup_world_runtime_adapter() {
                 if (!result.candidate)
                     return {};
                 scripts = result.candidate->state;
-                for (const auto &inserted : result.candidate->inserted_pages)
+                for (const auto &inserted : result.candidate->inserted_pages) {
                     next.page_human_bindings[inserted.id] = human_id;
+                    if(request.kind==Kind::page70) {
+                        // 原构造的main/secondary与阶段/选择；Init不能修补损坏的半载荷。
+                        if(next.page_counters.count(inserted.id)||next.page_secondary_counters.count(inserted.id)||
+                           next.page_phases.count(inserted.id)||next.human_page_selections.count(inserted.id))return {};
+                        next.page_counters.emplace(inserted.id,0);next.page_secondary_counters.emplace(inserted.id,0);
+                        next.page_phases.emplace(inserted.id,0);next.human_page_selections.emplace(inserted.id,0);
+                    }
+                }
             } else if (request.kind == Kind::unlock_profession) {
                 auto &profession = scripts.professions.at(request.profession);
                 profession.status = 1;
@@ -1241,6 +1249,10 @@ StartupWorldRuntimeError StartupWorldRuntimeSession::input_human_catalogue_page(
     std::uint64_t page,const StartupHumanCatalogueInput &input) {
     return input_startup_world_human_catalogue_page(state_,page,input);
 }
+StartupWorldRuntimeError StartupWorldRuntimeSession::input_human_mastery_page(
+    std::uint64_t page,const StartupHumanCatalogueInput &input) {
+    return input_startup_world_human_mastery_page(state_,page,input);
+}
 StartupWorldRuntimeError StartupWorldRuntimeSession::input_human_detail_page(
     std::uint64_t page,const StartupHumanCatalogueInput &input) {
     return input_startup_world_human_detail_page(state_,page,input);
@@ -1277,6 +1289,13 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
         return {StartupWorldRuntimeError::invalid_initial_state, {}, {}, {}, {}};
     // 原30/67/88/96载荷在producer已完整安装；退休前拒绝损坏，不以清理掩盖半载荷。
     for(const auto &page:s.scripts.pages) {
+        if(page.kind==ref::WorldScriptPageKind::raw_page&&
+           ((page.legacy_page==70&&!valid_startup_world_human_mastery_page(s,page))||
+            (page.legacy_page==94&&!valid_startup_world_gift_notice_page(s,page))))
+            return {StartupWorldRuntimeError::missing_source,{},ref::WorldSceneError::missing_consumer,{}, {}};
+        if(page.kind==ref::WorldScriptPageKind::raw_page&&page.legacy_page==93&&
+           !valid_startup_world_commerce_claim_page(s,page))
+            return {StartupWorldRuntimeError::missing_source,{},ref::WorldSceneError::missing_consumer,{}, {}};
         if(page.kind==ref::WorldScriptPageKind::raw_page&&page.legacy_page>=25&&page.legacy_page<=28&&
            !valid_startup_world_runtime_task_page(s,page))
             return {StartupWorldRuntimeError::missing_source,{},ref::WorldSceneError::missing_consumer,{}, {}};
@@ -1389,7 +1408,8 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
         return {StartupWorldRuntimeError::none,std::move(admitted),ref::WorldSceneError::none,ref::WorldScheduleError::none,{}};
     }
     if(admitted.scene.framework_paused&&pending.kind==ref::WorldScriptPageKind::raw_page&&
-       (pending.legacy_page==30||pending.legacy_page==67||pending.legacy_page==88||pending.legacy_page==96)) {
+       (pending.legacy_page==30||pending.legacy_page==67||pending.legacy_page==70||pending.legacy_page==88||
+        pending.legacy_page==93||pending.legacy_page==94||pending.legacy_page==96)) {
         admitted.scripts.executing_page.reset();admitted.scene.top_is_main=false;
         return {StartupWorldRuntimeError::none,std::move(admitted),ref::WorldSceneError::none,
                 ref::WorldScheduleError::none,{}};
@@ -1434,7 +1454,7 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
                 ref::WorldSceneError::missing_consumer,
                 ref::WorldScheduleError::none,
                 {}};
-    if(!initialize_startup_world_town_progress_pages(admitted))
+    if(!initialize_startup_world_town_progress_pages(admitted)||!initialize_startup_world_gift_notice_pages(admitted))
         return {StartupWorldRuntimeError::missing_source,{},ref::WorldSceneError::missing_consumer,ref::WorldScheduleError::none,{}};
     admitted.scripts.executing_page = admitted.scripts.pages.back().id;
     const auto &top = admitted.scripts.pages.back();

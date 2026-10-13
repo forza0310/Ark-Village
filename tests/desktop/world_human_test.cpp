@@ -2,6 +2,7 @@
 // profession gates, gift rewards and tax posting; those transactions are not duplicated here.
 #include "../../src/desktop/inspection/world_human_inspection.hpp"
 #include "../../src/desktop/ui/actors/world_human.hpp"
+#include "../../src/desktop/ui/village/world_progression.hpp"
 #include "../../src/desktop/ui/village/world_tax.hpp"
 #include "../support/checks.hpp"
 #include "../support/world_fixture.hpp"
@@ -41,13 +42,20 @@ bool inside(Rectangle outer, Rectangle inner) {
 ui::WorldHumanPaintedControls painted_rows(const ui::WorldHumanView &v,
                                            const ui::WorldHumanLayout &l) {
     ui::WorldHumanPaintedControls p;
-    p.page = v.page; p.raw = v.raw; p.phase = v.phase; p.selection = v.selection;
-    p.human = v.human; p.choice = v.choice ? v.choice->identity : -1;
-    p.extent = {240, 256}; p.first = v.first_visible; p.count = int(v.rows.size());
+    p.page = v.page;
+    p.raw = v.raw;
+    p.phase = v.phase;
+    p.selection = v.selection;
+    p.human = v.human;
+    p.choice = v.choice ? v.choice->identity : -1;
+    p.extent = {240, 256};
+    p.first = v.first_visible;
+    p.count = int(v.rows.size());
     const int visible = v.raw == 60 ? 4 : v.visible_rows;
     for (int n = 0; n < visible && (v.raw == 60 || n + p.first < p.count); ++n) {
         const int index = p.first + n;
-        p.rows.push_back({index, v.raw == 60 ? index : v.rows[index].identity,
+        p.rows.push_back({index,
+                          v.raw == 60 ? index : v.rows[index].identity,
                           {l.rows.x, l.rows.y + n * l.row_height, l.rows.width, l.row_height}});
     }
     return p;
@@ -195,7 +203,8 @@ void world_human() {
         for (int slot = 0; slot < 4; ++slot) {
             ui::WorldHumanInput click;
             click.click = middle({rows.x, rows.y + slot * 17, rows.width, 17});
-            const auto intent = ui::world_human_input(equipment, layout, click, false, painted, {240, 256});
+            const auto intent =
+                ui::world_human_input(equipment, layout, click, false, painted, {240, 256});
             check(intent && intent->action == Action::select && intent->selection == slot &&
                       !ui::world_human_input(equipment, layout, click, true),
                   "Visible equipment row selects its source slot without opening or spending");
@@ -229,8 +238,10 @@ void world_human() {
     state.human_page_selections[page.id] = 1;
     state.human_page_scroll[page.id] = 0;
     page.lifecycle = state.scripts.pages.back().lifecycle = 0;
-    check(!ui::world_human_view(state, page).initialized && state.human_pages_initialized.count(page.id),
-          "Initialized catalogue payload is not drawable before the source page lifecycle advances");
+    check(
+        !ui::world_human_view(state, page).initialized &&
+            state.human_pages_initialized.count(page.id),
+        "Initialized catalogue payload is not drawable before the source page lifecycle advances");
     page.lifecycle = state.scripts.pages.back().lifecycle = 1;
     view = ui::world_human_view(state, page);
     check(view.rows.size() == 3 && view.rows[0].identity == 2 && view.rows[1].identity == 0 &&
@@ -238,7 +249,8 @@ void world_human() {
           "Profession catalogue retains source ordering and selection separately from IDs");
     input = {};
     input.click = middle({layout.rows.x, layout.rows.y, layout.rows.width, layout.row_height});
-    auto intent = ui::world_human_input(view, layout, input, false, painted_rows(view, layout), {240, 256});
+    auto intent =
+        ui::world_human_input(view, layout, input, false, painted_rows(view, layout), {240, 256});
     check(intent && intent->input && intent->input->selection == 0 && intent->input->confirm &&
               state.human_page_selections.at(page.id) == 1,
           "Profession UP maps to one selected-row confirmation without mutating the Owner");
@@ -321,17 +333,22 @@ void world_human() {
         ui::WorldHumanGesture marker;
         ui::WorldHumanInput click;
         click.click = middle(painted.rows.front().rectangle);
-        const auto first = ui::world_human_input(view, layout, click, false, painted, {240, 256}, &marker);
-        const auto pending = ui::world_human_input(view, layout, click, true, painted, {240, 256}, &marker);
-        const auto second = ui::world_human_input(view, layout, click, false, painted, {240, 256}, &marker);
+        const auto first =
+            ui::world_human_input(view, layout, click, false, painted, {240, 256}, &marker);
+        const auto pending =
+            ui::world_human_input(view, layout, click, true, painted, {240, 256}, &marker);
+        const auto second =
+            ui::world_human_input(view, layout, click, false, painted, {240, 256}, &marker);
         check(first && first->input && first->input->selection == 0 && !first->input->confirm &&
                   !pending && second && second->input->confirm,
               "Ordinary gift first UP marks, pending blocks, same committed key then confirms");
         ui::WorldHumanInput keys;
         keys.up = keys.down = keys.enter = keys.escape = true;
-        const auto combined = ui::world_human_input(view, layout, keys, false, painted, {240, 256}, &marker);
+        const auto combined =
+            ui::world_human_input(view, layout, keys, false, painted, {240, 256}, &marker);
         check(combined && combined->input->up && combined->input->down &&
-                  combined->input->confirm && combined->input->cancel && marker.marked_identity == -1,
+                  combined->input->confirm && combined->input->cancel &&
+                  marker.marked_identity == -1,
               "Simultaneous keys reach the source intact and clear pointer confirmation marker");
         ++painted.first;
         check(!ui::world_human_input(view, layout, click, false, painted, {240, 256}, &marker),
@@ -344,7 +361,8 @@ void world_human() {
         switch_and_confirm.right = switch_and_confirm.enter = true;
         const auto next_tab = ui::world_human_input(empty, layout, switch_and_confirm, false);
         check(next_tab && next_tab->input->right && next_tab->input->confirm,
-              "Empty old gift tab cannot suppress source confirmation after same-frame tab navigation");
+              "Empty old gift tab cannot suppress source confirmation after same-frame tab "
+              "navigation");
         auto long_list = view;
         long_list.rows.clear();
         for (int n = 0; n < 8; ++n) {
@@ -359,16 +377,18 @@ void world_human() {
         ui::WorldHumanInput drag;
         drag.pointer = Vector2{217, 194};
         drag.pointer_pressed = drag.pointer_down = true;
-        const auto scrolled = ui::world_human_input(long_list, layout, drag, false, track, {240, 256}, &marker);
+        const auto scrolled =
+            ui::world_human_input(long_list, layout, drag, false, track, {240, 256}, &marker);
         check(scrolled && scrolled->input->scroll && scrolled->input->scroll->absolute &&
                   scrolled->input->scroll->value == 4 && marker.scrolling &&
                   long_list.first_visible == 0 && state.human_page_scroll.at(page.id) == 0,
               "Painted track maps to a source absolute-scroll input without a second cursor");
         drag.pointer_pressed = drag.pointer_down = false;
         drag.pointer_released = true;
-        check(!ui::world_human_input(long_list, layout, drag, true, track, {240, 256}, &marker) &&
-                  !marker.scrolling,
-              "Releasing the scrollbar during pending FIFO clears capture without submitting input");
+        check(
+            !ui::world_human_input(long_list, layout, drag, true, track, {240, 256}, &marker) &&
+                !marker.scrolling,
+            "Releasing the scrollbar during pending FIFO clears capture without submitting input");
     }
     input = {};
     input.inspect = true;
@@ -449,18 +469,120 @@ void world_human() {
     input.gifts = true;
     check(!ui::world_human_input(view, layout, input, false),
           "Equipment inspection cannot use the gift shortcut to apply or buy equipment");
-    page.legacy_page = state.scripts.pages.back().legacy_page = 70;
-    state.page_phases[page.id] = 2;
-    view = ui::world_human_view(state, page);
-    input = {};
-    input.click = middle({layout.body.x, layout.body.y + 3 * layout.body.height / 4,
-                          layout.body.width, layout.body.height / 4});
-    intent = ui::world_human_input(view, layout, input, false);
-    check(intent && intent->action == Action::select && intent->selection == 1,
-          "Mastery keep-current option selects before a separate final confirmation");
+    {
+        // Mastery has no gift parent/catalogue payload. A legitimate independent Owner
+        // fixture verifies PC wiring; the source suite owns bonus and successor transactions.
+        auto mastery = initial_world();
+        auto master_page = human_page(mastery, 70);
+        master_page.lifecycle = mastery.scripts.pages.back().lifecycle = 2;
+        mastery.page_secondary_counters[master_page.id] = 23;
+        mastery.page_phases[master_page.id] = 2;
+        const auto master = ui::world_human_view(mastery, master_page);
+        check(master.initialized && master.raw == 70 && master.selection == 0 &&
+                  master.mastery_attribute ==
+                      mastery.rules->jobs.at(master.details.profession).mastery_attribute &&
+                  ui::world_human_source_child(master),
+              "Mastery projects a legitimate bound Owner and uses the source child renderer");
+        ui::WorldHumanPaintedControls painted;
+        painted.page = master.page;
+        painted.raw = master.raw;
+        painted.phase = master.phase;
+        painted.selection = master.selection;
+        painted.human = master.human;
+        painted.extent = {240, 256};
+        painted.mastery_buttons = {Rectangle{30, 154, 88, 56}, Rectangle{104, 154, 112, 56}};
+        for (int choice = 0; choice < 2; ++choice) {
+            ui::WorldHumanInput click;
+            click.click = middle(*painted.mastery_buttons[choice]);
+            const auto command =
+                ui::world_human_input(master, layout, click, false, painted, {240, 256});
+            check(command && command->input && command->input->selection == choice &&
+                      command->input->confirm && command->action == Action::confirm &&
+                      !ui::world_human_input(master, layout, click, true, painted, {240, 256}) &&
+                      !ui::world_human_input(master, layout, click, false, {}, {240, 256}),
+                  "Mastery source button selects and confirms in one frame, rejecting "
+                  "pending/unpainted hits");
+        }
+        ui::WorldHumanInput overlap;
+        overlap.click = Vector2{110, 175};
+        check(ui::world_human_input(master, layout, overlap, false, painted, {240, 256})
+                      ->input->selection == 1,
+              "Overlapping source touches retain the established last-registered PC hit order");
+        for (int mismatch = 0; mismatch < 6; ++mismatch) {
+            auto stale = painted;
+            if (mismatch == 0)
+                ++stale.page;
+            else if (mismatch == 1)
+                ++stale.phase;
+            else if (mismatch == 2)
+                ++stale.selection;
+            else if (mismatch == 3)
+                ++stale.human;
+            else if (mismatch == 4)
+                ++stale.extent.width;
+            else
+                ++stale.extent.height;
+            check(!ui::world_human_input(master, layout, overlap, false, stale, {240, 256}),
+                  "Mastery rejects a stale page, phase, selection, person or viewport");
+        }
+        ui::WorldHumanInput combined;
+        combined.left = combined.right = combined.enter = true;
+        const auto command = ui::world_human_input(master, layout, combined, false);
+        check(command && command->input && command->input->left && command->input->right &&
+                  command->input->confirm && !command->input->up && !command->input->cancel,
+              "Mastery preserves simultaneous horizontal input and confirmation for the Owner");
+        for (int phase = 0; phase < 2; ++phase) {
+            auto introduction = master;
+            introduction.phase = phase;
+            auto drawn = painted;
+            drawn.phase = phase;
+            drawn.mastery_buttons = {};
+            drawn.primary = Rectangle{180, 224, 50, 18};
+            ui::WorldHumanInput click;
+            click.click = middle(*drawn.primary);
+            const auto confirm =
+                ui::world_human_input(introduction, layout, click, false, drawn, {240, 256});
+            check(confirm && confirm->input && confirm->input->confirm &&
+                      !confirm->input->selection,
+                  "Mastery introduction/reward footer confirms without inventing a choice");
+        }
+        for (int unsupported = 0; unsupported < 3; ++unsupported) {
+            ui::WorldHumanInput key;
+            key.escape = unsupported == 0;
+            key.up = unsupported == 1;
+            key.down = unsupported == 2;
+            check(!ui::world_human_input(master, layout, key, false),
+                  "Steam mastery does not infer Esc or vertical navigation from APK Back2");
+        }
+    }
     page.legacy_page = 67;
     check(!ui::world_human_page(page),
           "Effort raw67 remains owned by the existing progression view");
+    for (int raw : {67, 88, 96}) {
+        // Constructor timing only: clocks can be visible before the source callback is
+        // admitted. This fixture does not stand in for earning the actual reward.
+        auto owner = initial_world();
+        Page ceremony;
+        ceremony.id = owner.scripts.next_page_id++;
+        ceremony.kind = sim::rules::WorldScriptPageKind::raw_page;
+        ceremony.legacy_page = raw;
+        owner.scripts.pages.push_back(ceremony);
+        owner.page_human_bindings[ceremony.id] = 1;
+        owner.page_counters[ceremony.id] = owner.page_phases[ceremony.id] = 0;
+        for (int lifecycle : {0, 1, 2}) {
+            auto &live = owner.scripts.pages.back();
+            live.lifecycle = lifecycle;
+            const auto v = ui::world_progression_view(owner, live);
+            check(v.initialized == (lifecycle == 2),
+                  "Human ceremonies wait for the source Start before accepting confirmation");
+            ui::WorldProgressionInput enter;
+            enter.enter = true;
+            if (lifecycle != 2)
+                check(!ui::world_progression_input(v, ui::world_progression_layout({240, 256}, raw),
+                                                   enter, false),
+                      "Early Enter cannot reach a ceremony callback before lifecycle2");
+        }
+    }
     {
         // Explicit input-boundary fixture: the real84 consumer creates86, whose first
         // update retires it. The diagnostic must recognize it before that update.

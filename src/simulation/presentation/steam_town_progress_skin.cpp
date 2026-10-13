@@ -1,6 +1,8 @@
 // 原版Steam的进度小窗。规则值来自Owner；本模块仅展开图元，不执行领取或演出计数。
 #include "ark/simulation/presentation/steam_town_progress_skin.hpp"
 #include "ark/simulation/world/startup_world_runtime.hpp"
+#include "ark/simulation/actors/startup_world_human.hpp"
+#include "ark/simulation/facilities/startup_world_commerce.hpp"
 #include "ark/simulation/village/rules/world_calendar_tasks.hpp"
 #include <algorithm>
 #include <limits>
@@ -218,12 +220,16 @@ std::optional<SteamTownProgressPlan> steam_town_celebration_skin(const SteamTown
 }
 std::optional<SteamTownProgressPlan> steam_town_gift_skin(const SteamTownGiftInput &in) {
     const auto &o=in.options;
-    if(in.frame<0||in.value<0||(in.kind!=0&&in.kind!=1&&in.kind!=3&&in.kind!=4&&in.kind!=9&&in.kind!=10&&in.kind!=11)||
-       ((in.kind==3||in.kind==4||in.kind==11)&&in.name.empty()))return {};
+    const bool is_award=in.raw_page==95,character=in.raw_page==94,purchase=in.raw_page==93;
+    if(in.frame<0||in.frame==std::numeric_limits<int>::max()||in.value<0||
+       (!is_award&&!character&&!purchase)||(purchase&&in.kind!=3)||(character&&(in.kind<3||in.kind>8))||
+       (is_award&&(in.kind!=0&&in.kind!=1&&in.kind!=3&&in.kind!=4&&in.kind!=9&&in.kind!=10&&in.kind!=11))||
+       (((in.kind>=3&&in.kind<=8)||in.kind==11)&&in.name.empty())||
+       (character?!in.giver:bool(in.giver))||(in.kind<5||in.kind>8? !in.reward_icon.empty():in.reward_icon.size()!=2))return {};
     SteamTownProgressPlan p;p.title="活动";p.soft_labels={0,0};
     if(!window(p,222,170,{15,139,224,202},o))return {};
     image(p,SteamTownAsset::reward_background,30,68);
-    const int y=(in.kind==4||in.kind==10)?83:73;
+    const int y=((in.kind>=4&&in.kind<=8)||in.kind==10)?83:73;
     image(p,y==83?SteamTownAsset::mini1:SteamTownAsset::mini2,y==83?96:77,y);
     if(in.kind==0||in.kind==1) {
         if(!width(o.reward_number_width))return {};
@@ -244,18 +250,43 @@ std::optional<SteamTownProgressPlan> steam_town_gift_skin(const SteamTownGiftInp
         const auto actor=startup_title_actor_skin(in.value,in.sex,-1,0,2,false);if(!actor)return {};
         image(p,SteamTownAsset::shadow,120,119);
         p.operations.emplace_back(SteamHumanPortrait{*actor,{120,119},{},false});
+    } else if(in.kind>=5&&in.kind<=8) {
+        const bool item=in.kind==8;const int expected=in.kind==5?12:in.kind==6?20:in.kind==7?21:9;
+        for(int i=0;i<2;++i) {
+            const auto &d=in.reward_icon[i];const int side=i==0?18:item?16:18;
+            const int iw=i==0?144:item?240:180,ih=i==0?18:item?96:in.kind==5?72:in.kind==6?90:54;
+            if(d.resource!=StartupVisualResource::common||d.sprite!=-1||d.frame||d.layer||d.record_index||
+               d.image!=(i==0?24:expected)||d.offset!=(i==0&&item?std::array<int,2>{-1,-1}:std::array<int,2>{0,0})||
+               d.crop[0]<0||d.crop[1]<0||d.crop[2]!=side||d.crop[3]!=side||
+               std::int64_t(d.crop[0])+side>iw||std::int64_t(d.crop[1])+side>ih||
+               d.crop[0]%side||d.crop[1]%side||(i==0&&!item&&d.crop[0]!=54))return {};
+            const auto asset=i==0?SteamHumanAsset::equipment_background:item?SteamHumanAsset::item_icon:
+                in.kind==5?SteamHumanAsset::weapon_icon:in.kind==6?SteamHumanAsset::armour_icon:SteamHumanAsset::accessory_icon;
+            p.operations.emplace_back(SteamHumanImage{asset,{(item?112:111)+d.offset[0],99+d.offset[1]},0,d.crop});
+        }
     } else if(in.kind==9)image(p,SteamTownAsset::move_facility,89,93);
     else if(in.kind==10)p.operations.emplace_back(SteamHumanImage{SteamHumanAsset::medal,{113,100},0,std::array<int,4>{14,0,14,14}});
     else {
         if(in.activity_icon<0||in.activity_icon>=16)return {};
         image(p,SteamTownAsset::activity_icon,100,80,0,std::array<int,4>{in.activity_icon%4*40,in.activity_icon/4*55,40,55});
     }
-    image(p,SteamTownAsset::shadow,175,145);award(p,0,1,in.frame,175,145);
-    if(in.frame>=40&&!bubble(p,"请",175,102,o.bubble_widths[3]))return {};
+    if(character) {
+        if(in.giver->name.empty()||in.giver->name.size()>4096)return {};
+        const auto actor=startup_title_actor_skin(in.giver->profession,in.giver->sex,-1,0,2,false);if(!actor)return {};
+        image(p,SteamTownAsset::shadow,175,145);p.operations.emplace_back(SteamHumanPortrait{*actor,{175,145},{},false});
+    } else if(is_award) {image(p,SteamTownAsset::shadow,175,145);award(p,0,1,in.frame,175,145);}
+    if(!purchase&&in.frame>=40&&!bubble(p,character&&in.kind==4?"注目!":"请",175,102,o.bubble_widths[3]))return {};
     p.operations.emplace_back(SteamTownClip{SteamTownClipKind::replace,{0,152,240,rate(in.frame,5,40,0,58)}});
     if(in.kind==0) {text(p,"<co=0065FF>"+std::to_string(in.value)+"Ｇ</co>",120,166,2,0,brown,true);text(p,"获得。",120,184,2);}
     else if(in.kind==1) {text(p,"获得街道点数 <co=0065FF>"+std::to_string(in.value)+"</co> ",120,166,2,0,brown,true);text(p,"",120,184,2);}
-    else if(in.kind==3||in.kind==4) {
+    else if(character&&in.kind==3) {
+        text(p,"「<co=0065FF>"+in.name+"</co>」",120,166,2,0,brown,true);text(p,"被介绍了。",120,184,2);
+    } else if(character&&in.kind==4) {
+        text(p,"因为"+in.giver->name+"的介绍",120,158,2);
+        text(p,"可转职为「<co=0065FF>"+in.name+"</co>」",120,175,2,0,brown,true);text(p,"了。",120,192,2);
+    } else if(in.kind>=5&&in.kind<=8) {
+        text(p,"「<co=0065FF>"+in.name+"</co>」",120,166,2,0,brown,true);text(p,"获得。",120,184,2);
+    } else if(in.kind==3||in.kind==4) {
         text(p,"",120,158,2);text(p,"「<co=0065FF>"+in.name+"</co>」",120,175,2,0,brown,true);
         text(p,in.kind==3?"可以建设了。":"可转职了。",120,192,2);
     } else if(in.kind==9) {text(p,"「<co=0065FF>配置更替</co>」",120,166,2,0,brown,true);text(p,"可实施了。",120,184,2);}
@@ -304,14 +335,37 @@ std::optional<SteamTownProgressPlan> steam_town_celebration_skin(const StartupWo
     return steam_town_celebration_skin(in);
 }
 std::optional<SteamTownProgressPlan> steam_town_gift_skin(const StartupWorldRuntimeState &s,std::uint64_t id,const SteamTownProgressOptions &o) {
-    const auto *p=page(s,id,95);if(!p)return {};
+    const ref::WorldScriptPage *p=page(s,id,95);
+    if(!p) {
+        const auto top=std::find_if(s.scripts.pages.rbegin(),s.scripts.pages.rend(),[](const auto &v){return v.lifecycle!=4;});
+        if(!s.rules||top==s.scripts.pages.rend()||top->id!=id||top->lifecycle!=2||top->kind!=ref::WorldScriptPageKind::raw_page||
+           (top->legacy_page!=93&&top->legacy_page!=94))return {};
+        if(top->legacy_page==93?!valid_startup_world_commerce_claim_page(s,*top):!valid_startup_world_gift_notice_page(s,*top))return {};
+        p=&*top;
+    }
     const auto frame=s.page_counters.find(id);if(frame==s.page_counters.end())return {};
-    SteamTownGiftInput in;in.kind=p->legacy_r;in.value=p->legacy_s;in.sex=p->legacy_t;in.frame=frame->second;in.options=o;
+    SteamTownGiftInput in;in.kind=p->legacy_r;in.value=p->legacy_s;in.sex=p->legacy_t;in.frame=frame->second;in.options=o;in.raw_page=p->legacy_page;
+    if(in.raw_page==94) {
+        const auto bound=s.page_human_bindings.find(id);if(bound==s.page_human_bindings.end())return {};
+        const auto h=startup_world_human_details(s,bound->second);if(!h)return {};
+        in.giver=SteamTownGiftInput::Giver{h->profession,h->sex,h->name};
+    }
     if(in.kind==3) {
         const auto d=std::find_if(s.rules->facilities.begin(),s.rules->facilities.end(),[&](const auto &r){return r.id==in.value;});
         if(d==s.rules->facilities.end())return {};in.name=d->name;in.mapchip=d->display_id;
     } else if(in.kind==4) {
         if(in.value<0||in.value>=static_cast<int>(s.rules->jobs.size()))return {};in.name=s.rules->jobs[in.value].name;
+    } else if(in.kind>=5&&in.kind<=8) {
+        std::optional<std::vector<StartupVisualDraw>> icons;
+        if(in.kind==8) {
+            const auto d=std::find_if(s.rules->items.begin(),s.rules->items.end(),[&](const auto &r){return r.identity==in.value;});
+            if(d==s.rules->items.end())return {};in.name=d->name;icons=startup_world_item_icon_draws(s,in.value);
+        } else {
+            const int kind=in.kind-4;
+            const auto d=std::find_if(s.rules->equipment.begin(),s.rules->equipment.end(),[&](const auto &r){return r.shop.kind==kind&&r.shop.id==in.value;});
+            if(d==s.rules->equipment.end())return {};in.name=d->name;icons=startup_world_equipment_icon_draws(s,kind,in.value);
+        }
+        if(!icons)return {};in.reward_icon=*icons;
     } else if(in.kind==11) {
         const auto d=std::find_if(s.rules->activities.begin(),s.rules->activities.end(),[&](const auto &r){return r.identity==in.value;});
         if(d==s.rules->activities.end())return {};in.name=d->name;in.activity_icon=d->parameters[0];in.activity_flags=d->flags;

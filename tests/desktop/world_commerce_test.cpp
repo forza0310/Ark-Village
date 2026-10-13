@@ -1,10 +1,13 @@
 // UI owns source identity/currency/selection projection. Frozen commerce suites own transactions.
 #include "../../src/desktop/ui/facilities/world_facility_catalog.hpp"
+#include "../../src/desktop/ui/village/world_award.hpp"
 #include "../../src/desktop/ui/village/world_commerce.hpp"
 #include "../../src/desktop/ui/village/world_magic_pot.hpp"
+#include "../../src/desktop/ui/village/world_progression.hpp"
 #include "../support/checks.hpp"
 #include "../support/world_fixture.hpp"
 #include <algorithm>
+#include <stdexcept>
 
 namespace ark::test {
 namespace {
@@ -27,6 +30,41 @@ Page commerce_page(sim::StartupWorldRuntimeState &state, int raw, int mode = 0) 
     return page;
 }
 Vector2 center(Rectangle box) { return {box.x + box.width / 2, box.y + box.height / 2}; }
+sim::StartupWorldRuntimeState source_reward(int raw, int kind = 3) {
+    auto state = initial_world();
+    Page page;
+    page.kind = sim::rules::WorldScriptPageKind::raw_page;
+    page.legacy_page = raw;
+    page.legacy_r = kind;
+    if (kind == 3) {
+        const auto facility =
+            std::find_if(state.rules->facilities.begin(), state.rules->facilities.end(),
+                         [&](const auto &d) { return state.facility_presence.at(d.id) == 0; });
+        if (facility == state.rules->facilities.end())
+            throw std::runtime_error("Source reward fixture requires an unopened facility");
+        page.legacy_s = facility->id;
+    } else if (kind >= 5 && kind <= 7) {
+        const auto equipment =
+            std::find_if(state.rules->equipment.begin(), state.rules->equipment.end(),
+                         [&](const auto &d) { return d.shop.kind == kind - 4; });
+        if (equipment == state.rules->equipment.end())
+            throw std::runtime_error("Source reward fixture requires its equipment namespace");
+        page.legacy_s = equipment->shop.id;
+    } else if (kind == 8)
+        page.legacy_s = state.rules->items.front().identity;
+    const auto inserted =
+        sim::rules::prepare_world_script_page(sim::startup_world_runtime_scripts(state), page);
+    if (!inserted.candidate ||
+        !sim::write_startup_world_runtime_scripts(state, inserted.candidate->state))
+        throw std::runtime_error("Source reward fixture insertion failed");
+    if (raw == 94)
+        state.page_human_bindings[state.scripts.pages.back().id] = 1;
+    if (!(raw == 93 ? sim::initialize_startup_world_commerce_pages(state)
+                    : sim::initialize_startup_world_gift_notice_pages(state)))
+        throw std::runtime_error("Source reward fixture initialization failed");
+    state.scripts.pages.back().lifecycle = 2; // Explicit published presentation callsite.
+    return state;
+}
 } // namespace
 void world_commerce() {
     Checks check{"world_commerce"};
@@ -437,24 +475,60 @@ void world_commerce() {
     input.inspect = true;
     check(ui::world_commerce_input(view, layout, input, false)->action == Action::inspect,
           "Definition inspection is a separate source action, not a purchase");
-    page = commerce_page(state, 93);
-    page.legacy_s = state.scripts.pages.back().legacy_s = id;
-    page.legacy_r = state.scripts.pages.back().legacy_r = 3;
-    state.commerce_page_data[page.id][4] = id;
-    for (int count : {0, 39, 40}) {
-        state.page_counters[page.id] = count;
-        view = ui::world_commerce_view(state, page);
-        input = {};
-        input.escape = true;
-        check(!view.can_cancel && !ui::world_commerce_input(view, layout, input, false),
-              "Facility receipt cannot cancel the already paid exchange");
-        input = {};
-        input.enter = true;
-        check(
-            ui::world_commerce_input(view, layout, input, false)->action == Action::confirm &&
-                view.counter == count && view.choice->identity == id,
-            "Receipt confirmation preserves the source counter for fast-forward/receive handling");
-    }
+    // These source receipts now share the ordered town plan; commerce owns93's actual claim.
+    for (const int raw : {93, 94})
+        for (int kind = 3; kind <= (raw == 93 ? 3 : 8); ++kind) {
+            auto reward = source_reward(raw, kind);
+            const auto reward_page = reward.scripts.pages.back();
+            check(ui::world_progression_page(reward_page) &&
+                      !ui::world_commerce_page(reward_page) &&
+                      !ui::world_page_regular_confirmation(reward_page),
+                  "Source rewards have one UI route, without commerce/generic confirmation races");
+            const auto frame = ui::world_progression_layout({240, 256}, raw);
+            for (const int count : {0, 39, 40}) {
+                reward.page_counters.at(reward_page.id) = count;
+                const auto before_reward = reward;
+                const auto projection = ui::world_progression_view(reward, reward_page);
+                ui::WorldProgressionInput reward_input;
+                reward_input.escape = true;
+                check(!ui::world_progression_input(projection, frame, reward_input, false),
+                      "Facility/character receipt cannot cancel its committed source reward");
+                reward_input = {};
+                reward_input.enter = true;
+                const auto confirm =
+                    ui::world_progression_input(projection, frame, reward_input, false);
+                check(confirm && !confirm->rank_action && !confirm->input &&
+                          projection.counter == count && projection.reward_kind == kind &&
+                          projection.reward_value == reward_page.legacy_s &&
+                          (raw == 93 ? projection.giver == -1 : projection.giver == 1),
+                      "Receipt confirmation preserves source counter, namespace and real giver");
+                check(!ui::world_progression_input(projection, frame, reward_input, true) &&
+                          reward.page_counters == before_reward.page_counters &&
+                          reward.facility_presence == before_reward.facility_presence &&
+                          reward.scene.random.draws() == before_reward.scene.random.draws() &&
+                          same_world_clock(reward, before_reward),
+                      "Receipt projection cannot claim, draw random or bypass pending input");
+            }
+            auto incomplete = reward;
+            incomplete.page_counters.erase(reward_page.id);
+            check(!ui::world_progression_view(incomplete, reward_page).initialized,
+                  "Reward projection refuses missing Owner clock rather than initializing it");
+            incomplete = reward;
+            incomplete.scripts.pages.back().lifecycle = 0;
+            check(!ui::world_progression_view(incomplete, incomplete.scripts.pages.back())
+                       .initialized,
+                  "Reward projection waits for the real initialized and published source page");
+            if (raw == 94) {
+                incomplete = reward;
+                incomplete.page_human_bindings.erase(reward_page.id);
+                check(!ui::world_progression_view(incomplete, reward_page).initialized,
+                      "Character notice cannot substitute a generic actor for a missing giver");
+            }
+            auto unsupported = reward_page;
+            unsupported.legacy_r = raw == 93 ? 4 : 2;
+            check(!ui::world_progression_page(unsupported),
+                  "Published reward skin does not claim unsupported source templates");
+        }
     page = commerce_page(state, 86, 1);
     page.legacy_s = state.scripts.pages.back().legacy_s = ids[0];
     state.commerce_page_data[page.id][4] = ids[0];

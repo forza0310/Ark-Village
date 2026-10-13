@@ -31,7 +31,7 @@ bool world_page_regular_confirmation(const Page &page) {
     return raw != 87 && raw != 83 && raw != 31 && raw != 32 && raw != 33 && raw != 4 && raw != 21 &&
            raw != 48 && raw != 74 && raw != 80 && !(raw >= 22 && raw <= 28) &&
            !(raw >= 51 && raw <= 54) && !(raw >= 60 && raw <= 66) && raw != 68 && raw != 70 &&
-           raw != 73 && raw != 90;
+           raw != 73 && raw != 90 && raw != 93 && raw != 94;
 }
 WorldAwardView world_award_view(const simulation::StartupWorldRuntimeState &state,
                                 std::uint64_t page) {

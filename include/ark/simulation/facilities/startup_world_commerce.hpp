@@ -27,6 +27,8 @@ struct StartupCommerceView {
 };
 StartupWorldRuntimeError open_startup_world_commerce(StartupWorldRuntimeState &state);
 bool initialize_startup_world_commerce_pages(StartupWorldRuntimeState &state);
+// raw93领取前后沿同一交易载荷；关闭待退休不能通过删除字段伪装未初始化。
+bool valid_startup_world_commerce_claim_page(const StartupWorldRuntimeState &state,const ref::WorldScriptPage &page);
 std::optional<StartupCommerceView>
 inspect_startup_world_commerce_page(const StartupWorldRuntimeState &state, std::uint64_t page);
 StartupWorldRuntimeError act_startup_world_commerce_page(StartupWorldRuntimeState &state,

@@ -13,4 +13,5 @@ assets/human/*.inf -text -eol whitespace=cr-at-eol
 assets/monster/*.inf -text -eol whitespace=cr-at-eol
 assets/weapon/*.inf -text -eol whitespace=cr-at-eol
 assets/event/*.inf -text -eol whitespace=cr-at-eol
+assets/effect/*.inf -text -eol whitespace=cr-at-eol
 assets/title/*.inf -text -eol whitespace=cr-at-eol

@@ -17,6 +17,7 @@
 #include "dungeon_village_prototype/steam_clear_score_skin.hpp"
 #include "dungeon_village_prototype/steam_new_game_skin.hpp"
 #include "dungeon_village_prototype/steam_config_skin.hpp"
+#include "dungeon_village_prototype/steam_platform_button_skin.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 #include "dungeon_village_prototype/startup_world_persistence.hpp"
@@ -114,6 +115,7 @@ class SourceSprites {
         }
     }
     ~SourceSprites() {
+        if(platform_blend_)UnloadShader(*platform_blend_);
         for (const auto &v : textures_)
             UnloadTexture(v.second);
     }
@@ -294,6 +296,45 @@ class SourceSprites {
         published_sprite(resource->image,resource->published_image,resource->published_sprite,
                          request.position,request.frame,request.crop,origin);
     }
+    void platform_button(const SteamPlatformButtonBody &button) {
+        if(!button.reset_origin||button.joystick)throw std::runtime_error("平台按钮附加请求尚未完整消费");
+        const auto paint=[&] {
+            const auto &c=button.resource.crop;const auto &d=button.destination;
+            crop(button.resource.image_path,{float(c[0]),float(c[1]),float(c[2]),float(c[3])},
+                 {d[0],d[1]},true,Vector2{d[2],d[3]});
+        };
+        if(!button.blend){paint();return;}
+        if(button.blend->mode!=1||button.blend->rgba!=std::array<int,4>{255,255,255,128})
+            throw std::runtime_error("平台按钮混色尚未支持");
+        if(!platform_blend_) {
+            // 已核原生成shader三层混色的研究GLSL适配；保留纹理alpha，不能用白色半透明tint。
+            // 不宣称等价于当前Steam运行时选中的compiled shader或GPU色域。
+            const auto shader=LoadShaderFromMemory(nullptr,R"GLSL(#version 330
+in vec2 fragTexCoord;
+in vec4 fragColor;
+uniform sampler2D texture0;
+uniform vec4 colDiffuse;
+uniform float platformBlendAlpha;
+out vec4 finalColor;
+void main() {
+    vec4 texel=texture(texture0,fragTexCoord);
+    vec3 rgb=mix(texel.rgb,vec3(texel.a),platformBlendAlpha);
+    finalColor=vec4(rgb,texel.a)*colDiffuse*fragColor;
+}
+)GLSL");
+            const int location=GetShaderLocation(shader,"platformBlendAlpha");
+            if(!IsShaderValid(shader)||location<0) {
+                UnloadShader(shader);
+                throw std::runtime_error("平台按钮混色shader无法创建，拒绝默认shader回落");
+            }
+            const float alpha=128.F/255.F;
+            SetShaderValue(shader,location,&alpha,SHADER_UNIFORM_FLOAT);
+            platform_blend_=shader;
+        }
+        BeginShaderMode(*platform_blend_);
+        try {paint();} catch(...) {EndShaderMode();throw;}
+        EndShaderMode();
+    }
     void published_sprite(int image_id,const char *png,const char *seb,std::array<int,2> anchor,
                           int frame,std::optional<std::array<int,4>> rectangle,Vector2 origin) {
         const Vector2 position{origin.x+anchor[0],origin.y+anchor[1]};
@@ -331,6 +372,7 @@ class SourceSprites {
     std::map<std::string, std::vector<std::string>> actor_sprites_;
     std::map<std::string, dungeon_village_tools::SpriteDefinition> sprites_;
     std::map<std::string, Texture2D> textures_;
+    std::optional<Shader> platform_blend_;
 };
 
 // Original tile-plane increments and y-flip, with this adapter's 240x320 viewport midpoint.
@@ -1050,7 +1092,10 @@ template<class Plan> void draw_facility_ceremony(const Plan &plan,SourceSprites 
         } else if constexpr(std::is_same_v<T,SteamConfigTouch>) {
             // 条件窗口只消费绘制；完整设置输入、音量输出与系统保存尚未接Owner。
         } else if constexpr(std::is_same_v<T,SteamConfigPlatformKeyboard>) {
-            throw std::runtime_error("设置平台键盘图标尚未接资源消费者");
+            const auto button=steam_platform_button_skin({SteamPlatformButtonKind::keyboard_guide,
+                value.anchor,value.component,true,false,value.touched,{}});
+            if(!button||!button->body)throw std::runtime_error("设置平台键盘请求拒绝");
+            sprites.platform_button(*button->body);
         } else if constexpr(std::is_same_v<T,SteamNewGameArrow>) {
             const auto arrow=steam_manual_arrow_skin(value.source,sprites.manual_arrow_bounds(value.source.bounds_frame),128);
             if(!arrow)throw std::runtime_error("新局性别箭头来源拒绝");
@@ -1467,7 +1512,8 @@ std::optional<SteamConfigSkinPlan> config_example(const std::string &name,const 
     if(name=="config-locked")in.selection=1;
     if(name=="config-speed"){in.selection=1;in.speed_unlocked=true;in.values[1]=1;}
     if(name=="config-volume"){in.selection=3;in.values[2]=0;in.values[3]=5;}
-    SteamConfigSkinOptions o;o.view_y=23;o.graphics_origin={0,30};o.on_top=true;
+    SteamConfigSkinOptions o;o.view_y=23;o.graphics_origin={0,30};o.on_top=true;o.steam_platform=true;
+    o.platform_keyboard_touched=name=="config-volume";
     o.text.title="环境设置";o.text.names={"画面","速度","BGM","效果音"};
     o.text.choices={{{"画质优先","速度优先"},{"高速","普通"}}};
     if(in.selection==0)o.text.explanation={"优先速度时会省略部分","演出及显示效果"};

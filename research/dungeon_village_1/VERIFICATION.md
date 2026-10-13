@@ -1,5 +1,13 @@
 # 当前研究验证与历史索引
 
+## 平台键盘、绑定按钮与内嵌按键标签 2026-10-14
+
+接`2d8745a`，新增[平台按钮纯计划](prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)，保留平台资格、清原点、两种图像／同一gamepad命中源、普通／高亮矩阵、Margin15及控制器附加Joystick请求。设置窗口实际消费键盘，控制器附加glyph与平台点击动作不伪装完成。按现全量索引从KairoLibrary managed资源原样出版4个PNG／SEB共5962字节，沿[素材入口](assets/README.md)登记，无新指纹清单；两图已实际查看。
+
+单Release动态构建通过，扩展现visuals套件1/1短CTest通过1.64秒（总1.65秒），含真实PNG／SEB身份结构、独立几何、键盘高21但热区高30、平台／Xbox差异、controller实际比例及缺值／NaN／预算拒绝、输出规模稳定。四个8帧设置窗口正常退出并查看，0世界更新；[原参考图更新](ui/examples/steam-config.png)至80579字节，不另建重复示例。高亮消费已核生成shader公式的研究GLSL，校验专用uniform以拒默认shader回落；原compiled shader、GPU色域、OS点击和设置存取未认证。
+
+并行补核TextLayout的btn解析、排版宽／渐显宽及消费1、矩阵、Steam动态glyph与SEB回退，合入[现字体合同](ui/STEAM_FONT_CONSUMER.md)，pic及完整换行仍待核。未新增Owner／持久布局或target，不编其它维护者三份住宅在途测试、不跑世界长测。清理8份本轮重复图／窗口日志171926字节；单Release1372文件／139736798字节，assets850文件／9372783字节（含现有入口更新）。纹理与高亮shader按窗口释放，无新页面引用／一次性Owner输出；合法历史不称永久有界。本轮进程和子任务已收齐，仅提交已验research，不推送。
+
 ## Steam设置主体、音量组件与字体后继 2026-10-14
 
 接`80d8b8d`，raw12非日文四行新增[纯皮肤／控件图像接口](prototype/include/dungeon_village_prototype/steam_config_skin.hpp)，显式消费真实存储值、J9资格、选择、触摸状态与当前文本／测宽。补齐当前值反向映射、锁定高速Touch6、音量组件注册时的即时绘制、源轨道与实际thumb热区、Drag绝对原点及扩展选择；控件4／5／6／7／11复用现buttoneffect，原密度与0.75逻辑缩放独立。没有新增Owner字段、schema、协议或target；实际画质／音量输出、跨局设置存取与平台键盘图标未接，原DrawWindow2的表现计数副作用没有藏入只读查询。

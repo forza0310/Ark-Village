@@ -2,6 +2,7 @@
 #include "dungeon_village_prototype/steam_clear_score_skin.hpp"
 #include "dungeon_village_prototype/steam_new_game_skin.hpp"
 #include "dungeon_village_prototype/steam_config_skin.hpp"
+#include "dungeon_village_prototype/steam_platform_button_skin.hpp"
 #include "dungeon_village_prototype/startup_information.hpp"
 #include "dungeon_village_prototype/steam_information_skin.hpp"
 #include "dungeon_village_prototype/startup_world_information.hpp"
@@ -16,6 +17,7 @@
 #include <raylib.h>
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
@@ -724,6 +726,109 @@ void steam_config_skin_checks(Checks &check) {
     for(int repeat=0;repeat<4;++repeat)check(steam_config_skin(in,o)->operations.size()==baseline.operations.size()&&
         in.values==values&&in.selection==3&&o.graphics_origin==std::array<int,2>{10,20},
         "Steam12重复纯查询输出规模稳定，不写设置、选择或消费坐标，未新增Owner或平台任务");
+}
+void steam_platform_skin_checks(Checks &check,const std::filesystem::path &source_root) {
+    // 原managed kairolib的显式seb23/img27及seb25/img29；与游戏common包不同。
+    struct Oracle {const char *stem;int image,width,height,dx,dy;};
+    constexpr std::array<Oracle,2> resources{{{"button_gamepad",27,64,60,-32,-30},
+                                           {"button_keyboard",29,64,42,-32,-21}}};
+    for(const auto &expected:resources) {
+        const auto root=source_root.parent_path()/"steam-platform";
+        CpuImage image(LoadImage((root/(std::string(expected.stem)+".png")).string().c_str()));
+        check(image.image.width==expected.width&&image.image.height==expected.height,
+              "Steam平台图像原尺寸真实解码，不借common或按截图画替代图");
+        const auto seb=tools::parse_legacy_seb(read_bytes(root/(std::string(expected.stem)+".seb")));
+        check(seb.frame_count==1&&seb.layers.size()==1&&seb.layers[0].parts.size()==1,
+              "Steam平台按钮原SEB只有layer0/frame0一个实际裁片，不补高亮帧");
+        const auto &part=seb.layers[0].parts[0];
+        check(part.frame==0&&part.image_index==expected.image&&part.source_x==0&&part.source_y==0&&
+              part.width==expected.width&&part.height==expected.height&&part.offset_x==expected.dx&&
+              part.offset_y==expected.dy&&part.flip_x==0&&part.flip_y==0,
+              "Steam平台SEB原img身份、完整裁片与不同居中偏移保持独立oracle");
+        int opaque{};
+        for(int y=0;y<image.image.height;++y)for(int x=0;x<image.image.width;++x)
+            opaque+=GetImageColor(image.image,x,y).a>0;
+        check(opaque>0,"Steam平台源裁片真实非空，不以目录存在替代图像消费检查");
+    }
+    using Kind=SteamPlatformButtonKind;
+    const auto close=[](const std::array<float,4> &actual,const std::array<float,4> &expected) {
+        for(std::size_t n=0;n<actual.size();++n)if(std::abs(actual[n]-expected[n])>0.00002F)return false;
+        return true;
+    };
+    SteamPlatformButtonInput in{Kind::controller_binding,{20,20},2,true,false,false,100.F};
+    for(const auto kind:{Kind::controller_binding,Kind::keyboard_guide})for(bool touched:{false,true}) {
+        const bool keyboard=kind==Kind::keyboard_guide;
+        in.kind=kind;in.anchor=keyboard?std::array<int,2>{21,51}:std::array<int,2>{20,20};in.touched=touched;
+        const auto result=steam_platform_button_skin(in);
+        check(result&&result->body,"Steam两平台按钮可发布独立纯计划，不执行外链或Steam面板");
+        const auto &body=*result->body;const auto &resource=body.resource;
+        check(resource.image==(keyboard?29:27)&&resource.sprite==(keyboard?25:23)&&
+              resource.crop==(keyboard?std::array<int,4>{0,0,64,42}:std::array<int,4>{0,0,64,60})&&
+              resource.offset==(keyboard?std::array<int,2>{-32,-21}:std::array<int,2>{-32,-30})&&
+              std::string(resource.image_path)==(keyboard?"steam-platform/button_keyboard.png":"steam-platform/button_gamepad.png")&&
+              std::string(resource.sprite_path)==(keyboard?"steam-platform/button_keyboard.seb":"steam-platform/button_gamepad.seb"),
+              "Steam平台资源身份/路径均来自managed kairolib，不混Unity同名包或common ID");
+        const auto expected=keyboard?(touched?std::array<float,4>{3.4F,39.45F,35.2F,23.1F}:
+                                             std::array<float,4>{5.F,40.5F,32.F,21.F}):
+                                    (touched?std::array<float,4>{2.4F,3.5F,35.2F,33.F}:
+                                             std::array<float,4>{4.F,5.F,32.F,30.F});
+        check(close(body.destination,expected)&&body.reset_origin,
+              "Steam平台T锚/S尺寸/T偏移原序：锚不缩放且不再叠表单origin，高亮1.1只放大裁片");
+        check(body.component==2&&body.value==(keyboard?0x13489A9:0x13465BA)&&
+              body.touch_rectangle==(keyboard?std::array<int,4>{5,36,32,30}:std::array<int,4>{4,5,32,30})&&
+              body.margin==std::array<int,4>{15,15,15,15},
+              "Steam平台两热区固定gamepad23的半尺寸，键盘图高42和高亮都不改变普通30高热区");
+        check(bool(body.blend)==touched,"Steam平台普通继承混色，高亮才带显式混色请求");
+        if(touched)check(body.blend->mode==1&&body.blend->rgba==std::array<int,4>{255,255,255,128},
+              "Steam平台高亮保留BLEND_COLOR1白128实参，不转换成未经核验的普通alpha混合");
+        check(bool(body.joystick)==!keyboard,"Steam控制器额外glyph独立请求，键盘不虚构glyph");
+        if(!keyboard)check(body.joystick->button==8&&body.joystick->registration==24&&
+              body.joystick->scale==100&&body.joystick->anchor==std::array<int,2>{6,6},
+              "Steam控制器glyph保留原button8/registration24/scale100，实际比例只缩放附加glyph锚");
+    }
+    in.touched=false;
+    for(const auto kind:{Kind::controller_binding,Kind::keyboard_guide})for(bool desktop:{false,true})for(bool xbox:{false,true}) {
+        in.kind=kind;in.desktop=desktop;in.xbox=xbox;
+        const auto p=steam_platform_button_skin(in);
+        check(p&&bool(p->body)==(desktop&&(kind==Kind::controller_binding||!xbox)),
+              "Steam helper仅桌面；Xbox仅隐藏keyboard，外层顶页资格不冒充helper内部条件");
+    }
+    in.kind=Kind::keyboard_guide;in.desktop=true;in.xbox=false;in.scale_ratio.reset();
+    check(steam_platform_button_skin(in)->body.has_value(),"Steam keyboard不消费仅controller需要的比例，缺值仍合法");
+    in.scale_ratio=std::numeric_limits<float>::quiet_NaN();
+    check(steam_platform_button_skin(in)->body.has_value(),"Steam keyboard不提前校验未消费glyph比例");
+    in.kind=Kind::controller_binding;in.scale_ratio=75.F;in.anchor={-15,15};
+    check(steam_platform_button_skin(in)->body->joystick->anchor==std::array<int,2>{-21,0},
+          "Steam控制器glyph负乘积向零截断，不套floor或缩放按钮本体锚");
+    in.scale_ratio=10000.F;in.anchor={65536,-65536};in.component=65535;
+    const auto limit=steam_platform_button_skin(in);
+    check(limit&&limit->body&&limit->body->component==65535&&
+          limit->body->touch_rectangle==std::array<int,4>{65520,-65551,32,30},
+          "Steam平台维护坐标/组件/比例上界合法，输出保留显式负坐标而不夹回屏幕");
+    in={Kind::controller_binding,{20,20},2,true,false,false,100.F};
+    for(int fault=0;fault<12;++fault) {
+        auto bad=in;
+        if(fault==0)bad.kind=static_cast<Kind>(2);if(fault==1)bad.anchor[0]=-65537;
+        if(fault==2)bad.anchor[1]=65537;if(fault==3)bad.component=-1;if(fault==4)bad.component=65536;
+        if(fault==5)bad.scale_ratio.reset();if(fault==6)bad.scale_ratio=0.F;if(fault==7)bad.scale_ratio=-1.F;
+        if(fault==8)bad.scale_ratio=10001.F;if(fault==9)bad.scale_ratio=std::numeric_limits<float>::quiet_NaN();
+        if(fault==10)bad.scale_ratio=std::numeric_limits<float>::infinity();
+        if(fault==11)bad.scale_ratio=-std::numeric_limits<float>::infinity();
+        check(!steam_platform_button_skin(bad),"Steam平台错kind/坐标/组件/缺实际比例/非法浮点预算显式拒绝，不生成部分请求");
+    }
+    check(!steam_platform_button_resource(static_cast<Kind>(2)),"Steam平台非法资源kind不能回落到keyboard");
+    in.desktop=false;in.scale_ratio.reset();
+    const auto hidden=steam_platform_button_skin(in);
+    check(hidden&&!hidden->body,"Steam非桌面隐藏不提前消费controller比例或发布图像/热区/glyph");
+    in.desktop=true;in.scale_ratio=100.F;
+    const auto baseline=steam_platform_button_skin(in);
+    for(int repeat=0;repeat<4;++repeat) {
+        const auto p=steam_platform_button_skin(in);
+        check(p&&p->body&&p->body->destination==baseline->body->destination&&
+              p->body->touch_rectangle==baseline->body->touch_rectangle&&p->body->joystick&&
+              in.anchor==std::array<int,2>{20,20}&&in.scale_ratio==100.F&&in.component==2,
+              "Steam重复只读平台计划保持一个本体/一个glyph固定规模，不写输入或累积平台任务");
+    }
 }
 struct SpriteOracle {
     int sprite, image, frames;
@@ -2377,6 +2482,7 @@ int check_startup_skin(const std::filesystem::path &source_root,
     steam_clear_score_skin_checks(check);
     steam_new_game_skin_checks(check);
     steam_config_skin_checks(check);
+    steam_platform_skin_checks(check,source_root);
     frame_geometry(check);
     income_information(check);
     income_skin(check,source_root);

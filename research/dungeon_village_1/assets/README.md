@@ -8,6 +8,8 @@
 
 ## 当前交付
 
+- [Steam平台键盘／绑定按钮](steam-platform)：`button_keyboard.png/.seb`（1681／28字节，64×42，平台img29／SEB25）与`button_gamepad.png/.seb`（4225／28字节，64×60，img27／SEB23），共4原文件5962字节。原容器为`DungeonVillageEXE/KairoGames_Data/il2cpp_data/Resources/KairoLibrary.dll-resources.dat`中的`KairoLibrary.resource.kairolib.bytes`，沿[全量索引](IMAGE_COVERAGE.json)同名四条记录校验原字节／PNG像素，不新增指纹清单。不是Unity同名kairolib对象，也不属游戏common；两SEB均一层一帧一裁片，键盘绘制用25但热区仍取23。供[正式纯计划](../prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)消费，运行只需复制该子集；高亮生成shader、控制器附加glyph和平台动作的资格见[交互合同](../ui/STEAM_INTERACTIONS.md#平台键盘与控制器按钮的素材和局部绘制)。
+
 - 说明页箭头新增[Steam buttoneffect.png](steam-common/buttoneffect.png)：128×128、14563字节，原样来自固定`resources.assets`的system对象pathID1136、`drawable-mdpi/buttoneffect.png`，身份沿[全量索引](IMAGE_COVERAGE.json)的`EXE:resources.assets:1136:system:drawable-mdpi/buttoneffect.png`。同对象另有hdpi／ldpi，当前显式选择mdpi，不声称原窗口运行密度已核；与APK同名图不同像素，不覆写原包。GameView AddTouch使用arrow02的SEB bounds，再消费此独立纹理的普通／选中箭头裁片；逻辑0.75缩放和图片密度比各自处理，合同见[说明页](../ui/PAGES.md#说明13固定正文输入消费与装饰随机)。实查`steam-common`当前共8张PNG＋1个SEB、20101字节；保留来源入口，不新增指纹清单。
 
 - 主菜单期间新增Steam `common2/mpot_event.png`（image0、94×22／744字节），出版为[steam-common/mpot_event.png](steam-common/mpot_event.png)。来源为固定resources.assets的common2对象pathID1146，沿[全量索引](IMAGE_COVERAGE.json)原记录；与APK同名图不同，不覆写原包。主菜单底图、七图标及NEW／GET／手形使用已核同字节副本，期间数字复用Steam设施number08；[消费者合同](../ui/PAGES.md#steam主菜单缓存输入与局部皮肤)与[路径接口](../prototype/include/dungeon_village_prototype/steam_main_menu_skin.hpp)明确组域。此图加入时`steam-common`为七PNG＋一SEB、5538字节，当前规模以上项为准。

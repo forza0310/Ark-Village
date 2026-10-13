@@ -16,7 +16,9 @@ Steam完整局部绘制由[steam_clear_score_skin.hpp](include/dungeon_village_p
 
 Steam新局91由[steam_new_game_skin.hpp](include/dungeon_village_prototype/steam_new_game_skin.hpp)提供独立只读计划：显式接收村名、姓名、性别、选择、主钟与真实冒险职业，返回原序窗框、event9裁片、正文、人物、按钮及Touch／Arrow。字段热区、Arrow margin和soft0／2沿Steam来源；标题／开始按钮宽度由后端测量，长按钮不擅自钳制。该接口不读写应用、不推进时钟；配置选择与主钟的Owner恢复未接，不能用默认0补齐。见[四态参考](../ui/examples/steam-new-game.png)。
 
-Steam非日文设置12由[steam_config_skin.hpp](include/dungeon_village_prototype/steam_config_skin.hpp)提供四行纯计划：显式接收实际设置值、选择、解锁资格、触摸状态、当前语言文字及真实标题测宽，返回原序图元和源／实际触摸矩形。`steam_config_image_skin`将本页控件4／5／6／7／11绑定已出版`steam-common/buttoneffect.png`，源图密度与0.75逻辑尺寸分别处理。返回描述不改变画质／音量、播放试听或保存；平台键盘另输出请求，当前研究执行器明确拒绝未接的该图标，示例只展示游戏设置主体。完整设置Owner、系统权威字段、原helper表现计数与文件事务仍独立设计，不将纯计划当作设置已经可用。
+Steam非日文设置12由[steam_config_skin.hpp](include/dungeon_village_prototype/steam_config_skin.hpp)提供四行纯计划：显式接收实际设置值、选择、解锁资格、触摸状态、当前语言文字及真实标题测宽，返回原序图元和源／实际触摸矩形。`steam_config_image_skin`将本页控件4／5／6／7／11绑定已出版`steam-common/buttoneffect.png`，源图密度与0.75逻辑尺寸分别处理。返回描述不改变画质／音量、播放试听或保存；平台键盘另输出请求，现研究执行器消费独立平台按钮图元，保留外部网页动作未接。完整设置Owner、系统权威字段、原helper表现计数与文件事务仍独立设计，不将纯计划当作设置已经可用。
+
+[steam_platform_button_skin.hpp](include/dungeon_village_prototype/steam_platform_button_skin.hpp)独立提供平台键盘／控制器按钮的原素材、普通／高亮几何、清原点语义及命中请求。合法平台隐藏与坏输入拒绝分开；两图共用SEB23的固定半尺寸热区，高亮不扩大它。控制器还返回按真实GetScaleRatio(false)换算的JoystickButtonDraw请求，不得丢弃；当前研究执行器只接无此附加glyph的键盘，混色使用已核生成shader公式的GLSL适配，失败拒绝默认shader回落，纹理及shader随窗口释放。没有打开网页／绑定面板或操作Steam。
 
 ## 验证与边界
 

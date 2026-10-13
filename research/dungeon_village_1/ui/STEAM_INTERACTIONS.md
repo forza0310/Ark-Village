@@ -78,7 +78,28 @@ raw12同身份静态子批进一步核定以下生命周期；字段含义及四
 
 控制组件引用GameView的`buttoneffect.png`（复用已出版`assets/steam-common`副本），IMAGE_DATA条目`4/5/6/7/11`分别是`{0,−11,−11,1,85,22,21}`、`{0,−11,−11,24,85,22,21}`、`{0,−14,−14,47,85,28,28}`、`{0,−14,−14,76,85,28,28}`、`{0,−2,−13,73,57,9,23}`，含资源索引、偏移与裁片；不是common图片编号。源裁片按实际图宽/128乘后加0.5截断，目的偏移与大小按0.75缩放，密度不再次放大目的矩形。拖动原消费者`OnTouchTrackBar RVA23D670`只在event9先应用主设置值，再由`Set RVA23DE60`回写扩展行选择，低16位有符号；这不是原事务。本批仅交付图元／注册描述，不新增Owner设置或文件事务。
 
-`DrawWindow2 102000E4–102000FC`在顶层仍推进独立arwFrame；raw12只有BOX标志，所核局部不读取它绘箭头。维护纯查询不推进它，不能反称原Draw无副作用。窗口、原字体／平台语言、OS输入、真实设置保存及平台键盘图标仍分别验收；独立皮肤通过不等于完整设置消费者已完成。
+`DrawWindow2 102000E4–102000FC`在顶层仍推进独立arwFrame；raw12只有BOX标志，所核局部不读取它绘箭头。维护纯查询不推进它，不能反称原Draw无副作用。设置主体及平台键盘的研究窗口见示例；原字体／平台语言、OS输入、真实设置保存仍分别验收，独立皮肤通过不等于完整设置消费者已完成。
+
+### 平台键盘与控制器按钮的素材和局部绘制
+
+图标来自平台`KairoLibrary.resource.kairolib.bytes`，不是游戏common包。原物理容器为`KairoGames_Data/il2cpp_data/Resources/KairoLibrary.dll-resources.dat`；`IApplication.Awake 1078293B–10782A0F`创建ResourceManager，以IApplication所属Assembly载入字面`kairolib`，给图片设置`SetExpiration(true,40)`，随后将该对象安装到`R.Library.Kairolib.resource`。实际赋值helper在`1077BEF0–1077BF43`，`IApplication.GetResource 10785DC0–10785E31`读取同一字段。资源命名、加载链和原归档目录三者独立交叉，不能只由PNG外观认定身份。
+
+| 按钮 | 平台SEB／图片索引及原part | 局部目的矩形（普通态） |
+| --- | --- | --- |
+| 控制器绑定 | seb.inf[23] `button_gamepad.seb`，img.inf[27] `button_gamepad.png`；唯一part裁`(0,0,64,60)`、偏移`(−32,−30)` | `(x−16,y−15,32,30)` |
+| 键盘说明 | seb.inf[25] `button_keyboard.seb`，img.inf[29] `button_keyboard.png`；唯一part裁`(0,0,64,42)`、偏移`(−32,−21)` | `(x−16,y−10.5,32,21)` |
+
+这两组PNG／SEB已按原字节出版到[平台素材目录](../assets/steam-platform/)，各SEB均为一层、一帧、一part。`DrawKeyboardButton RVA7B6C50`在`107B6DEF–107B6E01`却取**gamepad的SEB23**第0帧第0层作为命中源，实际绘制才于`107B6EDF–107B6F14`取SEB25。二者触摸基框始终为`(x−16,y−15,32,30)`，四边Margin15；键盘`(21,51)`因此基框`(5,36,32,30)`，不能改用键盘21高的图像框。
+
+两个helper都先`PushOrigin(0,0,false)`，结束恢复原点，不叠表单原点；检查的值分别为控制器`0x13465BA`、键盘`0x13489A9`，component由调用者传入（现标题／raw12均2）。普通态push单精度0.5矩阵；CheckTouch命中时，先push `BlendMode(1,255,255,255,128)`及单精度1.1矩阵，再push0.5。`Seb.Draw RVA7BF970`先以part偏移作局部Translate，`Graphics.BeginRenderMatrix RVA75D570`再把调用锚写入base矩阵；`Matrix.PostConcat RVA7AC110`独立核乘序。因此锚不缩放，高亮只将偏移／尺寸乘`1.1F*0.5F`；图像矩阵全部pop后才注册原基框，高亮不扩大命中。BlendMode1是具名颜色混合请求，不能未经后端核验简化成整张半透明。
+
+资格分层保留：`DrawButton`只检查Platform.x86=4；`DrawKeyboardButton`还执行Xbox排除查询，本固定DLL的相关共享小方法返回false。helper均不自行判断顶页，标题顶页且state0、raw12顶页且APPLI_TYPE4是各调用者先做的检查。`USE_STEAM`和输入初始化只约束控制器CLICK后的平台动作，不约束图标绘制。控制器另外在`107B6BD8–107B6C2D`请求`Canvas.SetJoystickButtonDraw(button8, trunc((x−14)*scaleRatio/100), trunc((y−14)*scaleRatio/100), registerID24, scale100)`；键盘没有这项后继，尚未消费该glyph后端时须显式保留缺口。纯DTO应分别表达按钮kind、锚、component、平台资格、CheckTouch状态、原图／SEB身份、颜色混合、原点恢复及独立gamepad命中源；输入动作只产生具名平台意图，不由皮肤打开浏览器或绑定面板。以上为静态与素材认证，本批没有执行真实平台动作。
+
+正式[平台按钮纯计划](../prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)保留合法隐藏／非法输入的区别；控制器必须显式提供有限正值的GetScaleRatio(false)，键盘不读取它。坐标、component与比例上界是维护预算，不是原规则。研究设置窗口只消费无附加手柄glyph的键盘计划；返回的图元、命中和原点契约供产品接入，网页与绑定面板动作没有由研究窗口执行。
+
+**高亮混色的生成源码与适配边界。** `Graphics.SetBlendMode`在`107738B5–10773922`按常量255归一RGBA；`ShaderBuilder.Init`的`1073DDA9–1073DDBC`只在非clipRegion且blendMode1时启用blendColor，`GetNameId`加0x20（有图像再加0x10），`GetCode`于`1073D002–1073D018`同时匹配这两位后取原shader槽`110FC810`。该字符串先`constant * texture alpha`，再`previous lerp(constant) texture`（constant alpha为_BlendAlpha），最后`previous * primary`。`MaterialManager`的`10730065–107300EF`上传_BlendAlpha及RGB、强制_BlendColor.alpha=1。设原纹理T、顶点色P、归一混色alpha=a，按固定函数组合推导：`RGB=(T.rgb*(1-a)+Blend.rgb*T.a*a)*P.rgb`，`A=T.a*P.a`；本按钮Blend.rgb为白、a=128/255。只有不透明纹理像素才等于通常的对白色插值，不能用alpha tint替代。
+
+当前研究执行器用上述公式的独立GLSL适配，校验专用uniform存在，拒绝编译失败后的默认shader回落；只在首次高亮加载、窗口结束释放。原MaterialManager会优先查找现成shader，找不到才生成；本批没有认证运行时具体compiled shader、GPU色域、DPI或原窗口像素。四态参考中的键盘高亮因此仍是具名研究适配，不升级为Steam动态认证。
 
 ## 后续业务重载观察
 

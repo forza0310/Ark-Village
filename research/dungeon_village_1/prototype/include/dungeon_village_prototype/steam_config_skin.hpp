@@ -21,7 +21,7 @@ struct SteamConfigSkinOptions {
     int view_y{};
     std::array<int,2> graphics_origin{}; // 只进入原Drag的绝对坐标，不重复平移图元。
     std::array<std::array<bool,2>,2> arrow_selected{}; // BGM/SE × 左21/右20的CheckTouch结果。
-    bool steam_platform{}, on_top{};
+    bool steam_platform{}, on_top{}, platform_keyboard_touched{};
     SteamConfigTextInput text;
 };
 // GameView.IMAGE_DATA的索引及原DrawImage锚；不是common图片ID。
@@ -40,7 +40,7 @@ struct SteamConfigTouch {
     std::optional<std::array<int,6>> drag; // x/y/w/h/xcells/ycells；Flag见touch.option。
 };
 // 原helper请求：不将平台键盘图标或浏览器动作伪装成游戏内设置项。
-struct SteamConfigPlatformKeyboard { std::array<int,2> anchor{21,51}; int component{2}; };
+struct SteamConfigPlatformKeyboard { std::array<int,2> anchor{21,51}; int component{2}; bool touched{}; };
 using SteamConfigOperation=std::variant<SteamStartupFrameDraw,SteamHumanOverviewText,
     SteamConfigImage,SteamConfigTouch,SteamConfigPlatformKeyboard>;
 struct SteamConfigSkinPlan {

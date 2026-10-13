@@ -145,7 +145,7 @@ APK `aa.f()`同三组使用十进制参数，`</si>`回原Font请求`n.c()`，`<
 
 随后对**全部块**应用当前纵对齐值（107CF4D4–F564、107CF6AF–F6B9）：设布局高A，纵值32取`(A−T)*0.5`，A=−1时`−T*0.5`；纵值64取A−T，A=−1时−T；其它值偏移0。A≠−1且所得偏移<0时改为0，A=−1则保留负偏移。`−1`是精确float32未定尺寸哨兵（常量VA10E27A90），0.5来自10DDE528；不能把“高度不够仍从顶部开始”误写成缩小字体或裁掉前块。末次po的纵值参与这次全块偏移，不是每块冻结一份纵锚；block绘制还会加调用者dx/dy，不能在计划和窗口转换里重复居中。
 
-APK `aa.f()`同样依次查l/c/r与t/m/b、缺轴保留、清纵累计，末行及最终纵偏移公式在该方法末尾（约684–718行）与上述局部一致；对应`ab.f550d/f551e/h`是x/y/已测宽，块Font `n.f()`是实际高度。该交叉不采用反编译前段失真的换行条件，尤其不能据它倒置Steam横值1／2语义。此节只闭合po选择及明确末行／纵对齐收尾；bo／ff见下节，`pic/btn`、自动换行资格、语言差异和真实字体仍分别待核。本轮只读既有源与内联反汇编，无磁盘过程产物或新增字体制品。
+APK `aa.f()`同样依次查l/c/r与t/m/b、缺轴保留、清纵累计，末行及最终纵偏移公式在该方法末尾（约684–718行）与上述局部一致；对应`ab.f550d/f551e/h`是x/y/已测宽，块Font `n.f()`是实际高度。该交叉不采用反编译前段失真的换行条件，尤其不能据它倒置Steam横值1／2语义。此节只闭合po选择及明确末行／纵对齐收尾；bo／ff及btn见下节，`pic`、自动换行资格、语言差异和真实字体仍分别待核。本轮只读既有源与内联反汇编，无磁盘过程产物或新增字体制品。
 
 ### 描边标签与待行收尾标记
 
@@ -159,7 +159,23 @@ APK `aa.f()`同样依次查l/c/r与t/m/b、缺轴保留、清纵累计，末行�
 
 设该次行收尾前累计纵坐标Y、该行整数高H、整数行距S、布局高A；仅在原算术有定义的输入域，令`C=int32(H+S)`、`N=trunc_toward_zero(float32(float32(A+S)/float32(C)))`。107CEFC9–CF016先算N，再算`trunc_toward_zero(float32(Y/C+0.1f))%N`；余数非0则按C逐次增加Y，直到该式余数0（107CF01A–F045）。随后先减C再加C（107CF047–F062），因此保留刚对齐的Y；已在边界时可保持原Y，不是严格跳到下一个边界。`0.1f`的原常量10DDE550位型3DCCCCCD。该分支未见C／N非0或A有效高度检查，C=0、N=0等可能走原数值异常；不能自行夹为1、将未定A=−1转成固定页高或宣称原标签安全分页。整数和float32阶段仍分别执行，不合成一次高精度ceil公式。
 
-上述ff只认证已进入该行收尾时的效果；哪些自动换行／语言／标点路径触发收尾仍待完整复核。APK既有`aa/ab`普通绘制及TAG不消费bo/ff，本批不据其缺项断言所有Android版本均不支持。`pic/btn`及完整自动wrap、实际中文字体仍保留；本轮只读源，无游戏操作、代码、素材或临时磁盘产物。
+上述ff只认证已进入该行收尾时的效果；哪些自动换行／语言／标点路径触发收尾仍待完整复核。APK既有`aa/ab`普通绘制及TAG不消费bo/ff，本批不据其缺项断言所有Android版本均不支持。btn消费者见下节；`pic`及完整自动wrap、实际中文字体仍保留。本轮只读源，无游戏操作、代码、素材或临时磁盘产物。
+
+### 内嵌按钮提示
+
+2026-10-14补核TAG12的`<btn=n[,layer]>`从参数、块宽到实际平台图标调用。它是正文内的独立特殊块，不是可见标签文字，也不是菜单按钮或触摸区域；TAG没有`</btn>`。固定APK九项TAG没有btn，不将Steam扩展倒填到APK。
+
+`_makeTextBlocks`在107CE1FC–CE220取当前工作Font的`usedSize_+2`作为临时块宽，将原参数按精确逗号交`StringUtil.Split` RVA86A4D0；107CF255–CF29C把分段数组存入块`pictographParam_`（+30），写`isButton_=true`、`isBold_=false`和该宽，计入行宽与最大宽，再建立普通空块。按钮与pic共用参数字段，不因字段名把btn当图标注册键。行高仍由本行Font的usedSize消费，此分支未额外增加按钮行高。已核渐显`TextBlock.StringWidth`却固定输出12、消费1；例如usedSize12时布局宽14而渐显测宽12，不能强行合成同一常量。
+
+块`Draw` RVA7DA1F0在普通文字闪烁／视口检查之前分流至107DA65D–DA8F6。先取本块Font的实际字号H，直接用`Int32.Parse` RVAA06440解析参数0为buttonFrame；参数1存在时同法解析为layer，缺项取0。这里没有局部解析catch或frame夹限，标签扫描入口的其他数值容错不能外推到此处。然后检查TextLayout静态`buttonVisible_`（+6）：false不绘图但仍返回消费1，布局宽也没有清0；隐藏按钮不使后文前移。
+
+可见时依次PushMatrix：平移`(float32(H)*0.5+1, float32(H)*0.5)`、缩放`(0.25,0.25)`，H不等于12再压`(H/12,H/12)`缩放；坐标先按float32计算`block.x+dx`／`block.y+dy`再向零截断为整数。107DA852–DA883调用内部`Kairolib.DrawButtons(g,x,y,buttonFrame,layer,true,true)` RVA804CA0，两个true分别是autoKeyReverse和force；包装器传给下层的末尾null是MethodInfo，不是force=false。绘制前保存`AutoCancelJoystick`并临时置false，正常收尾先弹字号缩放、恢复该布尔原值、再弹两基础矩阵。未认证异常时的联合恢复，不能将这条原链声明为事务；此路径也未注册touch。
+
+内部包装转`Kairolib._drawButtons` RVA805D60。autoKeyReverse使frame0／1先分别读取`Canvas.GetJoystickKeyOK`／`GetJoystickKeyCancel`，不是固定A／B字母；layer1的frame16／17／18／19重映射为32／33／34／35，并把layer归0（10805E28–5E9E）。`Config.USE_STEAM`为真时向SteamInputManager取得按钮图像：0／1／2／3对应Select／Back／X／Y，6／7为SoftL／SoftR，8／9为TriggerL／TriggerR，10／11为Start／Option，4或29为StickL，5或30为StickR，16另走glyph helper RVA7B7960。各按钮对象的`GetImage()`虚调用决定动态图像，不是固定PNG索引；实际Steamworks glyph提供者、当前控制器及特殊frame7的额外回退仍待独立核验。
+
+没有可用动态图像时走原SEB回退（10806190–62E8）：默认`Kairolib.resource.seb[13]`（BUTTONS_SWITCH）；`GetInputType` RVA7B7BD0返回PS4=5或PS5=13时取seb19，SteamController=1、Xbox360=2或XboxOne=3时取seb29，其余保留seb13。最终交`Seb.Draw_layer` RVA7BF810，仍使用重映射后的frame与layer。动态图像宽高均大于0时则按较长边缩到60、保持长宽比并居中，交`Graphics.DrawScaledImage` RVA7641B0；未处于局部矩阵时居中偏移先向零截断再加整数坐标，存在局部矩阵时另PushTranslate并于正常收尾Pop（108062F8–6435）。特殊frame7的另一尺寸分支不据默认60补齐。
+
+这组闭合btn的排版与绘制入口、常规glyph映射和资源回退身份；尚未发布buttons_switch／ps4／xbox的完整SEB素材绑定，不能用现有buttoneffect裁片或自画键字代替，也不将缺少维护素材副本称为原游戏资源不存在。普通中文Font及glyph仍沿前述未知边界，btn图像静态链不认证它们。本轮无游戏输入、素材导出、核对脚本或磁盘过程产物。
 
 ## 仍需闭合及产品使用边界
 

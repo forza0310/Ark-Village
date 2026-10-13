@@ -105,7 +105,7 @@ std::optional<SteamConfigSkinPlan> steam_config_skin(const SteamConfigSkinInput 
     // 速度页第二行始终红色限框，资格只改选项；不擅自按解锁条件隐藏说明。
     if(in.selection==1)text(p,o.text.explanation[1],{34,196,180,11},32,{200,0,0},true);
     else text(p,o.text.explanation[1],{34,196,0,0},17);
-    if(o.steam_platform&&o.on_top)p.operations.emplace_back(SteamConfigPlatformKeyboard{});
+    if(o.steam_platform&&o.on_top)p.operations.emplace_back(SteamConfigPlatformKeyboard{{21,51},2,o.platform_keyboard_touched});
     return p;
 }
 } // namespace dungeon_village_prototype

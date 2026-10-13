@@ -642,6 +642,17 @@ Error act_startup_world_runtime_award_page(State &state, std::uint64_t id,
     return Error::none;
 }
 
+bool valid_startup_world_monster_intro_page(const State &s,const ref::WorldScriptPage &p) {
+    if(!s.rules||p.id==0||p.kind!=ref::WorldScriptPageKind::raw_page||p.legacy_page!=89||
+       p.lifecycle<0||p.lifecycle>4||!p.monster_definition||*p.monster_definition<0||
+       s.page_phases.count(p.id)||s.page_secondary_counters.count(p.id)||
+       std::count_if(s.scripts.pages.begin(),s.scripts.pages.end(),[&](const auto &v){return v.id==p.id;})!=1||
+       std::count_if(s.rules->monsters.begin(),s.rules->monsters.end(),
+           [&](const auto &d){return d.identity==*p.monster_definition;})!=1)return false;
+    const auto count=s.page_counters.find(p.id);
+    if(p.lifecycle==0)return count==s.page_counters.end();
+    return count!=s.page_counters.end()&&count->second>=0&&count->second<std::numeric_limits<int>::max();
+}
 Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
     const auto top = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
                                   [](const auto &p) { return p.lifecycle != 4; });
@@ -651,6 +662,8 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
         return Error::invalid_page;
     if (top->kind == ref::WorldScriptPageKind::raw_page && (top->legacy_page == 58||top->legacy_page==17))
         return Error::invalid_page; // 58由逐帧跟踪收尾；17只能由应用Owner计分，均不能通用确认关闭。
+    if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==89&&
+       (top->lifecycle!=2||!valid_startup_world_monster_intro_page(state,*top)))return Error::missing_source;
     if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==30&&
        (top->lifecycle!=2||!valid_startup_world_runtime_task_victory_page(state,*top)))
         return Error::missing_source;
@@ -793,8 +806,8 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
             next.page_counters[id] = result.candidate->counter;
         } else if (top->legacy_page == 89) {
             // b/g.g:6003：早确认仅快进；40之后关闭，不再重复执行介绍脚本。
-            if (next.page_counters[id] < 40)
-                next.page_counters[id] = 40;
+            if (next.page_counters.at(id) < 40)
+                next.page_counters.at(id) = 40;
             else {
                 const auto result =
                     ref::prepare_world_script_close_page(startup_world_runtime_scripts(next), id);
@@ -1014,6 +1027,8 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
         if(page!=state.scripts.pages.rend()&&page->kind==ref::WorldScriptPageKind::raw_page&&
            page->legacy_page==88&&!valid_startup_world_runtime_award_result_page(state,*page))return {};
         if(page!=state.scripts.pages.rend()&&page->kind==ref::WorldScriptPageKind::raw_page&&
+           page->legacy_page==89&&!valid_startup_world_monster_intro_page(state,*page))return {};
+        if(page!=state.scripts.pages.rend()&&page->kind==ref::WorldScriptPageKind::raw_page&&
            page->legacy_page>=25&&page->legacy_page<=28&&!valid_startup_world_runtime_task_ui_page(state,*page))return {};
         if(page!=state.scripts.pages.rend()&&page->kind==ref::WorldScriptPageKind::raw_page&&
            page->legacy_page>=31&&page->legacy_page<=33&&!valid_startup_world_runtime_task_summary_ui_page(state,*page))return {};
@@ -1028,6 +1043,8 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
     if (top == state.scripts.pages.rend() || top->kind == ref::WorldScriptPageKind::scene)
         return {};
     if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==17)return {};
+    if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==89&&
+       (top->lifecycle!=2||!valid_startup_world_monster_intro_page(state,*top)))return {};
     if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==30&&
        (top->lifecycle!=2||!valid_startup_world_runtime_task_victory_page(state,*top)))return {};
     if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==96&&
@@ -1118,11 +1135,12 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
             return {};
         return next;
     }
-    auto &counter = next.page_counters[top->id];
+    auto &counter = top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==89
+        ? next.page_counters.at(top->id):next.page_counters[top->id];
     if (counter == std::numeric_limits<int>::max())
         return {};
     ++counter;
-    if(top->legacy_page==27||top->legacy_page==67||top->legacy_page==88||top->legacy_page==94)counter%=std::numeric_limits<int>::max();
+    if(top->legacy_page==27||top->legacy_page==67||top->legacy_page==88||top->legacy_page==89||top->legacy_page==94)counter%=std::numeric_limits<int>::max();
     if(top->legacy_page==50||top->legacy_page==30||top->legacy_page==96) {
         auto &secondary=next.page_secondary_counters.at(top->id);
         counter%=std::numeric_limits<int>::max();

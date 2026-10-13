@@ -355,6 +355,9 @@ std::optional<State> prepare_startup_world_runtime_dungeon_crew(const State &sta
 std::optional<State>
 consume_startup_world_runtime_encounter_request(const State &state,
                                                 const ref::EncounterCreationRequest &request) {
+    if(request.kind==ref::EncounterCreationRequestKind::page89&&
+       (!state.rules||request.definition<0||std::count_if(state.rules->monsters.begin(),state.rules->monsters.end(),
+            [&](const auto &d){return d.identity==request.definition;})!=1))return {};
     State next = state;
     synchronize_startup_world_runtime_monsters(next);
     const auto c = catalog(next);

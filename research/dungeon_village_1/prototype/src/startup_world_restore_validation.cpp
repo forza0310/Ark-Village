@@ -1049,6 +1049,9 @@ struct Validation {
         if (!valid_startup_world_runtime_task_tracking_scene(s))
             return fail("task scene: 追踪名单/选择/目标载荷非法");
         for (const auto &p : s.scripts.pages) {
+            if(p.kind==ref::WorldScriptPageKind::raw_page&&p.legacy_page==89&&
+               !valid_startup_world_monster_intro_page(s,p))
+                return fail("monster intro89: 缺怪物定义/真实Init主钟或关闭待退休载荷非法");
             if (p.kind == ref::WorldScriptPageKind::raw_page &&
                 p.legacy_page == 17 && !valid_startup_world_clear_page(s,p))
                 return fail("clear page: 初始化/阶段钟/独立主钟或关闭待退休载荷非法");

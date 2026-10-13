@@ -67,11 +67,24 @@ SetDrawParam会写Character2共享临时字段及scratch `draw_param[5…10]`；
 
 当前请求没有覆盖所有被读字段。显示怪物由`UserData.Setting`（RVA `2E89D0`）在`102EA2B2–102EA32A`创建Character2、调用Init(1,0,0)并将uid设−1；不是UserData cctor创建。Character2构造明确分配`draw_param`、`effect_pos`、空效果列表及6槽powerBar；Init绑定共同上下文／对象身份并初始化动作、朝向、flag和部分状态／计数（`1028418D–1028421D`），不重置上述效果列表和伤害计数。89及setter没有覆盖`uid_ +0x0C`（选择高亮／选中血条）、`powerBar_ +0x104`的第4槽（主动血条）、`effD_hitTime +0x114`／`effD_miss +0x118`（DrawEffDamage RVA `276BF0`入口）、效果列表`+0x19C`（DrawEffect RVA `277150`），也没有覆盖调试Draw_stateInfo／Draw_actInfo读取的状态／行动字段。因此最小后续问题是：**Setting后各个显示monster使用者是否只改当次已覆盖字段，能否证明这些附效在89准入时仍为空／未启用？** 不能把未追的共享历史补0当正常状态，也不能据此承诺当次显式请求就足以完整恢复。现Owner还没有此共享monster scratch载荷；先沿89这条具名链补闭包，再决定复用独立表现请求是否足够，不扩大成全世界actor重构。
 
-后继最小调用者候选为UserData.Draw_bossAppear（RVA `2CE9E0`）、Draw_ma（`2D2820`）、SubForm._draw1_2（`332DB0`）和_draw2_4（`3472B0`，另对调用在VA `10349873/10349885`）；这里只按E8相对目标列出SetDispMonsterData／DrawDispMonster成对候选，尚未逐个认证完整指令边界和分派，不是穷尽写集。
+2026-10-14续核从以下四个具名方法入口顺序解码至实际调用边界，已把上一批E8候选收为真实指令，局部直接写集如下；不把顺序解码代替全程序指针别名证明。
+
+| 调用者／来源 | 本局部共享显示写入及消费 |
+| --- | --- |
+| UserData.Draw_bossAppear，RVA `2CE9E0` | `102CEF90–102CEFB8`写size／bodyImg；`102CF00C/102CF021`依次setter(action0)／draw |
+| UserData.Draw_ma，RVA `2D2820` | `102D2CE8–102D2D16`写size／bodyImg；`102D2D3B/102D2D4D`依次setter(action0)／draw |
+| SubForm._draw1_2，RVA `332DB0`的raw33期限分支 | `10332FEB–10332FEE`将33送至`10336228`；`103370AC–103370D4`写size／bodyImg；`103370FD/1033710E`依次setter(action0)／draw |
+| SubForm._draw2_4，RVA `3472B0`的raw92怪物信息分支 | `10347779–1034777C`将92送至`1034937C`；`10349820–1034984B`写size／bodyImg；`10349873/10349885`依次setter(action0)／draw |
+
+四处都未在这些已核局部直接覆写uid／powerBar／伤害计数／miss／效果列表；它们经相同SetDrawParam和Draw_monster消费。DrawEffDamage在`10276C2B–10276C33`读取hitTime，≤0直接走返回`10276F86`；DrawEffect在`1027720D–10277231`取列表长度，空列表直接走返回`1027ADAF`。新Character2的标量及新int数组零初始化、空列表构造和Setting的显式uid=−1共同证明**刚完成该初始化时**这些附效未开启；这不是任意历史进入89时由当次setter清零。调试状态／行动显示还依赖原全局配置，不能由无伤害／空效果推成只有身体一层。
+
+以当前具名方法表范围顺序解码并跟踪普通`mov`的TypeInfo→static→`dispMonster_ +0x18`访问，最小直接读取候选只有Setting、setter、draw及上表四个方法；均已核实相关实际指令。该有限检查不覆盖其它地址加载形式、跨调用指针别名、反射或外部改写，不能宣称全部writer穷尽。下一步只需核这些直接使用者是否向会污染未覆盖槽的路径传出scratch，以及调试准入；若这层闭合，才可讨论从已证初始化状态独立消费当次89请求，而无需新增持久字段。当前不能据这张表补零或承诺所有旧显示历史等价，原动态准入仍未取得。
 
 资源复用现[全量索引](../assets/IMAGE_COVERAGE.json)：两版common图片3／39／72、SEB25／2，以及monster方向2的四个walk SEB及全部35张monster PNG在该索引中同字节。索引的Steam monster／common容器分别为resources.assets TextAsset1129／1148；这仅认证这些条目身份，不把整个common目录或所有显示效果都宣称同版本。图片索引为body×30+variant，方向SEB为body×4+2，沿正式img.inf／seb.inf检验缺图和帧界，不按PNG列数猜动作。
 
-当前Owner生产者已有`monster_definition`，通用89确认使用`page_counters`实现早确认快进40／晚确认关闭；这是现有局部业务接线。89尚无专用副钟及共同SEB调度，不能称原公共两钟完整维护；其generic确认也未专门校验怪物定义，并以map下标访问主钟，缺定义的夹具仍可确认。后续需补明确身份和载荷验证：缺定义、孤立载荷、缺钟、错顶页或坏素材显式拒绝，并按本合同实现表现；这些是待维护要求，不能把现generic成功当已通过严格校验。完整恢复仍需先闭合共享scratch历史及表现请求身份，不能重新触发介绍脚本、introduced写入、随机抽样或奖励。原窗口的物理输入与最终画面未由本次静态分析取得。
+当前Owner生产者绑定并校验`monster_definition`，89仅在真实栈顶首次准入时建立现有`page_counters`；暂停或被覆盖的pending页不提前Init。统一validator拒绝缺定义、重复／未知身份、ready缺钟、非法计数及误挂phase／副钟，框架在清理关闭页之前也校验；恢复入口复用该规则。确认只接就绪栈顶，早确认快进40、后次关闭，不重触发介绍脚本、introduced、随机抽样或奖励；主钟沿已核INT_MAX回卷，关闭后下一框架入口共同退休页及主钟。这些是当前单主钟业务与维护拒绝策略，不是原程序损坏档案的安全保证。
+
+89尚无专用副钟、共同SEB调度或完整皮肤；共享scratch历史及表现请求身份仍须沿上文闭合，坏素材拒绝属于未来绘制消费者，不能以当前业务校验替代。原窗口的物理输入与最终画面未由本次静态分析取得。
 
 ## 新局与复发关系
 

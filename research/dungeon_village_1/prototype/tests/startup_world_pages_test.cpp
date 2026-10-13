@@ -2395,14 +2395,89 @@ void task_focus_and_introduction() {
     s.tasks.at(1).facility = 99999;
     check(!prepare_startup_world_runtime(s).candidate && s.camera[0] == (*target)[0] - 5,
           "stale bound focus rejects without camera or page partial write");
-    s = fixture(89);
+    const auto introduction=consume_startup_world_runtime_encounter_request(
+        test_support::world_fixture(),{ref::EncounterCreationRequestKind::page89,3});
+    check(introduction.has_value(),"raw89 real encounter consumer creates pending monster definition binding");
+    s=*introduction;
     const auto intro = s.scripts.pages.back().id;
+    check(s.scripts.pages.back().lifecycle==0&&s.scripts.pages.back().monster_definition==3&&
+        !s.page_counters.count(intro)&&valid_startup_world_monster_intro_page(s,s.scripts.pages.back()),
+        "raw89 pending retains actual definition and has no preinstalled clock");
+    check(acknowledge_startup_world_runtime_page(s,intro)==StartupWorldRuntimeError::missing_source&&
+        !update_startup_world_runtime_page(s),"raw89 pending cannot acknowledge or use ready update to synthesize its clock");
+    auto paused_intro=s;paused_intro.scene.framework_paused=true;
+    const auto paused_tick=prepare_startup_world_runtime(paused_intro);
+    check(paused_tick.candidate&&paused_tick.candidate->scripts.pages.back().lifecycle==0&&
+        !paused_tick.candidate->page_counters.count(intro)&&paused_tick.candidate->scene.random.draws()==s.scene.random.draws()&&
+        paused_tick.candidate->scene.calendar.units==s.scene.calendar.units,
+        "raw89 paused pending remains uninitialized, without world/date/random advance");
+    auto preinstalled=s;preinstalled.page_counters[intro]=0;
+    check(!prepare_startup_world_runtime(preinstalled).candidate,"raw89 pending rejects preinstalled clock rather than accepting a partial Init");
+    auto covered=s;covered.scripts.executing_page=intro; // 真实覆盖页分配锚点，而非沿旧主场景插入。
+    ref::WorldScriptPage cover;cover.kind=ref::WorldScriptPageKind::raw_page;cover.legacy_page=16;cover.legacy_l=2;
+    const auto overlay=ref::prepare_world_script_page(startup_world_runtime_scripts(covered),cover);
+    check(overlay.candidate&&write_startup_world_runtime_scripts(covered,overlay.candidate->state),"raw89 covered fixture uses real page allocator");
+    const auto covered_before=startup_world_state_digest(covered);
+    const auto covered_tick=prepare_startup_world_runtime(covered);
+    check(covered_tick.candidate&&!covered_tick.candidate->page_counters.count(intro)&&
+        acknowledge_startup_world_runtime_page(covered,intro)==StartupWorldRuntimeError::invalid_page&&
+        startup_world_state_digest(covered)==covered_before,"raw89 covered pending is not initialized and wrong-top confirmation changes nothing");
+    const auto initialized_intro=prepare_startup_world_runtime(s);
+    check(initialized_intro.candidate&&initialized_intro.candidate->scripts.pages.back().lifecycle==2&&
+        initialized_intro.candidate->page_counters.at(intro)==1&&
+        initialized_intro.candidate->scene.random.draws()==s.scene.random.draws()&&
+        initialized_intro.candidate->scene.world.updates==s.scene.world.updates&&
+        initialized_intro.candidate->scene.calendar.units==s.scene.calendar.units&&
+        initialized_intro.candidate->sound_requests==s.sound_requests,"raw89 true top Init creates main clock once, then first modal update; no presentation effects claimed");
+    s=*initialized_intro.candidate;
+    paused_intro=s;paused_intro.scene.framework_paused=true;
+    const auto paused_ready=prepare_startup_world_runtime(paused_intro);
+    check(paused_ready.candidate&&paused_ready.candidate->page_counters.at(intro)==1&&
+        acknowledge_startup_world_runtime_page(paused_intro,intro)==StartupWorldRuntimeError::invalid_page,
+        "raw89 ready pause freezes counter and rejects manual input");
+    for(int fault=0;fault<7;++fault) {
+        auto bad=s;
+        if(fault==0)bad.scripts.pages.back().monster_definition.reset();
+        if(fault==1)bad.scripts.pages.back().monster_definition=99999;
+        if(fault==2)bad.page_counters.erase(intro);
+        if(fault==3)bad.page_counters.at(intro)=-1;
+        if(fault==4)bad.page_counters.at(intro)=std::numeric_limits<int>::max();
+        if(fault==5)bad.page_phases[intro]=0;
+        if(fault==6)bad.page_secondary_counters[intro]=0;
+        const auto before=startup_world_state_digest(bad);
+        check(!valid_startup_world_monster_intro_page(bad,bad.scripts.pages.back())&&
+            !prepare_startup_world_runtime(bad).candidate&&
+            acknowledge_startup_world_runtime_page(bad,intro)==StartupWorldRuntimeError::missing_source&&
+            startup_world_state_digest(bad)==before,"raw89 ready missing definition/main clock, bad bound or alien phase/secondary rejects without repair or partial state");
+    }
+    auto wrapped=s;wrapped.page_counters.at(intro)=std::numeric_limits<int>::max()-1;
+    const auto wrap_tick=prepare_startup_world_runtime(wrapped);
+    check(wrap_tick.candidate&&wrap_tick.candidate->page_counters.at(intro)==0&&
+        valid_startup_world_monster_intro_page(*wrap_tick.candidate,wrap_tick.candidate->scripts.pages.back()),
+        "raw89 shared BaseUpdate INT_MAX wrap stays within valid main-clock range");
     check(acknowledge_startup_world_runtime_page(s, intro) == StartupWorldRuntimeError::none &&
               s.page_counters.at(intro) == 40 && s.scripts.pages.back().lifecycle != 4,
           "raw89 early confirm only fastforwards40");
+    auto late_close=s;
+    // 页关闭后写回定义投影才失败，检验候选关闭不会局部提交到原Owner。
+    late_close.scripts.professions.emplace(static_cast<int>(late_close.scene.world.world.ai.professions.size()),
+                                          ref::WorldScriptUnlockDefinition{});
+    const auto before_close=startup_world_state_digest(late_close);
+    check(acknowledge_startup_world_runtime_page(late_close,intro)==StartupWorldRuntimeError::script_failed&&
+        startup_world_state_digest(late_close)==before_close,"raw89 late stack-close failure preserves page, clock, random and outputs");
     check(acknowledge_startup_world_runtime_page(s, intro) == StartupWorldRuntimeError::none &&
               s.scripts.pages.back().lifecycle == 4 && s.scripts.event_calls.empty(),
           "raw89 next confirm closes without repeating monster introduction program");
+    check(valid_startup_world_monster_intro_page(s,s.scripts.pages.back())&&s.page_counters.at(intro)==40,
+        "raw89 closed page keeps complete pending-retirement payload");
+    auto broken_closed=s;broken_closed.page_counters.erase(intro);
+    check(!prepare_startup_world_runtime(broken_closed).candidate,"raw89 closed bad payload is rejected before cleanup can hide the missing clock");
+    const auto retired=prepare_startup_world_runtime(s);
+    check(retired.candidate&&!retired.candidate->page_counters.count(intro)&&
+        std::none_of(retired.candidate->scripts.pages.begin(),retired.candidate->scripts.pages.end(),
+            [&](const auto &page){return page.id==intro;}),"raw89 next real framework entry retires main clock and monster page reference together");
+    check(!consume_startup_world_runtime_encounter_request(test_support::world_fixture(),
+        {ref::EncounterCreationRequestKind::page89,99999}),"raw89 producer refuses unknown definition before publishing a pending page");
 }
 void rank_conditions() {
     for(int raw:{48,49,50,95})for(int fault=0;fault<3;++fault) {

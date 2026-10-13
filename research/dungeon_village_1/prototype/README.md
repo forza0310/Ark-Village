@@ -1,52 +1,27 @@
 # 可玩研究原型包
 
-设施经营主线的79／72现接[Steam商品只读计划](include/dungeon_village_prototype/steam_facility_catalog_skin.hpp)及研究窗口：价格／属性页、四行滚动、商品详情及父页返回，输入整轮候选提交；确认清全类NEW，不购买。`--world --inspect-page world-goods/world-goods-attributes/world-equipment-info --frames 8`分别进入三种状态，名称须逐个传入。人物结果窗同时只读已有`entry_updates`作为原共享人物计数，不再使用窗口刷新帧。[合同](../rules/COMMERCE.md#steam商品79详情72只读皮肤)、[参考图](../ui/examples/README.md)和[验收](../VERIFICATION.md#steam商品目录与共享时钟2026-10-13)可供产品消费。
+本包是独立C++17／raylib研究消费者，与产品主构建分开。当前能力查[阶段矩阵](../stages/README.md)，原规则／UI来源查[规则](../rules/README.md)及[页面合同](../ui/PAGES.md)，实际检查只记在[验证入口](../VERIFICATION.md)。本页负责源码导航、构建与运行入口，不重复逐批验收新闻。
 
-75／76／77已接[改良计划](include/dungeon_village_prototype/steam_facility_effect_skin.hpp)和研究绘制：`world-facility-items`／`world-facility-improvement`／`world-facility-result`分别展示真实新局道具目录及实际消耗后的投掷／结果。75首行由Owner保存，支持同轮滚动／选择、子页返回及[精确恢复](PERSISTENCE.md#设施经营窗口的滚动双计数)；76 count38由Owner排一次ordinary SE8，区别原Draw调用时点，重复绘制不发声。82[正式计划](include/dungeon_village_prototype/steam_facility_reputation_skin.hpp)已接Owner独立双计数及窗口，两段切换仅清主计数。无`--world`的`facility-reputation`／`facility-reputation-result`是有界纯绘制参考入口，明确无自然触发认证；自然36个月／五次获取及原OS动态不由例图认证。
+## 代码模块与合同
 
-当前世界语义5／应用8已修正新局九设施原初值p2，并按用户确认使85仅列p0未开放图纸；预览、支付、93领取及恢复同资格，旧研究档拒绝、不迁移。原85的p!=2事实与维护p0策略分别登记在[商会合同](../rules/COMMERCE.md)，不修改原表、玩家旧进度或追溯退款。
+| 职责／代码入口 | 主责说明 |
+| --- | --- |
+| `startup_world_runtime`／Session及各`startup_world_*`消费者 | 唯一Owner协调世界、页面、随机和一次输出；[Owner接口](include/dungeon_village_prototype/startup_world_runtime.hpp) |
+| `startup_world_human`、`steam_human_skin` | 60详情、职业／赠礼目录和演出；[人物合同](../ui/STEAM_HUMAN_DETAIL.md) |
+| `startup_world_building`／`facility_catalog`／`facility_items`、`steam_facility_*_skin` | 74详情、79／72商品、75／76／77改良、82口碑；[设施皮肤](STEAM_FACILITY_SKIN.md)、[商品](../rules/COMMERCE.md)、[效果](../rules/FACILITY_EFFECTS.md) |
+| `startup_world_village_activity`／runtime_pages、`steam_village_activity_skin`／`steam_town_progress_skin` | 51–54村办、48／49／50晋级及95领取；[规则与皮肤](../ui/PAGES.md#steam-village-progress) |
+| `startup_world_menu`／`information`／`manual`／`save`、`steam_information_skin` | 菜单、34–39信息、13说明及14保存；[信息合同](../ui/INFORMATION_MENU.md)、[菜单](../ui/PAGES.md) |
+| `startup_application`、应用存储／标题／回放模块 | [应用](STARTUP_APPLICATION.md)、[存储事务](APPLICATION_STORAGE.md)、[标题](TITLE_MENU.md)、[完整回放](APPLICATION_REPLAY.md) |
+| `startup_world_persistence`／codec／restore_validation | [正常文件、精确回放及字段政策](PERSISTENCE.md) |
+| `startup_world_presentation`／`visuals`、`startup_view`／`startup_window_host` | [显式表现请求](../ui/INPUT_RENDER_REQUESTS.md)、只读计划与平台执行；[声音一次输出](AUDIO_REQUESTS.md) |
 
-[应用存储](APPLICATION_STORAGE.md)与[标题控制器](TITLE_MENU.md)已接系统2四目录、显式菜单输入和完整文件视图；世界语义4／应用语义7修复建设、移动、撤除后的到达价格缓存，当批Driver v3与字段布局未变，验收见[收费缓存交付](../VERIFICATION.md#邻接价格与语义4应用7修正2026-10-09)。信息目录与追踪上下文另行扩展Owner字段，旧布局研究普通档及精确快照均拒绝，见[存取模块](PERSISTENCE.md)。CLI使用显式`--root`，旧三路径接口拒绝且不迁移；raw14已接下述应用保存桥，自动中断原轮内产生者及原游戏档兼容仍未实现。
+实际公开头在`include/dungeon_village_prototype/`、实现于`src/`，构建源由[CMake](CMakeLists.txt)显式注册；规则库位于[example](../example/README.md)，归档／资源读取器位于[tools](../tools/README.md)。`tests/`按行为复用功能套件，条件夹具不冒称自然历史；[应用进程测试](tests/APPLICATION_PROCESS.md)的旧长跑只作历史入口，不自动重跑。
 
-旧多年研究前缀仅保历史，恢复资格以当前语义／布局／数据身份为准，不暗补price、重签或恢复退休研究长跑队列。产品负责自然经营全链，研究仅做本批短功能／必要恢复检查。价格在完整邻接刷新中同步所有实例，品质在退出时由当前邻接即时派生，没有同类长期实例缓存；原版依据与条件到达覆盖见[设施使用](../rules/FACILITY_USE.md#arrival-cache)。
+维护当前世界5／应用8／系统2，字段schema及数据身份另行校验，128MiB预算与拒旧、不迁移政策见存取合同。初装九设施p2、商会仅售p0、到达价格缓存和独立页面首行／双计数均已交付；不在读档时猜补旧布局。原APK／Steam档兼容及原自动中断轮内写入未实现。
 
-[Steam启动局部皮肤](STEAM_STARTUP_SKIN.md)提供标题／选档／手动菜单／询问的只读绘制与触摸注册计划，已过visuals和application验收；它不修改应用文件契约或代替完整可操作标题。原资源、真实测宽、未知字体及平台热区边界分别保留。
+应用窗口通过`--world --application-root <现存work隔离子目录> --application-new 0|1`或`--application-load 0|1`进入；须唯一new／load，参数先验证，新局要求栏内手动／中断均空。宿主仅持App或Session之一，typed命令交同一Owner，raw14写当前manual，退出不补存；应用模式与独立`--load-file`／`--save-file`、fixture／check互斥，只允许已登记保存／说明inspect。完整命令与边界见下文及[存储合同](APPLICATION_STORAGE.md)。
 
-`steam_system_menu_skin`在[Steam菜单／情报模块](include/dungeon_village_prototype/steam_information_skin.hpp)提供raw10固定tags20～24的type1行计划，复用raw9源裁片、测宽、ID9和手形；纯函数不执行系统操作。21为设置变更12、22为游戏方法13、23为独立RankForm，旧误译已修正；Steam末项为结束游戏，APK末项回标题分开。[例图](../ui/examples/steam-system-menu.png)与[源合同](../ui/PAGES.md#steam主菜单缓存输入与局部皮肤)保留原字体／动态及系统业务接线缺口。
-
-`steam_navigation_menu_skin`补真实4／7的type1局部计划，可变冻结目录、逐行独立NEW／GET、原触摸宽度及语言偏移已有短测；研究窗口改用正式计划，替换临时短列表。`world-adventure`／`world-village`两个有界入口只经真实新局菜单选行确认，不注入Owner，初期各只有一个实际条目；[示例](../ui/examples/steam-navigation-submenus.png)与[当前验证](../VERIFICATION.md)分开维护窗口、条件组合及原Steam动态。
-
-[steam_main_menu_skin](include/dungeon_village_prototype/steam_main_menu_skin.hpp)提供raw3五／六行的原图标、缩源展开、NEW／GET、独立魔法壶期间块及ID8基矩形，另给raw4／7／9／10父存储位置计算。期间数据由`startup_magic_pot_menu_information`只读Owner；`steam_main_menu_notices`接任务实例j查询及建设aY/P缓存，raw22确认／取消清当前完整任务名单的j，raw21普通／道路定义选择显式刷新建设缓存。缓存初始false、允许陈旧、随完整Owner保存；局部函数不消费光标、随机或输出，HUD／Review／KEYCLICK外层依原序另接。[完整合同](../ui/PAGES.md#steam主菜单缓存输入与局部皮肤)分列来源、当前接线与尚缺边界，不以场景快捷入口代替原菜单。
-
-[startup_world_menu](include/dungeon_village_prototype/startup_world_menu.hpp)维护真实raw3／4／7／10、冻结目录、父存储位置、缓存行号和菜单集合退休。Session／Application开放`open_main_menu`／`input_menu_page`；主场景门控也接真实3。3的Init才刷新P／aY，子页返回不重建，重开保留行号并分配新维护ID；任务进度接58→事件62→26，人物赠礼接40→64，村办接晋级／商会／活动，魔法壶保留父3。世界5／应用8／系统2与128MiB不变，新增字段布局拒旧不迁移。raw10的tag20已接raw14、tag22已接说明raw13；设置／平台高分／结束与软快捷键缺应用消费者时显式拒绝；完整原触摸、字体和HUD调度另接。
-
-[startup_world_save](include/dungeon_village_prototype/startup_world_save.hpp)持有raw14来源、阶段与结果；`StartupApplication`协调当前栏手动文件事务。真实3→10→20先初始化“保存中”，首次Update只到stage1，下次应用Update写盘；stage0／1确认、取消无效果，stage2才关闭。只从严格scene3＋14准备稳定导出，不放宽普通模态保存拒绝；成功更新marker与目录，失败保留旧档、业务和随机并显示失败结果。复用既有counter／phase及页面字段，无新Owner字段或格式。默认独立Session的`--inspect-page world-save`仍只预览stage1；新增应用窗口宿主可实际处理请求，入口及验收状态见下文和[验证](../VERIFICATION.md)。`steam_save_page_skin`已接原木框／内容框、阶段单按钮及触摸计划，窗口按已核初始VIEW_Y23展开；[三状态示例](../ui/examples/steam-save-page.png)供产品使用。完整字体／TextLayout后端仍待接，局部皮肤不代替GUI保存全链。
-
-应用窗口宿主已通过[本批短测与保存／冷载窗口检查](../VERIFICATION.md#研究窗口应用宿主与真实保存2026-10-10)：`--world --application-root <现存research/dungeon_village_1/work子目录> --application-new 0|1`进入空栏新局，或以`--application-load 0|1`读取该栏手动档。参数先canonical校验研究根；新局要求目标栏手动／中断两项全部为空，隐藏引用也拒绝，不自动覆盖。窗口私有variant只持应用或独立Session之一，绘制只读世界，所有typed命令经同一Owner；应用错误保留原文并返回`runtime_failed`，可预期输入拒绝留在窗口反馈。初始与命令输出由静默sink领取一次，真实菜单保存经raw14写当前manual，退出不补存。应用模式可合用有界`--inspect-page world-save`检查实际保存结果，本批另开放`world-manual`／`world-manual-about`；与`--load-file`／`--save-file`、fixture／check及其余inspect互斥；独立Session预览和显式文件入口保持。raw17只读六行适配、确认按逻辑gate单次消费，不是完整计分皮肤。世界5／应用8／系统2及128MiB不变；完整标题、设置12、RankForm、自动中断与完整字体仍待接；raw13本批接线及剩余边界见下文。
-
-本批最终九项短测58.26秒通过，`--world --inspect-page world-menu/world-system/world-information --frames 8`三个入口各走真实导航并正常退出，截图已查看。验收及缺口见[当前验证](../VERIFICATION.md#真实导航菜单与任务镜头2026-10-10)；三个名称须分别传入，不把斜线写成单个参数。
-
-[startup_world_manual](include/dungeon_village_prototype/startup_world_manual.hpp)维护真实3→10→tag22→raw13，Session／Application及窗口宿主转发typed输入。Init按p非零人物定义全池N次Random(N)交换，再尾部反取最多4人；翻页不重抽。phase保存页码，counter每次获准更新增加一次；`manual_page_data`保存人物、最后实际正文页`text_page`和`localize_text`。首次正文要求LT，后续真正换到非关于页才安装未LT文本；关于页保留旧缓存，净页码不变不重装。退出退休菜单及页面引用，normal仍拒绝模态页，完整应用回放保留全部字段。旧布局及新增manual来源身份拒绝旧文件、不迁移；世界5／应用8／系统2与128MiB不变，仍是研究格式。
-
-说明正文正式依赖[固定APK manual.txt](../data/scripts/original/manual.txt)：4446字节、29条正文加独立关于页，编译入`StartupWorldRules.manual_pages`并参与恢复来源身份。`--inspect-page world-manual`／`world-manual-about`分别经真实菜单进入两种有界窗口条件；两个名称分别传入。当前Noto、`br`／`co`局部适配不认证原字体或完整TextLayout，关于页已接基础人物，共享scratch附加效果未认证，鼠标箭头与平台命中仍待接，新增原文不代表Steam本地化完成。检查集中见[说明页面批](../VERIFICATION.md#说明页面owner与steam局部皮肤2026-10-10)。
-
-人物60基础委托位于[steam_human_skin](include/dungeon_village_prototype/steam_human_skin.hpp)，复用现应用库和visuals套件。`steam_human_detail_skin(state,page,down_text_width)`读取已初始化Owner视图，返回奖章→人物／武器→血条和危险提示或倒下气泡的有序计划；100槽位置与16槽步帧独立，HP显示值／目标值及当前共享最大值分开。已挂起父页仍可只读投影，可绘制不等于可交互。数字绑定Steam差异PNG，倒下文字宽度由平台实测；4096像素是气泡维护输出预算，不是原游戏字符串上限。模块无raylib依赖，不新增持久字段，也不推进随机／计数／声音；完整scratch附加效果、字体和原窗口像素仍独立未验，来源见[人物表现合同](../ui/STEAM_HUMAN_PRESENTATION.md)。
-
-信息页面由[startup_world_information](include/dungeon_village_prototype/startup_world_information.hpp)维护。Session／Application提供`open_information_menu`和`input_information_page`；接收已解析输入，raw9上下优先互斥，raw36左右依次执行。五项原序全部开放34／35／36／37／38；选子页先压页再退休菜单，主场景快捷入口仍属维护适配。37／38在既有phase／counter之外增加typed目录载荷，分别冻结一组／四组ID及选择／滚动；38采用Steam目录过滤，关闭后由框架统一退休。完整皮肤与OS输入沿[信息合同](../ui/INFORMATION_MENU.md)分别交付，本批短测结果另记。
-
-信息页的[steam_information_skin](include/dungeon_village_prototype/steam_information_skin.hpp)已提供34／35／36／37／38／39完整局部计划；收支36复用Steam窗框／内框、字体金额、源端点线与箭头触摸，不生成数字SEB。调用者提供语言、VIEW_Y与真实测宽并执行字体／触摸后端；各[布局例图](../ui/examples/README.md)用明确替代字体，仅作产品参考。raw9五行菜单另输出原裁片展开、文字／NEW／手形与触摸计划，保留实际原点；不消费Owner、随机或一次性光标请求。右上HUD／任务摘要见下述独立计划；父级原点获取及完整输入框架仍待接，不以局部计划宣称完整原版皮肤。
-
-raw9的`steam_information_menu_status_skin`已交付右上HUD及四摘要，在五行后以相同原点消费；HUD按VIEW_Y／origin抵消，摘要保留局部位置和整数展开，不能统一移到屏幕边缘。只读`startup_menu_information`复用唯一Owner的村点、真实任务设施引用、遭遇缓存和全名单；不造参与者统计。普通SEB10、Comma、count3／4和独立ImageClip完整原序已验，三项Steam差异资源已出版。后端须执行ImageClip clear为无效态、普通clip pop独立恢复及SEB缺帧空绘制；不将静图参考当成完整共享scratch、原字体／输入或光标控制器已完成。
-
-`steam_adventurer_information_skin`进一步提供35四页完整局部计划：橙色选择底、16×16人物边框／15×15裁剪与静态职业身体、NEW／手形、四页文字／数字、独立英语表头及111高滚动。`SteamInformationDraw`保留具名clip／身体／通用数字请求的有序执行，SEB11／20数字沿现facility展开器新增明确资源映射；只读查询不初始化、重算贡献、清NEW或推进世界。原字体后端与物理输入仍另验。
-
-同模块的`steam_item_information_skin`／`steam_equipment_information_skin`已补Steam37／38完整局部计划及原序触摸注册，visuals定向通过0.67秒；数字展开和`steam_information_image`提供差异资源实际路径。名称保留TextLayout、38数量底部保留富文本、手形保留独立SEB当前帧请求；实际字体／标签后端及物理输入仍另验。页内不猜橙色选中底，滚动组件下游的真实轨道和滑块均已展开，详见[合同](../ui/INFORMATION_MENU.md#steam3738的完整局部绘制)。本批不修改Owner／存档布局。
-
-[startup_information](include/dungeon_village_prototype/startup_information.hpp)提供37正库存原序／原说明和38四类装备的纯目录查询，保留显式APK／Steam版本选择；维护38页面固定使用Steam过滤／占位语义。37正常关闭在Owner候选中清全部道具NEW，空目录初始化则请求事件15并退休、不清NEW；38依次处理左右、最终换页重置、上下和关闭，不清装备NEW。装备列表图标复用`startup_world_equipment_icon_draws`，与武器身体PNG分开。新增页面map使codec布局身份自动变化，旧精确快照拒绝、不迁移；普通稳定场景存档政策不变。
-
-`startup_town_information`提供APK／Steam34共有的权威统计：p1冒险者、D[2]==1居民、原设施序列类型3／9每次出现、真实任务成功／活动次数及四类p1装备种类数，不套38的flag过滤，不额外造住宅数或分母。35所需纯贡献计算已从授勋模块分离为`prepare_world_human_contributions`，保持原序与p0贡献，不增加奖章或排序；87仍执行原入页动作。35已接真实贡献写回、NEW清除及来源1详情／追踪；34→39入口已接，Steam平台成就和完整信息皮肤仍分别未接，见[信息合同](../ui/INFORMATION_MENU.md)。
-
-`startup_facility_information`按活动设施原序返回kind3实例、原定义名／ordinal／图标和截至当前月的int32累计利润，包含施工中实例。34确认压39，39五行滚动、返回真实34；确认恢复唯一主场景并进入state7镜头定位，不打开商店或控制人物。`information_page_data.facilities`保存uint64稳定实例目录，恢复重验完整原序与真实父34，框架退休时释放；定位到位回state0并清设施引用，原人物／怪物选择保持。缺账目、非法目录、占地或后继写回失败均拒绝整个候选。
+原素材、真实数值和原调用顺序由正式计划提供；Noto、有限富文本、研究底控件／背景和平台输入转换是适配。完整字体、共享绘制状态和OS动态另验。后继添加功能时更新对应合同及套件，不在本入口追加一份完整规则或阶段流水账。
 
 默认运行已发布的新局建设/首访保护切片；`--world`显式运行完整目录的共同世界AI。
 旧7×7自主访问演示只在`--fixture`运行，三者不共享可写世界，也不冒充完整原版复刻。

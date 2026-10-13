@@ -1,6 +1,6 @@
 # Steam地图资源安装与旋转准入
 
-2026-10-10。接续[图块完整对应](STEAM_MAPCHIP_PATTERNS.md)，本批追到Steam实际地图资源组的安装／退休、旋转软标签的生成与输入消费，并[独立发布两张差异图](../assets/steam-build-common/README.md)。证据在[工作包](../verification/steam-build-resource-install/README.md)。未改维护C++或产品，未运行原程序／原档；具名方法静态合同不等于窗口动态验收。
+2026-10-10。接续[图块完整对应](STEAM_MAPCHIP_PATTERNS.md)，核Steam地图资源组安装／退休、旋转软标签和输入消费，并[出版两张差异图](../assets/steam-build-common/README.md)。固定身份见[证据入口](../EVIDENCE.md)，本次为具名方法静态研究，未运行原程序／原档，不等于窗口动态验收。
 
 ## 地图图块资源来自哪个组
 
@@ -43,3 +43,7 @@ GetData对无斜杠、后缀`.dat`等且加密开关开启的请求调用Encrypt
 静态探针保留20个具名窗口共9344字节，并复用旧已核AppData初始化／GameForm更新窗口；41个调用、赋值或参数锚可复算。没有扩展成全DLL扫描，也没有把候选路径清单等价为本机当前语言的实际命中结果。
 
 本批闭合原资源组根身份和软标签级旋转准入；下一必要边界是资源语言覆盖／默认目录表完整装载、建设Init/Update与移动模式选中过程、世界图块深度与完整皮肤。所有旧证据包保持冻结，本页作为后继增量消费它们。
+
+## 静态来源范围
+
+静态范围为GameForm.Init／Finish／ChangeState、软标签／脉冲及RecordStore→Storage media3→AssetReader→ResourceManager的已列路径。资源安装入口是GameForm.Init，不能将最初BootForm候选当事实。原先Dispose旧对象、写新引用再Load的失败行为不等于维护Owner原子保证；完整ResourceManager内部、GPU释放和语言选择未在本批认证。

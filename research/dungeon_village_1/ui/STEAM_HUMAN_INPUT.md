@@ -1,6 +1,6 @@
 # Steam人物60：外层更新、软标签与触摸值
 
-2026-10-10。[人物四页合同](STEAM_HUMAN_DETAIL.md)的后继局部认证；[研究包](../verification/steam-human-input/README.md)与证据清单（本地核对材料，不随仓库交付）。固定Steam DLL，未执行原窗口点击，不以APK填补动态平台行为。
+2026-10-10。[人物四页合同](STEAM_HUMAN_DETAIL.md)的局部输入补证，固定Steam身份见[证据入口](../EVIDENCE.md)。未执行原窗口点击，不以APK填补动态平台行为。
 
 ## 翻页不会在已核Update路径改写标签
 
@@ -46,3 +46,7 @@
 已完成本次具体疑问：**外层Update不是人物页按page动态改软标签的来源**；初始标签、无追踪覆盖、三种触摸值及列表选择／确认分层有静态证据。未声称完整绘制分派、最终组件flags、原窗口实操、字体像素或全部UI皮肤完成。
 
 本包无新增图像、C++或世界状态实现；没有规则随机调用结论。共享手指SEB推进、触摸组件注册与回收分别交给Owner表现／框架生命周期，不能把方法局部没有容器增长当作整个应用永久有界。
+
+## 静态来源范围
+
+Get／SetTouchValue、SubForm.OnTouchEvent、Draw wrapper和_draw入口前缀、GameView两个Set及OnTouchEvent至跳表前已核；组件3／10／11跳表项按uint32数据读取。仅已列路径成立，_draw下游全部链、完整触摸组件退休及OS事件调度仍未认证；label11被监听不代表它实际可见。

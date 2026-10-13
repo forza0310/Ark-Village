@@ -1,6 +1,6 @@
 # Steam普通怪物开放、介绍与任务资格
 
-2026-10-10。固定Steam2.56样本的两处怪物方法及共享状态helper静态交叉，共1,584字节；不是原窗口动态或整套Steam任务选择器认证。逐指令、字段、原文件hash和复算入口见[证据包](../verification/steam-monster-progression/README.md)。固定APK具名字段写者合入下文“新局与复发关系”，任务目录与选择器归[路线合同](PROGRESSION_ROUTES.md)，不要求研究自然经营到后期。
+2026-10-10。固定Steam2.56两处怪物方法及共享状态helper静态交叉，共1584字节，[身份入口](../EVIDENCE.md)。这不是原动态或整套Steam任务选择器认证。APK具名字段写者合入下文，任务目录／选择器归[路线合同](PROGRESSION_ROUTES.md)，不要求研究自然经营到后期。
 
 ## 普通怪物按定义顺序开放
 
@@ -51,3 +51,7 @@ APK精确写点（pc为16位code unit）：`La/k;::b()V`的pc6／16重复清y，
 现功能测试主责为`encounter_creation_test::creation/synchronous_intro`及任务选择套件：覆盖开放参与本次选择、介绍在spawn之前、活动任务抑制介绍、相同定义只介绍一次、晚失败回滚和复发空池回退。本批没有改业务或新增重复测试；这些是维护契约覆盖，不是Steam动态证据。真实经营到各怪物、BOSS胜利与完整任务复发交产品长跑验证。
 
 后继[Steam任务选择器交叉](PROGRESSION_ROUTES.md#steam任务选择器交叉)已确认该isAppearWindow字段实际参与逆序复发候选；这是对上述局部边界的补充，目录初始化全值与原窗口自然路线仍未由此认证。
+
+## 静态来源范围
+
+范围为MonsterData.NewGame（RVA0x21C8D0，160字节）、Character2.GetAppearMonsterDataId（0x27E850，1392字节）和共享ChangeState（0x2116C0，32字节）。边界按最近更高具名入口核对，共享别名须结合字段／接收对象；GetMonsterUniqueId分配实例身份，不是定义选择器。完整Steam任务选择、全部反射／外部写点、Random内部及原窗口连续经营仍未闭合。

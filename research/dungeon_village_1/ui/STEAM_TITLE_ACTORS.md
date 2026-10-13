@@ -1,6 +1,6 @@
 # Steam标题人物调度与基础绘制
 
-2026-10-09。固定Steam2.56 `GameAssembly.dll`及metadata的具名方法静态交叉，补充[标题Draw](STEAM_TITLE_DRAW.md)。证据清单（本地核对材料，不随仓库交付）和[复查方式](../verification/steam-title-actors/README.md)保留来源身份、入口、字节范围与摘要；未启动游戏、读写内存或原档。APK合同见[标题调度](TITLE_PRESENTATION.md)与[人物皮肤](TITLE_ACTOR_SKIN.md)，两种来源分别认证。
+2026-10-09。固定Steam2.56 GameAssembly及metadata的具名方法静态交叉，补[标题Draw](STEAM_TITLE_DRAW.md)，[来源身份](../EVIDENCE.md)统一维护。未运行原游戏、读写内存或原档；APK[标题调度](TITLE_PRESENTATION.md)和[人物皮肤](TITLE_ACTOR_SKIN.md)独立认证。
 
 ## 已证版本差异
 
@@ -124,3 +124,7 @@ human图片索引没有32，现有37图均核实际像素／尺寸及所需身�
 `JRandom.SetSeed(long)`（RVA `0x7F7F20`）也取低32位、遵守fix_并重建三个后端；它不是只改当前选择后端的一个整数。`IApplication.Awake`在`0x10782182–0x1078218A`存在条件写fix_=true的路径，前置涉及回放检查／PlayerPrefs。未读取用户设置或原进程，本批不认证该条件当前成立；更不能把修改fix_等同于立即重置既有对象，种子替换发生在构造／SetSeed。
 
 未见JRandom静态构造器，Logic静态零默认与Default分支一致；具名直接调用扫描未发现set_Logic调用，但这不是所有间接／反射设置者的完整闭包，**静态默认0不等于实际运行模式已经观察**。原流的初始化时点、模式变更、存读档交接及标题深层绘制的全部随机消费仍须分别闭合。此处已有字节依据否定“名字叫java.util就必是APK Java随机序列”的推论；不修改APK共同随机实现、黄金轨迹或现有快照身份，也不以相同bound或seed宣称两版逐抽等价。
+
+## 静态来源范围
+
+本批21个窗口中20个覆盖完整登记范围，TitleForm.Update仅核2048字节入口前缀。TITLE_GUEST经cctor槽0x110F2100的fieldRef→私有数据字段→默认44字节blob独立得出0…10，不用APK代替；原PRNG、完整框架准入及scratch历史资格未因此闭合。

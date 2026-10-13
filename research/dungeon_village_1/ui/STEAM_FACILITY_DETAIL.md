@@ -8,7 +8,7 @@
 
 本次实际输入为右1→2、左2→1、左1→2，单击第二行只移动手形，右下返回回地图。一次Down无可见变化；Return成功注入后也无变化，但是否由游戏消费未知，不提升为原键位／确认认证。原第二页右侧可见蓝色竖条；后继[滚动消费者](STEAM_FACILITY_DRAW_HELPERS.md#drawverticalscroll2实际是两项组件注册)已追到GameView注册下层立即绘图，维护展开补上原短表蓝条与长表整数比例，源helper本身不直接绘图的结论保持。空／超过五来源、拖动、切页保留选择、右2→1、HTML标准／窄窗口仍未实测。原动态局部与完整UI验收分开。
 
-2026-10-10。固定Steam2.56的局部完整绘制分支、初始化及输入合同。直接来源是GameAssembly具名方法和metadata，见[复算工作包](../verification/steam-facility-detail/README.md)。没有用APK补Steam字段，没有新增窗口实验；S043等只保留为独立画面观察。本文的坐标是原Graphics逻辑坐标／调用实参，不是桌面截图像素，字体翻译、原点、缩放与裁剪仍沿已有合同。
+2026-10-10。固定Steam2.56局部绘制、初始化及输入合同，直接来源为GameAssembly具名方法和metadata，[身份入口](../EVIDENCE.md)。没有用APK填补Steam字段；S043等截图只作独立画面观察。坐标是原Graphics调用实参，不能直接当桌面像素；字体、翻译、原点、缩放及裁剪另依对应合同。
 
 ## 两个入口不能合并
 
@@ -110,3 +110,7 @@ Pop与Push的本地调用已证，不代表完整FormManager退休、所有父�
 不能取APK副本冒充这两个Steam依赖。本批只登记源身份，不复制素材；完整SEB裁片／偏移及图片依赖已随EVIDENCE登记并检查范围。
 
 本批覆盖局部raw74绘制0x103453B8–0x1034728A及上述具名helper，不声称完整皮肤完成：softLabels74具体表值、未出版效果图、最终中文字体／TextLayout标签后端、场景输入到selectedTenant全部路径、表单退休仍有独立缺口。既有S043/S047/S054只能证明当时画面；本批没有原窗口逐像素验收、住宅74自然可达认证、维护C++测试或产品接入。
+
+## 静态来源范围
+
+来源范围为_draw2_3／Update2的74分支、GameForm._update设施入口、Init2、DrawMapchip2、Draw_titleBarArrow与Draw_icon。只认证已列分派／helper，不把整个巨型方法视为完整认证。ary2仅复制列表层并保留int[]引用，完整原表单退休未核；局部映射不能证明原页内存永久有界。

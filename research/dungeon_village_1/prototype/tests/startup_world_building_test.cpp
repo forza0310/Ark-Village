@@ -2,6 +2,7 @@
 #include "dungeon_village_prototype/startup_world_editing.hpp"
 #include "dungeon_village_prototype/startup_world_expansion.hpp"
 #include "dungeon_village_prototype/startup_world_facility_items.hpp"
+#include "dungeon_village_prototype/steam_facility_effect_skin.hpp"
 #include "dungeon_village_prototype/startup_world_facility_catalog.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_inheritance.hpp"
@@ -891,11 +892,25 @@ void facility_item_pages() {
               s.scene.world.world.facilities.at(*second.created).price == other_price + 60 &&
               s.facility_item_response == 2 && s.facility_upgrade_display[2][1] == 8,
           "actual milk doubles33 improvement and refreshes both prices with actual initial jobs");
+    SteamFacilityEffectOptions skin_options;skin_options.title_widths=std::array<int,2>{80,80};
+    const auto skin_before=startup_world_state_digest(s);
+    const auto animated_skin=steam_facility_effect_skin(s,animation,skin_options);
+    check(animated_skin&&!steam_facility_effect_skin(s,directory,skin_options),
+          "76 Owner skin reads frozen payload and refuses covered75");
+    for(int repeat=0;repeat<12;++repeat)check(steam_facility_effect_skin(s,animation,skin_options)->operations.size()==animated_skin->operations.size(),
+          "76 repeated rendering output does not accumulate");
+    check(startup_world_state_digest(s)==skin_before,"76 skin never reapplies shared improvement or sound");
+    broken=s;broken.facility_item_page_items.erase(animation);
+    check(!steam_facility_effect_skin(broken,animation,skin_options),"initialized76 missing item source rejects");
+    s.sound_requests.clear();int throw_sound_count=0;
     for (int n = 0; n < 48; ++n) {
         update = prepare_startup_world_runtime(s);
         check(update.candidate.has_value(), "76 qualified animation advances");
         s = *update.candidate;
+        for(const auto &sound:s.sound_requests)throw_sound_count+=sound==StartupAudioRequest{StartupAudioOperation::ordinary_play,8};
+        s.sound_requests.clear();
     }
+    check(throw_sound_count==1,"76 count38 queues one ordinary SE8, rendering does not duplicate it");
     check(s.scripts.pages.back().legacy_page == 77 && s.items.at(1).inventory == 1 &&
               s.scripts.facilities.at(33).improvements[0] == 60,
           "49th animation update replaces76 with77 without repeating improvement");
@@ -903,6 +918,7 @@ void facility_item_pages() {
     update = prepare_startup_world_runtime(s);
     check(update.candidate.has_value(), "77 initializes under common framework");
     s = *update.candidate;
+    check(steam_facility_effect_skin(s,result,skin_options).has_value(),"77 Owner skin preserves actual response and frozen values after consumption");
     check(act_startup_world_facility_item_page(s, result, Action::cancel) ==
                   StartupWorldRuntimeError::invalid_page &&
               act_startup_world_facility_item_page(s, result, Action::confirm) ==

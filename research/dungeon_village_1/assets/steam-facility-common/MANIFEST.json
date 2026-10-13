@@ -1,5 +1,5 @@
 {
-  "format": "ark-research-steam-facility-common-1",
+  "format": "ark-research-steam-facility-common-2",
   "source": {
     "container": "DungeonVillageEXE/KairoGames_Data/resources.assets",
     "sha256": "75a7ac65688841505603393e3b013f26cd581d74f829aec9de3a55c73c21271b",
@@ -12,12 +12,12 @@
       "payload_sha256": "9178fcbb4bf387affd3fb1d23d02aa21295e6af1a68267d64876aa3fadd36092"
     }
   },
-  "logical_count": 3,
-  "new_payload_count": 2,
-  "alias_count": 1,
-  "new_payload_bytes": 2438,
-  "total_logical_bytes": 2866,
-  "scope": "Steam设施详情差异图片37/105及同字节SEB15引用；不修改旧APK/Steam包",
+  "logical_count": 5,
+  "new_payload_count": 3,
+  "alias_count": 2,
+  "new_payload_bytes": 3799,
+  "total_logical_bytes": 4315,
+  "scope": "Steam设施详情/改良差异图片37/105/136及同字节SEB15/92引用；不修改旧APK/Steam包",
   "path_base": "file相对清单目录；所有published/alias均须核SHA；产品运行不读取Unity或research/work",
   "language_contract": "固定common根条目；不冒称所有运行时语言替换已认证",
   "records": [
@@ -75,6 +75,34 @@
         "qualification": "普通设施两页数字、装备种类及使用效果点数",
         "call": "common SEB15; DrawNumImage / Draw_money; effect frame14",
         "anchor": "数值位置见合同；效果点(192-8*j,130+17*i)"
+      }
+    },
+    {
+      "id": "EXE:resources.assets:1148:common:eff_tenantStren.png",
+      "group": "common",
+      "entry": "eff_tenantStren.png",
+      "kind": "image",
+      "bytes": 1361,
+      "sha256": "48a73254435c9620d9574ad6914f630409b0c736c35ac319ea90917db03f1299",
+      "source_container": "resources.assets:1148:common",
+      "apk_sha256": "f1f365a04a17ba7cad69794e09e3df5d2eefe7c5bc337ff3b44867e2326b29f7",
+      "storage": "published",
+      "file": "original/common/eff_tenantStren.png",
+      "index_kind": "img.inf",
+      "index": 136,
+      "width": 229,
+      "height": 17,
+      "rgba_sha256": "63cfd1e76d244a463574c5d8f3a9dc6cd68c9b0bd84aa6761003dc5e64fa3613",
+      "apk_rgba_sha256": "a8db9ead3dbac5dd8543494908f7d0bac9520aaf00db3202ad9af4fd4a5ad7b0",
+      "apk_bytes_equal": false,
+      "apk_pixels_equal": false,
+      "validation": "signature_chunks_crc_zlib_scanline_filters_palette_rgba",
+      "consumer": {
+        "contract": "../../rules/FACILITY_EFFECTS.md#steam757677只读皮肤",
+        "page": "Steam raw77",
+        "qualification": "已初始化设施改良结果；冻结响应0/1/2/-1映射frame1/2/0/3",
+        "call": "common image136/SEB92；四帧反应条；根图非zh-CN运行语言替换",
+        "anchor": "clip(85,132,70,17)内(120,149+RateConvert(counter,0,6,17,0,true))"
       }
     },
     {
@@ -481,6 +509,106 @@
         "qualification": "普通设施两页数字、装备种类及使用效果点数",
         "call": "common SEB15; DrawNumImage / Draw_money; effect frame14",
         "anchor": "数值位置见合同；效果点(192-8*j,130+17*i)"
+      }
+    },
+    {
+      "id": "EXE:resources.assets:1148:common:eff_tenantStren.seb",
+      "group": "common",
+      "entry": "eff_tenantStren.seb",
+      "kind": "SEB",
+      "bytes": 88,
+      "sha256": "0d6ebfbc4a7e680aa0eb0ab8fd7a1eccfe605481d8b281c2a09ec250b0c3cc2b",
+      "source_container": "resources.assets:1148:common",
+      "apk_sha256": "0d6ebfbc4a7e680aa0eb0ab8fd7a1eccfe605481d8b281c2a09ec250b0c3cc2b",
+      "storage": "alias",
+      "file": "../original/common/eff_tenantStren.seb",
+      "index_kind": "seb.inf",
+      "index": 92,
+      "apk_bytes_equal": true,
+      "frames": 4,
+      "image_refs": [
+        136
+      ],
+      "parts": [
+        {
+          "frame": 0,
+          "image": 136,
+          "crop": [
+            0,
+            0,
+            62,
+            17
+          ],
+          "offset": [
+            -31,
+            -17
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 1,
+          "image": 136,
+          "crop": [
+            62,
+            0,
+            50,
+            17
+          ],
+          "offset": [
+            -25,
+            -17
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 2,
+          "image": 136,
+          "crop": [
+            112,
+            0,
+            59,
+            17
+          ],
+          "offset": [
+            -29,
+            -17
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 3,
+          "image": 136,
+          "crop": [
+            171,
+            0,
+            58,
+            17
+          ],
+          "offset": [
+            -29,
+            -17
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        }
+      ],
+      "consumer": {
+        "contract": "../../rules/FACILITY_EFFECTS.md#steam757677只读皮肤",
+        "page": "Steam raw77",
+        "qualification": "已初始化设施改良结果；冻结响应0/1/2/-1映射frame1/2/0/3",
+        "call": "common image136/SEB92；四帧反应条；根图非zh-CN运行语言替换",
+        "anchor": "clip(85,132,70,17)内(120,149+RateConvert(counter,0,6,17,0,true))"
       }
     }
   ]

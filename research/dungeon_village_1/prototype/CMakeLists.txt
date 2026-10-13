@@ -91,6 +91,7 @@ add_library(dungeon_village_startup_application src/startup_application.cpp src/
     src/startup_title_presentation.cpp src/startup_application_title.cpp src/startup_application_actions.cpp
     src/startup_title_actor_skin.cpp src/steam_startup_skin.cpp src/steam_manual_skin.cpp
     src/steam_facility_skin.cpp src/steam_facility_catalog_skin.cpp src/steam_human_skin.cpp src/steam_information_skin.cpp
+    src/steam_facility_effect_skin.cpp src/steam_facility_reputation_skin.cpp
     src/steam_main_menu_skin.cpp)
 dungeon_village_library(dungeon_village_startup_application)
 target_link_libraries(dungeon_village_startup_application PUBLIC dungeon_village_startup_world
@@ -125,6 +126,9 @@ foreach(module IN ITEMS startup_world_projection startup_world_routes startup_wo
         target_compile_options(dungeon_village_${module}_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
     endif()
 endforeach()
+# 设施道具主责套件仅补已消费后的只读桥接，不在visuals复制整条业务。
+# 皮肤计划自身仍为标准C++，此依赖不引入窗口／raylib。
+target_link_libraries(dungeon_village_startup_world_building_tests PRIVATE dungeon_village_startup_application)
 target_sources(dungeon_village_startup_world_continuous_tests PRIVATE tests/startup_world_replay_driver.cpp)
 # 文件格式／平台失败隔离使用一个集中套件，业务黄金断言仍属于原持续世界套件。
 add_executable(dungeon_village_startup_world_persistence_tests tests/startup_world_persistence_test.cpp

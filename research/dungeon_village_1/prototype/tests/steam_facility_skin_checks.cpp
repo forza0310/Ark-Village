@@ -1,5 +1,7 @@
 #include "dungeon_village_prototype/steam_facility_skin.hpp"
 #include "dungeon_village_prototype/steam_facility_catalog_skin.hpp"
+#include "dungeon_village_prototype/steam_facility_reputation_skin.hpp"
+#include "dungeon_village_prototype/steam_facility_effect_skin.hpp"
 #include "dungeon_village_prototype/startup_world_facility_catalog.hpp"
 #include "dungeon_village_prototype/startup.hpp"
 #include "dungeon_village_prototype/startup_world_projection.hpp"
@@ -634,5 +636,171 @@ int check_steam_facility_skin(const std::filesystem::path &source_root) {
     check(single_detail->title=="装备信息 1/1"&&single_arrows==2,"72单条仍有序号/双箭头，不复用73单条隐藏策略");
     check(act_startup_world_facility_catalog_page(goods,child,StartupFacilityCatalogAction::cancel)==StartupWorldRuntimeError::none&&
           !steam_facility_commodity_detail_skin(goods,child,go),"信息页退休后不可继续出图");
+    // 设施改良只读皮肤：条件载荷与独立像素坐标，不复制库存/改良状态机。
+    const auto effect_parts=[](const SteamFacilityEffectPlan &p,auto tag) {
+        using T=decltype(tag);std::vector<T> result;
+        for(const auto &op:p.operations)if(const auto *v=std::get_if<T>(&op))result.push_back(*v);
+        return result;
+    };
+    const auto item_icon=startup_world_item_icon_draws(owner,0);
+    check(item_icon&&item_icon->size()==2,"纯皮肤夹具复用已证道具底框与前景");
+    SteamFacilityItemSkinInput item_input;item_input.title_widths=std::array<int,2>{80,82};
+    item_input.cursor={6,6};
+    for(int i=0;i<7;++i)item_input.items.push_back({i,1,"测试道具",*item_icon,{49,3,6}});
+    auto item_plan=steam_facility_item_skin(item_input);
+    check(item_plan.has_value(),"75合法单行尾窗不套74的count减五上限");
+    auto item_rows=effect_parts(*item_plan,SteamFacilityEffectTouch{});
+    check(item_rows.size()==1&&item_rows[0].touch.component==11&&item_rows[0].touch.value==(0x20000|6)&&
+          item_rows[0].touch.option==16&&item_rows[0].touch.rectangle==std::optional<std::array<int,4>>({23,95,191,16})&&
+          item_rows[0].margin==std::array<int,4>{29,29,0,0},"75尾窗行marker16与原margin，不借商品行触摸");
+    const auto item_scroll=effect_parts(*item_plan,SteamFacilityEffectScroll{});
+    check(item_scroll.size()==1&&item_scroll[0].touch.component==12&&item_scroll[0].touch.value==0x40000&&
+          item_scroll[0].touch.rectangle==std::optional<std::array<int,4>>({221,85,3,110})&&
+          item_scroll[0].arguments==std::array<int,3>{7,5,0x20000}&&
+          item_scroll[0].skin.rectangles[1].rect==std::array<int,4>{220,179,5,79}&&
+          item_scroll[0].track_touch.component==25&&item_scroll[0].track_touch.value==0&&
+          item_scroll[0].track_touch.option==4,"75滚动基矩形/绑定/参数与尾窗几何原序保留");
+    const auto net_cursor=steam_facility_item_cursor(7,{6,6},true,true);
+    const auto wrapped_cursor=steam_facility_item_cursor(7,{6,6},false,true);
+    check(net_cursor&&net_cursor->selection==6&&net_cursor->first==6&&wrapped_cursor&&
+          wrapped_cursor->selection==0&&wrapped_cursor->first==0,"75双方向合成不逐次修窗，跨尾后回零");
+    for(const auto cursor:std::array<SteamFacilityBonusCursor,4>{{{-1,0},{7,0},{4,5},{6,7}}}) {
+        auto bad=item_input;bad.cursor=cursor;
+        check(!steam_facility_item_skin(bad),"75负/越界/选项不在视窗的first显式拒绝");
+    }
+    auto item_texts=effect_parts(*item_plan,SteamFacilityEffectText{});
+    check(std::any_of(item_texts.begin(),item_texts.end(),[](const auto &t){return t.value=="剩余"&&
+          t.layout&&t.rectangle==std::array<int,4>{185,69,40,12}&&t.anchor==32;}),"Steam75剩余使用TextLayout而非APK重载");
+    auto effect_icons=effect_parts(*item_plan,SteamFacilityImage{});
+    std::vector<std::array<int,2>> effect_positions;
+    for(const auto &im:effect_icons)if(im.asset==A::number08&&im.frame==14)effect_positions.push_back(im.position);
+    check(effect_positions==std::vector<std::array<int,2>>{{60,200},{124,200},{132,200},{188,200},{196,200},{204,200}},
+          "75原k分档1/2/3，SEB15加号间距8，不使用乘算后的实际增量");
+    item_input.arrow_count=1;item_input.scroll_first_touch=true;
+    item_plan=steam_facility_item_skin(item_input);item_rows=effect_parts(*item_plan,SteamFacilityEffectTouch{});
+    check(item_rows.size()==3&&item_rows[1].touch.component==23&&item_rows[1].touch.value==17&&
+          item_rows[2].touch.value==19&&item_rows[1].touch.image_draw&&item_rows[2].touch.image_draw&&
+          item_rows[1].margin==std::array<int,4>{40,40,45,0}&&
+          effect_parts(*item_plan,SteamFacilityEffectScroll{})[0].skin.rectangles[1].rgb==std::array<int,3>{246,129,0},
+          "75箭头注册引用实际绘图节点，触摸长目录滑块变橙");
+    for(const auto sample:std::array<std::array<int,2>,5>{{{0,0},{49,1},{50,2},{99,2},{100,3}}}) {
+        auto threshold=item_input;threshold.arrow_count=0;threshold.items[6].improvements={sample[0],0,0};
+        const auto plan=steam_facility_item_skin(threshold);int marks=0;
+        for(const auto &im:effect_parts(*plan,SteamFacilityImage{}))marks+=im.asset==A::number08&&im.frame==14;
+        check(marks==sample[1],"75价格0/49/50/99/100边界");
+    }
+    SteamFacilityImprovementSkinInput improvement;
+    improvement.mapchip=0;improvement.profession=0;improvement.sex=0;improvement.item_icon=*item_icon;
+    improvement.attributes={{{100,110,10},{10,11,1},{20,18,-2}}};improvement.limits={110,20,40};
+    improvement.title_widths=std::array<int,2>{80,82};
+    for(const auto sample:std::array<std::array<int,4>,5>{{{14,18,190,111},{15,26,190,112},
+          {35,2,107,95},{36,2,-8,-16},{37,2,-8,-16}}}) {
+        improvement.frame=sample[0];const auto plan=steam_facility_improvement_skin(improvement);
+        check(plan.has_value(),"76投掷时段纯计划有效");
+        const auto actors=effect_parts(*plan,SteamHumanPortrait{});
+        const auto icons=effect_parts(*plan,SteamHumanImage{});
+        check(actors.size()==1&&actors[0].position==std::array<int,2>{198,144}&&
+              actors[0].actor.body.sprite==sample[1]&&actors[0].actor.body.frame==0&&
+              !actors[0].actor.weapon&&icons.size()==2&&icons[1].asset==SteamHumanAsset::item_icon&&
+              icons[1].position==std::array<int,2>{sample[2],sample[3]},"76动作8/10/0及投物边界，clip外请求不延长飞行");
+        std::array<int,3> old{};
+        for(const auto &n:effect_parts(*plan,SteamFacilityNumber{}))
+            if(n.parameter>=0&&n.kind!=N::plus_value)old[n.parameter]=n.value;
+        check(old==std::array<int,3>{100,10,20},"76三行始终显示冻结旧值，不提前显示77结果");
+    }
+    for(const auto sample:std::array<std::array<int,2>,6>{{{37,-1},{38,0},{41,0},{42,1},{46,2},{48,2}}}) {
+        improvement.frame=sample[0];const auto plan=steam_facility_improvement_skin(improvement);
+        const auto flashes=effect_parts(*plan,SteamFacilityEffectImage{});
+        check(sample[1]<0?flashes.empty():flashes.size()==1&&flashes[0].asset==SteamFacilityEffectAsset::throw_flash&&
+              flashes[0].position==std::array<int,2>{120,109}&&flashes[0].frame==sample[1],"76到达特效38起、固定20槽锚点与四计数帧");
+        if(sample[1]>=0) {
+            std::size_t flash=plan->operations.size(),person=flash;
+            for(std::size_t i=0;i<plan->operations.size();++i) {
+                if(std::holds_alternative<SteamFacilityEffectImage>(plan->operations[i]))flash=i;
+                if(std::holds_alternative<SteamHumanPortrait>(plan->operations[i]))person=i;
+            }
+            check(flash<person,"76到达特效先于人物/投物clip，不能按图类型重排");
+        }
+    }
+    improvement.frame=49;check(!steam_facility_improvement_skin(improvement),"76达到49后应换77，拒绝伪造76尾帧");
+    improvement.raw_page=77;
+    for(const auto response:std::array<std::array<int,2>,4>{{{0,1},{1,2},{2,0},{-1,3}}})for(int frame:{0,6}) {
+        improvement.response=response[0];improvement.frame=frame;
+        const auto plan=steam_facility_improvement_skin(improvement);
+        const auto reaction=effect_parts(*plan,SteamFacilityEffectImage{});
+        check(reaction.size()==1&&reaction[0].asset==SteamFacilityEffectAsset::response&&reaction[0].frame==response[1]&&
+              reaction[0].position==std::array<int,2>{120,frame==0?166:149},"77四响应映射与0..6滑入范围");
+        std::size_t at=0;while(at<plan->operations.size()&&!std::holds_alternative<SteamFacilityEffectImage>(plan->operations[at]))++at;
+        check(at>0&&at+2<plan->operations.size()&&
+              std::get<SteamFacilityClip>(plan->operations[at-1]).rectangle==std::array<int,4>{85,132,70,17}&&
+              std::get<SteamFacilityClip>(plan->operations[at+1]).kind==SteamFacilityClipKind::pop&&
+              std::holds_alternative<SteamFacilityEffectText>(plan->operations[at+2]),"77反应条在clip内且先于三属性行");
+    }
+    improvement.response=0;
+    for(const auto sample:std::array<std::array<int,4>,4>{{{33,100,10,20},{34,101,10,20},{48,109,10,20},{49,110,11,18}}}) {
+        improvement.frame=sample[0];const auto plan=steam_facility_improvement_skin(improvement);
+        std::array<int,3> shown{};for(const auto &n:effect_parts(*plan,SteamFacilityNumber{}))
+            if(n.parameter>=0&&n.kind!=N::plus_value)shown[n.parameter]=n.value;
+        check(shown==std::array<int,3>{sample[1],sample[2],sample[3]},"77沿同Draw_tenantStrength计数转换，小差与下降不伪作线性");
+        const auto actors=effect_parts(*plan,SteamHumanPortrait{});
+        check(actors.size()==1&&actors[0].actor.body.sprite==2&&actors[0].actor.body.frame==0&&
+              actors[0].position==std::array<int,2>{198,144},"77定义0人物固定动作0无武器，不借升级双mini");
+    }
+    improvement.frame=55;const auto final_effect=steam_facility_improvement_skin(improvement);
+    effect_icons=effect_parts(*final_effect,SteamFacilityImage{});
+    check(std::any_of(effect_icons.begin(),effect_icons.end(),[](const auto &i){return i.asset==A::arrow&&
+          i.position==std::array<int,2>{212,204};}),"77满55继续箭头按归零段计数显示");
+    auto invalid_effect=improvement;invalid_effect.response=3;check(!steam_facility_improvement_skin(invalid_effect),"77未知响应不套正常图签");
+    invalid_effect=improvement;invalid_effect.attributes[0][2]=11;check(!steam_facility_improvement_skin(invalid_effect),"77冻结前后差坏载荷拒绝");
+    const auto reaction_resource=steam_facility_effect_resource(SteamFacilityEffectAsset::response);
+    check(reaction_resource&&reaction_resource->image==136&&reaction_resource->sprite==92&&
+          bytes(assets/reaction_resource->published_image)!=bytes(assets/"original/common/eff_tenantStren.png"),
+          "77使用已出版Steam根图，不能把APK同名图当像素别名");
+    const auto response_seb=dungeon_village_tools::parse_legacy_seb(bytes(assets/reaction_resource->published_sprite));
+    check(response_seb.frame_count==4&&response_seb.layers.size()==1&&response_seb.layers[0].parts.size()==4&&
+          std::all_of(response_seb.layers[0].parts.begin(),response_seb.layers[0].parts.end(),[](const auto &p){return p.image_index==136;}),
+          "77反应图SEB92四帧绑定136，不从PNG宽度猜帧");
+    const auto flash_resource=steam_facility_effect_resource(SteamFacilityEffectAsset::throw_flash);
+    const auto flash_seb=dungeon_village_tools::parse_legacy_seb(bytes(assets/flash_resource->published_sprite));
+    check(flash_resource->image==6&&flash_resource->sprite==6&&flash_seb.frame_count==3&&
+          flash_seb.layers.size()==1&&std::all_of(flash_seb.layers[0].parts.begin(),flash_seb.layers[0].parts.end(),
+          [](const auto &p){return p.image_index==6;}),"76到达特效SEB6三帧绑定effect6");
+    SteamFacilityReputationInput reputation;reputation.definition=33;reputation.mapchip=44;reputation.name="设施条件";
+    reputation.participants={{0,0},{1,1},{2,2}};reputation.title_widths=std::array<int,2>{84,84};
+    for(const auto sample:std::array<std::array<int,2>,4>{{{5,0},{6,1},{39,46},{40,48}}}) {
+        reputation.frame=sample[0];const auto p=steam_facility_reputation_skin(reputation);
+        check(p.has_value(),"82有限计数文本展开计划");
+        bool clip=false,border=false;for(const auto &op:p->operations) {
+            if(const auto *c=std::get_if<SteamFacilityClip>(&op))clip|=c->kind==SteamFacilityClipKind::push_intersect&&c->rectangle==std::array<int,4>{0,158,240,sample[1]};
+            if(const auto *f=std::get_if<SteamStartupFrameDraw>(&op))if(const auto *r=std::get_if<StartupSkinRect>(f))
+                border|=r->outline&&r->rect==std::array<int,4>{30,66,180,82};
+        }
+        check(clip&&border,"82源clip5/40边界，灰框是内描边不遮背景");
+    }
+    for(const auto sample:std::array<std::array<int,3>,5>{{{9,1,143},{10,9,143},{17,9,135},{25,9,143},{26,1,143}}}) {
+        reputation.frame2=sample[0];const auto p=steam_facility_reputation_skin(reputation);
+        int bodies=0;for(const auto &op:p->operations)if(const auto *h=std::get_if<SteamHumanPortrait>(&op)) {
+            check(h->actor.body.sprite==sample[1]&&h->actor.body.frame==0&&h->position[1]==sample[2]&&
+                  h->actor.shadow&&h->position[1]+h->actor.shadow->offset[1]==143&&!h->actor.weapon,
+                  "82独立26槽身体跳起，阴影固定脚底而非随身体跳");++bodies;
+        }
+        check(bodies==3,"82只按冻结三人物原序，不造实体或抽随机");
+    }
+    reputation.phase=1;reputation.increase_suffix_width=24;
+    for(const auto sample:std::array<std::array<int,2>,5>{{{40,1},{54,1},{55,0},{64,0},{65,1}}}) {
+        reputation.frame=sample[0];const auto p=steam_facility_reputation_skin(reputation);int arrows=0;bool number=false,suffix=false;
+        for(const auto &op:p->operations) {
+            if(const auto *i=std::get_if<SteamHumanImage>(&op))arrows+=i->asset==SteamHumanAsset::continue_cursor;
+            if(const auto *n=std::get_if<SteamFacilityNumber>(&op))number|=n->asset==A::number09&&n->value==20&&n->position==std::array<int,2>{97,188}&&n->anchor==1;
+            if(const auto *t=std::get_if<SteamHumanOverviewText>(&op))suffix|=t->value=="上升!"&&t->rectangle[0]==119&&t->rectangle[1]==188;
+        }
+        check(arrows==sample[1]&&number&&suffix,"82箭头25槽及Steam数字宽20+2+实测后缀居中");
+    }
+    auto bad_reputation=reputation;bad_reputation.participants.push_back({3,3});
+    check(!steam_facility_reputation_skin(bad_reputation),"82第四人明确拒绝，不截取或补示例");
+    bad_reputation=reputation;bad_reputation.mapchip=34;
+    check(!steam_facility_reputation_skin(bad_reputation),"82定义/地图块不一致拒绝");
+    bad_reputation=reputation;bad_reputation.increase_suffix_width.reset();
+    check(!steam_facility_reputation_skin(bad_reputation),"82第二段必须真实后缀测宽");
     return check.count;
 }

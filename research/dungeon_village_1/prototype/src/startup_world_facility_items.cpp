@@ -360,6 +360,9 @@ std::optional<State> prepare_startup_world_facility_item_page(const State &s) {
     if (counter == std::numeric_limits<int>::max())
         return {};
     ++counter;
+    // 原76绘制在counter38调用PlaySe(8)；维护按已确认显式表现方案由Owner只排一次。
+    if(page.legacy_page==76&&counter==38)
+        next.sound_requests.push_back({StartupAudioOperation::ordinary_play,8});
     if (page.legacy_page == 76 && counter >= 49) {
         if (!open(next, 77, next.facility_page_bindings.at(page.id), page.legacy_f,
                   next.facility_item_page_items.at(page.id)) ||

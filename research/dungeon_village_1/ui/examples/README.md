@@ -1,5 +1,7 @@
 # 产品侧小窗 UI 示例
 
+设施经营后继新增[道具75](steam-facility-items.png)、[投掷76](steam-facility-improvement.png)、[结果77](steam-facility-result.png)，三张480×640共319450字节。均从真实新局初装包子铺74确认进75，后两图实际消费初始马铃薯，到76计数25／77计数49后取图；世界更新0、人物0、5000G、随机0。演出Owner已产生共享品质+2并保留冻结前后值，不是手填显示。Steam根强化反馈图独立出版，日文图签／Noto中文／窗口背景仍按来源分流。75当前首行是显式适配，精确滚动恢复设计仍待确认；82纯计划已短验但独立计数Owner／窗口尚未交付，不能由这三图宣称整条主线完成。
+
 2026-10-13设施经营主线第一批新增三张480×640研究窗口图：[商品价格79](steam-facility-goods.png)、[商品属性79](steam-facility-goods-attributes.png)、[商品详情72](steam-facility-equipment-info.png)。真实新局已有武器店经74打开79，再切属性页或查看72，没有注入库存、开放位或资金；8帧有界窗口均正常退出，世界更新0／人物0／5000G／随机0。三图共338296字节，复用已出版窗框／装备及数字，图签仍是原日文，中文／Noto与鼠标适配独立于原字体／OS认证。共享人物时钟后继改接已存`entry_updates`，旧人物截图仍保持当时窗口适配身份。[商品合同](../../rules/COMMERCE.md#steam商品79详情72只读皮肤)及[短测](../../VERIFICATION.md)分别登记业务与皮肤边界。
 
 2026-10-13新增五张480×640研究窗口原图：[职业目录61](steam-human-professions.png)、[装备赠礼64](steam-human-gifts.png)、[普通道具64](steam-human-items.png)、[装备结果68](steam-human-equipment-result.png)、[道具结果69](steam-human-item-result.png)。均真实新局首访后经Owner导航，不注入人物、钱、职业或库存；三目录420更新／1人／5000G／5抽，结果实际消费免费铁剑或初始土豆，6抽，停在73／45最终确认前。五图共357859字节，复用原发布资源；Noto中文、手形帧0、平台手势适配不认证原字体／OS输入，业务／恢复短测另记[验证](../../VERIFICATION.md)。原PNG图签仍可带日文，不能宣称全部素材已中文化。

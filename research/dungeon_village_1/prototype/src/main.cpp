@@ -118,14 +118,14 @@ Options parse_options(int argc, char **argv) {
           options.inspect_page != "world-commerce" && options.inspect_page != "world-item-gift" &&
           options.inspect_page != "world-editing" && options.inspect_page != "world-goods" && options.inspect_page != "world-goods-attributes" &&
           options.inspect_page != "world-equipment-info" && options.inspect_page != "world-magic-pot" &&
-          options.inspect_page != "world-facility-bonuses" && options.inspect_page != "world-facility-details" && options.inspect_page != "world-menu" &&
+          options.inspect_page != "world-facility-bonuses" && options.inspect_page != "world-facility-details" && options.inspect_page != "world-facility-items" && options.inspect_page != "world-facility-improvement" && options.inspect_page != "world-facility-result" && options.inspect_page != "world-menu" &&
           options.inspect_page != "world-adventure" && options.inspect_page != "world-village" &&
           options.inspect_page != "world-save" && options.inspect_page != "world-manual" && options.inspect_page != "world-manual-about" &&
           options.inspect_page != "world-system" && options.inspect_page != "world-information")))
         throw std::invalid_argument("共同世界不能与旧夹具混用；快照检查支持 "
                                     "visitor/world-month/world-active/task-team/world-award/"
                                     "world-building/world-details/world-human/world-human-directory/world-human-attributes/world-human-equipment/world-human-magic/world-human-professions/world-human-gifts/world-human-items/world-human-equipment-result/world-human-item-result/world-human-equipment-info/world-human-gift-confirm/world-human-gift-opening/world-human-gift-result/world-human-profession-preview/world-human-profession-result/world-activities/"
-                                    "world-commerce/world-item-gift/world-editing/world-goods/world-goods-attributes/world-equipment-info/world-magic-pot/world-facility-bonuses/world-facility-details/"
+                                    "world-commerce/world-item-gift/world-editing/world-goods/world-goods-attributes/world-equipment-info/world-magic-pot/world-facility-bonuses/world-facility-details/world-facility-items/world-facility-improvement/world-facility-result/"
                                     "world-menu/world-system/world-information/world-adventure/world-village/world-save/world-manual/world-manual-about");
     if (!options.inspect_page.empty() &&
         (options.frames == 0 || options.fixture || options.check ||
@@ -145,7 +145,7 @@ Options parse_options(int argc, char **argv) {
              options.inspect_page == "world-item-gift" ||
              options.inspect_page == "world-editing" || options.inspect_page == "world-goods" || options.inspect_page == "world-goods-attributes" ||
              options.inspect_page == "world-equipment-info" || options.inspect_page == "world-magic-pot" ||
-             options.inspect_page == "world-facility-bonuses" || options.inspect_page == "world-facility-details" || options.inspect_page == "world-menu" ||
+             options.inspect_page == "world-facility-bonuses" || options.inspect_page == "world-facility-details" || options.inspect_page == "world-facility-items" || options.inspect_page == "world-facility-improvement" || options.inspect_page == "world-facility-result" || options.inspect_page == "world-menu" ||
              options.inspect_page == "world-adventure" || options.inspect_page == "world-village" ||
              options.inspect_page == "world-save" || options.inspect_page == "world-manual" || options.inspect_page == "world-manual-about" ||
              options.inspect_page == "world-system" || options.inspect_page == "world-information")))))

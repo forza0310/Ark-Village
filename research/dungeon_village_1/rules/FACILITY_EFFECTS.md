@@ -209,6 +209,44 @@ Steam75在`1031B249`先PresentItem，再Push76、实例道具计数加1、`1031B
 76绘制在counter38调用声音8（`b/g.java:7599–7620`，`i44==23`），属于渲染消费，
 与本批仅按获准页面更新推进的消费者分开登记，不能把简化窗口称为完整原演出与声音复刻。
 
+### Steam75／76／77只读皮肤
+
+具名`SubForm._draw2_3` RVA`342C30`的75／76／77入口分别为VA`1034492B／10343ECB／10343DBB`；
+`UserData.Draw_tenantStrength` RVA`2D7CD0`与APK`b/g.java:7259–7667`、`c/n.java:1467–1545`交叉。
+[设施道具皮肤](../prototype/include/dungeon_village_prototype/steam_facility_effect_skin.hpp)保留有序图元、clip及原触摸请求，
+只读桥拒绝未初始化／失效页面、错绑定与不完整载荷；不扣库存、不重算改良、不推进计数或领取声音。
+
+- 75窗框220×168、内框(17,74,219,184)，五行`y=97+19×(index−scroll)`；正库存原序，不按适配效果筛选。
+  行矩形(23,y−2,191,16)、SLIST11／marker16／margin(29,29,0,0)；橙底、手指、道具底框和前景、名称、库存依序绘制。
+  Steam“剩余”改用TextLayout(185,69,40,12,anchor32)，不能照APK直接字符串重载。
+  三效果等级仍读道具原k：价格0／<50／<100／其余，品质和魅力0／<3／<6／其余；
+  `AppData.Draw_plus_left` RVA`2554F0`画SEB15/frame14、每枚向右8像素、y200，不用人物属性提示的SEB12。
+  12／25滚动条复用已核五行helper；udArrowCnt为0注册上下KEYCLICK矩形，否则画SEB3的0／1并注册Touch23。
+  Steam更新VA`1031B0CB–1031B18F`与APK确认分支之前的小段独立核先up、down再修窗，
+  此处不把scroll夹到count−5；合法历史尾窗可不足五行。库存消耗后的目录修正helper另夹尾窗，不混入普通方向更新。
+- 76／77窗框222×170，内框(15,139,224,202)；event image14于(30,68)、image16于(77,71)，
+  clip(80,74,80,64)内按Mapchip2(120,105,mapchip,0)画设施。原当前设施朝向不作为本页朝向。
+  76始终显示冻结旧值，定义0当前职业／性别的人物在(198,144)、direction2、无武器：counter<15为action8，
+  15–28为action10，其后action0。Steam cctor独立核action8／10身体SEB基16／24、step0帧0、body_off[0,0]，
+  对应方向2的SEB18／26，不按截图猜姿态。
+  15–35投物x以0..26映射198..90、y为128−GetParabolaValue(28,26,local)向零取整数；
+  38–48在固定20槽位置画effect6／SEB6、帧`((counter−38)%12)/4`。物体到达后原图标请求仍在clip外，不凭观感延长飞行。
+  counter38的声音8由维护Owner提交一次显式请求，不能在重复只读绘制中产生；当前接在获准页面更新的38，原平台的绘制次数／声音暂停语义未因此认证。
+  Steam VA`1034455F`先画effect6，`10344567–1034457C`在local==23时调用
+  `AppData.PlaySe(8)` RVA`25F940`；该helper在`1025F9BA–1025F9DF`读取SE资源数组并调用
+  `SoundPlayer.PlaySe`，不是jingle8。APK`d/a.java:3787–3791`的`c(int)`同样读取SE数组。
+  维护Owner在获准76计数38提交一次SE请求属于用户已批准的显式表现适配，不能标作原Draw时点已动态认证。
+- 77反应条clip(85,132,70,17)，common image136／SEB92于(120,149+RateConvert(counter,0,6,17,0,true))，
+  响应0／1／2／−1依次选frame1／2／0／3。三行旧值、跳动增量、MAX和34..49计数转换复用81的同一helper；
+  55后继续箭头的计数是counter−55，定义0人物是action0／direction2／frame0。
+
+纯计划的75 `first`由调用者显式提供，当前Owner没有耐久scroll字段；它不等于已实现原始滚动位置持久化。
+原窗口物理拖动／键鼠映射、完整共享人物scratch残留、翻译与字体保持独立证据边界。
+资源对应由现[素材清单](../assets/IMAGE_COVERAGE.json)交叉：effect image6／SEB6 dropItem00与现APK副本逐字节相等，
+common SEB92 eff_tenantStren也相等；common根image136的PNG字节和RGBA均不同，已在
+[Steam设施素材](../assets/steam-facility-common/README.md)出版1361字节的根图，不以APK图冒称Steam图。
+Steam zh-CN替换PNG与根图及APK图另有差异，本计划使用明确出版的根资源，不宣称运行语言替换已认证。
+
 <a id="items-独立-c-交付边界"></a>
 
 ### 独立 C++ 交付边界
@@ -277,3 +315,11 @@ Steam完整局部链也已交叉：ChTenantStrenBonusWindow RVA`2C9560`只在定
 初始化、只读投影、Session、通用确认／返回、恢复及下一入口退休使用同一载荷合同；没有第二随机流或人气Owner。
 组合夹具已实际走75第五件→原100计数续体→82→一次I请求，保留原门槛断言；
 这不是自然36个月／五次获取或原APK演出认证。简化窗口可消费82，完整动画和绘制随机仍未接。
+
+### Steam口碑82只读皮肤
+
+2026-10-13具名`UserData.Draw_tenantStrenBonus`（RVA2D71A0）保留222×170窗及下框、三段mp_back裁片、mini背景与Mapchip2裁剪。三个人物按原序x62／44／80，独立frame2的26槽决定action0／6与8／16抛物线，阴影固定脚底143；灰框是180×82内描边，不能填满盖住背景。action6的SEB9／frame0／零偏移从Steam真实cctor独立核定。固定秘书／大臣沿frame2的8槽交替帧5／7。资源沿已核Steam同字节出版别名，不按PNG列数猜动作帧。
+
+phase计数5→40展开48高文本区，满40后继续箭头按25槽前15显示。Steam普通非JP先绘带双引号的设施名y188，再绘话题句y164；language8独立换位并在(19,188)用TextLayout宽202，APK非JP不同。第二段以`GetFig(20)×10+2+实际后缀测宽`居中，不能沿APK的字符测宽÷6。`SubForm.Update`（VA10321B63–B84）分别推进frame／frame2，phase切换1031A810–A827仅清frame。原helper虽无直接随机／SE／业务调用，仍写共享人物scratch并调用Draw_human；本基础身体计划不宣称完整scratch子树认证。
+
+[接口](../prototype/include/dungeon_village_prototype/steam_facility_reputation_skin.hpp)为有序无副作用计划，Owner桥要求既有`page_secondary_counters`，缺键明确拒绝。业务声音4及最终唯一I请求仍由原消费者负责。中文／Noto为维护适配，原字体／OS和原窗口完整动态独立补证；当前纯计划与后继Owner双计数／窗口接线验收分别登记，不将有接口称为整条已验。

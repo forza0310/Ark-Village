@@ -51,7 +51,7 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 9 | INFO_MENU | 菜单 | 静态：[五标签／输入、菜单及HUD摘要](INFORMATION_MENU.md)已核；维护：Owner、五行与HUD摘要只读计划已接。动态：无本页完整窗口认证；实际父原点、字体／触摸保护和一次性光标消费仍独立 |
 | 10 | SYSTEM_MENU | 菜单 | 静态：五tags20–24及type1已核，APK末项28差异保留；维护：真实Owner、14保存与13说明已接；设置／RankForm／结束平台闭环另验，见[菜单合同](PAGES.md) |
 | 11 | EVENT | 事件／系统 | 仅声明；更新／绘制／动态链待逐项 |
-| 12 | CONFIG | 事件／系统 | 仅声明；更新／绘制／动态链待逐项 |
+| 12 | CONFIG | 事件／系统 | 静态：系统菜单tag21真实进入raw12，区别于标题Steam绑定／操作网页按钮，见[平台入口](STEAM_INTERACTIONS.md#游戏设置与标题平台按钮)；完整页状态机、绘制及动态待核 |
 | 13 | MANUAL | 事件／系统 | 静态：Steam局部Draw、正文LT差异、人物冻结与箭头纹理已核；维护：真实菜单／Owner、正文／关于页和恢复已接。完整字体／TextLayout／OS动态另验，见[说明合同](PAGES.md#说明13固定正文输入消费与装饰随机) |
 | 14 | SAVE | 事件／系统 | 静态保存状态机与局部皮肤已核；维护：真实菜单应用保存及冷载已验；S041/S064仅原动态局部，不代表自动中断上游，见[保存合同](STEAM_SAVE_MENU.md) |
 | 15 | NEWS | 事件／系统 | 仅声明；更新／绘制／动态链待逐项 |
@@ -130,7 +130,7 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 88 | MEDAL_CELEMONY | 授勋／怪物／住宅 | [合同与有序皮肤](STEAM_HUMAN_DETAIL.md#human-reward-followups)：Steam背景／演员／奖章／气泡／陪衬和mentalUp偏移135、严格Owner桥／窗口／恢复已接；共享scratch附效、字体及原动态待证 |
 | 89 | MONSTER_NEWAPPEAR | 授勋／怪物／住宅 | 仅声明；更新／绘制／动态链待逐项 |
 | 90 | MYHOME_TAX | 授勋／怪物／住宅 | 仅声明；更新／绘制／动态链待逐项 |
-| 91 | NEWGAME | 新局／奖励／解锁／事件 | 静态：[NewGame／默认参数小方法](../rules/STARTUP_RECORDS.md#steam小方法交叉及设计决策)及[标题空栏入口](STEAM_TITLE_MENU.md)已核，完整Steam Update／Draw未核。维护：已有草稿／正式开始与APK图片计划；动态：空栏配置、默认联动／输入面板局部已见，未读运行页号；自定义保名／取消保留属用户批准策略，非Steam实测 |
+| 91 | NEWGAME | 新局／奖励／解锁／事件 | 静态：[NewGame／默认参数小方法](../rules/STARTUP_RECORDS.md#steam小方法交叉及设计决策)及[标题空栏入口](STEAM_TITLE_MENU.md)已核，[Steam Draw](STARTUP_SKIN.md#steam新局91的独立绘制交叉)已核，完整Update仍待核。维护：已有草稿／正式开始及独立Steam纯计划、四态参考；配置选择／主钟的Owner恢复尚未接；动态：空栏配置、默认联动／输入面板局部已见，未读运行页号；自定义保名／取消保留属用户批准策略，非Steam实测 |
 | 92 | MONSTER_INFO | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |
 | 93 | GET_OBJ | 新局／奖励／解锁／事件 | [共享领取合同](../rules/ACCOUNTING.md#script-rewards)：商会已维护r3的原序皮肤、严格Owner桥及窗口已接；无给予人物，85先付点、93满40确认才开放，原动态另验 |
 | 94 | GET_OBJ_FROM_CHARA | 新局／奖励／解锁／事件 | [共享领取合同](../rules/ACCOUNTING.md#script-rewards)：已维护r3–8的真实给予人、装备／道具图标、原序皮肤及严格Owner桥已接；新职业早已开放与实际领取分开，完整字体／动态另验 |

@@ -1,5 +1,13 @@
 # 当前研究验证与历史索引
 
+## Steam新局配置纯皮肤与公共静态合同 2026-10-14
+
+接`9f976d9`，新增[Steam91纯计划](prototype/include/dungeon_village_prototype/steam_new_game_skin.hpp)，按原序消费event9、人物／weapon0、三字段与开始按钮热区、箭头margin及soft0／2；标题与按钮实测宽，DrawRect端点仅转换一次。配置选择／主钟显式输入，未伪造Owner恢复或实施待确认的80／87布局；原编辑／取消动态与研究策略分开。
+
+单Release动态构建通过；扩展现visuals套件，1/1短CTest通过1.52秒。四个8帧纯研究窗口正常退出并查看，[四态参考](ui/examples/steam-new-game.png)84242字节、0世界更新；最后仅将该夹具说明带移至窗外后重编并重取四图，不改计划逻辑或重复整套测试。覆盖源坐标、语言资格、箭头、长按钮、边界拒绝与重复只读输出规模；未新增Owner载荷／schema／target或素材副本，原字体和OS输入未验。
+
+合同／示例／覆盖合并更新，无新过程报告或核对脚本。删除4张本轮重复截图197762字节；单Release1370文件／139385004字节，素材846文件／9365889字节不变，合法历史不称永久有界。本批保留其他维护者三份住宅测试改动，不编入其未完成夹具、不跑世界长测；仅提交已验research，不推送。
+
 ## Steam计分窗口与独立主钟恢复 2026-10-14
 
 接`3ec6c64`，17新增有实际职责的[纯计划／应用只读桥](prototype/include/dungeon_village_prototype/steam_clear_score_skin.hpp)，复用现窗框、event13、大臣／秘书及箭头；普通Font分组数字、六类空数量单位、固定后缀留宽与Touch2按Steam局部来源消费。研究窗口替换原六行调试面板及额外确定按钮，实际测宽和VIEW_Y23沿同层框架。独立main复用现`page_secondary_counters`，阶段钟保持原位置；Init／live2／关闭7与应用六行关联严格校验，无新持久字段、schema、协议或target。

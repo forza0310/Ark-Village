@@ -15,6 +15,7 @@
 #include "dungeon_village_prototype/steam_task_result_skin.hpp"
 #include "dungeon_village_prototype/steam_task_deadline_skin.hpp"
 #include "dungeon_village_prototype/steam_clear_score_skin.hpp"
+#include "dungeon_village_prototype/steam_new_game_skin.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 #include "dungeon_village_prototype/startup_world_persistence.hpp"
@@ -1033,6 +1034,18 @@ template<class Plan> void draw_facility_ceremony(const Plan &plan,SourceSprites 
                 if(clips.empty())throw std::runtime_error("城镇演出裁剪下溢");
                 clips.pop_back();EndScissorMode();apply_clip();
             }
+        } else if constexpr(std::is_same_v<T,StartupSkinDraw>) {
+            if(value.package!=StartupSkinPackage::event||value.image!=9||value.sprite!=-1)
+                throw std::runtime_error("启动背景来源拒绝");
+            const auto &r=value.crop;
+            sprites.crop("event/event_backGlad.png",{float(r[0]),float(r[1]),float(r[2]),float(r[3])},
+                {origin.x+value.offset[0],origin.y+value.offset[1]});
+        } else if constexpr(std::is_same_v<T,SteamNewGameArrow>) {
+            const auto arrow=steam_manual_arrow_skin(value.source,sprites.manual_arrow_bounds(value.source.bounds_frame),128);
+            if(!arrow)throw std::runtime_error("新局性别箭头来源拒绝");
+            const auto &c=arrow->crop;const auto &d=arrow->destination;
+            sprites.crop("steam-common/buttoneffect.png",{float(c[0]),float(c[1]),float(c[2]),float(c[3])},
+                {origin.x+d[0],origin.y+d[1]},true,Vector2{d[2],d[3]});
         } else if constexpr(std::is_same_v<T,SteamVillageActivityImage>||std::is_same_v<T,SteamTownImage>||std::is_same_v<T,SteamMagicPotImage>||std::is_same_v<T,SteamTaskSelectionImage>||std::is_same_v<T,SteamTaskRosterImage>||std::is_same_v<T,SteamTaskDeadlineImage>) {
             const auto resource=[&] {
                 if constexpr(std::is_same_v<T,SteamVillageActivityImage>)return steam_village_activity_resource(value.asset);
@@ -1436,6 +1449,20 @@ std::optional<SteamClearScorePlan> window_clear_score_plan(
     const StartupApplication &app,std::uint64_t id,const ChineseFont &font) {
     const auto input=steam_clear_score_input(app,id);
     return input?steam_clear_score_skin(*input,clear_score_options(*input,font)):std::nullopt;
+}
+std::optional<SteamNewGamePlan> new_game_example(const std::string &name,const ChineseFont &font) {
+    const auto &jobs=startup_world_rules().jobs;
+    const auto adventure=std::find_if(jobs.begin(),jobs.end(),[](const auto &job){return (job.flags&4U)!=0;});
+    if(adventure==jobs.end())return {};
+    const int selection=name=="new-game-village"?0:name=="new-game-name"?1:name=="new-game-sex"?2:3;
+    const StartupTitleDraft draft;
+    // 草稿初值及已确认的男女默认名用于条件展示；不创建应用目录、修改原档或开始新局。
+    SteamNewGameInput in{draft.village,selection<2?draft.main_character.name:"冒险花子",
+        selection<2?0:1,selection,9,int(adventure-jobs.begin())};
+    SteamNewGameOptions options;options.view_y=23;options.finger_frame=0;
+    const int title=int(font.measure("重新开始"));options.title_widths=std::array<int,2>{title,title};
+    options.start_width=int(font.measure("开始游戏"));
+    return steam_new_game_skin(in,options);
 }
 std::optional<SteamHumanOverviewPlan> mastery_example(const std::string &name,const ChineseFont &font) {
     StartupSession initial;StartupWorldRuntimeSession session(initial.state(),ref::WorldRandomStream::from_java_seed(1));
@@ -1860,6 +1887,7 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
     const bool effort_fixture=inspect_page=="effort-result";
     const bool mastery_fixture=inspect_page=="mastery-announcement"||inspect_page=="mastery-bonus"||inspect_page=="mastery-choice";
     const bool clear_fixture=inspect_page=="clear-count"||inspect_page=="clear-score"||inspect_page=="clear-record"||inspect_page=="clear-closing";
+    const bool new_game_fixture=inspect_page=="new-game-village"||inspect_page=="new-game-name"||inspect_page=="new-game-sex"||inspect_page=="new-game-start";
     const bool gift_claim_fixture=inspect_page=="gift-facility"||inspect_page=="gift-profession"||inspect_page=="gift-equipment"||inspect_page=="gift-item";
     const bool award_result_fixture=inspect_page=="award-giving"||inspect_page=="award-lift"||inspect_page=="award-celebration"||inspect_page=="award-reward";
     const bool task_fixture=info_fixture||result_fixture||victory_fixture||deadline_fixture||roster_fixture||inspect_page=="task-selection"||inspect_page=="task-offer"||inspect_page=="task-recruitment";
@@ -1899,10 +1927,14 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
         for(const auto &d:startup_world_rules().equipment)reputation_glyphs+=d.name;
     }
     if(clear_fixture)reputation_glyphs+="通关点数发表那么赶紧开始计算吧任务完成数设施发现数冒险者全员合计自宅努力度总和追加排行榜更新接下来就是这样当前最高分研究绘制夹具无自然触发认证…！";
+    if(new_game_fixture)reputation_glyphs+="重新开始城镇名称冒险者姓名性别男女开始游戏口袋冒险村太郎花子研究绘制夹具无自然触发认证";
     ChineseFont font(font_path,reputation_glyphs);
-    if(magic_fixture||task_fixture||residence_fixture||award_fixture||effort_fixture||award_result_fixture||mastery_fixture||gift_claim_fixture||clear_fixture) {
-        std::variant<SteamMagicPotPlan,SteamTaskSelectionPlan,SteamTaskRosterPlan,SteamTaskResultPlan,SteamTaskVictoryPlan,SteamTaskDeadlinePlan,SteamHumanOverviewPlan,SteamTownProgressPlan> plan;
-        if(clear_fixture) {
+    if(magic_fixture||task_fixture||residence_fixture||award_fixture||effort_fixture||award_result_fixture||mastery_fixture||gift_claim_fixture||clear_fixture||new_game_fixture) {
+        std::variant<SteamMagicPotPlan,SteamTaskSelectionPlan,SteamTaskRosterPlan,SteamTaskResultPlan,SteamTaskVictoryPlan,SteamTaskDeadlinePlan,SteamHumanOverviewPlan,SteamTownProgressPlan,SteamNewGamePlan> plan;
+        if(new_game_fixture) {
+            const auto value=new_game_example(inspect_page,font);
+            if(!value)throw std::runtime_error("New game example rejected");plan=*value;
+        } else if(clear_fixture) {
             const auto value=clear_score_example(inspect_page,font);
             if(!value)throw std::runtime_error("Clear score example rejected");plan=*value;
         } else if(gift_claim_fixture) {
@@ -1950,7 +1982,7 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
         while(!WindowShouldClose()&&count<frames) {
             BeginTextureMode(canvas.value);ClearBackground(Color{83,141,77,255});
             font.text("研究绘制夹具",8,10,WHITE,10);std::visit([&](const auto &value){draw_facility_ceremony(value,sprites,font,info_fixture?Vector2{0,0}:human_overview_origin);},plan);
-            font.text("无自然触发认证",8,260,WHITE,9);EndTextureMode();BeginDrawing();ClearBackground(BLACK);
+            font.text("无自然触发认证",8,new_game_fixture?300:260,WHITE,9);EndTextureMode();BeginDrawing();ClearBackground(BLACK);
             DrawTexturePro(canvas.value.texture,{0,0,width,-height},{0,0,width*scale,height*scale},{0,0},0,WHITE);
             EndDrawing();++count;
             if(count==frames&&screenshot) {

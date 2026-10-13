@@ -127,6 +127,46 @@ h.a()为真时底标签x58、数值右端186；另一分支标签x46、数值右
 取消保留此前编辑、确认开始才安装新世界、覆盖询问不等于提前覆盖旧世界文件，
 业务仍见[开局合同](../rules/STARTUP_RECORDS.md)，皮肤不再造另一套状态机。
 
+### Steam新局91的独立绘制交叉
+
+2026-10-14只读核固定Steam DLL：`_draw2_4`在`VA10347770`识别91，
+有效局部`10349D52–1034A925`。现有标题／选档消费者不在本批重复研究；
+下列几何与调用来自Steam，不用APK页号或相似截图代替机器码证据。
+三行布局由FieldRef槽`110F28DC/110F1974/110F5D54`各12字节默认值独立确认，
+分别为`(27,135,94)`、`(27,157,82)`、`(27,178,82)`，第3数是值区宽度。
+
+| 原序内容 | Steam局部参数／消费者 |
+| --- | --- |
+| 外层与背景 | DrawWindow220×186、top参数0、标题字面`はじめから`；DrawBox`(17,48,219,193)`。event9源`(0,9,180,63)`绘于`(30,65)`；随后RGB52/133/255的DrawRect实参`(30,65,179,62)`，按[Steam端点转换](STEAM_WINDOW_FRAME.md#drawrect不是默认线宽的stroke)一次展开为半开180×63边环；不可换成整图或由后端再加1 |
+| 三字段标签 | `街の名前`／`冒険者の名前`／`性別`，蓝色，分别`(27,135/157/178+englishShift)`；`englishShift=English()?1:0`。SetFontSize(9)只在English真时执行，其它语言保持当前字号，不无条件写9 |
+| 性别值 | 定义0的`gender_`（偏移0x20）读取男／女串，男棕色、女红色；先ResetFontSize。日文x62、其它语言x70，y178，**Steam非日文x70与APK x65不同**，不把English与非日文资格混成同一条件 |
+| 当前选中字段 | selection0／1画橙底`(116,133,94,16)`／`(122,155,82,16)`；selection2没有值框。非3的手形依序`(112,143)`／`(118,165)`／`(136,186)`，common SEB21；当前SEB帧来自资源动画，不能由本页main擅自替代 |
+| 村名／姓名 | 读UserData村名`0x9C`与定义0.GetName，棕色、中心`(163,135)`／`(163,157)`、anchor2。SetFontSize(11)同样只在English生效，随后ResetFontSize；字形及基线不由坐标证明 |
+| 人物插画 | `JobData.adventureJobData`（静态0xC）按定义0性别取得身体图，不读取其当前职业冒充；脚底`(163,195)`、方向2、body动画`(main%16)/4`，SetDispPlayerData携完整main。DrawDispPlayer显式`weaponId=0`及同animeIndex，不能改成−1无武器 |
+| 开始按钮 | 字面`ゲームを開始する`，Draw_btmMsg_touch中心`(120,206)`、value选择3、clampW=−1；当前Font实测宽T，宽T+16，**不夹200**。selection3才画橙底及手形，未选仍注册组件3；正文是TextLayout anchor34／区域`(120−(T+16)/2,206,T+16,16)`，不是裸字符串固定y208 |
+| 三字段Touch | component11，value`0x20000|row`，基矩形依序`(106,128,114,26)`／`(112,150,102,26)`／`(112,171,102,26)`，无本分支新增marker；不以选中底色代替热区 |
+| 性别箭头Touch | component18，锚`(118,185)`／`(210,185)`，common SEB3 bounds帧3／0、value16／18；左margin`(30,5,20,4)`、右`(5,20,20,4)`。**Steam下margin为4，APK此处为20**；原AddTouch helper实际绘buttoneffect，不能裸绘arrow02 PNG代替 |
+
+按钮helper`RVA30A880`按已核DLGSEL_TRECT第3项扩边：组件3的基矩形为
+`(120−(T+16)/2−20,186,T+56,56)`、value`0x20003`，手形锚`(120−(T+16)/2−4,215)`。
+保留框→背景→标签→性别→字段高亮／手形→村名／姓名→人物→按钮→字段Touch→箭头Touch的原序，
+末尾直接返回，没有另附Touch2。soft91在cctor`1032A801–1032A856`独立核为`[0,2]`。
+VIEW_Y仍由共用Window／Box消费，固定初值23使其各自增加helper对应偏移；
+文字、背景、演员、按钮及箭头不再加VIEW_Y。外层SubForm origin与上述helper偏移分开，不能两次居中。
+
+主钟是SubForm.frame_（0xA0），不是原标题Logo计数、世界日期或草稿修订；
+Init的`10312616`清0、通用Update的`10321B63–74`按INT_MAX取模推进，Draw不推进。
+人物weapon0在`DrawDispPlayer RVA2CCEA0`的`102CCF2F–102CCFAE`仅因−1才跳过武器；
+正常人类scratch分支会把0传给Draw_weapon，并先画武器再身体，不能以截图“像空手”删请求。
+共享scratch的任意历史附加叠层仍未完整认证，维护只可沿既有具名基础演员资源展开。
+
+现应用只读`draft()`已有村名、定义0姓名／性别及自定义标志，可供应正文；
+但配置页selection／main及覆盖后恢复仍没有正式Owner载荷，不能在查询里从标题时钟或默认0补造。
+已交付显式输入的[纯几何／资源计划](../prototype/include/dungeon_village_prototype/steam_new_game_skin.hpp)及[四态研究参考](examples/steam-new-game.png)；完整应用接线仍需确定这两项持久／生命周期归属。
+中文可沿固定APK适配；文本输入的平台面板、字符边界与OS投递仍未闭合。
+取消保草稿／自定义后切性别保名是既有用户维护决策，不因本Draw相符就升级为Steam动态事实。
+来源核验未操作原窗口／原档；维护计划另经四个有界研究窗口检查，没有修改Owner／格式。
+
 ## 通关17：分阶段可见皮肤
 
 [b/g:9506](../work/decompiled/sources/b/g.java:9506)至9590及[低层分支](../work/world-page-fallback/GamePage.java:34186)
@@ -210,7 +250,7 @@ Steam字面槽独立对应：标题`110FBCCC`为`ｸﾘｱﾎﾟｲﾝﾄ発表`
 
 ## 维护图块桥
 
-后继[窗口框／字体底层交叉](../verification/startup-frame-font-research/README.md)补原1像素边线范围、40宽木纹平铺、横坐标裁取标题带和四个SEB角，已经形成只读几何计划。字体入口基线为top−ascent−0.9，并含半宽缩放／描边；未将同名字体当成同一字形度量。Steam[资源与字体身份](STEAM_STARTUP_RESOURCES.md)确认多数框图相同，但标题背景600×380、Logo／草边不同；同图不认证同调用。原标题[人物调度](TITLE_PRESENTATION.md)现已接背景Owner、退休槽age保留、非稳定排序和确认脉冲98／99边界，随应用语义2存取；完整人物资源展开、h/j/o菜单和原自动准入仍未实现。
+后继[窗口框／字体底层交叉](../verification/startup-frame-font-research/README.md)补原1像素边线范围、40宽木纹平铺、横坐标裁取标题带和四个SEB角，已经形成只读几何计划。字体入口基线为top−ascent−0.9，并含半宽缩放／描边；未将同名字体当成同一字形度量。Steam[资源与字体身份](STEAM_STARTUP_RESOURCES.md)确认多数框图相同，但标题背景600×380、Logo／草边不同；同图不认证同调用。原标题[人物调度](TITLE_PRESENTATION.md)现已接背景Owner、退休槽age保留、非稳定排序和确认脉冲98／99边界；h/j/o标题、选档与确认现由[标题菜单Owner](../prototype/TITLE_MENU.md)维护，完整Steam标题演员叠层及原OS输入仍待闭合。
 
 2026-10-09后继[只读模块](../prototype/STARTUP_SKIN.md)将上述标题五图、三个页面背景和raw17角色／继续箭头接为具名图片计划；原PNG／SEB身份和CPU裁片由既有visuals套件认证。标题五图仅目录，完整框／字体／文字、人物更新和Steam实际布局不由该接口代替。用户已取消自定义姓名→切性别→取消重进的强制补测，采用已维护的保名／保草稿规则，仍不将该决定记作Steam动态事实。
 

@@ -1,5 +1,6 @@
 #include "dungeon_village_prototype/startup_skin.hpp"
 #include "dungeon_village_prototype/steam_clear_score_skin.hpp"
+#include "dungeon_village_prototype/steam_new_game_skin.hpp"
 #include "dungeon_village_prototype/startup_information.hpp"
 #include "dungeon_village_prototype/steam_information_skin.hpp"
 #include "dungeon_village_prototype/startup_world_information.hpp"
@@ -478,6 +479,109 @@ void steam_clear_score_skin_checks(Checks &check) {
             (*in.rows)[5].score==input_rows[5].score&&in.stage_counter==15&&in.main_counter==8&&
             in.sum==1234567890123LL&&in.captured_high_score==9876543210LL,
             "Steam17重复纯查询规模稳定，不推进钟/数量/累加分数/覆盖旧纪录");}
+}
+void steam_new_game_skin_checks(Checks &check) {
+    // 原91调用点的显式草稿夹具，不开始新世界，也不把普通基础W当任意scratch的完整绘制。
+    SteamNewGameInput in{"UI测试村","UI测试甲",0,0,4,0};
+    SteamNewGameOptions o;o.title_widths=std::array<int,2>{60,62};o.start_width=240;o.finger_frame=5;
+    o.arrow_selected={true,false};
+    auto texts=[](const SteamNewGamePlan &p) {
+        std::vector<SteamHumanOverviewText> out;
+        for(const auto &op:p.operations)if(const auto *v=std::get_if<SteamHumanOverviewText>(&op))out.push_back(*v);
+        return out;
+    };
+    auto portrait=[](const SteamNewGamePlan &p)->const SteamHumanPortrait& {
+        for(const auto &op:p.operations)if(const auto *v=std::get_if<SteamHumanPortrait>(&op))return *v;
+        throw std::runtime_error("启动皮肤：Steam91缺人物请求");
+    };
+    constexpr std::array<std::array<int,4>,3> touches{{{106,128,114,26},{112,150,102,26},{112,171,102,26}}};
+    constexpr std::array<std::array<int,2>,4> hands{{{112,143},{118,165},{136,186},{-12,215}}};
+    for(int selection=0;selection<4;++selection) {
+        in.selection=selection;const auto p=steam_new_game_skin(in,o);check(bool(p),"Steam91四项显式选择可绘");
+        check(p->title=="重新开始"&&p->soft_labels==std::array<int,2>{0,2},"Steam91独立标题/软标签，非标题菜单或计分页");
+        std::vector<SteamStartupTouch> actual;std::vector<SteamFacilityImage> fingers;
+        std::vector<StartupSkinRect> orange;
+        for(const auto &op:p->operations) {
+            if(const auto *t=std::get_if<SteamStartupTouch>(&op))actual.push_back(*t);
+            if(const auto *f=std::get_if<SteamFacilityImage>(&op))fingers.push_back(*f);
+            if(const auto *f=std::get_if<SteamStartupFrameDraw>(&op))if(const auto *r=std::get_if<StartupSkinRect>(f))
+                if(r->rgb==std::array<int,3>{255,153,55})orange.push_back(*r);
+        }
+        check(actual.size()==4&&actual[0].component==3&&actual[0].value==0x20003&&
+            actual[0].rectangle==std::array<int,4>{-28,186,296,56},"Steam91开始宽240+16不夹200，未选也注册component3");
+        for(int row=0;row<3;++row)check(actual[row+1].component==11&&actual[row+1].value==(0x20000|row)&&
+            actual[row+1].rectangle==touches[row]&&!actual[row+1].image_draw&&!actual[row+1].option,
+            "Steam91三数组值宽94/82/82扩真实Touch，不用高亮矩形或新增marker");
+        check(fingers.size()==1&&fingers[0].asset==SteamFacilityAsset::finger&&fingers[0].frame==5&&
+            fingers[0].position==hands[selection],"Steam91当前SEB手形帧5不由main4推导，四选项独立锚");
+        check(orange.size()==(selection==2?0U:1U),"Steam91性别选择无橙框，字段/开始各有唯一当前高亮");
+        if(selection!=2)check(orange[0].rect==(selection==0?std::array<int,4>{116,133,94,16}:
+            selection==1?std::array<int,4>{122,155,82,16}:std::array<int,4>{-8,206,256,16})&&!orange[0].outline,
+            "Steam91按字段第三数与开始实测宽生成原高亮，非Touch热区");
+        const auto tx=texts(*p);check(tx.size()==7&&tx.back().value=="开始游戏"&&tx.back().layout&&
+            tx.back().anchor==34&&tx.back().rectangle==std::array<int,4>{-8,206,256,16},
+            "Steam91开始正文是anchor34 TextLayout16高，不改成裸字y208");
+        const auto &left=std::get<SteamNewGameArrow>(p->operations[p->operations.size()-2]);
+        const auto &right=std::get<SteamNewGameArrow>(p->operations.back());
+        check(left.component==18&&right.component==18&&left.value==16&&right.value==18&&
+            left.source.position==std::array<int,2>{118,185}&&right.source.position==std::array<int,2>{210,185}&&
+            left.source.bounds_frame==3&&right.source.bounds_frame==0&&left.source.selected&&!right.source.selected&&
+            left.margin==std::array<int,4>{30,5,20,4}&&right.margin==std::array<int,4>{5,20,20,4},
+            "Steam91末尾AddTouch箭头bounds/实测选择/下margin4，非APK下20或裸arrow02贴图");
+        check(std::none_of(actual.begin(),actual.end(),[](const auto &t){return t.component==2;}),
+            "Steam91本分支末尾返回，无计分页全局Touch2");
+    }
+    in.selection=0;
+    for(const auto language:std::array<std::array<bool,2>,3>{{{false,false},{true,false},{false,true}}}) {
+        o.english=language[0];o.japanese=language[1];const auto plan=*steam_new_game_skin(in,o);const auto tx=texts(plan);
+        constexpr std::array<int,3> ys{135,157,178};constexpr std::array<const char*,3> labels{"城镇名称","冒险者姓名","性别"};
+        for(int row=0;row<3;++row)check(tx[row].value==labels[row]&&tx[row].rectangle==
+            std::array<int,4>{27,ys[row]+(language[0]?1:0),0,0}&&tx[row].font_size==(language[0]?9:0)&&
+            tx[row].rgb==std::array<int,3>{0,100,255},"Steam91仅English改变标签9号/加1，非JP不是同一资格");
+        check(tx[3].rectangle==std::array<int,4>{language[1]?62:70,178,0,0}&&tx[3].value=="男"&&
+            tx[3].font_size==0&&tx[3].rgb==std::array<int,3>{92,51,31},"Steam91性别先重置字号，非JP x70不抄APK65");
+        check(tx[4].value==in.village&&tx[5].value==in.name&&tx[4].rectangle==std::array<int,4>{163,135,0,0}&&
+            tx[5].rectangle==std::array<int,4>{163,157,0,0}&&tx[4].anchor==2&&tx[5].anchor==2&&
+            tx[4].font_size==(language[0]?11:0)&&tx[5].font_size==(language[0]?11:0),
+            "Steam91草稿村名/定义0姓名居中，English-only11号，不用性别/首访名字补造");
+    }
+    o.english=false;o.japanese=false;o.view_y=23;
+    for(const auto sample:std::array<std::array<int,3>,4>{{{0,0,0},{0,4,1},{1,12,3},{1,16,0}}}) {
+        in.sex=sample[0];in.main=sample[1];const auto p=*steam_new_game_skin(in,o);const auto &actor=portrait(p);
+        check(actor.position==std::array<int,2>{163,195}&&!actor.clip&&!actor.image_clip&&!actor.actor.shadow&&
+            actor.actor.weapon&&actor.actor.weapon->resource==StartupVisualResource::weapon&&actor.actor.weapon->frame==0&&
+            actor.actor.body.image==(sample[0]==0?14:15)&&actor.actor.body.sprite==2&&actor.actor.body.frame==sample[2],
+            "Steam91原冒险者职业性别图14/15，weapon0必须存在，方向2/main16周期，无标题shadow或VIEW_Y重复");
+        const auto tx=texts(p);check(tx[3].value==(sample[0]==0?"男":"女")&&tx[3].rgb==
+            (sample[0]==0?std::array<int,3>{92,51,31}:std::array<int,3>{255,14,1}),"Steam91女值红色独立于标签蓝/男棕");
+        std::size_t box=p.operations.size(),background=p.operations.size(),border=p.operations.size(),first_label=p.operations.size();
+        for(std::size_t index=0;index<p.operations.size();++index) {
+            const auto &op=p.operations[index];
+            if(const auto *f=std::get_if<SteamStartupFrameDraw>(&op))if(const auto *r=std::get_if<StartupSkinRect>(f)) {
+                if(r->rect==std::array<int,4>{17,59,202,145}&&!r->outline)box=index;
+                if(r->rect==std::array<int,4>{30,65,180,63}&&r->outline&&r->rgb==std::array<int,3>{52,133,255})border=index;
+            }
+            if(const auto *d=std::get_if<StartupSkinDraw>(&op);d&&d->package==Package::event&&d->image==9) {
+                background=index;check(d->crop==std::array<int,4>{0,9,180,63}&&d->offset==std::array<int,2>{30,65},
+                    "Steam91 event9裁片0/9不是整图，背景不加VIEW_Y23");
+            }
+            if(const auto *t=std::get_if<SteamHumanOverviewText>(&op);t&&t->value=="城镇名称")first_label=index;
+        }
+        check(box<background&&background<border&&border<first_label,"Steam91框helper消费VIEW_Y一半，box→背景→蓝边→标签原序");
+    }
+    const auto stable=*steam_new_game_skin(in,o);const auto original=in;
+    for(int repeat=0;repeat<4;++repeat)check(steam_new_game_skin(in,o)->operations.size()==stable.operations.size()&&
+        in.village==original.village&&in.name==original.name&&in.sex==original.sex&&in.main==16&&in.selection==0,
+        "Steam91重复查询输出规模不增，不改草稿/性别/主钟或执行开始");
+    for(int fault=0;fault<12;++fault) {
+        auto bad=in;auto options=o;
+        if(fault==0)bad.selection=4;if(fault==1)bad.sex=2;if(fault==2)bad.main=-1;
+        if(fault==3)bad.main=std::numeric_limits<int>::max();if(fault==4)bad.adventure_profession=-1;
+        if(fault==5)bad.adventure_profession=4;if(fault==6)options.finger_frame=-1;if(fault==7)options.title_widths.reset();
+        if(fault==8)options.start_width.reset();if(fault==9)options.start_width=-1;
+        if(fault==10){options.english=true;options.japanese=true;}if(fault==11)bad.name=std::string(4097,'a');
+        check(!steam_new_game_skin(bad,options),"Steam91缺显式来源/错职业/越界/坏实测宽拒绝，不补默认W或猜资源");
+    }
 }
 struct SpriteOracle {
     int sprite, image, frames;
@@ -2129,6 +2233,7 @@ int check_startup_skin(const std::filesystem::path &source_root,
     const auto assets=tables(source_root,check);
     phases(check);
     steam_clear_score_skin_checks(check);
+    steam_new_game_skin_checks(check);
     frame_geometry(check);
     income_information(check);
     income_skin(check,source_root);

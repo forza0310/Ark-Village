@@ -1,5 +1,7 @@
 # 产品侧小窗 UI 示例
 
+[新局配置四种选择](steam-new-game.png)（960×1280／84242字节）：按左上村名、右上姓名、左下性别、右下开始排列，四张480×640研究窗口原尺寸拼接。消费正式`steam_new_game_skin`及已出版原图，文字来自新局草稿默认值；后两态切为女性，main9／手形帧0为显式绘制条件，冒险职业沿真实flags4定义0，weapon0按来源保留。`new-game-village`／`new-game-name`／`new-game-sex`／`new-game-start`各8帧、不加`--world`，0世界更新，不创建应用存档或正式新局。Noto、绿色背景、中文及底部研究标签为适配；这只是只读计划，不认证编辑输入、取消恢复、原字体或原OS交互，配置选择／主钟尚未进入Owner。详见[Steam91合同](../STARTUP_SKIN.md#steam新局91的独立绘制交叉)。
+
 [通关计分四态](steam-clear-score.png)（960×1280／91390字节）：按左上数量、右上加分、左下新纪录、右下收尾排列，四个480×640窗口原尺寸拼接。六类统计来自真实新局，只将显示阶段设为条件：设施发现数7／该行3500点、行前250点／行后3750点、总和7200点与初始旧纪录0；主钟31，阶段钟45／1／65。不推进到十六年、不提交纪录或领取奖励。`clear-count`／`clear-score`／`clear-record`／`clear-closing`各8帧、0世界更新，不加`--world`。复用正式Steam17计划和原素材；VIEW_Y23与同层窗框一致，Noto／中文与外部研究标签为适配，原字体、OS输入与自然通关未认证。[双钟／空单位合同](../STARTUP_SKIN.md#steam计分17的独立绘制交叉)和[计分业务](../../rules/STARTUP_RECORDS.md)分别维护。
 
 [职业大师三段](steam-mastery.png)（1440×640／65857字节）和[来源奖励四态](steam-source-gifts.png)（960×1280／90178字节）由七个480×640研究窗口原尺寸拼接。大师依次为宣布、能力奖励、转职选择；奖励按左上93建筑、右上94职业、左下94装备、右下94道具排列。消费正式70／93／94计划与已出版原素材；人物4、职业／奖励、设施33、武器0和道具0来自原初装定义，阶段／主钟40／副钟18为显示条件，不发放奖励。`mastery-announcement`／`mastery-bonus`／`mastery-choice`／`gift-facility`／`gift-profession`／`gift-equipment`／`gift-item`各8帧、0世界更新，不加`--world`。Owner时点、恢复与退休另经短测；Steam70软标签为0／0，不把APK取消行为接成Steam返回。中文／Noto、绿色背景和条件标签属于适配；不认证原字体、物理输入、自然职业大师或Steam成就，见[人物合同](../STEAM_HUMAN_DETAIL.md#human-reward-followups)与[领取合同](../../rules/ACCOUNTING.md)。

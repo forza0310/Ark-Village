@@ -14,6 +14,8 @@ Steam完整局部绘制由[steam_clear_score_skin.hpp](include/dungeon_village_p
 
 绘制顺序需由调用方维持背景→内框→右大臣／左秘书→阶段文字／提示→累计与最高分的源层关系；背景、角色、标记分开返回，便于插入尚未实现的窗口和文字。stage6满门槛是否被框架绘制、stage7何时退休仍由原调度资格决定，局部查询不承诺这些状态可见。
 
+Steam新局91由[steam_new_game_skin.hpp](include/dungeon_village_prototype/steam_new_game_skin.hpp)提供独立只读计划：显式接收村名、姓名、性别、选择、主钟与真实冒险职业，返回原序窗框、event9裁片、正文、人物、按钮及Touch／Arrow。字段热区、Arrow margin和soft0／2沿Steam来源；标题／开始按钮宽度由后端测量，长按钮不擅自钳制。该接口不读写应用、不推进时钟；配置选择与主钟的Owner恢复未接，不能用默认0补齐。见[四态参考](../ui/examples/steam-new-game.png)。
+
 ## 验证与边界
 
 后继新增`startup_window_skin`和`startup_content_skin`，分别返回标题窗的边线／木纹块／标题带／测宽后的文字锚点，以及标准内容框的填充／双线／四角。所有矩形采用半开像素大小；outline为内侧1像素线，源o.d的差1转换只做一次。字体测宽由真实平台适配器传入，本模块不补近似字体。详细原尺寸和使用顺序见[图元合同](../verification/startup-frame-font-research/README.md)。

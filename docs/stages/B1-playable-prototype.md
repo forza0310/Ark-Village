@@ -7,7 +7,9 @@
 
 两Debug标准仅排三个月：desktop初次138/139（114.83秒），headless119/119（118.87秒）。新增成果资源检查的Steam number05/menuRT01研究路径已映射现有steam_common副本，所有裁片/单位/拒绝断言保持；最终desktop受影响9/9（23.09秒）、Release9/9（20.02秒）、headless存取/会话/守卫3/3通过。窗口沿原runner独立输出，36张两尺寸条件图约1.16MiB及绘制无副作用检查通过；曾误用付款accepted字段判断跟踪成功，夹具已按正式error与scene5状态修正，不改业务。此项不是OS鼠标、自然任务胜利或全定义覆盖。
 
-证据根build/validation/research-2112dd7。世界5/应用8/系统2、独立产品系统身份及玩家schema5/随机不保存/冷清保持；新正式d05fe81双钟/期限作为后继，research在途不写。便携与经营后继另补；CI、本地三个月、原字体/OS动态、五星/775定义全经营、自然通关/继续/继承未完成，goal保持active。
+14a8b42玩家便携ZIP为16.29MiB、解压26.41MiB/747文件，15个PE依赖DLL及字体/许可保持；独立解压从仅含Windows系统目录的PATH运行--check及真实新局八帧募集窗口通过，仍在5217源轮/三人/10860G到24，未使用正常玩家档。
+
+证据根build/validation/research-2112dd7（portable-extracted-*另含解压结果）。世界5/应用8/系统2、独立产品系统身份及玩家schema5/随机不保存/冷清保持；新正式d05fe81双钟/期限作为后继，research在途不写。经营后继、CI、本地三个月、原字体/OS动态、五星/775定义全经营、自然通关/继续/继承未完成，goal保持active。
 
 <a id="research-48574b5-task-pages"></a>
 ## 2026-10-13：任务选择、募集与地图追踪

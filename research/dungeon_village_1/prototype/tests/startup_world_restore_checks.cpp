@@ -118,6 +118,61 @@ int check_startup_world_restore_contracts(
                   "scene5 both cameras replay from exact source snapshot");
     }
     {
+        // 30沿真实工厂/胜利producer安装；胜利时点是短条件夹具，不重复完整经营前缀。
+        using E=p::StartupWorldRuntimeError;
+        const auto require=[&](bool ok,const char *why){++checks;if(!ok)throw std::runtime_error(std::string("restore victory30: ")+why);};
+        auto victory=baseline;
+        const auto made=r::prepare_world_task_creation(p::startup_world_runtime_factory(victory),0);
+        require(made.candidate&&made.candidate->created_task&&p::write_startup_world_runtime_factory(victory,made.candidate->state),"real task");
+        const auto previous_active=victory.active_task;victory.active_task=*made.candidate->created_task;
+        require(p::consume_startup_world_runtime_task_encounter_request(victory,{r::EncounterRequestKind::page30,{},30,70}),"real page30 producer");
+        victory.active_task=previous_active;
+        const auto id=victory.scripts.pages.back().id;
+        expect(victory,true,"30 pending with full constructor clocks");
+        const auto reject=[&](const auto &source,const char *why,const auto &damage){auto bad=source;damage(bad);expect(bad,false,why);};
+        reject(victory,"pending30 missing secondary",[&](auto &s){s.page_secondary_counters.erase(id);});
+        reject(victory,"pending30 already advanced secondary",[&](auto &s){s.page_secondary_counters.at(id)=1;});
+        const auto advance=[&](auto &s){const auto next=p::prepare_startup_world_runtime(s);require(next.candidate.has_value(),"admitted30 update");s=*next.candidate;};
+        advance(victory);
+        require(victory.page_counters.at(id)==1&&victory.page_secondary_counters.at(id)==1,"both real clocks advanced");
+        const auto check_replay=[&](const auto &source,const auto &consume,const char *why) {
+            expect(source,true,why);const auto bytes=p::persistence_detail::encode_state(source);
+            auto restored=p::persistence_detail::decode_state(bytes,*source.rules),live=source;
+            consume(live);consume(restored);expect(live,true,why);expect(restored,true,why);
+            require(p::persistence_detail::encode_state(live)==p::persistence_detail::encode_state(restored),"exact replay retains both clocks, random and outputs");
+        };
+        const auto next_phase=[&](auto &s){
+            require(p::acknowledge_startup_world_runtime_page(s,id)==E::none&&s.page_counters.at(id)==40,"phase0 early skip40");
+            require(p::acknowledge_startup_world_runtime_page(s,id)==E::none&&s.page_phases.at(id)==1&&
+                    s.page_counters.at(id)==0&&s.page_secondary_counters.at(id)==1,"phase1 clears only main clock");
+            advance(s);
+        };
+        check_replay(victory,next_phase,"30 phase0 to phase1 short restore");next_phase(victory);
+        require(victory.page_secondary_counters.at(id)==2&&victory.sound_requests.size()==1&&
+                victory.sound_requests.front()==p::StartupAudioRequest{p::StartupAudioOperation::jingle,4},"phase1 does not replay first phase sound");
+        reject(victory,"initialized30 missing main",[&](auto &s){s.page_counters.erase(id);});
+        reject(victory,"initialized30 missing phase",[&](auto &s){s.page_phases.erase(id);});
+        reject(victory,"initialized30 invalid phase",[&](auto &s){s.page_phases.at(id)=2;});
+        reject(victory,"initialized30 missing secondary",[&](auto &s){s.page_secondary_counters.erase(id);});
+        reject(victory,"initialized30 negative secondary",[&](auto &s){s.page_secondary_counters.at(id)=-1;});
+        reject(victory,"initialized30 overflow secondary",[&](auto &s){s.page_secondary_counters.at(id)=std::numeric_limits<int>::max();});
+        reject(victory,"initialized30 wrong task binding",[&](auto &s){s.exploration_summaries.at(id).task=s.next_task_identity;});
+        reject(victory,"secondary cannot be attached to32",[&](auto &s){s.scripts.pages.back().legacy_page=32;s.exploration_summaries.at(id).legacy_page=32;});
+        reject(victory,"orphan secondary",[&](auto &s){s.page_secondary_counters.emplace(s.scripts.next_page_id+1,0);});
+        auto paused=victory;paused.scene.framework_paused=true;
+        check_replay(paused,advance,"30 paused phase1 restore retains clocks");
+        const auto close=[&](auto &s){require(p::acknowledge_startup_world_runtime_page(s,id)==E::none&&
+            p::acknowledge_startup_world_runtime_page(s,id)==E::none,"phase1 skip and close");};
+        check_replay(victory,close,"30 phase1 close keeps complete payload until Finish");close(victory);
+        require(victory.scripts.pages.back().lifecycle==4&&victory.page_secondary_counters.at(id)==2,"closed30 retains actual frame2");
+        reject(victory,"closed30 missing secondary",[&](auto &s){s.page_secondary_counters.erase(id);});
+        reject(victory,"closed30 missing summary",[&](auto &s){s.exploration_summaries.erase(id);});
+        advance(victory);
+        require(!victory.page_secondary_counters.count(id)&&!victory.page_counters.count(id)&&
+                !victory.page_phases.count(id)&&!victory.exploration_summaries.count(id),"Finish retires all victory references");
+        expect(victory,true,"retired30 no residual map entries");
+    }
+    {
         const auto require = [&](bool valid, const char *scenario) {
             ++checks;
             if (!valid) throw std::runtime_error(std::string("restore manual save: ") + scenario);

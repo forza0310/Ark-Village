@@ -10,6 +10,7 @@
 #include "dungeon_village_prototype/startup_world_manual.hpp"
 #include "dungeon_village_prototype/startup_world_save.hpp"
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
+#include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
 #include "dungeon_village_prototype/startup_world_tax.hpp"
 #include "dungeon_village_prototype/startup_world_village_activity.hpp"
 #include "support/world_fixture.hpp"
@@ -1825,12 +1826,25 @@ void tax_pages() {
           "tax ledger overflow rolls back cash, F/G, counter and close");
 }
 void summary() {
-    auto s = fixture(30);
+    auto s = test_support::world_fixture();
+    const auto made=ref::prepare_world_task_creation(startup_world_runtime_factory(s),0);
+    check(made.candidate&&made.candidate->created_task&&write_startup_world_runtime_factory(s,made.candidate->state),
+          "victory fixture creates actual source task identity");
+    s.active_task=*made.candidate->created_task; // 明确胜利调用点夹具，不冒认自然战斗通过。
+    check(consume_startup_world_runtime_task_encounter_request(s,{ref::EncounterRequestKind::page30,{},30,70}),
+          "actual encounter producer installs victory payload and both zero clocks");
+    s.active_task.reset();
     const auto id = s.scripts.pages.back().id;
-    s.exploration_summaries[id] = {30, 1, 0, {}};
+    check(s.page_counters.at(id)==0&&s.page_secondary_counters.at(id)==0&&s.page_phases.at(id)==0&&
+          valid_startup_world_runtime_task_victory_page(s,s.scripts.pages.back()),"pending30 starts with complete constructor clocks");
+    auto paused=s;paused.scene.framework_paused=true;
+    auto frozen=prepare_startup_world_runtime(paused);
+    check(frozen.candidate&&frozen.candidate->scripts.pages.back().lifecycle==0&&
+          frozen.candidate->page_secondary_counters.at(id)==0&&frozen.candidate->sound_requests.empty(),
+          "paused pending30 does not admit lifecycle or advance independent clock");
     const auto funds = s.scene.world.world.ai.accounting.funds();
     auto tick = prepare_startup_world_runtime(s);
-    check(tick.candidate && tick.candidate->page_counters.at(id) == 1 &&
+    check(tick.candidate && tick.candidate->page_counters.at(id) == 1 &&tick.candidate->page_secondary_counters.at(id)==1&&
               test_support::audio_ids(tick.candidate->sound_requests) == std::vector<int>{4} &&
               tick.candidate->sound_requests.front().operation == StartupAudioOperation::jingle,
           "page30 first phase sound4");
@@ -1840,14 +1854,40 @@ void summary() {
               tick.checkpoints.empty(),
           "nonmain page freezes world/date/random/checkpoints");
     s = *tick.candidate;
+    for(int fault=0;fault<7;++fault) {
+        auto bad=s;
+        if(fault==0)bad.page_secondary_counters.erase(id);
+        if(fault==1)bad.page_secondary_counters.at(id)=-1;
+        if(fault==2)bad.page_secondary_counters.at(id)=std::numeric_limits<int>::max();
+        if(fault==3)bad.page_counters.erase(id);
+        if(fault==4)bad.page_phases.erase(id);
+        if(fault==5)bad.page_phases.at(id)=2;
+        if(fault==6)bad.exploration_summaries.erase(id);
+        const auto before=startup_world_state_digest(bad);
+        check(acknowledge_startup_world_runtime_page(bad,id)==StartupWorldRuntimeError::missing_source&&
+              !prepare_startup_world_runtime(bad).candidate&&startup_world_state_digest(bad)==before,
+              "30 malformed initialized payload rejects confirm and update atomically");
+    }
+    paused=s;paused.scene.framework_paused=true;frozen=prepare_startup_world_runtime(paused);
+    check(frozen.candidate&&frozen.candidate->page_counters.at(id)==1&&frozen.candidate->page_secondary_counters.at(id)==1&&
+          frozen.candidate->sound_requests==paused.sound_requests,"pause preserves both clocks and emitted audio exactly");
     check(acknowledge_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::none &&
-              s.page_counters.at(id) == 40 && s.page_phases[id] == 0,
+              s.page_counters.at(id) == 40 && s.page_phases[id] == 0&&s.page_secondary_counters.at(id)==1,
           "early confirm skips40 only");
     check(acknowledge_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::none &&
-              s.page_counters.at(id) == 0 && s.page_phases.at(id) == 1,
+              s.page_counters.at(id) == 0 && s.page_phases.at(id) == 1&&s.page_secondary_counters.at(id)==1,
           "ready confirm enters phase1");
+    tick=prepare_startup_world_runtime(s);
+    check(tick.candidate&&tick.candidate->page_counters.at(id)==1&&tick.candidate->page_secondary_counters.at(id)==2&&
+          tick.candidate->sound_requests==s.sound_requests,"phase1 first update advances independent frame without replaying jingle4");
+    s=*tick.candidate;
+    auto boundary=s;boundary.page_counters.at(id)=std::numeric_limits<int>::max()-1;
+    boundary.page_secondary_counters.at(id)=std::numeric_limits<int>::max()-1;
+    const auto wrapped=update_startup_world_runtime_page(boundary);
+    check(wrapped&&wrapped->page_counters.at(id)==0&&wrapped->page_secondary_counters.at(id)==0,
+          "30 source frame/frame2 moduloINTMAX boundary is preserved without overflow");
     check(acknowledge_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::none &&
-              s.page_counters.at(id) == 40 && s.scripts.pages.back().lifecycle != 4,
+              s.page_counters.at(id) == 40 && s.scripts.pages.back().lifecycle != 4&&s.page_secondary_counters.at(id)==2,
           "second phase also requires independent fastforward");
     check(acknowledge_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::none &&
               s.scripts.pages.back().lifecycle == 4 &&
@@ -1855,9 +1895,13 @@ void summary() {
           "fourth immediate confirm closes without paying again");
     check(acknowledge_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::invalid_page,
           "closed summary cannot be acknowledged twice");
+    auto broken=s;broken.page_secondary_counters.erase(id);
+    check(!prepare_startup_world_runtime(broken).candidate&&broken.exploration_summaries.count(id),
+          "closed30 missing secondary cannot be hidden by retirement cleanup");
     tick = prepare_startup_world_runtime(s);
     check(tick.candidate && !tick.candidate->exploration_summaries.count(id) &&
-              !s.exploration_summaries.empty(),
+              !tick.candidate->page_counters.count(id)&&!tick.candidate->page_secondary_counters.count(id)&&
+              !tick.candidate->page_phases.count(id)&&!s.exploration_summaries.empty(),
           "framework retires closed result payload only on successful next Owner commit");
     s = fixture(32);
     const auto missing = s.scripts.pages.back().id;

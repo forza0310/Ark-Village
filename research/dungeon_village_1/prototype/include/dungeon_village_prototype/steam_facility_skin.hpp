@@ -53,7 +53,7 @@ struct SteamFacilityMapchip2 {
 struct SteamFacilityMapchipDraw {
     std::string sprite; // image组内已出版SEB文件名，Steam固定85映射与其字节逐项已核。
     int frame{};
-    std::array<int,2> position{}; // 包含Mapchip2居中偏移，不含SEB内部offset。
+    std::array<int,2> position{}; // 调用helper的最终锚点，不含SEB内部offset；仅Mapchip2会补居中。
 };
 // 固定已核mapchip目录；不借地图可建/旋转资格限制只读helper，也不改道路请求帧。
 std::optional<std::vector<SteamFacilityMapchipDraw>> steam_facility_mapchip2_draws(

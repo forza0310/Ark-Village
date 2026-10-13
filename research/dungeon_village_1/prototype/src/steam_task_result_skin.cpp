@@ -1,6 +1,9 @@
 // Steam SubForm._draw1_1：32 VA1032EFE1–1032F679，31 VA1032F67A–1032FDAD。
 #include "dungeon_village_prototype/steam_task_result_skin.hpp"
+#include "dungeon_village_prototype/startup_world_human.hpp"
+#include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
 #include <algorithm>
+#include <limits>
 
 namespace dungeon_village_prototype {
 namespace {
@@ -125,5 +128,134 @@ std::optional<SteamTaskResultPlan> steam_task_result_skin(const SteamTaskResultI
        !portrait(p,in.footer[1],2,{right,220},{right-8,197,15,15}))return {};
     p.operations.emplace_back(SteamStartupTouch{2,0,{},{},2});
     return p;
+}
+
+namespace {
+int victory_rate(int n,int lo,int hi,int left,int right) {
+    if(n<=lo)return left;if(n>=hi)return right;
+    return left+static_cast<int>(std::int64_t(right-left)*(n-lo)/(hi-lo));
+}
+int figures(int value) {
+    // Steam AppData.GetFig(long) RVA2578C0；零也占一位，不沿APK字体测宽估数字。
+    int count=1;while(value>=10){value/=10;++count;}return count;
+}
+float victory_product(float a,float b) {volatile float v=a*b;return v;}
+float victory_sum(float a,float b) {volatile float v=a+b;return v;}
+float victory_quotient(float a,float b) {volatile float v=a/b;return v;}
+int victory_jump(int tick) {
+    // Math2.GetParabolaPos RVA2A4330：内部逐步float32，返回后截断成int；不改为double/FMA。
+    const float velocity=victory_quotient(16.F,7.F);
+    const float acceleration=victory_quotient(-16.F,56.F);
+    const float linear=victory_product(float(tick),velocity);
+    const float curve=victory_product(victory_product(victory_product(float(tick),acceleration),float(tick+1)),0.5F);
+    return static_cast<int>(victory_sum(curve,linear));
+}
+void victory_text(SteamTaskVictoryPlan &p,std::string value,int x,int y,int anchor) {
+    p.operations.emplace_back(SteamTaskSelectionText{std::move(value),{x,y,0,0},anchor,0,false,{92,51,31}});
+}
+std::optional<std::string> victory_name(const StartupWorldRuntimeState &s,const StartupWorldTask &d) {
+    // QuestData.GetName(true) RVA21D6D0：胜利时进度已增加；不能借列表false的后缀。
+    if(d.factory.flags&2U) {
+        const auto g=s.scene.world.world.ai.monster_growth.find(d.factory.monster);
+        if(g==s.scene.world.world.ai.monster_growth.end()||g->second.growth<0)return {};
+        if(g->second.growth>0)return d.name+std::to_string(g->second.growth);
+    } else if(d.factory.flags&4U) {
+        const auto progress=s.task_progress.definitions.find(d.factory.identity);
+        if(progress==s.task_progress.definitions.end()||progress->second.completed<0)return {};
+        const auto done=std::int64_t(progress->second.completed)-1;
+        if(done>0)return d.name+"+"+std::to_string(std::min(done*2,std::int64_t(10)));
+    }
+    return d.name;
+}
+}
+std::optional<StartupTitleActorSkin> steam_task_victory_actor_skin(const SteamTaskVictoryActor &r) {
+    if(r.action!=0&&r.action!=6)return {};
+    auto out=startup_title_actor_skin(r.profession,r.sex,r.weapon,0,2,false);if(!out)return {};
+    if(r.action==6) {
+        // Character2.cctor VA10294B8C元数据12槽[0,4,4,4,20,4,8,12,16,20,24,20]，
+        // VA10294DD5..10294E12安装SEB_F[6]新单槽零数组：喜悦body=8+2/frame0。
+        out->body.sprite=10;out->body.frame=0;
+        if(out->weapon) {
+            const auto &rules=startup_world_rules();
+            const auto weapon=std::find_if(rules.equipment.begin(),rules.equipment.end(),
+                [&](const auto &v){return v.shop.kind==1&&v.shop.id==r.weapon;});
+            if(weapon==rules.equipment.end()||weapon->render_style<0||weapon->render_style>3)return {};
+            // GetWeponOffset RVA283D40的6走magic A[][dir][step]；RVA283C80将6映到walk0，
+            // 四weapon slot0(frame0)和WeaponData.cctor的A偏移已分别交叉，不能沿walk偏移。
+            constexpr std::array<std::array<int,2>,4> anchors{{{-19,-37},{-17,-35},{-22,-37},{-24,-46}}};
+            out->weapon->offset=anchors[weapon->render_style];out->weapon->frame=0;
+        }
+    }
+    return out;
+}
+std::optional<SteamTaskVictoryPlan> steam_task_victory_skin(const SteamTaskVictoryInput &in) {
+    const auto &o=in.options;
+    if(in.phase<0||in.phase>1||in.counter<0||in.secondary<0||
+       in.counter==std::numeric_limits<int>::max()||in.secondary==std::numeric_limits<int>::max()||
+       in.experience<0||in.reputation<0||!word(in.task_name)||in.humans.size()>9||
+       o.view_y< -65536||o.view_y>65536||!o.title_widths||
+       (in.phase==1&&(!o.reputation_suffix_width||*o.reputation_suffix_width<0||*o.reputation_suffix_width>4096)))return {};
+    for(const auto &h:in.humans)if(h.identity<0||
+        !steam_task_victory_actor_skin({h.profession,h.sex,h.weapon,0,{}}))return {};
+    SteamTaskVictoryPlan p;p.title="胜利！"; // Steam metadata slot110F5924原字面「勝利！」。
+    const auto w=steam_startup_window_skin({222,170,0,0,SteamStartupTextRole::message_title,0},o.view_y,o.title_widths);
+    const auto b=steam_startup_box_skin({15,139,224,202},o.view_y);
+    if(!w||!b)return {};for(const auto &d:w->draws)p.operations.emplace_back(d);
+    for(const auto &d:b->draws)p.operations.emplace_back(d);
+    p.operations.emplace_back(SteamTaskRosterImage{SteamTaskRosterAsset::departure_background,{30,66},std::array<int,4>{0,0,93,82},0});
+    p.operations.emplace_back(SteamTaskRosterImage{SteamTaskRosterAsset::departure_background,{109,66},std::array<int,4>{1,0,91,82},0});
+    p.operations.emplace_back(SteamTaskRosterImage{SteamTaskRosterAsset::departure_background,{189,66},std::array<int,4>{1,0,20,82},0});
+    p.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{{30,66,179,81},{148,148,148},true}});
+    const int exp_left=120-(8*figures(in.experience)+22)/2;
+    p.operations.emplace_back(SteamHumanImage{SteamHumanAsset::experience_label,{exp_left,74},0,{}});
+    p.operations.emplace_back(SteamFacilityNumber{SteamFacilityNumberKind::number,SteamFacilityAsset::number05,in.experience,{exp_left+22,73},0,1,-1});
+    const int count=static_cast<int>(in.humans.size());
+    const int left=victory_rate(count,3,10,80,50),right=victory_rate(count,3,10,160,190);
+    const int local=in.secondary%26,action=local<10?0:6,y=134-(local<10?0:victory_jump(local-10));
+    for(int i=0;i<count;++i) {
+        const auto &h=in.humans[i];const int x=count==1?left:victory_rate(i,0,count-1,left,right);
+        p.operations.emplace_back(SteamTaskRosterImage{SteamTaskRosterAsset::shadow,{x,134},{},0});
+        p.operations.emplace_back(SteamTaskVictoryActor{h.profession,h.sex,h.weapon,action,{x,y}});
+    }
+    p.operations.emplace_back(SteamTaskSelectionClip{true,{0,158,240,victory_rate(in.counter,5,40,0,48)}});
+    if(in.phase==0) {
+        victory_text(p,in.task_name,120,164,2);victory_text(p,"完成!!",120,188,2);
+    } else {
+        victory_text(p,"因为完成任务",120,158,2);victory_text(p,"街道的人气",120,176,2);
+        const int digits=figures(in.reputation)*10,start=120-(digits+2+*o.reputation_suffix_width)/2;
+        p.operations.emplace_back(SteamFacilityNumber{SteamFacilityNumberKind::number,SteamFacilityAsset::number09,in.reputation,{start,194},0,1,-1});
+        victory_text(p,"上升了!",start+digits+2,194,1);
+    }
+    p.operations.emplace_back(SteamTaskSelectionClip{false,{}});
+    if(in.counter>=40&&in.counter%25<15)
+        p.operations.emplace_back(SteamHumanImage{SteamHumanAsset::continue_cursor,{212,204},0,{}});
+    // Steam30汇合VA10330EAA..10330EE6 AddTouchHelper(2,option2)，无源显式矩形。
+    p.operations.emplace_back(SteamStartupTouch{2,0,{},{},2});
+    return p;
+}
+std::optional<SteamTaskVictoryPlan> steam_task_victory_skin(const StartupWorldRuntimeState &s,
+    std::uint64_t id,const SteamTaskVictoryOptions &o) {
+    const auto page=std::find_if(s.scripts.pages.rbegin(),s.scripts.pages.rend(),[](const auto &v){return v.lifecycle!=4;});
+    if(page==s.scripts.pages.rend()||page->id!=id||page->lifecycle!=2||
+       !valid_startup_world_runtime_task_victory_page(s,*page))return {};
+    // 探索producer原有summary绑定，不要求它补encounter专有的optional task字段。
+    const auto summary=s.exploration_summaries.find(id);
+    if(summary==s.exploration_summaries.end())return {};
+    const auto task=s.tasks.find(summary->second.task);
+    const auto definition=std::find_if(s.rules->tasks.begin(),s.rules->tasks.end(),
+        [&](const auto &d){return d.factory.identity==summary->second.definition;});
+    if(task==s.tasks.end()||definition==s.rules->tasks.end())return {};
+    const auto name=victory_name(s,*definition);if(!name)return {};
+    const auto phase=s.page_phases.find(id),counter=s.page_counters.find(id),secondary=s.page_secondary_counters.find(id);
+    if(phase==s.page_phases.end()||counter==s.page_counters.end()||secondary==s.page_secondary_counters.end())return {};
+    SteamTaskVictoryInput in;in.phase=phase->second;in.counter=counter->second;in.secondary=secondary->second;
+    in.experience=page->legacy_f;in.reputation=definition->factory.pending_completion_value;in.task_name=*name;in.options=o;
+    if(s.participants.size()>9)return {};
+    for(int human:s.participants) {
+        const auto h=startup_world_human_details(s,human);
+        if(!h||!h->equipment[0])return {};
+        in.humans.push_back({human,h->profession,h->sex,*h->equipment[0]});
+    }
+    return steam_task_victory_skin(in);
 }
 } // namespace dungeon_village_prototype

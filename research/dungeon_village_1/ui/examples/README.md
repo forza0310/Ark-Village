@@ -1,5 +1,7 @@
 # 产品侧小窗 UI 示例
 
+[胜利两段](steam-task-victory.png)与[期限探索／继续／战斗](steam-task-deadline.png)为五张480×640窗口原尺寸拼接，共71863字节。消费30／33正式只读计划及现素材；人物0–2的职业装备取新局，XP123／人气20、主50／副18、费用100／攻略35%及三只monster0是明确绘制条件，未任务结算或续费。33只提供纯计划，选择持久接线仍待设计确认；中文沿固定汉化APK、menuRT日文原图、Noto字体和绿色背景为标注的适配。五个无`--world`有界入口`task-victory`、`task-victory-reputation`、`task-deadline`、`task-deadline-continue`、`task-deadline-battle`各8帧，均0世界更新。原窗口动态、完整字体和自然取得不由例图认证；详见[后继合同](../PAGES.md#steam任务成果与期限的后继定位)。
+
 [战绩31／奖励32](steam-task-results.png)与[地图候选／raw29](steam-task-information.png)共59077字节，四张480×640有界研究窗口原尺寸并排。成果示例为六人物／六奖励及first1的明确条件，人物初始H/I=0、图标与价格取原定义；没有战斗、奖励领取或自然成果认证。地图信息由新局原工厂任务经真实22追踪→5→4短移动形成Owner桥；raw29只用纯DTO，不伪造尚未接的菜单入口。均0世界更新、无自然触发认证；Noto、绿色背景和研究标记是适配。`--inspect-page task-battle-result/task-reward-result/task-map-info/task-info --frames 8`分别传完整单名称且不加`--world`；[任务合同](../PAGES.md#steam地图候选信息与raw29不同入口)明确两助手、费用／箭头和坐标差异。
 
 [名单／追加两页](steam-task-roster-extra.png)与[出发前后](steam-task-departure.png)由五个480×640研究窗口原尺寸并排，共79859字节。消费25–28正式纯计划，人物0／1的职业、等级、四战斗值及200G候选费用读取真实新局定义；两人名单、评价3、主24／副10和“已参加”身份是明确显示条件，未创建参与任务、付款或自然出发。五个无`--world`的有界入口为`task-roster`、`task-extra`、`task-extra-stats`、`task-departure`、`task-departing`，均世界更新0；原字体、完整共享scratch、OS动态及新Owner持久接线不由例图认证。[合同](../PAGES.md#steam参加名单追加与出发25–28)解释动作4、两种列表返回及两套Touch差异。

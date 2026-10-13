@@ -319,6 +319,26 @@ bool consume_award_display(State &s, std::uint64_t id, bool confirm, int raw) {
 }
 } // namespace
 
+bool valid_startup_world_runtime_task_victory_page(const State &s,const ref::WorldScriptPage &p) {
+    if(!s.rules||p.id==0||p.kind!=ref::WorldScriptPageKind::raw_page||p.legacy_page!=30||
+       p.lifecycle<0||p.lifecycle>4||p.legacy_f<0)return false;
+    const auto summary=s.exploration_summaries.find(p.id);
+    const auto count=s.page_counters.find(p.id),phase=s.page_phases.find(p.id),second=s.page_secondary_counters.find(p.id);
+    if(summary==s.exploration_summaries.end()||summary->second.legacy_page!=30||
+       !summary->second.rewards.empty()||count==s.page_counters.end()||phase==s.page_phases.end()||
+       second==s.page_secondary_counters.end()||count->second<0||count->second==std::numeric_limits<int>::max()||
+       second->second<0||second->second==std::numeric_limits<int>::max()||phase->second<0||phase->second>1)return false;
+    const auto task=s.tasks.find(summary->second.task);
+    if(task==s.tasks.end()||task->first==0||task->second.identity!=task->first||
+       task->second.definition!=summary->second.definition||
+       std::none_of(s.rules->tasks.begin(),s.rules->tasks.end(),[&](const auto &d){return d.factory.identity==summary->second.definition;}))return false;
+    // 探索原producer仅在summary保存aa/q；战斗producer另有page绑定，不能反造缺失optional。
+    if(bool(p.task_identity)!=bool(p.task_definition)||
+       (p.task_identity&&(*p.task_identity!=task->first||*p.task_definition!=task->second.definition)))return false;
+    if(p.lifecycle==0&&(count->second!=0||second->second!=0||phase->second!=0))return false;
+    return true;
+}
+
 bool valid_startup_world_town_progress_page(const State &s,const ref::WorldScriptPage &p) {
     const int raw=p.legacy_page;const auto id=p.id;
     if(!s.rules||p.kind!=ref::WorldScriptPageKind::raw_page||
@@ -410,6 +430,9 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
         return Error::invalid_page;
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 58)
         return Error::invalid_page; // 镜头页由真实逐帧跟踪收尾，确认不提前关闭。
+    if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==30&&
+       (top->lifecycle!=2||!valid_startup_world_runtime_task_victory_page(state,*top)))
+        return Error::missing_source;
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 14)
         return act_startup_world_save_page(state,id);
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 13)
@@ -754,6 +777,8 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
         if (page != state.scripts.pages.rend() && page->kind == ref::WorldScriptPageKind::raw_page &&
             page->legacy_page == 13 && !inspect_startup_world_manual_page(state,page->id))
             return {};
+        if(page!=state.scripts.pages.rend()&&page->kind==ref::WorldScriptPageKind::raw_page&&
+           page->legacy_page==30&&!valid_startup_world_runtime_task_victory_page(state,*page))return {};
         if (page != state.scripts.pages.rend() && page->kind == ref::WorldScriptPageKind::raw_page &&
             (page->legacy_page == 3 || page->legacy_page == 4 || page->legacy_page == 7 ||
              page->legacy_page == 10) && !valid_startup_world_menu_page(state, page->id))
@@ -764,6 +789,8 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
                                   [](const auto &p) { return p.lifecycle != 4; });
     if (top == state.scripts.pages.rend() || top->kind == ref::WorldScriptPageKind::scene)
         return {};
+    if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==30&&
+       (top->lifecycle!=2||!valid_startup_world_runtime_task_victory_page(state,*top)))return {};
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 14)
         return update_startup_world_save_page(state,top->id);
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 13)
@@ -836,7 +863,7 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
     if (counter == std::numeric_limits<int>::max())
         return {};
     ++counter;
-    if(top->legacy_page==50) {
+    if(top->legacy_page==50||top->legacy_page==30) {
         auto &secondary=next.page_secondary_counters.at(top->id);
         counter%=std::numeric_limits<int>::max();
         secondary=(secondary+1)%std::numeric_limits<int>::max();

@@ -8,6 +8,7 @@
 #include "ark/simulation/actors/rules/human_management.hpp"
 #include "world_active_late_strategy.hpp"
 #include "world_steam_budget.hpp"
+#include "world_steam_professions.hpp"
 #include "world_steam_strategy.hpp"
 #include <algorithm>
 #include <iostream>
@@ -45,7 +46,23 @@ void run_steam_receipt_fixture(const CampaignCommandConsumer &apply, State &stat
                                ark::test::SteamVillageStrategy &strategy, Complete complete,
                                const ark::test::CampaignReceiptSink &receive) {
     for (int step = 0; step < 600 && !complete(); ++step) {
-        if (const auto action = strategy.next(state)) {
+        const auto action = strategy.next(state);
+        const auto *page = top(state);
+        if (page && sim::startup_world_human_page_ready(state, page->id) &&
+            (page->legacy_page == 66 || page->legacy_page == 68)) {
+            // Formal 5708375: human consume_display waits at66/40..84;
+            // world_award_page waits at68/67..72. Observe actual source updates only.
+            const int counter = state.page_counters.at(page->id);
+            const bool waits = page->legacy_page == 66 ? counter >= 40 && counter < 85
+                                                      : counter >= 67 && counter < 73;
+            require(waits ? !action
+                          : action && action->kind == Kind::human_action &&
+                                action->human_action == sim::StartupHumanPageAction::confirm &&
+                                action->page == page->id,
+                    "Gift input violates observed source timing: raw=" +
+                        std::to_string(page->legacy_page) + " counter=" + std::to_string(counter));
+        }
+        if (action) {
             auto candidate = state;
             const auto result = apply(candidate, *action);
             strategy.observe(state, *action, result, candidate, receive);
@@ -596,7 +613,12 @@ void steam_people_receipt_contract(const CampaignCommandConsumer &apply) {
                                : source_kind == 2 ? Receipt::armour_combat_applied
                                                   : Receipt::accessory_combat_applied;
         run_steam_receipt_fixture(
-            apply, state, strategy, [&] { return receipts.size() == 2; },
+            apply, state, strategy,
+            [&] {
+                const auto *page = top(state);
+                return receipts.size() == 2 && page &&
+                       page->kind == ref::WorldScriptPageKind::scene && state.scene.scene_state == 0;
+            },
             [&](const auto &receipt) {
                 if (receipt.kind == equipped || receipt.kind == combat)
                     receipts.push_back(receipt);
@@ -726,6 +748,104 @@ void steam_people_receipt_contract(const CampaignCommandConsumer &apply) {
                 housed.scene.world.world.facilities.at(admission->subject).kind == 12 &&
                 housed.facility_residents.at(admission->subject) == 1,
             "Actual admission lacks its one-time source fee and bound residential instance");
+}
+
+void steam_profession_receipt_contract(const CampaignCommandConsumer &apply) {
+    // Arrival is source-created; mastery/opening/medals are explicit qualifications,
+    // not evidence of naturally unlocking this profession or completing the campaign.
+    auto state = steam_people_fixture();
+    constexpr int human = 1, target = 5;
+    auto &growth = state.scene.world.world.ai.growth.at(human);
+    const int old_job = growth.definition.current_profession;
+    growth.definition.profession_levels.at(old_job) = 10;
+    state.scripts.professions.at(target).status = 1;
+    state.human_calendar.at(human).celebrations = 99;
+    state.village_points = 999;
+    const auto source_stats = ref::derive_human_stats(growth.definition,
+                                                     state.scene.world.world.ai.professions);
+    require(source_stats.candidate && !source_stats.candidate->available_spells[0] &&
+                growth.definition.spell_professions.at(0) == target,
+            "Profession qualification must start without the source mage spell");
+    growth.derived = *source_stats.candidate;
+    require(sim::synchronize_startup_world_human_capacity(state, human),
+            "Profession qualification lost the real actor's capacity");
+    state.scene.world.world.ai.accounting = ref::PeriodAccounting(steam_operating_reserve(state) + 10000);
+    const auto initial = sim::startup_world_human_details(state, human);
+    require(initial && initial->live_actor, "Profession receipt fixture lost its live actor");
+    const auto learned = growth.definition.learned_spells;
+    const int quote = state.rules->jobs.at(target).change_points;
+    SteamProfessionStrategy flow;
+    CampaignCoverage coverage;
+    std::ostringstream log;
+    std::vector<CampaignReceipt> receipts;
+    const auto receive = [&](const CampaignReceipt &receipt) {
+        coverage.record(receipt, log);
+        receipts.push_back(receipt);
+    };
+    for (int step = 0; step < 600; ++step) {
+        const auto decision = flow.next(state, 0, steam_operating_reserve(state), receipts.empty());
+        auto input = decision.command;
+        if (!decision.handled) {
+            const auto *p = top(state);
+            require(p && (p->kind == ref::WorldScriptPageKind::dialogue ||
+                           p->legacy_page == 15 || p->legacy_page == 67 || p->legacy_page == 70),
+                    "Profession fixture reached an unrelated source page");
+            if (p->lifecycle == 2 &&
+                (p->legacy_page != 70 || sim::startup_world_human_page_ready(state, p->id))) {
+                app::WorldCommand acknowledge;
+                acknowledge.kind = Kind::acknowledge_page;
+                acknowledge.page = p->id;
+                if (p->legacy_page == 70) {
+                    acknowledge.kind = Kind::human_action;
+                    acknowledge.human_action = sim::StartupHumanPageAction::confirm;
+                    if (state.page_phases.at(p->id) == 2 && state.human_page_selections.at(p->id) != 1) {
+                        acknowledge.human_action = sim::StartupHumanPageAction::select;
+                        acknowledge.selection = 1;
+                    }
+                }
+                input = acknowledge;
+            }
+        }
+        if (input) {
+            auto candidate = state;
+            const auto result = apply(candidate, *input);
+            require(result.outcome == app::WorldCommandOutcome::applied,
+                    "Profession fixture's real source input was rejected");
+            flow.observe(state, *input, result, candidate, receive);
+            state = std::move(candidate);
+        }
+        if (receipts.size() == 4 && !flow.active())
+            break;
+        auto update = sim::prepare_startup_world_runtime(state);
+        require(update.candidate && sim::update_startup_world_render_cache(*update.candidate),
+                "Profession fixture failed its real source update");
+        flow.observe_tick(state, *update.candidate, receive);
+        state = std::move(*update.candidate);
+    }
+    const auto final = sim::startup_world_human_details(state, human);
+    require(receipts.size() == 4 && !flow.active() && final && final->profession == target &&
+                state.scene.world.world.ai.growth.at(human).definition.learned_spells == learned,
+            "Profession fixture did not finish its source flow with permanent learning unchanged");
+    const auto &paid = receipts[0], &set = receipts[1], &stats = receipts[2], &spell = receipts[3];
+    using Receipt = CampaignReceiptKind;
+    require(paid.kind == Receipt::profession_points_paid && paid.definition == target &&
+                paid.before[0] - paid.after[0] == quote && paid.after[1] == paid.before[1] + 1 &&
+                paid.before[2] == old_job && paid.after[2] == old_job && paid.before[3] == paid.after[3] &&
+                set.kind == Receipt::profession_set && set.definition == target && set.page != paid.page &&
+                set.before[0] == old_job && set.after[0] == target && set.before[2] == 54 && set.after[2] == 55 &&
+                stats.kind == Receipt::profession_stats_applied && stats.definition == target && stats.page == set.page &&
+                std::equal(stats.after.begin(), stats.after.end(), final->combat.begin()) &&
+                spell.kind == Receipt::spell_available && spell.definition == 0 && spell.page == stats.page &&
+                spell.step == stats.step && spell.before[0] == 0 && spell.after[0] == 1 &&
+                spell.before[1] == spell.after[1] && final->spells[0],
+            "Real62 payment,55 setter,197 stats or separate spell availability lacks its numeric receipt");
+    for (const auto &receipt : receipts)
+        require(receipt.recipient == human && receipt.subject == initial->live_actor->value,
+                "Profession/spell stages were joined across unrelated source humans or actors");
+    const auto saved = log.str();
+    flow.observe_tick(state, state, receive);
+    require(log.str() == saved && receipts.size() == 4,
+            "An unchanged profession observation republished a source receipt");
 }
 
 // Inventory eligibility is explicit; selection,75 consumption and76 shared improvement
@@ -1073,6 +1193,7 @@ void campaign_receipt_contract(const CampaignCommandConsumer &apply) {
     campaign_village_effect_contract(apply);
     steam_transaction_receipt_contract(apply);
     steam_people_receipt_contract(apply);
+    steam_profession_receipt_contract(apply);
     steam_investment_receipt_contract(apply);
 }
 } // namespace ark::test

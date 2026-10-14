@@ -107,6 +107,14 @@ ReceiptIdentity receipt_identity(CampaignReceiptKind kind) {
         return {"armour", "task_loot_claimed", 50, false, true};
     case Kind::accessory_task_loot_claimed:
         return {"accessory", "task_loot_claimed", 30, false, true};
+    case Kind::profession_points_paid:
+        return {"profession", "points_paid", 23, true, true, 25};
+    case Kind::profession_set:
+        return {"profession", "set", 23, true, true, 25};
+    case Kind::profession_stats_applied:
+        return {"profession", "stats_applied", 23, true, true, 25};
+    case Kind::spell_available:
+        return {"spell", "available", 4, true, true, 25};
     }
     throw std::runtime_error("Unknown campaign receipt kind");
 }
@@ -212,6 +220,40 @@ void CampaignCoverage::record(const CampaignReceipt &receipt, std::ostream &log)
                           : old[2] < 0 || old[2] > 5))
             throw std::runtime_error(
                 "Activity receipt lost its human/attribute/profession binding");
+    }
+    if (receipt.kind == CampaignReceiptKind::profession_points_paid) {
+        const auto &old = receipt.before, &now = receipt.after;
+        if (old[0] < 0 || old[0] > std::numeric_limits<int>::max() || now[0] < 0 || now[0] > 999 ||
+            now[0] > old[0] || old[1] < 0 ||
+            old[1] >= std::numeric_limits<int>::max() || now[1] != old[1] + 1 || old[2] < 0 ||
+            old[2] >= 23 || old[2] == receipt.definition || now[2] != old[2] || old[3] < 0 ||
+            old[3] > std::numeric_limits<int>::max() || now[3] != old[3])
+            throw std::runtime_error("Profession payment lost its points/history/current job/medals");
+    }
+    if (receipt.kind == CampaignReceiptKind::profession_set) {
+        const auto &old = receipt.before, &now = receipt.after;
+        if (old[0] < 0 || old[0] >= 23 || old[0] == receipt.definition || old[1] != old[0] ||
+            now[0] != receipt.definition || now[1] != receipt.definition || old[2] != 54 ||
+            now[2] != 55 || old[3] <= 0 || old[3] > std::numeric_limits<int>::max() ||
+            now[3] != old[3])
+            throw std::runtime_error("Profession setter lost its actual55 transition or actor binding");
+    }
+    if (receipt.kind == CampaignReceiptKind::profession_stats_applied) {
+        const auto valid_combat = [](std::int64_t value) {
+            return value >= std::numeric_limits<int>::min() && value <= 9999;
+        };
+        if (!std::all_of(receipt.before.begin(), receipt.before.end(), valid_combat) ||
+            !std::all_of(receipt.after.begin(), receipt.after.end(), valid_combat))
+            throw std::runtime_error("Profession stats receipt lost its four actual combat values");
+    }
+    if (receipt.kind == CampaignReceiptKind::spell_available) {
+        const auto &old = receipt.before, &now = receipt.after;
+        constexpr int spell_professions[]{5, 12, 18, 6};
+        if (old[0] != 0 || now[0] != 1 || old[1] < 0 || old[1] > 1 || now[1] != old[1] ||
+            old[2] < 0 || old[2] >= 23 || now[2] != old[2] || old[3] < 1 || old[3] > 10 ||
+            now[3] != old[3] ||
+            (now[1] != 1 && now[2] != spell_professions[receipt.definition] && now[3] != 10))
+            throw std::runtime_error("Spell availability lost its unchanged learned bit/job/level");
     }
     // Numeric evidence remains in the existing phase log. Only a fixed stage set is retained.
     log << "COVERAGE_RECEIPT\t" << identity.category << '\t' << receipt.definition << '\t'
@@ -617,7 +659,11 @@ void campaign_coverage_contract() {
         {CampaignReceiptKind::weapon_task_loot_claimed, "weapon", "task_loot_claimed", 33, 1},
         {CampaignReceiptKind::armour_task_loot_claimed, "armour", "task_loot_claimed", 50, 1},
         {CampaignReceiptKind::accessory_task_loot_claimed, "accessory", "task_loot_claimed", 30, 1},
-        {CampaignReceiptKind::human_home_tax_collected, "human", "home_tax_collected", 25, 0, 24}};
+        {CampaignReceiptKind::human_home_tax_collected, "human", "home_tax_collected", 25, 0, 24},
+        {CampaignReceiptKind::profession_points_paid, "profession", "points_paid", 23, 1, 24},
+        {CampaignReceiptKind::profession_set, "profession", "set", 23, 1, 24},
+        {CampaignReceiptKind::profession_stats_applied, "profession", "stats_applied", 23, 1, 24},
+        {CampaignReceiptKind::spell_available, "spell", "available", 4, 1, 24}};
     for (const auto &entry : cases) {
         CampaignReceipt receipt{
             entry.kind,      entry.definitions - 1, 2,           1, entry.subject,
@@ -635,13 +681,28 @@ void campaign_coverage_contract() {
             receipt.after = {5, 113, 0, 22};
             activity_values = "\t0\t108\t0\t22\t5\t113\t0\t22\n";
         }
+        std::string profession_values;
+        if (entry.kind == CampaignReceiptKind::profession_points_paid) {
+            receipt.before = {120, 0, 2, 5};
+            receipt.after = {65, 1, 2, 5};
+            profession_values = "\t120\t0\t2\t5\t65\t1\t2\t5\n";
+        } else if (entry.kind == CampaignReceiptKind::profession_set) {
+            receipt.before = {2, 2, 54, 1};
+            receipt.after = {22, 22, 55, 1};
+            profession_values = "\t2\t2\t54\t1\t22\t22\t55\t1\n";
+        } else if (entry.kind == CampaignReceiptKind::spell_available) {
+            receipt.before = {0, 0, 6, 1};
+            receipt.after = {1, 0, 6, 1};
+            profession_values = "\t0\t0\t6\t1\t1\t0\t6\t1\n";
+        }
         const auto start = log.str().size();
         coverage.record(receipt, log);
         const auto expected = std::string("COVERAGE_RECEIPT\t") + entry.category + '\t' +
                               std::to_string(receipt.definition) + '\t' + entry.stage + "\t2\t1\t" +
                               std::to_string(entry.recipient) + '\t' +
                               std::to_string(entry.subject) +
-                              (!activity_values.empty() ? activity_values
+                              (!profession_values.empty() ? profession_values
+                               : !activity_values.empty() ? activity_values
                                : entry.kind == CampaignReceiptKind::human_home_tax_collected
                                    ? "\t120\t0\t2\t0\t0\t0\t2\t0\n"
                                    : "\t120\t0\t2\t0\t0\t1\t2\t0\n");
@@ -733,6 +794,49 @@ void campaign_coverage_contract() {
             invalid = receipt;
             invalid.after[1] = 1;
             expect_rejected(invalid);
+        }
+        if (entry.kind == CampaignReceiptKind::profession_points_paid) {
+            for (const auto values : {std::array<std::int64_t, 4>{-1, 1, 2, 5},
+                                       {121, 1, 2, 5}, {1000, 1, 2, 5}, {65, 0, 2, 5},
+                                       {65, 1, 22, 5}, {65, 1, 2, 4}}) {
+                invalid = receipt;
+                invalid.after = values;
+                expect_rejected(invalid);
+            }
+            invalid = receipt;
+            invalid.after[0] = invalid.before[0]; // Wire permits zero fees; the source flow owns the quote.
+            coverage.record(invalid, log);
+            invalid.before[0] = 1200;
+            invalid.after[0] = 999; // The source clamps only the result, not the input.
+            coverage.record(invalid, log);
+        } else if (entry.kind == CampaignReceiptKind::profession_set) {
+            for (const auto values : {std::array<std::int64_t, 4>{22, 2, 55, 1},
+                                       {2, 22, 55, 1}, {22, 22, 54, 1}, {22, 22, 56, 1},
+                                       {22, 22, 55, 2}}) {
+                invalid = receipt;
+                invalid.after = values;
+                expect_rejected(invalid);
+            }
+        } else if (entry.kind == CampaignReceiptKind::profession_stats_applied) {
+            invalid = receipt;
+            invalid.after[0] = 10000;
+            expect_rejected(invalid);
+            invalid.after = invalid.before; // NewQ may be the gain even if all four combat values match.
+            coverage.record(invalid, log);
+        } else if (entry.kind == CampaignReceiptKind::spell_available) {
+            for (const auto values : {std::array<std::int64_t, 4>{0, 0, 6, 1},
+                                       {1, 1, 6, 1}, {1, 0, 5, 1}, {1, 0, 6, 10}}) {
+                invalid = receipt;
+                invalid.after = values;
+                expect_rejected(invalid);
+            }
+            invalid = receipt;
+            invalid.before[2] = invalid.after[2] = 5;
+            expect_rejected(invalid); // Current5 grants slot0, not this slot3.
+            invalid.before[1] = invalid.after[1] = 1;
+            coverage.record(invalid, log); // Existing learning can enter Q at a later source recompute.
+            invalid.after[1] = 0;
+            expect_rejected(invalid); // Availability never certifies changing the permanent bit.
         }
     }
     const CampaignReceipt hp{

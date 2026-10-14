@@ -4,6 +4,7 @@
 #include <iosfwd>
 #include <optional>
 #include <string_view>
+#include <vector>
 
 namespace ark::test {
 // Test-player budgets read the real Owner and quotes; they never change source fees.
@@ -24,6 +25,10 @@ struct SteamProgressPointGoal {
 // rank4 event, then the next rank's required facility. This is no unlock rule.
 std::optional<SteamProgressPointGoal> steam_progress_point_goal(const app::WorldState &state);
 std::optional<int> steam_required_facility(const app::WorldState &state);
+// One shared player reserve for pending layout blueprints, offered expansion and progression.
+// Passing raw51's frozen entries preserves its exact catalogue; other callers query the source.
+int steam_point_reserve(const app::WorldState &state,
+                        const std::vector<int> *offered_activities = nullptr);
 // A completed task leaves the intervening calendar month available for normal business.
 int steam_task_recovery_month(const app::WorldState &state);
 void inspect_steam_expenses(const app::WorldState &before, const app::WorldState &after,

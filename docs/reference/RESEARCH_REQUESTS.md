@@ -21,6 +21,15 @@
 
 本批正式bcf5340/4c7a490接职业61两统计页、赠礼64五分类/真实scroll及68/69冻结结果，整帧输入/首帧预选/页面生命周期分别验收，见[B1](../stages/B1-playable-prototype.md#research-4c7a490-human-catalogues)。755fdf2商品/强化/口碑、fd69d44村办/晋级领取、e4dc38a魔法壶七页，以及57a31cb/48574b5任务选择/募集与追踪均已接产品；cee9cee的25–28及31–33 Owner载荷/严格恢复已正式交付并接入；原字体、OS动态和全775定义仍分开认证。
 
+<a id="spell-consumption-receipts"></a>
+## 魔法真实经营的归因接口（2026-10-14）
+
+5708375的[战斗](../../research/dungeon_village_1/rules/ai/COMBAT.md)、[控制](../../research/dungeon_village_1/rules/ai/CONTROL.md)已闭合四槽来源及实际消费者，不请求重复逆向。产品已接职业三阶段及Q可用回执，下一步需分别证明实际施放、接触、延迟伤害和回复。攻击15/动作26才发type1投射（效果4–9），回复16/动作26直接改变实际J目标；排队、声音、attack_count或显示HP不作为上述效果证据。
+
+当前维护RuntimeResult只有最终Owner/检查点/失败信息；同轮type1可能已碰撞转type2，type2没有原effect或父ID，整轮HP可能混合多个物理/法术/回复。最小补交是**可选、只用于观察的实际消费者局部成功事实**：实例/定义/槽、瞄准与实际目标、父子投射身份、保存伤害/延迟、landed及局部HP目标/命中累计前后值；明确无法绑定时的gap。仅在完整外层事务成功后可发布，失败/晚期回滚不留下成功事实；不重复执行消费者或抽随机，不向Owner/玩家档补造历史，不要求改原type2字段。
+
+边界沿现combat_commit、ai_rewards、world_nonactor_schedule、combat_random短套件：竞争父子、换碰撞目标、缺引用/当前miss、尸体仍可命中、0/负回复及倒地B推进、晚期失败与随机原序。产品复用campaign_battle_receipts与receipt主责套件接真实长跑，不另起规则库/一次性套件；载入既有type2不能认证此前施放，Q仅可用也不认证学习/伤害。其余收入/任务/解锁经营继续独立推进。
+
 
 <a id="task-roster-owner-gap"></a>
 ## 任务名单与成果的Owner后继

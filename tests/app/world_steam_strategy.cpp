@@ -283,7 +283,7 @@ std::optional<Command> SteamVillageStrategy::next(const State &s) {
     const auto &p = top(s);
     if (p.lifecycle == 0)
         return {};
-    const auto people = people_.next(s, 0, reserve(s), false);
+    const auto people = people_.next(s, steam_point_reserve(s), reserve(s), false);
     if (people.handled)
         return people.command;
     if (income_.active()) {
@@ -362,7 +362,7 @@ std::optional<Command> SteamVillageStrategy::next(const State &s) {
                     return c;
                 }
             }
-            const auto value = people_.next(s, 0, reserve(s), true);
+            const auto value = people_.next(s, steam_point_reserve(s), reserve(s), true);
             if (value.handled)
                 return value.command;
             const auto invest = income_.next(s, reserve(s), true);
@@ -423,28 +423,7 @@ std::optional<Command> SteamVillageStrategy::next(const State &s) {
             if (s.quarter_counter <= 0)
                 return activity(p.id, Activity::cancel);
             int selected = -1, best = std::numeric_limits<int>::min();
-            int points_reserve{};
-            for (const auto &t : steam_village_layout())
-                if (t.role != SteamLayoutRole::residence && steam_layout_inside_fence(s, t) &&
-                    !buildable(s, t.definition) &&
-                    s.rules->facilities.at(t.definition).unlock_rank >= 0 &&
-                    s.rules->facilities.at(t.definition).unlock_rank <= s.rank)
-                    points_reserve = std::max(points_reserve,
-                                              s.rules->facility_initial.at(t.definition).capacity);
-            // An unaffordable expansion must accumulate its budget. Merely giving
-            // it a high score lets cheaper optional events spend those points first.
-            // Reserve only an expansion currently offered by the source catalogue.
-            if (outside_targets(s)) {
-                std::optional<int> expansion_cost;
-                for (const int id : v->entries) {
-                    const auto &a = s.rules->activities.at(id);
-                    if (a.parameters[2] == 3 &&
-                        (!expansion_cost || a.parameters[4] < *expansion_cost))
-                        expansion_cost = a.parameters[4];
-                }
-                if (expansion_cost)
-                    points_reserve = std::max(points_reserve, *expansion_cost);
-            }
+            const int points_reserve = steam_point_reserve(s, &v->entries);
             const auto progress = steam_progress_point_goal(s);
             if (progress) {
                 // Optional inexpensive events must not drain a pending unlock budget.
@@ -457,7 +436,6 @@ std::optional<Command> SteamVillageStrategy::next(const State &s) {
                     const int index = static_cast<int>(target - v->entries.begin());
                     return activity(p.id, v->selection == index ? Activity::confirm : Activity::select, index);
                 }
-                points_reserve = std::max(points_reserve, progress->points);
             }
             for (int n = 0; n < static_cast<int>(v->entries.size()); ++n) {
                 const auto &a = s.rules->activities.at(v->entries[n]);

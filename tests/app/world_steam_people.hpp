@@ -2,6 +2,7 @@
 
 #include "world_active_income_strategy.hpp"
 #include "world_campaign_coverage.hpp"
+#include "world_steam_professions.hpp"
 #include <iosfwd>
 #include <map>
 #include <vector>
@@ -22,11 +23,11 @@ class SteamPeopleStrategy {
     // submit its actual residence candidate. This query only selects a person.
     static std::optional<int> eligible_homeless(const app::WorldState &state,
                                                 std::int64_t cash_reserve);
-    // The caller saves only at a stable main-scene boundary. Mid-gift saves fail
+    // The caller saves only at a stable main-scene boundary. Mid-management saves fail
     // explicitly, rather than discarding a pending selection or fairness history.
     void encode(std::ostream &out) const;
     static SteamPeopleStrategy decode(std::istream &in);
-    bool active() const { return gift_.has_value(); }
+    bool active() const { return gift_.has_value() || professions_.active(); }
     int awarded() const { return awarded_; }
     int medals() const { return awarded_; }
     int gifts() const {
@@ -48,6 +49,7 @@ class SteamPeopleStrategy {
     bool consumed_{};
     int awarded_{};
     std::map<int, int> equipment_gifts_;
+    SteamProfessionStrategy professions_;
     void observe_world(const app::WorldState &before, const app::WorldState &after,
                        std::vector<CampaignReceipt> &pending);
 };

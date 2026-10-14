@@ -150,10 +150,12 @@ function inventory(text) {
     const key = sourceKey(row.category, row.id);
     need(!rows.has(key) && (catalogue.has(key) || ['spell', 'campaign', 'function'].includes(row.category)),
       'duplicate/unknown product definition ' + key);
+    if (row.category === 'spell') need(row.id < 4, 'unknown product spell slot');
     rows.set(key, row);
   }
   for (const [key, {table}] of catalogue)
     need(rows.has(key) || ['event', 'popularity_bonus'].includes(table.kind), 'missing product definition ' + key);
+  for (let slot = 0; slot < 4; ++slot) need(rows.has(`spell:${slot}`), 'missing product spell slot');
   return rows;
 }
 function scope(table, record) {
@@ -208,12 +210,14 @@ function report(rows) {
           : ['event', 'popularity_bonus'].includes(table.kind)
             ? 'source_contract;actual_trigger_and_effect_if_reachable;successor;applicable_persistence' : undefined)
     })),
-    product_checklist: [...rows].filter(([key]) => !catalogue.has(key)).map(([, row]) => row)
+    // Spell slots remain the existing product checklist, outside the775 source definitions.
+    product_checklist: [...rows].filter(([key]) => !catalogue.has(key)).map(([key, row]) =>
+      row.category === 'spell' ? {...row, key, observed: [], verified_receipts: {}} : row)
   };
 }
 // Receipt values describe the already-asserted observation; no business algorithm is run here.
 const receiptStages = {
-  points_paid: 'village_activity', effect_queued: 'village_activity', pot_opened: 'village_activity',
+  points_paid: ['village_activity', 'profession'], effect_queued: 'village_activity', pot_opened: 'village_activity',
   satisfaction_applied: 'village_activity', attribute_applied_to_human: 'village_activity', bound_use: 'item',
   attribute_applied: 'item', obtained: 'item', hp_restored: 'item', discovered: 'magic_recipe',
   elements_paid_and_crafted: 'magic_recipe', blueprint_points_paid: 'facility',
@@ -223,7 +227,7 @@ const receiptStages = {
   home_tax_collected: 'human', retirement_cash_committed: 'monster', retirement_cash_month_reset: 'monster',
   victory_committed: 'quest', commerce_bought: 'item', facility_bound_use: 'item',
   item_improvement_applied: 'facility', task_loot_claimed: ['item', 'weapon', 'armour', 'accessory'],
-  conditions_promoted: 'rank'
+  conditions_promoted: 'rank', set: 'profession', stats_applied: 'profession', available: 'spell'
 };
 function* receipts(text, phase) {
   for (const [line, content] of text.split(/\r?\n/).entries()) {
@@ -235,7 +239,8 @@ function* receipts(text, phase) {
     const key = sourceKey(fields[1], id); // Display ranks1..5 map to source terms0..4.
     const numbers = fields.slice(4).map(Number);
     need(numbers.every(Number.isSafeInteger) && numbers[0] >= 0 && numbers[1] > 0 && numbers[3] >= 0 &&
-      [].concat(receiptStages[stage] ?? []).includes(category) && catalogue.has(key), 'receipt identity/binding');
+      [].concat(receiptStages[stage] ?? []).includes(category) &&
+      (catalogue.has(key) || (category === 'spell' && id >= 0 && id < 4)), 'receipt identity/binding');
     if (['bound_use', 'attribute_applied', 'hp_restored'].includes(stage)) need(numbers[2] >= 0, 'receipt human binding');
     if (['reward_equipped', 'combat_attributes_applied', 'medal_awarded', 'home_admitted', 'home_tax_collected'].includes(stage))
       need(numbers[2] >= 0 && numbers[2] < 25, 'receipt source human binding');
@@ -267,10 +272,63 @@ function* receipts(text, phase) {
         numbers[8] === numbers[9] && [numbers[4], numbers[8]].every(value => value >= 0 && value <= 100)
         : numbers[6] >= 0 && numbers[6] <= 5, 'receipt activity applied-value binding');
     }
+    if (category === 'profession' || category === 'spell')
+      need(numbers[2] >= 0 && numbers[2] < 25 && numbers[3] > 0,
+        'receipt profession/spell source human and actor binding');
+    if (category === 'profession' && stage === 'points_paid')
+      need(numbers[4] >= 0 && numbers[4] <= 2147483647 && numbers[8] >= 0 && numbers[8] <= 999 &&
+        numbers[8] <= numbers[4] &&
+        numbers[5] >= 0 && numbers[5] < 2147483647 && numbers[9] === numbers[5] + 1 &&
+        numbers[6] >= 0 && numbers[6] < 23 && numbers[6] !== id && numbers[10] === numbers[6] &&
+        numbers[7] >= 0 && numbers[7] <= 2147483647 && numbers[11] === numbers[7],
+      'receipt profession points/history/current job/medals');
+    if (category === 'profession' && stage === 'set')
+      need(numbers[4] >= 0 && numbers[4] < 23 && numbers[4] !== id && numbers[5] === numbers[4] &&
+        numbers[8] === id && numbers[9] === id && numbers[6] === 54 && numbers[10] === 55 &&
+        numbers[7] > 0 && numbers[7] <= 2147483647 && numbers[11] === numbers[7],
+      'receipt profession actual55 setter transition');
+    if (category === 'profession' && stage === 'stats_applied')
+      need(numbers.slice(4).every(value => value >= -2147483648 && value <= 9999),
+        'receipt profession four actual combat values');
+    if (category === 'spell')
+      need(numbers[4] === 0 && numbers[8] === 1 && [0, 1].includes(numbers[5]) &&
+        numbers[9] === numbers[5] && numbers[6] >= 0 && numbers[6] < 23 && numbers[10] === numbers[6] &&
+        numbers[7] >= 1 && numbers[7] <= 10 && numbers[11] === numbers[7] &&
+        (numbers[9] === 1 || numbers[10] === [5, 12, 18, 6][id] || numbers[11] === 10),
+      'receipt spell availability with unchanged permanent learning/job/level');
     yield {key, stage, phase, line: line + 1,
       step: numbers[0], page: numbers[1], recipient: numbers[2], subject: numbers[3],
       before: numbers.slice(4, 8), after: numbers.slice(8, 12)};
   }
+}
+// Join the actual62 payment,55 setter and197 source finish for one human/actor.
+// Stage names alone never certify a change, let alone mastery or full-campaign coverage.
+function joinProfessionReceipts(pending, receipt) {
+  const profession = receipt.key.startsWith('profession:'), spell = receipt.key.startsWith('spell:');
+  if (!profession && !spell) return null;
+  const prior = pending.get(receipt.recipient), id = Number(receipt.key.split(':')[1]);
+  if (profession && receipt.stage === 'points_paid') {
+    need(!prior || prior.stats, 'overlapping profession payment before source finish');
+    pending.set(receipt.recipient, {paid: receipt, spells: new Set()});
+  } else if (profession && receipt.stage === 'set') {
+    need(prior && !prior.set && prior.paid.key === receipt.key && prior.paid.subject === receipt.subject &&
+      prior.paid.page !== receipt.page && prior.paid.step <= receipt.step &&
+      prior.paid.before[2] === receipt.before[0] && prior.paid.after[1] === receipt.before[3],
+    'profession setter without matching source payment');
+    prior.set = receipt;
+  } else if (profession && receipt.stage === 'stats_applied') {
+    need(prior?.set && !prior.stats && prior.set.key === receipt.key && prior.set.subject === receipt.subject &&
+      prior.set.page === receipt.page && prior.set.step <= receipt.step,
+    'profession stats without matching actual setter');
+    prior.stats = receipt;
+    return {paid: prior.paid, set: prior.set, stats: receipt};
+  } else if (spell) {
+    need(prior?.stats && prior.stats.subject === receipt.subject && prior.stats.page === receipt.page &&
+      prior.stats.step === receipt.step && Number(prior.stats.key.split(':')[1]) === receipt.after[2] &&
+      !prior.spells.has(id), 'spell availability without matching profession finish');
+    prior.spells.add(id);
+  }
+  return null;
 }
 function coverageContract(rows) {
   const actual = report(rows), get = key => actual.records.find(row => row.key === key);
@@ -447,6 +505,54 @@ function coverageContract(rows) {
       }
     }
   }
+  // Wire qualification only; the C++ source-command fixtures own the actual quote/effect oracle.
+  const careerWire = (category, id, stage, before, after, page = 1, step = 2) =>
+    ['COVERAGE_RECEIPT', category, id, stage, step, page, 24, 7, ...before, ...after].join('\t');
+  const careerCases = [
+    ['profession', 22, 'points_paid', [120,0,2,5], [65,1,2,5]],
+    ['profession', 22, 'set', [2,2,54,1], [22,22,55,1]],
+    ['profession', 22, 'stats_applied', [100,30,30,10], [100,30,30,10]],
+    ['spell', 3, 'available', [0,0,6,1], [1,0,6,1]]
+  ];
+  for (const [category, id, stage, before, after] of careerCases) {
+    const fields = careerWire(category, id, stage, before, after).split('\t');
+    const parsed = [...receipts(fields.join('\t'), 'contract')];
+    need(parsed.length === 1 && parsed[0].key === `${category}:${id}` && parsed[0].stage === stage &&
+      parsed[0].before.join(',') === before.join(',') && parsed[0].after.join(',') === after.join(','),
+    'profession/spell four-value wire mapping');
+    for (const [field, value] of [[2, category === 'spell' ? '4' : '23'], [5, '0'], [6, '-1'], [6, '25'],
+      [7, '0'], [3, 'cast'], ...(stage === 'points_paid' ? [[12, '-1'], [12, '121'], [13, '0'], [14, '22'], [15, '4']]
+        : stage === 'set' ? [[12, '2'], [13, '2'], [14, '54'], [14, '56'], [15, '2']]
+        : stage === 'stats_applied' ? [[12, '10000']]
+        : [[12, '0'], [13, '1'], [14, '5'], [15, '10']])]) {
+      const invalid = [...fields]; invalid[field] = value;
+      expectReject(() => [...receipts(invalid.join('\t'), 'contract')]);
+    }
+  }
+  need([...receipts(careerWire('profession', 0, 'points_paid', [120,0,2,0], [120,1,2,0]), 'contract')].length === 1 &&
+    [...receipts(careerWire('profession', 22, 'points_paid', [1200,0,2,5], [999,1,2,5]), 'contract')].length === 1,
+  'zero-point quote or source-clamped high input rejected');
+  need([...receipts(careerWire('spell', 3, 'available', [0,1,5,1], [1,1,5,1]), 'contract')].length === 1,
+    'already-learned spell awaiting source recompute rejected as unavailable');
+  expectReject(() => [...receipts(careerWire('spell', 3, 'available', [0,0,5,1], [1,0,5,1]), 'contract')]);
+  expectReject(() => [...receipts(careerWire('spell', 3, 'available', [0,1,5,1], [1,0,5,1]), 'contract')]);
+  const paid = [...receipts(careerWire('profession', 6, 'points_paid', [120,0,2,1], [110,1,2,1], 10, 2), 'contract')][0];
+  const set = [...receipts(careerWire('profession', 6, 'set', [2,2,54,1], [6,6,55,1], 11, 3), 'contract')][0];
+  const stats = [...receipts(careerWire('profession', 6, 'stats_applied', [100,30,30,10], [100,30,30,10], 11, 4), 'contract')][0];
+  const available = [...receipts(careerWire('spell', 3, 'available', [0,0,6,1], [1,0,6,1], 11, 4), 'contract')][0];
+  const changes = new Map();
+  need(joinProfessionReceipts(changes, paid) === null && joinProfessionReceipts(changes, set) === null &&
+    joinProfessionReceipts(changes, stats)?.paid === paid && joinProfessionReceipts(changes, available) === null,
+  'source profession consumption or spell availability lost its separate linked stages');
+  expectReject(() => joinProfessionReceipts(new Map(), set));
+  expectReject(() => joinProfessionReceipts(new Map(), stats));
+  expectReject(() => joinProfessionReceipts(new Map(), available));
+  expectReject(() => joinProfessionReceipts(changes, available));
+  for (const altered of [{...set, subject: 8}, {...set, page: 10}, {...set, key: 'profession:5'},
+    {...set, before: [2,2,54,2]}, {...set, step: 1}]) {
+    const pending = new Map(); joinProfessionReceipts(pending, paid);
+    expectReject(() => joinProfessionReceipts(pending, altered));
+  }
   expectReject(() => [...receipts('COVERAGE_RECEIPT\titem\t29\thp_restored\t0\t0\t1\t1\t1\t0\t0\t0\t51\t0\t0\t0', 'contract')]);
   const retired = 'COVERAGE_RECEIPT\tmonster\t35\tretirement_cash_committed\t2\t1\t-1\t7\t0\t99\t0\t1\t1\t100\t120\t1';
   for (const rank of [1, 3, 5]) {
@@ -480,19 +586,26 @@ function coverageContract(rows) {
   }
 }
 async function captureCoverage(directory, phases, initialRows) {
-  const result = report(initialRows), byKey = new Map(result.records.map(row => [row.key, row]));
+  const result = report(initialRows), byKey = new Map([...result.records,
+    ...result.product_checklist.filter(row => row.category === 'spell')].map(row => [row.key, row]));
   for (const name of (await fs.readdir(directory)).filter(name => /^coverage-segment-[0-9]+\.tsv$/.test(name))) {
     const rows = inventory(await fs.readFile(path.join(directory, name), 'utf8'));
     for (const [key, row] of rows) if (byKey.has(key) && row.observed_in_segment !== 'UNOBSERVED')
       byKey.get(key).observed = [...new Set([...byKey.get(key).observed, ...row.observed_in_segment.split(';').filter(Boolean)])];
   }
   for (const phase of phases.filter(value => !value.reused)) {
+    const professions = new Map(); // At most one pending/latest change per source human in this phase.
     for (const receipt of receipts(await fs.readFile(path.join(directory, `${phase.phase}.log`), 'utf8'), phase.phase)) {
-      const row = byKey.get(receipt.key), previous = row.verified_receipts[receipt.stage];
+      const row = byKey.get(receipt.key);
+      need(row, 'receipt is missing its source/product checklist row');
+      const change = joinProfessionReceipts(professions, receipt), previous = row.verified_receipts[receipt.stage];
       // Keep a bounded per-definition/stage summary; every original numeric receipt stays in its phase log.
       row.verified_receipts[receipt.stage] = {count: (previous?.count ?? 0) + 1,
         first: previous?.first ?? {phase: receipt.phase, line: receipt.line}, last: receipt,
         phase_status: phase.code === 0 && !phase.timedOut ? 'passed' : 'failed'};
+      if (change) row.profession_changes = {count: (row.profession_changes?.count ?? 0) + 1,
+        last: change, phase_status: phase.code === 0 && !phase.timedOut ? 'passed' : 'failed',
+        scope: 'Source payment, actual55 setter and source197 finish; growth/mastery and persistence still require evidence'};
     }
   }
   result.cold_endpoint_checks = phases.filter(phase => ['verify', 'verify-pot', 'verify-late', 'verify-third'].includes(phase.phase))

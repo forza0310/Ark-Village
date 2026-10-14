@@ -46,6 +46,9 @@
 - [x] 月104→105真实300G移动博物馆及20G补两格道路，布局恢复50/50、原住宅/住户保留，保存和独立冷载通过，见[B1](docs/stages/B1-playable-prototype.md#research-ea9876a-commerce-top)。
 - [x] 月107任务47胜利、任务道具9/18实际强化博物馆64、玩家保存及独立冷载通过；50/50布局与既有住户保持，见[现状](docs/stages/ACTIVE_VILLAGE_PLAN.md)。
 - [x] 月107实际更新边界诊断与修后21预算接续：1500轮有界观察、正式160点预算预留、107→108玩家保存及独立冷载通过，复用现诊断/预算合同，见[B1](docs/stages/B1-playable-prototype.md#campaign-month107-activity-trace)。
+- [x] 108→109→110真实经营与独立冷载：任务36/定义17胜利、道具18/3强化及博物馆64首次营业1030G通过，见[B1](docs/stages/B1-playable-prototype.md#campaign-month110-museum)。
+- [x] 月110修后分支至111保存/独立冷载通过：人物0/1真实转入职业4、各R=1，保留160点举办21；五星人气达标，最高月收入仍差30444G，见[B1](docs/stages/B1-playable-prototype.md#campaign-profession-consumption)。旧超时观察保留、不作玩家档。
+- [x] 61–63真实付款→55切换→197收尾及魔法可用回执、公共预算/pending存储阻断已接现经营套件；两Debug标准及Release受影响检查通过，见[方案](docs/MILESTONES.md#campaign-profession-consumption)。4魔法实际施法/伤害/回复及全23职业仍未覆盖。
 - [ ] 从有效月108前缀继续博物馆首次营业：结束查询有候选格，但定向观察无实际64目标binding/收费；sales仍0/共享魅力14。五星人气差134、最高月收入差30460，21首次举办还差64点；继续真实任务取得库存/强化新店和活动消费，核原感知及选择，再通关/继续/继承与全部可达定义，不注资或降低阈值。
 
 ## 表现与研究边界

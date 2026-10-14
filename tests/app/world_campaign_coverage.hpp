@@ -51,7 +51,11 @@ enum class CampaignReceiptKind {
     weapon_paid_equipped,
     armour_paid_equipped,
     accessory_paid_equipped,
-    activity_popularity_queued
+    activity_popularity_queued,
+    profession_points_paid,
+    profession_set,
+    profession_stats_applied,
+    spell_available
 };
 struct CampaignReceipt {
     CampaignReceiptKind kind{};

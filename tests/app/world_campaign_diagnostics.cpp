@@ -260,6 +260,24 @@ void inspect_campaign_progress(const app::WorldState &s, std::ostream &out) {
         }
     }
     const auto &ai = s.scene.world.world.ai;
+    // Durable definition progress can outlive the current scene actor. Cold-load
+    // inspection must expose R and learning separately from the derived Q cache.
+    for (const auto &[human, present] : s.human_presence) {
+        if (!present)
+            continue;
+        const auto &growth = ai.growth.at(human);
+        const int job = growth.definition.current_profession;
+        out << "HUMAN_PROFESSION human=" << human << " job=" << job
+            << " level=" << growth.definition.profession_levels.at(job)
+            << " changes=" << s.human_profession_changes.at(human).at(job)
+            << " learned=";
+        for (const bool learned : growth.definition.learned_spells)
+            out << learned;
+        out << " available=";
+        for (const bool available : growth.derived.available_spells)
+            out << available;
+        out << '\n';
+    }
     for (const auto &[id, actor] : ai.battle.actors) {
         const bool human = actor.kind == sim::rules::ActorKind::human;
         out << "ACTOR_PROGRESS id=" << id.value << " human=" << human

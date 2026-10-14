@@ -1,6 +1,9 @@
 #include "world_steam_budget.hpp"
+#include "world_steam_layout.hpp"
 #include "../support/world_fixture.hpp"
+#include "ark/simulation/facilities/startup_world_building.hpp"
 #include "ark/simulation/village/rules/world_calendar_tasks.hpp"
+#include "ark/simulation/village/rules/world_village_activity.hpp"
 #include <algorithm>
 #include <sstream>
 #include <stdexcept>
@@ -121,6 +124,48 @@ std::optional<SteamProgressPointGoal> steam_progress_point_goal(const State &s) 
         return SteamProgressPointGoal{SteamProgressPurchase::activity, 21,
                                       s.rules->activities.at(21).parameters[4]};
     return {};
+}
+int steam_point_reserve(const State &s, const std::vector<int> *offered_activities) {
+    const auto buildings = sim::startup_world_build_catalog(s);
+    require(buildings.has_value(), "point reserve needs the real construction catalogue");
+    int reserve{};
+    bool needs_expansion{};
+    for (const auto &target : steam_village_layout()) {
+        const bool inside = steam_layout_inside_fence(s, target);
+        needs_expansion |= !inside;
+        const bool buildable = std::any_of(buildings->begin(), buildings->end(), [&](const auto &group) {
+            return std::find(group.begin(), group.end(), target.definition) != group.end();
+        });
+        const auto &definition = s.rules->facilities.at(target.definition);
+        if (target.role != SteamLayoutRole::residence && inside && !buildable &&
+            definition.unlock_rank >= 0 && definition.unlock_rank <= s.rank)
+            reserve = std::max(reserve, s.rules->facility_initial.at(target.definition).capacity);
+    }
+    std::vector<int> queried;
+    if (needs_expansion) {
+        if (!offered_activities) {
+            std::vector<ref::WorldVillageActivityDefinition> definitions;
+            for (const auto &a : s.rules->activities)
+                definitions.push_back({a.identity, s.scripts.activities.at(a.identity).status,
+                                       s.activity_flags.at(a.identity), s.activity_counts.at(a.identity),
+                                       a.parameters[2], a.parameters[3], a.parameters[4], a.parameters[5]});
+            const auto available = ref::catalogue_world_village_activities(definitions);
+            require(available.has_value(), "point reserve needs the source activity qualifications");
+            queried = *available;
+            offered_activities = &queried;
+        }
+        std::optional<int> cost;
+        for (const int id : *offered_activities) {
+            const auto &a = s.rules->activities.at(id);
+            if (a.parameters[2] == 3 && (!cost || a.parameters[4] < *cost))
+                cost = a.parameters[4];
+        }
+        if (cost)
+            reserve = std::max(reserve, *cost);
+    }
+    if (const auto goal = steam_progress_point_goal(s))
+        reserve = std::max(reserve, goal->points);
+    return reserve;
 }
 int steam_task_recovery_month(const State &s) { return month(s) + 2; }
 

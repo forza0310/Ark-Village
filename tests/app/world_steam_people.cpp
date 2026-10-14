@@ -49,6 +49,17 @@ Command human_command(std::uint64_t page, Human action, int selection = 0) {
     return c;
 }
 int kind(int slot) { return slot == 0 ? 1 : slot == 3 ? 3 : 2; }
+bool gift_confirm_has_effect(const State &s, int raw, std::uint64_t page) {
+    const int counter = s.page_counters.at(page);
+    if (raw == 66)
+        return counter < 40 || counter >= 85; // Preserve the source's first early fast-forward.
+    if (raw == 68) {
+        const auto plan = ref::prepare_world_effort_display(counter, true, s.equipment_attribute_display[2]);
+        require(plan.has_value(), "equipment display has invalid source timing or deltas");
+        return plan->closed || plan->counter != counter;
+    }
+    return true;
+}
 std::optional<ref::HumanManagementEquipment> equipment(const State &s, int slot, int id) {
     const auto f =
         std::find_if(s.rules->equipment.begin(), s.rules->equipment.end(),
@@ -104,10 +115,11 @@ std::optional<int> award_index(const State &s, const std::vector<int> &ranked) {
 
 IncomeDecision SteamPeopleStrategy::next(const State &s, int reserved_points,
                                          std::int64_t cash_reserve, bool start) {
-    (void)reserved_points; // No point-funded cultivation or speculative profession change here.
     const auto *p = top(s);
     if (!p || s.scene.framework_paused)
         return {};
+    if (professions_.active())
+        return professions_.next(s, reserved_points, cash_reserve, false);
     if (p->legacy_page == 87 && p->kind == ref::WorldScriptPageKind::raw_page) {
         const auto list = s.award_rankings.find(p->id);
         if (list == s.award_rankings.end())
@@ -166,6 +178,15 @@ IncomeDecision SteamPeopleStrategy::next(const State &s, int reserved_points,
                     }
                 }
         }
+        // Free acquired equipment keeps its old precedence. A legal surplus-point profession
+        // flow can precede a paid gift, without changing gift fairness or serialized history.
+        if (!gift_ || gift_->charge > 0) {
+            const auto training = professions_.next(s, reserved_points, cash_reserve, true);
+            if (training.handled) {
+                gift_.reset();
+                return training;
+            }
+        }
         if (!gift_)
             return {};
         consumed_ = false;
@@ -208,6 +229,8 @@ IncomeDecision SteamPeopleStrategy::next(const State &s, int reserved_points,
     }
     if (raw == 70 && s.page_phases.at(p->id) == 2 && s.human_page_selections.at(p->id) != 1)
         return {true, human_command(p->id, Human::select, 1)};
+    if ((raw == 66 || raw == 68) && !gift_confirm_has_effect(s, raw, p->id))
+        return {true, {}}; // Keep the next real update; avoid a known no-op input transaction.
     return {true, human_command(p->id, Human::confirm)};
 }
 
@@ -286,6 +309,7 @@ void SteamPeopleStrategy::observe_world(const State &before, const State &after,
 void SteamPeopleStrategy::observe(const State &before, const Command &c,
                                   const app::WorldCommandResult &result, const State &after,
                                   const CampaignReceiptSink &receipts) {
+    professions_.observe(before, c, result, after, receipts);
     if (result.outcome != app::WorldCommandOutcome::applied)
         return;
     std::vector<CampaignReceipt> pending;
@@ -318,6 +342,7 @@ void SteamPeopleStrategy::observe(const State &before, const Command &c,
 }
 void SteamPeopleStrategy::observe_tick(const State &before, const State &after,
                                        const CampaignReceiptSink &receipts) {
+    professions_.observe_tick(before, after, receipts);
     std::vector<CampaignReceipt> pending;
     observe_world(before, after, pending);
     if (receipts)
@@ -340,7 +365,7 @@ std::optional<int> SteamPeopleStrategy::eligible_homeless(const State &s, std::i
     return best;
 }
 void SteamPeopleStrategy::encode(std::ostream &out) const {
-    require(!gift_, "cannot save a pending gift flow");
+    require(!active(), "cannot save a pending gift or profession flow");
     out << "STEAM_PEOPLE_1 " << awarded_ << ' ' << equipment_gifts_.size() << '\n';
     for (const auto &[person, count] : equipment_gifts_)
         out << person << ' ' << count << '\n';
@@ -364,6 +389,51 @@ SteamPeopleStrategy SteamPeopleStrategy::decode(std::istream &in) {
 
 void steam_people_contract() {
     auto s = initial_world();
+    // A legal live record from the real producer, then explicit selection qualifications.
+    // This is a short player-policy fixture, never a natural mastery or acquired-stock claim.
+    auto training = s;
+    const auto arrival = sim::startup_world_runtime_adapter().arrival;
+    const int count = training.arrival_counter;
+    for (int n = 0; n < count && training.scene.world.world.ai.human_order.empty(); ++n) {
+        auto next = arrival(training);
+        require(next.has_value(), "profession coordination needs the real source first arrival");
+        training = std::move(*next);
+    }
+    require(!training.scene.world.world.ai.human_order.empty(), "profession fixture has no live actor");
+    const auto actor = training.scene.world.world.ai.human_order.front();
+    const int human = training.scene.world.world.ai.battle.actors.at(actor).definition;
+    training.scripts.pages.resize(1); // Explicit stable-page qualification; original s stays cold.
+    training.scene.scene_state = 0;
+    auto &growth = training.scene.world.world.ai.growth.at(human);
+    growth.definition.current_profession = 0;
+    growth.definition.profession_levels.at(0) = 10;
+    training.actor_metadata.at(actor).profession = 0;
+    training.scripts.professions.at(5).status = 1;
+    training.human_calendar.at(human).celebrations = 99;
+    training.village_points = 999;
+    training.scene.world.world.ai.accounting = ref::PeriodAccounting(100000);
+    for (auto &[key, entry] : training.catalog)
+        if (key.first != 0)
+            entry.status = 0; // No competing equipment offer in this profession-only qualification.
+    SteamPeopleStrategy deferred;
+    require(!deferred.next(training, 1000, 0, true).handled && !deferred.active(),
+            "unfunded reserved goals must prevent the player opening a profession flow");
+    SteamPeopleStrategy cultivation;
+    const auto proposed = cultivation.next(training, 0, 0, true);
+    require(proposed.handled && proposed.command && proposed.command->kind == Kind::open_human &&
+                proposed.command->definition == human && cultivation.active(),
+            "legal surplus-point cultivation must start through the real human entry");
+    bool pending_rejected{};
+    std::ostringstream pending;
+    try {
+        cultivation.encode(pending);
+    } catch (const std::runtime_error &) {
+        pending_rejected = true;
+    }
+    require(pending_rejected && pending.str().empty() && training.village_points == 999 &&
+                growth.definition.current_profession == 0 &&
+                s.scene.world.world.ai.human_order.empty(),
+            "pending profession cannot enter the unchanged sidecar or mutate the source new-world Owner");
     const std::vector<int> list{0, 1, 2};
     for (const int person : list) {
         s.human_presence.at(person) = 1;

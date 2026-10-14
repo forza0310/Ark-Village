@@ -9,7 +9,7 @@
 
 namespace ark::desktop {
 struct SpritePickTarget {
-    enum class Kind { blocker, facility, human };
+    enum class Kind { blocker, facility, human, monster };
     Kind kind{Kind::blocker};
     std::uint64_t id{};
 };

@@ -116,9 +116,10 @@ void inspect_campaign_progress(const app::WorldState &s, std::ostream &out) {
                 << " combat=";
             for (const int value : growth.derived.combat)
                 out << value << ',';
-            out << " task_member="
-                << (std::find(s.participants.begin(), s.participants.end(), actor.definition) !=
-                    s.participants.end());
+            const bool roster_member = std::find(s.participants.begin(), s.participants.end(),
+                                                 actor.definition) != s.participants.end();
+            out << " task_roster_member=" << roster_member
+                << " task_member=" << (s.active_task && roster_member);
         }
         if (const auto context = s.scene.world.world.actors.find(id);
             context != s.scene.world.world.actors.end()) {

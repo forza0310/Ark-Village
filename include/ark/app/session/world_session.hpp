@@ -40,7 +40,9 @@ enum class WorldCommandKind {
     cancel_edit,
     open_facility,
     open_human,
+    open_monster,
     human_action,
+    monster_action,
     tax_action,
     open_menu_village_activities,
     open_village_activities,
@@ -77,6 +79,7 @@ enum class WorldCommandKind {
     open_source_save_menu,
     manual_input,
     human_input,
+    tax_input,
     facility_catalog_input,
     facility_item_input,
     village_activity_input,
@@ -155,6 +158,7 @@ struct WorldCommand {
     simulation::StartupWorldMenuInput menu_input;
     simulation::StartupManualInput manual_input;
     simulation::StartupHumanCatalogueInput human_input; // One source input frame, no device state.
+    simulation::StartupWorldTaxInput tax_input;
     simulation::StartupFacilityCatalogInput facility_catalog_input;
     simulation::StartupFacilityItemInput facility_item_input;
     simulation::StartupVillageActivityInput village_activity_input;
@@ -230,12 +234,16 @@ class WorldSession {
     std::uint64_t open_facility(std::uint64_t facility);
     // Both identities must still describe the same active human when the FIFO is consumed.
     std::uint64_t open_human(simulation::rules::CharacterId actor, int definition);
+    // The click binds a live actor; the source page keeps only its shared definition.
+    std::uint64_t open_monster(simulation::rules::CharacterId actor, int observed_definition);
+    std::uint64_t act_monster(std::uint64_t page, bool cancel = false);
     std::uint64_t act_human(std::uint64_t page, simulation::StartupHumanPageAction action,
                             int selection = 0);
     std::uint64_t input_human(std::uint64_t page,
                               const simulation::StartupHumanCatalogueInput &input);
     std::uint64_t act_tax(std::uint64_t page, simulation::StartupWorldTaxAction action,
                           int selection = 0);
+    std::uint64_t input_tax(std::uint64_t page, const simulation::StartupWorldTaxInput &input);
     std::uint64_t open_menu_village_activities();
     std::uint64_t open_village_activities();
     std::uint64_t act_village_activity(std::uint64_t page,

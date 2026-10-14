@@ -41,6 +41,7 @@ int main() {
                              "world-task-victory",
                              "world-task-popularity",
                              "world-combat",
+                             "world-monster-intro",
                              "world-reward",
                              "world-exp",
                              "world-rest",

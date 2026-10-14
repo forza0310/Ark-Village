@@ -357,6 +357,14 @@ void residence_tax_receipt_contract() {
         };
         auto displayed = before;
         const auto list = install(displayed, 90);
+        for (int n = 0; n < 4 && top(displayed) && top(displayed)->lifecycle != 2; ++n) {
+            auto initialized = sim::prepare_startup_world_runtime(displayed);
+            require(initialized.candidate.has_value(),
+                    "Tax receipt fixture source initialization failed");
+            displayed = std::move(*initialized.candidate);
+        }
+        require(top(displayed) && top(displayed)->id == list && top(displayed)->lifecycle == 2,
+                "Tax receipt fixture must admit90 before confirmation");
         const auto old_list = displayed;
         require(
             sim::act_startup_world_tax_page(displayed, list, sim::StartupWorldTaxAction::confirm) ==

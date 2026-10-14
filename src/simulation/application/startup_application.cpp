@@ -409,6 +409,9 @@ std::string StartupApplication::act_tax_page(std::uint64_t page,
                                             StartupWorldTaxAction action, int selection) {
     return apply_world_action([&](auto &world) { return world.act_tax_page(page, action, selection); });
 }
+std::string StartupApplication::input_tax_page(std::uint64_t page, const StartupWorldTaxInput &input) {
+    return apply_world_action([&](auto &world) { return world.input_tax_page(page, input); });
+}
 std::string StartupApplication::act_village_activity_page(std::uint64_t page,
                                                           StartupVillageActivityAction action,
                                                           int selection) {
@@ -465,6 +468,9 @@ StartupApplicationTaskResult StartupApplication::act_task_page(std::uint64_t pag
 }
 std::string StartupApplication::open_human_page(int human) {
     return apply_world_action([&](auto &world) { return world.open_human_page(human); });
+}
+std::string StartupApplication::open_monster_detail_page(ref::CharacterId actor) {
+    return apply_world_action([&](auto &world) { return world.open_monster_detail_page(actor); });
 }
 std::string StartupApplication::open_information_menu() {
     return apply_world_action([&](auto &world) { return world.open_information_menu(); });

@@ -4,6 +4,13 @@
 
 namespace ark::simulation {
 enum class StartupWorldTaxAction { previous, next, select, confirm };
+// 一轮设备投递与原Update输入；不将设备状态写入存档。
+struct StartupWorldTaxInput {
+    bool up{}, down{}, confirm{};
+    std::optional<int> selection;
+    struct Scroll { bool absolute{}; int value{}; };
+    std::optional<Scroll> scroll;
+};
 struct StartupWorldTaxRow {
     int definition{};
     int amount{}; // a.e.G，原月份3准备；不是当场重新计算的报价。
@@ -18,6 +25,10 @@ struct StartupWorldTaxView {
 // raw90初始化只冻结bv源序的居民定义引用；金额仍读取唯一Owner中的G。
 StartupWorldRuntimeError initialize_startup_world_tax_page(StartupWorldRuntimeState &state,
                                                            std::uint64_t page);
+// 框架持有独立候选时使用，在生命周期0→2之前冻结名单，避免再次复制Owner。
+bool initialize_startup_world_tax_pages(StartupWorldRuntimeState &candidate);
+bool valid_startup_world_tax_page(const StartupWorldRuntimeState &state,
+                                 const ref::WorldScriptPage &page);
 // raw90更新计数；raw98自动入账、通知、清全bv的F/G并关闭，不等待玩家确认。
 std::optional<StartupWorldRuntimeState>
 update_startup_world_tax_page(const StartupWorldRuntimeState &state, std::uint64_t page);
@@ -26,6 +37,9 @@ StartupWorldRuntimeError act_startup_world_tax_page(StartupWorldRuntimeState &st
                                                     std::uint64_t page,
                                                     StartupWorldTaxAction action,
                                                     int selection = 0);
+StartupWorldRuntimeError input_startup_world_tax_page(StartupWorldRuntimeState &state,
+                                                     std::uint64_t page,
+                                                     const StartupWorldTaxInput &input);
 std::optional<StartupWorldTaxView>
 inspect_startup_world_tax_page(const StartupWorldRuntimeState &state, std::uint64_t page);
 } // namespace ark::simulation

@@ -75,7 +75,7 @@ if(ARK_BUILD_DESKTOP)
         src/desktop/ui/village/world_village_skin.cpp
         src/desktop/ui/actors/world_human.cpp src/desktop/ui/actors/world_human_detail.cpp
         src/desktop/ui/actors/world_human_skin.cpp src/desktop/ui/actors/world_human_input.cpp
-        src/desktop/ui/village/world_tax.cpp
+        src/desktop/ui/village/world_tax.cpp src/desktop/ui/actors/world_monster.cpp
         src/desktop/ui/information/world_information.cpp
         src/desktop/ui/village/world_village_activity.cpp
         src/desktop/ui/village/world_commerce.cpp src/desktop/ui/village/world_commerce_top.cpp

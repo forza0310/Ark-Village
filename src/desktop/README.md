@@ -1,5 +1,7 @@
 # desktop
 
+`ui/actors/world_monster`执行89正常介绍与92共享定义详情的正式有序计划；89早确认快进到40、92主钟0可确认/返回。`scene/world_scene`只登记实际绘出的怪物身体像素，`input/world_management`将可见winner的稳定ID与定义交Session复核，遮挡和透明孔不穿透。`ui/village/world_tax`执行90原序名单/五行/拖条，整帧输入交Owner；98自动入账。绘制不补Init、持久化或发奖，Touch2没有矩形时不造鼠标热区。
+
 `ui/facilities/world_facility_detail`消费普通74两页、定义预览以及装备店/植物/募集的正式有序计划，使用实际字体测宽；共享值、商品种类、植物增量和入住资格来自只读维护查询。`world_management`只缓存同次绘后的页/相位/图块/预览身份/尺寸热区，换代或失焦拒绝旧点击，预览/植物不保留隐藏确认框。住宅仍为原静态子集；完整80候选输入等待正式交付，不能从详情的纯资格查询另建入住规则。
 
 `ui/village/world_commerce_top`负责83导航及83/85/86共用有序绘制末端，`world_commerce_skin`专责85/86实测文本、原三行/滚动/已画几何与PC标记手势。设备输入经Session整帧交唯一Owner，原图纸只解锁一次，86自动退休；未Init载荷等待真实消费者，不由绘制补状态、付费或延寿。84实际成交临时回执仍独立，商会底栏与通用HUD鼠标按钮互斥。

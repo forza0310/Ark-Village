@@ -56,6 +56,12 @@ bool inspection_ready(const State &s, const std::string &mode) {
         return app::world_report_visible(s) && s.report_state == (mode == "world-month" ? 1 : 2) &&
                (s.report_state != 1 || s.report_counter >= 6);
     if (const auto *page = active_page(s)) {
+        if (mode == "world-monster-intro") {
+            const auto counter = s.page_counters.find(page->id);
+            return page->legacy_page == 89 && page->lifecycle == 2 &&
+                   simulation::valid_startup_world_monster_intro_page(s, *page) &&
+                   counter != s.page_counters.end() && counter->second >= 40;
+        }
         if (mode == "world-award")
             return page->legacy_page == 87 && s.award_rankings.count(page->id);
         if (mode == "world-rank")
@@ -272,6 +278,12 @@ void prepare_world_inspection(State &state, const app::LaunchOptions &options, b
         }
         if (!reached)
             throw std::runtime_error("World inspection did not reach its bounded target");
+        if (options.inspect_page == "world-monster-intro") {
+            const auto *page = active_page(state);
+            std::cout << "World monster inspection: definition=" << *page->monster_definition
+                      << " counter=" << state.page_counters.at(page->id)
+                      << " rounds=" << state.simulation_steps << '\n';
+        }
         if (checkpoint && !*checkpoint) {
             if (options.inspect_page != "world-commerce" &&
                 options.inspect_page != "world-home-credit")

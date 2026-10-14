@@ -211,8 +211,14 @@ class StartupWindowHost {
     StartupWorldRuntimeError act_tax_page(std::uint64_t page, StartupWorldTaxAction action, int selection = 0) {
         return command([&](auto &owner) { return owner.act_tax_page(page, action, selection); });
     }
+    StartupWorldRuntimeError input_tax_page(std::uint64_t page, const StartupWorldTaxInput &input) {
+        return command([&](auto &owner) { return owner.input_tax_page(page, input); });
+    }
     StartupWorldRuntimeError open_human_page(int human) {
         return command([&](auto &owner) { return owner.open_human_page(human); });
+    }
+    StartupWorldRuntimeError open_monster_detail_page(ref::CharacterId actor) {
+        return command([&](auto &owner) { return owner.open_monster_detail_page(actor); });
     }
     StartupWorldRuntimeError open_facility_page(std::uint64_t facility) {
         return command([&](auto &owner) { return owner.open_facility_page(facility); });

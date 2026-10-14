@@ -3,6 +3,7 @@
 // Short-lived GPU/font execution for maintained ordered plans; no Owner or animation clock.
 #include "ark/presentation/script_text.hpp"
 #include "ark/simulation/presentation/steam_human_skin.hpp"
+#include "ark/simulation/presentation/steam_information_skin.hpp"
 #include "ark/simulation/presentation/steam_manual_skin.hpp"
 #include "skin.hpp"
 #include <algorithm>
@@ -50,13 +51,8 @@ class SteamPlanDraw {
         const auto resource = sim::steam_human_resource(p.asset);
         if (!resource)
             throw std::invalid_argument("Missing human skin resource");
-        const std::string source = resource->published_image;
-        const auto group = source.rfind("original/event/", 0) == 0    ? Sprites::Binding::event
-                           : source.rfind("original/effect/", 0) == 0 ? Sprites::Binding::effect
-                           : source.rfind("original/", 0) == 0        ? Sprites::Binding::common
-                                                               : Sprites::Binding::steam_common;
-        image(resource->published_image, resource->published_sprite, p.position, p.frame, p.crop,
-              group);
+        published(resource->published_image, resource->published_sprite, p.position, p.frame,
+                  p.crop);
     }
     void facility_image(const sim::SteamFacilityImage &p) const {
         const auto resource = sim::steam_facility_resource(p.asset);
@@ -69,9 +65,10 @@ class SteamPlanDraw {
     void published(const char *png, const char *seb, std::array<int, 2> at, int frame,
                    std::optional<std::array<int, 4>> crop = {}) const {
         const std::string source = png;
-        const auto group = source.rfind("original/event/", 0) == 0    ? Sprites::Binding::event
-                           : source.rfind("original/effect/", 0) == 0 ? Sprites::Binding::effect
-                           : source.rfind("original/", 0) == 0        ? Sprites::Binding::common
+        const auto group = source.rfind("original/event/", 0) == 0     ? Sprites::Binding::event
+                           : source.rfind("original/effect/", 0) == 0  ? Sprites::Binding::effect
+                           : source.rfind("original/common2/", 0) == 0 ? Sprites::Binding::common2
+                           : source.rfind("original/", 0) == 0         ? Sprites::Binding::common
                                                                : Sprites::Binding::steam_common;
         image(png, seb, at, frame, crop, group);
     }
@@ -114,8 +111,8 @@ class SteamPlanDraw {
                                Sprites::Binding::map, 1, -1, active_clip());
     }
     void mapchip(const sim::SteamFacilityMapchipDraw &p) const {
-        skin_.sprites.draw(p.sprite, p.frame, point(p.position), WHITE,
-                           Sprites::Binding::map, 1, -1, active_clip());
+        skin_.sprites.draw(p.sprite, p.frame, point(p.position), WHITE, Sprites::Binding::map, 1,
+                           -1, active_clip());
     }
     void monster(int sprite, int image, int frame, std::array<int, 2> position) const {
         skin_.sprites.actor(true, sprite, image, frame, point(position), 1, active_clip());
@@ -134,6 +131,21 @@ class SteamPlanDraw {
             // binds it; keep that request invisible, as in the information-page executor.
             if (digit.frame >= 0)
                 facility_image(digit);
+        }
+    }
+    // Information counts retain their comma digits and independent person/monster units.
+    // Steam common binds only its published differences, with the source SEB offsets intact.
+    void information_number(const sim::SteamInformationNumber &p) const {
+        const auto parts = sim::steam_information_number_draws(p);
+        if (!parts)
+            throw std::invalid_argument("Information number request rejected");
+        for (const auto &part : *parts) {
+            if (part.package != sim::StartupSkinPackage::common || part.sprite < 0 ||
+                part.frame < 0)
+                throw std::invalid_argument("Information number lost its common sprite identity");
+            skin_.sprites.indexed_sprite(Sprites::Binding::steam_common, part.sprite, part.frame,
+                                         part.layer, part.image, point(part.offset), 1,
+                                         active_clip());
         }
     }
     void portrait(const sim::SteamHumanDetailSkin &p) const {

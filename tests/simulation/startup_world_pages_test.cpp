@@ -2397,11 +2397,152 @@ void tax_pages() {
     }
     const auto cash = s.scene.world.world.ai.accounting.funds();
     const auto draws = s.scene.random.draws();
+    check(!inspect_startup_world_tax_page(s, id) &&
+              input_startup_world_tax_page(s, id, {}) == E::invalid_page,
+          "90 pending source page cannot manufacture a query list or consume player input");
+    auto paused_tax = s;
+    paused_tax.scene.framework_paused = true;
+    const auto paused_tick = prepare_startup_world_runtime(paused_tax);
+    check(paused_tick.candidate && paused_tick.candidate->scripts.pages.back().lifecycle == 0 &&
+              !paused_tick.candidate->tax_page_residents.count(id) &&
+              !paused_tick.candidate->page_counters.count(id),
+          "paused90 leaves pending initialization and all four payload keys absent");
+    auto incomplete_pending = s;
+    incomplete_pending.page_counters.emplace(id, 0);
+    check(!prepare_startup_world_runtime(incomplete_pending).candidate,
+          "90 partially prepared constructor cannot fill missing frozen-list records");
     page_tick(s);
     check(s.tax_page_residents.at(id) == std::vector<int>({0, 1, 2, 3, 4, 5}) &&
               act_startup_world_tax_page(s, id, StartupWorldTaxAction::select, 5) == E::none &&
               s.tax_page_scroll.at(id) == 1,
           "90 freezes source residents and keeps selected row in five-row viewport");
+    const auto ready_tax = s;
+    {
+        auto input_state = ready_tax;
+        StartupWorldTaxInput input;
+        input.selection = 0;
+        input.up = input.down = true;
+        check(
+            input_startup_world_tax_page(input_state, id, input) == E::none &&
+                input_state.tax_page_selection.at(id) == 0 &&
+                input_state.tax_page_scroll.at(id) == 0,
+            "90 same-round selection then up/down repairs viewport only after both source repeats");
+        input.selection = 5;
+        input.down = false;
+        input.confirm = true;
+        const auto counter = input_state.page_counters.at(id);
+        check(input_startup_world_tax_page(input_state, id, input) == E::none &&
+                  input_state.tax_page_selection.at(id) == 4 &&
+                  input_state.tax_page_scroll.at(id) == 0 &&
+                  input_state.scripts.pages.back().lifecycle == 4 &&
+                  input_state.page_counters.at(id) == counter &&
+                  input_state.scene.world.world.ai.accounting.funds() == cash &&
+                  input_state.scene.random.draws() == draws,
+              "90 selection/up/confirm is one transaction without extra update, money or random");
+        check(input_startup_world_tax_page(input_state, id, input) == E::invalid_page &&
+                  !inspect_startup_world_tax_page(input_state, id),
+              "retired90 rejects stale input and query");
+        page_tick(input_state);
+        check(!input_state.tax_page_residents.count(id) &&
+                  !input_state.tax_page_selection.count(id) &&
+                  !input_state.tax_page_scroll.count(id) && !input_state.page_counters.count(id),
+              "90 actual retirement releases all four payload records");
+    }
+    {
+        struct ScrollCase {
+            bool absolute;
+            int value, chosen, first, expected_chosen, expected_first;
+        };
+        const ScrollCase cases[]{{false, 100, 0, 0, 1, 1},
+                                 {true, -50, 5, 1, 4, 0},
+                                 {true, 1, 0, 0, 1, 1},
+                                 {false, -1, 5, 1, 4, 0},
+                                 {true, std::numeric_limits<int>::max(), 5, 1, 5, 1},
+                                 {false, std::numeric_limits<int>::max() - 1, 5, 1, 5, 1}};
+        for (const auto &c : cases) {
+            auto input_state = ready_tax;
+            input_state.tax_page_selection.at(id) = c.chosen;
+            input_state.tax_page_scroll.at(id) = c.first;
+            StartupWorldTaxInput input;
+            input.scroll = StartupWorldTaxInput::Scroll{c.absolute, c.value};
+            check(input_startup_world_tax_page(input_state, id, input) == E::none &&
+                      input_state.tax_page_selection.at(id) == c.expected_chosen &&
+                      input_state.tax_page_scroll.at(id) == c.expected_first,
+                  "90 scroll clips boundaries, synchronizes selection by delta, and honors "
+                  "computed INT_MAX sentinel");
+        }
+        auto overflow = ready_tax;
+        StartupWorldTaxInput input;
+        input.scroll = StartupWorldTaxInput::Scroll{false, std::numeric_limits<int>::max()};
+        input.confirm = true;
+        const auto before = startup_world_state_digest(overflow);
+        check(input_startup_world_tax_page(overflow, id, input) == E::invalid_page &&
+                  startup_world_state_digest(overflow) == before,
+              "90 relative scroll overflow refuses the complete input including confirm");
+    }
+    for (int fault = 0; fault < 9; ++fault) {
+        auto bad = ready_tax;
+        if (fault == 0 || fault == 4)
+            bad.tax_page_residents.erase(id);
+        if (fault == 1 || fault == 4)
+            bad.tax_page_selection.erase(id);
+        if (fault == 2 || fault == 4)
+            bad.tax_page_scroll.erase(id);
+        if (fault == 3 || fault == 4)
+            bad.page_counters.erase(id);
+        if (fault == 5)
+            bad.tax_page_selection.at(id) = 6;
+        if (fault == 6)
+            bad.tax_page_scroll.at(id) = 6;
+        if (fault == 7)
+            bad.page_counters.at(id) = std::numeric_limits<int>::max();
+        if (fault == 8)
+            bad.tax_page_residents.at(id).push_back(0);
+        const auto before = startup_world_state_digest(bad);
+        StartupWorldTaxInput input;
+        input.confirm = true;
+        check(!valid_startup_world_tax_page(bad, bad.scripts.pages.back()) &&
+                  !inspect_startup_world_tax_page(bad, id) &&
+                  !prepare_startup_world_runtime(bad).candidate &&
+                  input_startup_world_tax_page(bad, id, input) == E::missing_source &&
+                  startup_world_state_digest(bad) == before,
+              "90 query/update/restore validator/input all reject incomplete initialized payload "
+              "or bad cursor without repair");
+    }
+    {
+        auto late = ready_tax;
+        late.scripts.professions.emplace(
+            static_cast<int>(late.scene.world.world.ai.professions.size()),
+            ref::WorldScriptUnlockDefinition{});
+        const auto before = startup_world_state_digest(late);
+        StartupWorldTaxInput input;
+        input.selection = 0;
+        input.up = true;
+        input.confirm = true;
+        check(input_startup_world_tax_page(late, id, input) == E::script_failed &&
+                  startup_world_state_digest(late) == before,
+              "90 late close rejection rolls back candidate device selection, repeats, scroll and "
+              "all Owner outputs");
+    }
+    {
+        auto empty = fixture(90);
+        const auto empty_id = empty.scripts.pages.back().id;
+        page_tick(empty);
+        const auto empty_view = inspect_startup_world_tax_page(empty, empty_id);
+        StartupWorldTaxInput input;
+        input.up = true;
+        input.confirm = true;
+        const auto before = startup_world_state_digest(empty);
+        check(empty_view && empty_view->rows.empty() && empty_view->total == 0 &&
+                  input_startup_world_tax_page(empty, empty_id, input) == E::invalid_page &&
+                  startup_world_state_digest(empty) == before,
+              "90 empty list has a legitimate zero display but rejects source modulo-zero "
+              "navigation atomically");
+        input.up = false;
+        check(input_startup_world_tax_page(empty, empty_id, input) == E::none &&
+                  empty.scripts.pages.back().lifecycle == 4,
+              "90 empty conditional page can still confirm without invented residents");
+    }
     s.human_calendar.at(5).legacy_G = 90;
     s.human_homes.at(5)[2] = 0;
     const auto view = inspect_startup_world_tax_page(s, id);
@@ -3018,14 +3159,253 @@ void task_focus_and_introduction() {
     s.tasks.at(1).facility = 99999;
     check(!prepare_startup_world_runtime(s).candidate && s.camera[0] == (*target)[0] - 5,
           "stale bound focus rejects without camera or page partial write");
-    s = fixture(89);
+    const auto introduction = consume_startup_world_runtime_encounter_request(
+        test_support::world_fixture(), {ref::EncounterCreationRequestKind::page89, 3});
+    check(introduction.has_value(),
+          "raw89 real encounter consumer creates pending monster definition binding");
+    s = *introduction;
     const auto intro = s.scripts.pages.back().id;
+    check(s.scripts.pages.back().lifecycle == 0 && s.scripts.pages.back().monster_definition == 3 &&
+              !s.page_counters.count(intro) &&
+              valid_startup_world_monster_intro_page(s, s.scripts.pages.back()),
+          "raw89 pending retains actual definition and has no preinstalled clock");
+    check(acknowledge_startup_world_runtime_page(s, intro) ==
+                  StartupWorldRuntimeError::missing_source &&
+              !update_startup_world_runtime_page(s),
+          "raw89 pending cannot acknowledge or use ready update to synthesize its clock");
+    auto paused_intro = s;
+    paused_intro.scene.framework_paused = true;
+    const auto paused_tick = prepare_startup_world_runtime(paused_intro);
+    check(paused_tick.candidate && paused_tick.candidate->scripts.pages.back().lifecycle == 0 &&
+              !paused_tick.candidate->page_counters.count(intro) &&
+              paused_tick.candidate->scene.random.draws() == s.scene.random.draws() &&
+              paused_tick.candidate->scene.calendar.units == s.scene.calendar.units,
+          "raw89 paused pending remains uninitialized, without world/date/random advance");
+    auto preinstalled = s;
+    preinstalled.page_counters[intro] = 0;
+    check(!prepare_startup_world_runtime(preinstalled).candidate,
+          "raw89 pending rejects preinstalled clock rather than accepting a partial Init");
+    auto covered = s;
+    covered.scripts.executing_page = intro; // 真实覆盖页分配锚点，而非沿旧主场景插入。
+    ref::WorldScriptPage cover;
+    cover.kind = ref::WorldScriptPageKind::raw_page;
+    cover.legacy_page = 16;
+    cover.legacy_l = 2;
+    const auto overlay =
+        ref::prepare_world_script_page(startup_world_runtime_scripts(covered), cover);
+    check(overlay.candidate &&
+              write_startup_world_runtime_scripts(covered, overlay.candidate->state),
+          "raw89 covered fixture uses real page allocator");
+    const auto covered_before = startup_world_state_digest(covered);
+    const auto covered_tick = prepare_startup_world_runtime(covered);
+    check(covered_tick.candidate && !covered_tick.candidate->page_counters.count(intro) &&
+              acknowledge_startup_world_runtime_page(covered, intro) ==
+                  StartupWorldRuntimeError::invalid_page &&
+              startup_world_state_digest(covered) == covered_before,
+          "raw89 covered pending is not initialized and wrong-top confirmation changes nothing");
+    const auto initialized_intro = prepare_startup_world_runtime(s);
+    check(initialized_intro.candidate &&
+              initialized_intro.candidate->scripts.pages.back().lifecycle == 2 &&
+              initialized_intro.candidate->page_counters.at(intro) == 1 &&
+              initialized_intro.candidate->scene.random.draws() == s.scene.random.draws() &&
+              initialized_intro.candidate->scene.world.updates == s.scene.world.updates &&
+              initialized_intro.candidate->scene.calendar.units == s.scene.calendar.units &&
+              initialized_intro.candidate->sound_requests == s.sound_requests,
+          "raw89 true top Init creates main clock once, then first modal update; no presentation "
+          "effects claimed");
+    s = *initialized_intro.candidate;
+    paused_intro = s;
+    paused_intro.scene.framework_paused = true;
+    const auto paused_ready = prepare_startup_world_runtime(paused_intro);
+    check(paused_ready.candidate && paused_ready.candidate->page_counters.at(intro) == 1 &&
+              acknowledge_startup_world_runtime_page(paused_intro, intro) ==
+                  StartupWorldRuntimeError::invalid_page,
+          "raw89 ready pause freezes counter and rejects manual input");
+    for (int fault = 0; fault < 7; ++fault) {
+        auto bad = s;
+        if (fault == 0)
+            bad.scripts.pages.back().monster_definition.reset();
+        if (fault == 1)
+            bad.scripts.pages.back().monster_definition = 99999;
+        if (fault == 2)
+            bad.page_counters.erase(intro);
+        if (fault == 3)
+            bad.page_counters.at(intro) = -1;
+        if (fault == 4)
+            bad.page_counters.at(intro) = std::numeric_limits<int>::max();
+        if (fault == 5)
+            bad.page_phases[intro] = 0;
+        if (fault == 6)
+            bad.page_secondary_counters[intro] = 0;
+        const auto before = startup_world_state_digest(bad);
+        check(!valid_startup_world_monster_intro_page(bad, bad.scripts.pages.back()) &&
+                  !prepare_startup_world_runtime(bad).candidate &&
+                  acknowledge_startup_world_runtime_page(bad, intro) ==
+                      StartupWorldRuntimeError::missing_source &&
+                  startup_world_state_digest(bad) == before,
+              "raw89 ready missing definition/main clock, bad bound or alien phase/secondary "
+              "rejects without repair or partial state");
+    }
+    auto wrapped = s;
+    wrapped.page_counters.at(intro) = std::numeric_limits<int>::max() - 1;
+    const auto wrap_tick = prepare_startup_world_runtime(wrapped);
+    check(wrap_tick.candidate && wrap_tick.candidate->page_counters.at(intro) == 0 &&
+              valid_startup_world_monster_intro_page(*wrap_tick.candidate,
+                                                     wrap_tick.candidate->scripts.pages.back()),
+          "raw89 shared BaseUpdate INT_MAX wrap stays within valid main-clock range");
     check(acknowledge_startup_world_runtime_page(s, intro) == StartupWorldRuntimeError::none &&
               s.page_counters.at(intro) == 40 && s.scripts.pages.back().lifecycle != 4,
           "raw89 early confirm only fastforwards40");
+    auto late_close = s;
+    // 页关闭后写回定义投影才失败，检验候选关闭不会局部提交到原Owner。
+    late_close.scripts.professions.emplace(
+        static_cast<int>(late_close.scene.world.world.ai.professions.size()),
+        ref::WorldScriptUnlockDefinition{});
+    const auto before_close = startup_world_state_digest(late_close);
+    check(acknowledge_startup_world_runtime_page(late_close, intro) ==
+                  StartupWorldRuntimeError::script_failed &&
+              startup_world_state_digest(late_close) == before_close,
+          "raw89 late stack-close failure preserves page, clock, random and outputs");
     check(acknowledge_startup_world_runtime_page(s, intro) == StartupWorldRuntimeError::none &&
               s.scripts.pages.back().lifecycle == 4 && s.scripts.event_calls.empty(),
           "raw89 next confirm closes without repeating monster introduction program");
+    check(valid_startup_world_monster_intro_page(s, s.scripts.pages.back()) &&
+              s.page_counters.at(intro) == 40,
+          "raw89 closed page keeps complete pending-retirement payload");
+    auto broken_closed = s;
+    broken_closed.page_counters.erase(intro);
+    check(!prepare_startup_world_runtime(broken_closed).candidate,
+          "raw89 closed bad payload is rejected before cleanup can hide the missing clock");
+    const auto retired = prepare_startup_world_runtime(s);
+    check(retired.candidate && !retired.candidate->page_counters.count(intro) &&
+              std::none_of(retired.candidate->scripts.pages.begin(),
+                           retired.candidate->scripts.pages.end(),
+                           [&](const auto &page) { return page.id == intro; }),
+          "raw89 next real framework entry retires main clock and monster page reference together");
+    check(!consume_startup_world_runtime_encounter_request(
+              test_support::world_fixture(), {ref::EncounterCreationRequestKind::page89, 99999}),
+          "raw89 producer refuses unknown definition before publishing a pending page");
+}
+void monster_details() {
+    using E = StartupWorldRuntimeError;
+    ref::EncounterCreationInput input;
+    input.kind = 0;
+    input.center = {10, 18};
+    input.year_index = 0;
+    input.month_index = 3;
+    const auto spawned =
+        prepare_startup_world_runtime_encounter(test_support::world_fixture(), input);
+    check(spawned && !spawned->scene.world.world.ai.monster_order.empty(),
+          "92入口使用真实遭遇生成的当前怪物");
+    const auto actor = spawned->scene.world.world.ai.monster_order.front();
+    const int definition = spawned->scene.world.world.ai.battle.actors.at(actor).definition;
+    for (int fault = 0; fault < 5; ++fault) {
+        auto bad = *spawned;
+        if (fault == 0)
+            bad.scene.framework_paused = true;
+        if (fault == 1)
+            bad.scene.scene_state = 4;
+        if (fault == 2)
+            bad.scene.world.world.ai.monster_order.clear();
+        if (fault == 3)
+            bad.scene.world.world.ai.battle.actors.at(actor).kind = ref::ActorKind::human;
+        if (fault == 4)
+            bad.scripts.next_page_id = 0;
+        const auto before = startup_world_state_digest(bad);
+        check(open_startup_world_monster_detail_page(bad, actor) != E::none &&
+                  startup_world_state_digest(bad) == before,
+              "92暂停/非主场景/陈旧名单/非怪物/晚插页失败均不提交半个父页或随机");
+    }
+    auto dying = *spawned;
+    dying.scene.world.world.ai.battle.actors.at(actor).control.state = 3;
+    dying.scene.world.world.ai.battle.actors.at(actor).hp.target = 0;
+    check(open_startup_world_monster_detail_page(dying, actor) == E::none,
+          "92不新增HP或死亡状态门槛，仍在名单的死亡演出怪物可查看");
+    auto s = *spawned;
+    const auto random = s.scene.random.draws();
+    const auto updates = s.scene.world.updates;
+    const auto events = s.scripts.event_calls;
+    const auto funds = s.scene.world.world.ai.accounting.funds();
+    check(open_startup_world_monster_detail_page(s, actor) == E::none,
+          "92正常实例入口绑定其共享定义");
+    const auto id = s.scripts.pages.back().id;
+    check(s.scripts.pages.back().monster_definition == definition &&
+              s.scripts.pages.back().lifecycle == 0 && !s.page_counters.count(id) &&
+              valid_startup_world_monster_detail_page(s, s.scripts.pages.back()) &&
+              !s.scene.world.world.ai.external_actor_roots.count(actor),
+          "92pending仅持定义及既有页身份，不新增actor根或提前计数");
+    const auto pending = s;
+    auto paused = s;
+    paused.scene.framework_paused = true;
+    const auto frozen = prepare_startup_world_runtime(paused);
+    check(frozen.candidate && frozen.candidate->scripts.pages.back().lifecycle == 0 &&
+              !frozen.candidate->page_counters.count(id) &&
+              acknowledge_startup_world_runtime_page(s, id) == E::missing_source,
+          "92暂停pending不Init，未Init确认不能补钟");
+    page_tick(s);
+    const auto ready = s;
+    check(s.page_counters.at(id) == 1 && s.scripts.pages.back().lifecycle == 2 &&
+              s.scene.random.draws() == random && s.scene.world.updates == updates &&
+              s.scripts.event_calls == events && s.scene.world.world.ai.accounting.funds() == funds,
+          "92真实Init只推进页主钟，不营业/发奖/重触发介绍或抽随机");
+    // 页面是定义查询：所选实例退出后，不要求为显示持有或复活该实例。
+    auto no_instance = s;
+    no_instance.scene.world.world.ai.monster_order.clear();
+    no_instance.scene.world.world.ai.battle.actors.erase(actor);
+    check(valid_startup_world_monster_detail_page(no_instance, no_instance.scripts.pages.back()),
+          "92页校验不反查已经退休的选中实例");
+    for (int fault = 0; fault < 7; ++fault) {
+        auto bad = s;
+        if (fault == 0)
+            bad.scripts.pages.back().monster_definition.reset();
+        if (fault == 1)
+            bad.page_counters.erase(id);
+        if (fault == 2)
+            bad.scene.world.world.ai.monster_growth.erase(definition);
+        if (fault == 3)
+            bad.scene.world.world.ai.battle.monsters.erase(definition);
+        if (fault == 4)
+            bad.page_phases.emplace(id, 0);
+        if (fault == 5)
+            bad.page_secondary_counters.emplace(id, 0);
+        if (fault == 6)
+            bad.scripts.pages.back().task_definition = 0;
+        const auto before = startup_world_state_digest(bad);
+        check(!prepare_startup_world_runtime(bad).candidate &&
+                  acknowledge_startup_world_runtime_page(bad, id) == E::missing_source &&
+                  cancel_startup_world_runtime_page(bad, id) == E::missing_source &&
+                  startup_world_state_digest(bad) == before,
+              "92缺定义/钟/共享统计及异页载荷显式拒绝，取消不旁路校验");
+    }
+    for (bool cancel : {false, true}) {
+        auto closed = ready;
+        closed.page_counters.at(id) = 0; // 原无最小等待，零主钟即允许关闭。
+        check((cancel ? cancel_startup_world_runtime_page(closed, id)
+                      : acknowledge_startup_world_runtime_page(closed, id)) == E::none &&
+                  closed.scripts.pages.back().lifecycle == 4 &&
+                  closed.scene.random.draws() == random && closed.scripts.event_calls == events,
+              "92确认/返回都立即关闭，零主钟也不快进40或改变介绍标志");
+        auto bad = closed;
+        bad.page_counters.erase(id);
+        check(!prepare_startup_world_runtime(bad).candidate, "92损坏关闭载荷先拒绝，不靠退休隐藏");
+        const auto retired = prepare_startup_world_runtime(closed);
+        check(retired.candidate && !retired.candidate->page_counters.count(id) &&
+                  std::none_of(retired.candidate->scripts.pages.begin(),
+                               retired.candidate->scripts.pages.end(),
+                               [=](const auto &p) { return p.id == id; }),
+              "92真实框架退休定义页与主钟");
+    }
+    auto late = ready;
+    late.scripts.professions.emplace(static_cast<int>(late.scene.world.world.ai.professions.size()),
+                                     ref::WorldScriptUnlockDefinition{});
+    const auto before = startup_world_state_digest(late);
+    check(cancel_startup_world_runtime_page(late, id) == E::script_failed &&
+              startup_world_state_digest(late) == before,
+          "92关闭后投影写回失败仍保留原父页、主钟和输出");
+    auto preinstalled = pending;
+    preinstalled.page_counters.emplace(id, 0);
+    check(!prepare_startup_world_runtime(preinstalled).candidate,
+          "92pending预装主钟拒绝，不默认为ready");
 }
 void rank_conditions() {
     for (int raw : {48, 49, 50, 95})
@@ -6643,6 +7023,7 @@ int main() {
         rank_conditions();
         rank_promotion();
         task_focus_and_introduction();
+        monster_details();
         annual_termination();
         annual_award();
         task_display();

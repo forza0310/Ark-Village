@@ -477,6 +477,33 @@ void apply_world_decision(WorldState &state, const WorldCommand &command,
                 simulation::open_startup_world_human_page(state, command.definition);
         break;
     }
+    case Kind::open_monster: {
+        const auto &ai = state.scene.world.world.ai;
+        const auto actor = ai.battle.actors.find(command.actor);
+        if (actor == ai.battle.actors.end() || !(actor->second.id == command.actor) ||
+            actor->second.kind != simulation::rules::ActorKind::monster ||
+            actor->second.definition != command.definition ||
+            std::count(ai.monster_order.begin(), ai.monster_order.end(), command.actor) != 1)
+            result.runtime_error = Error::invalid_page;
+        else
+            result.runtime_error =
+                simulation::open_startup_world_monster_detail_page(state, command.actor);
+        break;
+    }
+    case Kind::monster_action: {
+        const auto page = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
+                                       [](const auto &p) { return p.lifecycle != 4; });
+        if (page == state.scripts.pages.rend() || page->id != command.page ||
+            page->kind != simulation::rules::WorldScriptPageKind::raw_page ||
+            page->legacy_page != 92 || page->lifecycle != 2)
+            result.runtime_error = Error::invalid_page;
+        else
+            result.runtime_error =
+                command.cancel
+                    ? simulation::cancel_startup_world_runtime_page(state, command.page)
+                    : simulation::acknowledge_startup_world_runtime_page(state, command.page);
+        break;
+    }
     case Kind::human_action:
         result.runtime_error =
             valid_human_action(command.human_action) &&
@@ -509,6 +536,14 @@ void apply_world_decision(WorldState &state, const WorldCommand &command,
             valid_tax_action(command.tax_action) && state.tax_page_residents.count(command.page)
                 ? simulation::act_startup_world_tax_page(state, command.page, command.tax_action,
                                                          command.selection)
+                : Error::invalid_page;
+        break;
+    case Kind::tax_input:
+        // Keep scroll, selection, directions and close in one source transaction. Only
+        // framework initialization owns the frozen resident payload, never an input edge.
+        result.runtime_error =
+            state.tax_page_residents.count(command.page)
+                ? simulation::input_startup_world_tax_page(state, command.page, command.tax_input)
                 : Error::invalid_page;
         break;
     case Kind::facility_action: {
@@ -627,6 +662,21 @@ std::uint64_t WorldSession::open_human(simulation::rules::CharacterId actor, int
     command.definition = definition;
     return submit(command);
 }
+std::uint64_t WorldSession::open_monster(simulation::rules::CharacterId actor,
+                                         int observed_definition) {
+    WorldCommand command;
+    command.kind = WorldCommandKind::open_monster;
+    command.actor = actor;
+    command.definition = observed_definition;
+    return submit(command);
+}
+std::uint64_t WorldSession::act_monster(std::uint64_t page, bool cancel) {
+    WorldCommand command;
+    command.kind = WorldCommandKind::monster_action;
+    command.page = page;
+    command.cancel = cancel;
+    return submit(command);
+}
 std::uint64_t WorldSession::act_human(std::uint64_t page, simulation::StartupHumanPageAction action,
                                       int selection) {
     WorldCommand command;
@@ -651,6 +701,14 @@ std::uint64_t WorldSession::act_tax(std::uint64_t page, simulation::StartupWorld
     command.page = page;
     command.tax_action = action;
     command.selection = selection;
+    return submit(command);
+}
+std::uint64_t WorldSession::input_tax(std::uint64_t page,
+                                      const simulation::StartupWorldTaxInput &input) {
+    WorldCommand command;
+    command.kind = WorldCommandKind::tax_input;
+    command.page = page;
+    command.tax_input = input;
     return submit(command);
 }
 std::uint64_t WorldSession::open_menu_village_activities() {

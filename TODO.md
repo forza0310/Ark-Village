@@ -21,8 +21,9 @@
 - [x] ea9876a商会83有序皮肤/整帧FIFO、21e4d27设置/平台纯计划及空草稿修正完成本地短检和两尺寸窗口；493来源/79适配、731素材，见[B1](docs/stages/B1-playable-prototype.md#research-ea9876a-commerce-top)。
 - [x] 正式68acd7c/a87e9b7商会85设施图纸三行目录/整帧事务、86原单件反馈及底栏防重叠已接，本地检查与两尺寸/真实窗口见[B1](docs/stages/B1-playable-prototype.md#research-68acd7c-commerce-successors)。
 - [x] 3f744f3普通定义预览/严格挂起父商会、c982176装备店/植物、048b282募集详情已接；真实共享值/商品数/植物增量/入住资格、绘后热区及两Debug/Release检查通过，保存生命周期仅登记合同，玩家政策保持。见[B1](docs/stages/B1-playable-prototype.md#research-048b282-facility-details)。
-- [ ] 接正式8e37f2d/613f45c税收90皮肤/四键Init/整帧事务，合并d6b546c正常怪物介绍89；613的16目标已在build准备且79适配保持，d6新增两份纯皮肤和两个源登记，共20维护目标待接。原91动态钟、授勋双询问Owner、跨局音量/设置存取、80完整候选输入及完整字体/OS动态仍分开等待，不接Steam服务或恢复二倍速。
-- [ ] 后继7fe54fa怪物详情92已正式交付；核准14维护/3素材准备范围后接当前名单入口、共享统计及有序皮肤，再补实际像素拾取/FIFO和现套件验收，不猜死亡门槛或原热区。具体范围与源/玩家边界见[方案](docs/MILESTONES.md#research-7fe54fa-monster-detail)，原20计划不扩大。
+- [x] d6b546c税收90四键Init/整帧FIFO及正常怪物介绍89已接；两Debug失败夹具修正、Release受影响检查与最小窗口/真实新局介绍通过，见[B1](docs/stages/B1-playable-prototype.md#research-7fe54fa-tax-monsters)。
+- [x] 7fe54fa怪物92当前名单入口、共享统计/有序皮肤和common2金币袋已接，实际可见像素拾取/FIFO身份复核及0钟关闭通过；495来源/79适配、733素材，玩家存档政策保持。OS输入未验，见[本批记录](docs/stages/B1-playable-prototype.md#research-7fe54fa-tax-monsters)。
+- [ ] 99c095d后继已交建设纯游标/有序皮肤、标题联合输入事务/投影、纪录/平台/语言纯计划，下一批统一审定；完整目录Owner、纪录独立钟、共享手形及原91/80等Owner仍等正式交付，不接Steam服务或恢复二倍速。
 - [x] 获批steam-month分段月96→97→98→99及三次独立冷载通过；每段6分钟/10000轮，原季度入口保持，失败观察档不作输入，见[B1](docs/stages/B1-playable-prototype.md#research-e22ed0a-human-ui)。
 
 - [x] 正式bb61d5f普通设施两页维护计划：获批四目标已导入，455来源/70适配保留，新增资源映射现有Steam属性图标；后续c6b1a5b无闭包增量，见[方案](docs/MILESTONES.md#research-bb61d5f-detail-plan)。

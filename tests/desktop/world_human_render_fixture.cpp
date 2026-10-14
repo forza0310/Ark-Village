@@ -2,8 +2,11 @@
 // This case is invoked manually and is deliberately absent from standard CTest registration.
 #include "../../src/desktop/resources/resources.hpp"
 #include "../../src/desktop/ui/actors/world_human.hpp"
+#include "../../src/desktop/ui/actors/world_monster.hpp"
 #include "../../src/desktop/ui/common/skin.hpp"
+#include "../../src/desktop/ui/village/world_tax.hpp"
 #include "../support/world_fixture.hpp"
+#include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -625,6 +628,225 @@ void world_human_render_fixture() {
                 throw std::runtime_error("Result drawing changed rewards, equipment or clock");
             std::cout << "UI fixture / synthetic raw=" << sample.raw << " sample=" << sample.name
                       << " frames=8 screenshot=" << file.string() << '\n';
+        }
+    }
+    // Source-valid display payload only. The hidden sixth resident contributes to the total;
+    // no tax payment, natural residence or raw98 business progress is claimed by these images.
+    if (!text.include_text("住宅税收房主收入合计"))
+        throw std::runtime_error("Tax fixture could not add its label glyphs");
+    for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{720, 600}}) {
+        SetWindowSize(extent.width, extent.height);
+        for (int sample = 0; sample < 3; ++sample) {
+            auto owner = initial_world();
+            auto tax = page;
+            tax.legacy_page = 90;
+            owner.scripts.pages.push_back(tax);
+            owner.tax_page_residents[tax.id] = {5, 2, 4, 1, 0, 3};
+            owner.tax_page_selection[tax.id] = sample == 1 ? 5 : 0;
+            owner.tax_page_scroll[tax.id] = sample == 1 ? 1 : 0;
+            owner.page_counters[tax.id] = 0;
+            for (int id = 0; id < 6; ++id)
+                owner.human_calendar.at(id).legacy_G = id == 3 ? 9876 : 10 + id;
+            const auto before = owner;
+            auto view = ui::world_tax_view(owner, tax);
+            if (!view.initialized || view.total != 9938)
+                throw std::runtime_error("Tax fixture lost current G or hidden resident total");
+            for (const auto &row : view.rows)
+                if (!text.include_text(row.name))
+                    throw std::runtime_error("Tax fixture could not add a resident name");
+            ui::prepare_world_tax(view, owner, skin, sample == 2);
+            const auto layout = ui::world_tax_layout(extent);
+            const auto controls = ui::world_tax_painted_controls(view, layout);
+            if (!controls || controls->rows.size() != 5 || !controls->scroll ||
+                controls->confirm.width > 0 || controls->cancel.width > 0)
+                throw std::runtime_error("Tax fixture lost source rows or introduced a button");
+            if (sample == 2) {
+                ui::WorldFacilityGesture gesture;
+                ui::WorldTaxInput input;
+                input.pointer = Vector2{controls->scroll->x + 1, controls->scroll->y + 35};
+                input.pointer_pressed = input.pointer_down = true;
+                const auto press =
+                    ui::world_tax_input(view, layout, gesture, input, false, controls);
+                input.pointer->y += 25;
+                input.pointer_pressed = input.pointer_down = false;
+                input.pointer_released = true;
+                input.click = Vector2{controls->rows.front().rectangle.x + 5,
+                                      controls->rows.front().rectangle.y + 5};
+                const auto release =
+                    ui::world_tax_input(view, layout, gesture, input, false, controls);
+                if (!press || !press->scroll || !release || !release->scroll ||
+                    !release->scroll->absolute || release->scroll->value != 1 || release->confirm ||
+                    release->selection || gesture.scrolling)
+                    throw std::runtime_error(
+                        "Tax drag release unexpectedly acknowledged the report");
+            }
+            for (int draw = 0; draw < 4; ++draw) {
+                if (WindowShouldClose())
+                    throw std::runtime_error("Tax fixture closed before capture");
+                BeginDrawing();
+                ClearBackground({145, 211, 247, 255});
+                DrawText("SYNTHETIC tax UI", 4, 4, 12, BLACK);
+                ui::draw_world_tax(view, layout, skin);
+                text.flush(1, {});
+                EndDrawing();
+            }
+            const char *name = sample == 0 ? "first-hidden-total" : sample == 1 ? "last" : "drag";
+            const auto file =
+                output / ("synthetic-raw90-" + std::to_string(extent.width) + "-" + name + ".png");
+            capture(file);
+            if (!same_world_clock(owner, before) || owner.page_counters != before.page_counters ||
+                owner.scene.random.draws() != before.scene.random.draws() ||
+                owner.scene.world.world.ai.accounting.funds() !=
+                    before.scene.world.world.ai.accounting.funds() ||
+                owner.human_calendar.at(3).legacy_G != 9876 ||
+                owner.tax_page_selection != before.tax_page_selection ||
+                owner.tax_page_scroll != before.tax_page_scroll ||
+                owner.tax_page_residents != before.tax_page_residents)
+                throw std::runtime_error("Tax rendering changed taxes, selection, clock or cash");
+            std::cout << "UI fixture / synthetic raw90 sample=" << name
+                      << " screenshot=" << file.string() << '\n';
+        }
+    }
+    // Real89 producer and framework Init, followed by explicit display-clock samples.
+    // These condition images do not claim a natural encounter or its elapsed update timing.
+    if (!text.include_text("新型怪物出现了!!"))
+        throw std::runtime_error("Monster intro fixture could not add its label glyphs");
+    for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{540, 360}}) {
+        SetWindowSize(extent.width, extent.height);
+        for (int body = 0; body < 4; ++body)
+            for (int counter : {20, 40}) {
+                auto owner = initial_world();
+                const auto definition =
+                    std::find_if(owner.rules->monsters.begin(), owner.rules->monsters.end(),
+                                 [&](const auto &monster) { return monster.initial.body == body; });
+                if (definition == owner.rules->monsters.end() ||
+                    !text.include_text(definition->name))
+                    throw std::runtime_error("Monster intro fixture lacks a real body definition");
+                const auto request = simulation::consume_startup_world_runtime_encounter_request(
+                    owner, {rules::EncounterCreationRequestKind::page89, definition->identity});
+                if (!request)
+                    throw std::runtime_error("Monster intro fixture request was rejected");
+                const auto ready = simulation::prepare_startup_world_runtime(*request);
+                if (!ready.candidate)
+                    throw std::runtime_error("Monster intro fixture framework Init was rejected");
+                owner = *ready.candidate;
+                const auto intro = owner.scripts.pages.back();
+                if (intro.legacy_page != 89 || intro.lifecycle != 2 ||
+                    intro.monster_definition != definition->identity)
+                    throw std::runtime_error("Monster intro fixture lost its real89 payload");
+                owner.page_counters.at(intro.id) = counter;
+                const auto before = owner;
+                const auto plan = ui::prepare_world_monster_intro(owner, intro, skin);
+                const auto again = ui::prepare_world_monster_intro(owner, intro, skin);
+                if (!plan || !again || plan->operations.size() != again->operations.size())
+                    throw std::runtime_error("Monster intro fixture repeated query was unstable");
+                for (int draw = 0; draw < 4; ++draw) {
+                    if (WindowShouldClose())
+                        throw std::runtime_error("Monster intro fixture closed before capture");
+                    BeginDrawing();
+                    ClearBackground({145, 211, 247, 255});
+                    DrawText("CONDITIONAL monster intro", 4, 4, 12, BLACK);
+                    ui::draw_world_monster_intro(plan, extent, skin);
+                    text.flush(1, {});
+                    EndDrawing();
+                }
+                const auto file =
+                    output / ("monster-intro-body" + std::to_string(body) + "-counter" +
+                              std::to_string(counter) + "-size" + std::to_string(extent.width) +
+                              "x" + std::to_string(extent.height) + ".png");
+                capture(file);
+                const auto &last = owner.scripts.pages.back();
+                if (!same_world_clock(owner, before) ||
+                    owner.page_counters != before.page_counters ||
+                    owner.page_secondary_counters != before.page_secondary_counters ||
+                    owner.page_phases != before.page_phases ||
+                    owner.scene.random.draws() != before.scene.random.draws() ||
+                    owner.scene.world.world.ai.accounting.funds() !=
+                        before.scene.world.world.ai.accounting.funds() ||
+                    owner.sound_requests != before.sound_requests ||
+                    owner.scripts.pages.size() != before.scripts.pages.size() ||
+                    last.id != intro.id || last.lifecycle != intro.lifecycle ||
+                    last.monster_definition != intro.monster_definition)
+                    throw std::runtime_error("Monster intro query/drawing changed its Owner");
+                std::cout << "UI fixture / conditional raw89 body=" << body
+                          << " counter=" << counter << " screenshot=" << file.string() << '\n';
+            }
+    }
+    // Real actor entry/Init, then explicit shared-statistic display conditions. This is not
+    // a claim of natural kills, level growth or a completed current-monster playthrough.
+    rules::EncounterCreationInput encounter;
+    encounter.kind = 0;
+    encounter.center = {10, 18};
+    encounter.year_index = 0;
+    encounter.month_index = 3;
+    const auto spawned =
+        simulation::prepare_startup_world_runtime_encounter(initial_world(), encounter);
+    if (!spawned || spawned->scene.world.world.ai.monster_order.empty())
+        throw std::runtime_error("Monster detail fixture lacks an actual current encounter actor");
+    auto detail_owner = *spawned;
+    const auto actor = detail_owner.scene.world.world.ai.monster_order.front();
+    if (simulation::open_startup_world_monster_detail_page(detail_owner, actor) !=
+        simulation::StartupWorldRuntimeError::none)
+        throw std::runtime_error("Monster detail fixture could not open the actual92 entry");
+    const auto detail_ready = simulation::prepare_startup_world_runtime(detail_owner);
+    if (!detail_ready.candidate || detail_ready.candidate->scripts.pages.back().lifecycle != 2)
+        throw std::runtime_error("Monster detail fixture framework Init was rejected");
+    detail_owner = *detail_ready.candidate;
+    const auto detail_page = detail_owner.scripts.pages.back();
+    const int definition = *detail_page.monster_definition;
+    const auto source_definition =
+        std::find_if(detail_owner.rules->monsters.begin(), detail_owner.rules->monsters.end(),
+                     [&](const auto &monster) { return monster.identity == definition; });
+    if (source_definition == detail_owner.rules->monsters.end() ||
+        !text.include_text("怪物情报倒した数…倒された人数…" + source_definition->name +
+                           source_definition->description))
+        throw std::runtime_error("Monster detail fixture could not add the real definition text");
+    for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{540, 360}}) {
+        SetWindowSize(extent.width, extent.height);
+        for (const bool advanced : {false, true}) {
+            auto owner = detail_owner;
+            owner.page_counters.at(detail_page.id) = 0;
+            owner.scene.world.world.ai.monster_growth.at(definition).growth = advanced ? 137 : 0;
+            owner.scene.world.world.ai.battle.monsters.at(definition).human_kills =
+                advanced ? 12 : 0;
+            const auto before = owner;
+            const auto plan = ui::prepare_world_monster_detail(owner, detail_page, skin);
+            const auto repeated = ui::prepare_world_monster_detail(owner, detail_page, skin);
+            if (!plan || !repeated || plan->operations.size() != repeated->operations.size() ||
+                plan->soft_labels != std::array<int, 2>{0, 2})
+                throw std::runtime_error(
+                    "Monster detail fixture query or soft-label binding failed");
+            for (int draw = 0; draw < 4; ++draw) {
+                if (WindowShouldClose())
+                    throw std::runtime_error("Monster detail fixture closed before capture");
+                BeginDrawing();
+                ClearBackground({145, 211, 247, 255});
+                DrawText("CONDITIONAL monster detail", 4, 4, 12, BLACK);
+                ui::draw_world_monster_detail(plan, extent, skin);
+                text.flush(1, {});
+                EndDrawing();
+            }
+            const auto file =
+                output /
+                ("monster-detail92-" + std::string(advanced ? "grown" : "initial") + "-size" +
+                 std::to_string(extent.width) + "x" + std::to_string(extent.height) + ".png");
+            capture(file);
+            if (!same_world_clock(owner, before) || owner.page_counters != before.page_counters ||
+                owner.scene.random.draws() != before.scene.random.draws() ||
+                owner.sound_requests != before.sound_requests ||
+                owner.scene.world.world.ai.accounting.funds() !=
+                    before.scene.world.world.ai.accounting.funds() ||
+                owner.scene.world.world.ai.monster_growth.at(definition).growth !=
+                    before.scene.world.world.ai.monster_growth.at(definition).growth ||
+                owner.scene.world.world.ai.battle.monsters.at(definition).human_kills !=
+                    before.scene.world.world.ai.battle.monsters.at(definition).human_kills ||
+                owner.scripts.pages.back().id != detail_page.id ||
+                owner.scripts.pages.back().lifecycle != detail_page.lifecycle ||
+                owner.scripts.pages.back().monster_definition != detail_page.monster_definition)
+                throw std::runtime_error(
+                    "Monster detail drawing changed clocks, statistics or Owner");
+            std::cout << "UI fixture / conditional raw92 advanced=" << advanced
+                      << " screenshot=" << file.string() << '\n';
         }
     }
 }

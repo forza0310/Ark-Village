@@ -47,7 +47,7 @@ export const simulationModules = {
     steam_magic_pot_effect_skin steam_task_selection_skin steam_task_roster_skin
     steam_task_result_skin steam_task_deadline_skin steam_human_ceremony_skin steam_human_award_skin
     steam_clear_score_skin steam_new_game_skin steam_config_skin steam_platform_button_skin
-    steam_commerce_skin`,
+    steam_commerce_skin steam_monster_skin`,
 };
 
 const owners = new Map();

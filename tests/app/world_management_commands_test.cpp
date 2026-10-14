@@ -2,6 +2,7 @@
 // Frozen suites own activity/trade arithmetic; these cases cover UI identities and FIFO wiring.
 #include "ark/app/save/world_save.hpp"
 #include "ark/simulation/facilities/startup_world_editing.hpp"
+#include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
 #include "world_session_test_support.hpp"
 
 #include <algorithm>
@@ -11,6 +12,105 @@
 
 namespace ark::test::world_session {
 namespace {
+void monster_detail_transactions() {
+    rules::EncounterCreationInput request;
+    request.kind = 0;
+    request.center = {10, 18};
+    request.year_index = 0;
+    request.month_index = 3;
+    const auto spawned = sim::prepare_startup_world_runtime_encounter(initial(), request);
+    check(spawned && !spawned->scene.world.world.ai.monster_order.empty(),
+          "Monster transport starts from an actual encounter-created current actor");
+    auto state = *spawned;
+    const auto actor = state.scene.world.world.ai.monster_order.front();
+    const auto definition = state.scene.world.world.ai.battle.actors.at(actor).definition;
+    // Current-list qualification, including the source's zero-HP/unintroduced boundary.
+    state.scene.world.world.ai.battle.actors.at(actor).control.state = 3;
+    state.scene.world.world.ai.battle.actors.at(actor).hp.target = 0;
+    state.scene.world.world.ai.monster_growth.at(definition).introduced = false;
+    state.scene.framework_paused = true;
+    for (int fault = 0; fault < 5; ++fault) {
+        auto rejected = state;
+        auto &ai = rejected.scene.world.world.ai;
+        if (fault == 0)
+            ai.battle.actors.erase(actor);
+        if (fault == 1)
+            ai.battle.actors.at(actor).kind = rules::ActorKind::human;
+        if (fault == 2)
+            ai.monster_order.clear();
+        if (fault == 3)
+            ai.monster_order.push_back(actor);
+        if (fault == 4)
+            ai.battle.actors.at(actor).id = {actor.value + 1000};
+        app::WorldSession session(rejected);
+        session.set_paused(false);
+        const auto invalid = session.open_monster(actor, definition);
+        const auto result = input_frame(session, session.set_paused(true));
+        check(!result->failed &&
+                  input_result(*result, invalid).outcome == app::WorldCommandOutcome::rejected &&
+                  task_top(*result->state).kind == rules::WorldScriptPageKind::scene,
+              "Missing/nonmonster/retired/duplicate/mismatched actor identities reject before92");
+        same_world(rejected, *result->state);
+        session.stop();
+    }
+    app::WorldSession session(state);
+    const auto blocked = input_frame(session, session.open_monster(actor, definition));
+    check(!blocked->failed && input_result(*blocked, blocked->last_command_serial).outcome ==
+                                  app::WorldCommandOutcome::rejected,
+          "A paused source scene cannot open monster92 through the transport");
+    app::WorldCommand stale;
+    stale.kind = app::WorldCommandKind::open_monster;
+    stale.actor = actor;
+    stale.definition = definition;
+    stale.generation = blocked->generation + 1;
+    session.set_paused(false);
+    const auto old_generation = session.submit(stale);
+    const auto old_definition = session.open_monster(actor, definition + 1);
+    const auto accepted = session.open_monster(actor, definition);
+    const auto repeated_open = session.open_monster(actor, definition);
+    const auto pending = input_frame(session, session.set_paused(true));
+    check(
+        !pending->failed &&
+            input_result(*pending, old_generation).outcome == app::WorldCommandOutcome::rejected &&
+            input_result(*pending, old_definition).outcome == app::WorldCommandOutcome::rejected &&
+            input_result(*pending, accepted).outcome == app::WorldCommandOutcome::applied &&
+            input_result(*pending, repeated_open).outcome == app::WorldCommandOutcome::rejected &&
+            task_top(*pending->state).legacy_page == 92 &&
+            task_top(*pending->state).monster_definition == definition,
+        "FIFO rechecks generation and observed definition, then opens one shared-definition92");
+    const auto page = task_top(*pending->state).id;
+    auto ready = *pending->state;
+    session.stop();
+    ready.scene.framework_paused = false;
+    for (int n = 0; n < 4 && task_top(ready).lifecycle != 2; ++n)
+        ready = advance(std::move(ready));
+    check(task_top(ready).lifecycle == 2 && ready.page_counters.count(page),
+          "Real framework admission creates the monster detail clock before input");
+    ready.page_counters.at(page) = 0; // Source92 allows immediate close; no animation wait fixture.
+    ready.scene.framework_paused = true;
+    for (const bool cancel : {false, true}) {
+        app::WorldSession closing(ready);
+        const auto paused = input_frame(closing, closing.act_monster(page, cancel));
+        check(!paused->failed && input_result(*paused, paused->last_command_serial).outcome ==
+                                     app::WorldCommandOutcome::rejected,
+              "Explicit monster close cannot bypass framework pause");
+        closing.set_paused(false);
+        const auto wrong_page = closing.act_monster(page + 100, cancel);
+        const auto close = closing.act_monster(page, cancel);
+        const auto duplicate = closing.act_monster(page, !cancel);
+        const auto result = input_frame(closing, closing.set_paused(true));
+        check(!result->failed &&
+                  input_result(*result, wrong_page).outcome == app::WorldCommandOutcome::rejected &&
+                  input_result(*result, close).outcome == app::WorldCommandOutcome::applied &&
+                  input_result(*result, duplicate).outcome == app::WorldCommandOutcome::rejected &&
+                  task_top(*result->state).id != page &&
+                  result->state->scene.world.world.ai.accounting.funds() ==
+                      ready.scene.world.world.ai.accounting.funds() &&
+                  result->state->scene.random.draws() == ready.scene.random.draws(),
+              "Zero-clock92 confirm/Back closes once; stale repetition cannot confirm its parent");
+        closing.stop();
+    }
+}
 void manual_command_transactions() {
     using Outcome = app::WorldCommandOutcome;
     app::WorldSession session(initial());
@@ -86,6 +186,7 @@ void manual_command_transactions() {
 }
 } // namespace
 void information_command_transactions() {
+    monster_detail_transactions();
     manual_command_transactions();
     using Outcome = app::WorldCommandOutcome;
     auto state = initial();
@@ -264,6 +365,112 @@ void magic_pot_commands() {
 namespace {
 using Action = sim::StartupVillageActivityAction;
 using Outcome = app::WorldCommandOutcome;
+app::WorldState tax_input_fixture(bool ready) {
+    auto state = initial();
+    // Resident eligibility is a short page-callsite fixture, not earned housing or tax income.
+    for (int definition = 0; definition < 6; ++definition) {
+        state.human_presence.at(definition) = 1;
+        state.human_homes.at(definition)[2] = 1;
+        state.human_calendar.at(definition).legacy_G = 100;
+    }
+    rules::WorldScriptPage page;
+    page.kind = rules::WorldScriptPageKind::raw_page;
+    page.legacy_page = 90;
+    const auto opened =
+        rules::prepare_world_script_page(sim::startup_world_runtime_scripts(state), page);
+    check(opened.candidate &&
+              sim::write_startup_world_runtime_scripts(state, opened.candidate->state),
+          "Tax input fixture creates the real pending90 constructor");
+    if (ready) {
+        for (int n = 0; n < 4 && task_top(state).lifecycle != 2; ++n)
+            state = advance(std::move(state));
+        check(task_top(state).lifecycle == 2 && state.tax_page_residents.at(task_top(state).id) ==
+                                                    std::vector<int>({0, 1, 2, 3, 4, 5}),
+              "Tax input fixture admits90 and freezes six real definition identities");
+    }
+    state.scene.framework_paused = true;
+    return state;
+}
+void tax_input_transactions() {
+    sim::StartupWorldTaxInput input;
+    input.scroll = sim::StartupWorldTaxInput::Scroll{true, 1};
+    input.selection = 3;
+    input.up = input.down = true;
+    // Non-tax and not-yet-initialized pages cannot acquire payloads from device input.
+    for (const bool pending_tax : {false, true}) {
+        const auto state = pending_tax ? tax_input_fixture(false) : initial(true);
+        const auto page = task_top(state).id;
+        app::WorldSession session(state);
+        session.set_paused(false);
+        const auto refused = session.input_tax(page, input);
+        const auto result = input_frame(session, session.set_paused(true));
+        check(!result->failed && input_result(*result, refused).outcome == Outcome::rejected &&
+                  !result->state->tax_page_residents.count(page) &&
+                  !result->state->tax_page_selection.count(page) &&
+                  !result->state->tax_page_scroll.count(page),
+              "Tax FIFO rejects scene/pending90 inputs without manufacturing a resident list");
+        same_world(state, *result->state);
+        session.stop();
+    }
+
+    const auto state = tax_input_fixture(true);
+    const auto page = task_top(state).id;
+    const auto cash = state.scene.world.world.ai.accounting.funds();
+    const auto draws = state.scene.random.draws();
+    app::WorldSession session(state);
+    const auto blocked = input_frame(session, session.input_tax(page, input));
+    check(!blocked->failed &&
+              input_result(*blocked, blocked->last_command_serial).outcome == Outcome::rejected &&
+              blocked->state->tax_page_selection == state.tax_page_selection &&
+              blocked->state->tax_page_scroll == state.tax_page_scroll,
+          "Paused90 rejects a complete device frame without partial cursor changes");
+    same_world(state, *blocked->state);
+
+    app::WorldCommand stale;
+    stale.kind = app::WorldCommandKind::tax_input;
+    stale.page = page;
+    stale.generation = blocked->generation + 1;
+    stale.tax_input = input;
+    auto invalid = input;
+    invalid.selection = 99;
+    session.set_paused(false);
+    const auto old_generation = session.submit(stale);
+    const auto wrong_page = session.input_tax(page + 100, input);
+    const auto bad_selection = session.input_tax(page, invalid);
+    const auto selected = session.input_tax(page, input);
+    input.selection = 0; // The queued DTO owns its input, rather than retaining this reference.
+    const auto positioned = input_frame(session, session.set_paused(true));
+    check(!positioned->failed &&
+              input_result(*positioned, old_generation).outcome == Outcome::rejected &&
+              input_result(*positioned, wrong_page).outcome == Outcome::rejected &&
+              input_result(*positioned, bad_selection).outcome == Outcome::rejected &&
+              input_result(*positioned, selected).outcome == Outcome::applied &&
+              input_result(*positioned, selected).kind == app::WorldCommandKind::tax_input &&
+              input_result(*positioned, selected).page == page &&
+              positioned->state->tax_page_selection.at(page) == 3 &&
+              positioned->state->tax_page_scroll.at(page) == 1 &&
+              positioned->state->tax_page_residents == state.tax_page_residents &&
+              positioned->state->scene.world.world.ai.accounting.funds() == cash &&
+              positioned->state->scene.random.draws() == draws &&
+              positioned->state->human_calendar.at(0).legacy_G == 100,
+          "One90 FIFO retains scroll/select/up/down and copied input; rejected bindings cannot "
+          "partially select or collect tax");
+
+    input.confirm = true;
+    session.set_paused(false);
+    const auto confirmed = session.input_tax(page, input);
+    const auto repeated = session.input_tax(page, input);
+    const auto closed = input_frame(session, session.set_paused(true));
+    check(!closed->failed && input_result(*closed, confirmed).outcome == Outcome::applied &&
+              input_result(*closed, repeated).outcome == Outcome::rejected &&
+              task_top(*closed->state).id != page &&
+              !sim::inspect_startup_world_tax_page(*closed->state, page) &&
+              closed->state->scene.world.world.ai.accounting.funds() == cash &&
+              closed->state->scene.random.draws() == draws &&
+              closed->state->human_calendar.at(0).legacy_G == 100,
+          "Whole90 confirmation closes once, never pays or confirms its successor page");
+    session.stop();
+}
 app::WorldState village_fixture(int unsupported = 28) {
     auto state = initial();
     // Explicit callsite: activity16 costs40, activity28 is the published pot upgrade.
@@ -684,6 +891,7 @@ void editing_command_transactions() {
           "Durable edited snapshot retains retired IDs, original mirrors and actual shared funds");
 }
 void village_command_transactions() {
+    tax_input_transactions();
     {
         auto source = village_fixture();
         check(sim::open_startup_world_village_activities(source) ==

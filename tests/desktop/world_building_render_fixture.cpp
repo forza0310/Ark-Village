@@ -194,9 +194,52 @@ void pixel_pick_fixture(const simulation::StartupWorldRuntimeState &state,
             }
     }
     require(actor_overlap > 0, "actual actor and facility fixture did not overlap");
+
+    // Real monster art participates in the same last-drawn-pixel oracle in both orders.
+    // The shared definition supplies art only; this fixture does not manufacture a spawn.
+    const auto &monster = state.rules->monsters.front();
+    std::size_t monster_overlap = 0, monster_holes = 0;
+    const auto paint_monster = [&] {
+        desktop::Sprites::PickScope scope(sprites, &picks, {Pick::Kind::monster, 404});
+        sprites.actor(true, monster.initial.body * 4 + 1,
+                      monster.initial.body * 30 + monster.initial.sprite_variant, 0, actor_point);
+    };
+    picks.reset(viewport);
+    const auto monster_pixels = render(paint_monster);
+    for (const bool monster_in_front : {false, true}) {
+        picks.reset(viewport);
+        (void)render(
+            [&] {
+                if (monster_in_front) {
+                    building();
+                    paint_monster();
+                } else {
+                    paint_monster();
+                    building();
+                }
+            },
+            monster_in_front ? "pixel-pick-monster-front.png" : "pixel-pick-monster-rear.png");
+        for (int y = 0; y < height; ++y)
+            for (int x = 0; x < width; ++x) {
+                const auto at = static_cast<std::size_t>(y * width + x);
+                const bool select_monster = monster_pixels[at] && (monster_in_front || !rear[at]);
+                const bool select_building = rear[at] && (!monster_in_front || !monster_pixels[at]);
+                const auto hit = picks.pick({x + .5F, y + .5F});
+                require(bool(hit) == (select_monster || select_building) &&
+                            (!hit || (hit->id == (select_monster ? 404U : 101U) &&
+                                      hit->kind == (select_monster ? Pick::Kind::monster
+                                                                   : Pick::Kind::facility))),
+                        "monster/building pick differs from the visible opaque pixel");
+                monster_overlap += rear[at] && monster_pixels[at];
+                monster_holes += rear[at] && !monster_pixels[at];
+            }
+    }
+    require(monster_overlap > 0 && monster_holes > 0,
+            "real monster oracle lacks overlap or transparent pixels");
     std::cout << "Pixel picking real-resource oracle: samples=" << samples << " covered=" << covered
               << " transparent=" << transparent << " revealed=" << holes
-              << " actor_overlap=" << actor_overlap << '\n';
+              << " actor_overlap=" << actor_overlap << " monster_overlap=" << monster_overlap
+              << " monster_holes=" << monster_holes << '\n';
 }
 } // namespace
 void render_world_edit_fixture() {

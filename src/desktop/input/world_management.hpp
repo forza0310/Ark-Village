@@ -68,6 +68,8 @@ class WorldManagement {
     ui::WorldFacilityGesture facility_catalog_gesture_;
     mutable std::optional<ui::WorldFacilityPaintedControls> facility_controls_;
     ui::WorldAwardSelection award_;
+    ui::WorldFacilityGesture tax_gesture_;
+    mutable std::optional<ui::WorldFacilityPaintedControls> tax_controls_;
     mutable std::optional<ui::WorldManualLayout> manual_layout_; // Last painted controls only.
     // Raw74 mouse actions use only the controls painted for this page and viewport.
     struct BuildingPaint {

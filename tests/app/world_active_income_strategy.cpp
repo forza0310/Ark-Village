@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <iostream>
 #include <limits>
+#include <map>
 #include <sstream>
 #include <stdexcept>
 #include <tuple>
@@ -167,8 +168,8 @@ void inspect_income(const State &s, std::ostream &out) {
             << " complete=" << (month < s.scene.calendar.month);
         for (int category = 0; category < 5; ++category) {
             const auto &row = account->rows[category];
-            out << " category" << category << "_income=" << row.income
-                << " category" << category << "_expense=" << row.expense;
+            out << " category" << category << "_income=" << row.income << " category" << category
+                << "_expense=" << row.expense;
             if (category < 3)
                 qualifying_income += row.income;
         }
@@ -183,9 +184,9 @@ void inspect_income(const State &s, std::ostream &out) {
                 << " definition_kind=" << s.rules->facilities.at(f.placement.definition_id).kind
                 << " anchor=" << f.placement.anchor.x << ',' << f.placement.anchor.y
                 << " status=" << f.status << " flags=" << s.facility_flags.at(id)
-                << " category=" << f.category << " shared_charm="
-                << values->definition_attributes[2]
-                << " price=" << f.price << " quality=" << values->instance_attributes[1]
+                << " category=" << f.category
+                << " shared_charm=" << values->definition_attributes[2] << " price=" << f.price
+                << " quality=" << values->instance_attributes[1]
                 << " charm=" << values->instance_attributes[2]
                 << " maintenance=" << values->definition_attributes[3] << " level="
                 << s.scene.world.world.facility_uses.at(f.placement.definition_id).level
@@ -211,8 +212,11 @@ void inspect_income(const State &s, std::ostream &out) {
             << " forecast_monthly_gain=" << best->monthly_gain << '\n';
     else
         out << "INVESTMENT none (no positive observed-price payback within budget)\n";
-    // Read-only ordinary-shop candidate membership from each present human's current
-    // cell. This is opportunity evidence, not a forced activity or a simulated visit.
+    // Rebuild current reachability for diagnosis, not the actor's cached perception or
+    // a forced visit. Include later shops so a zero-income unlock can be investigated.
+    std::set<int> built_definitions;
+    for (const auto &[id, facility] : s.scene.world.world.facilities)
+        built_definitions.insert(facility.placement.definition_id);
     const auto adapter = sim::startup_world_runtime_adapter();
     for (const auto actor : s.scene.world.world.ai.human_order) {
         const auto input = adapter.actors.decision(s, actor);
@@ -227,23 +231,40 @@ void inspect_income(const State &s, std::ostream &out) {
         if (!field.field)
             continue;
         const auto candidates = ref::collect_activity_candidates(*field.field, catalogue);
+        const auto &human = s.scene.world.world.ai.battle.actors.at(actor);
+        const auto &visits = s.scene.world.world.actors.at(actor).visits;
+        const bool roster_member = std::find(s.participants.begin(), s.participants.end(),
+                                             human.definition) != s.participants.end();
         out << "CUSTOMER actor=" << actor.value << " cell=" << cell.x << ',' << cell.y
-            << " human=" << s.scene.world.world.ai.battle.actors.at(actor).definition
-            << " state=" << s.scene.world.world.ai.battle.actors.at(actor).control.state
-            << " activity=" << activity
-            << " task_member="
-            << (std::find(s.participants.begin(), s.participants.end(),
-                          s.scene.world.world.ai.battle.actors.at(actor).definition) !=
-                s.participants.end())
-            << " snapshot_error=" << int(candidates.error);
+            << " human=" << human.definition << " state=" << human.control.state
+            << " activity=" << activity << " flags=" << human.control.flags
+            << " last_facility=" << visits.last_visited_instance.value_or(ref::BuildingId{}).value
+            << " visits=";
+        for (const auto count : visits.legacy_visit_counts)
+            out << count << ',';
+        // The last task's frozen roster may remain after its actual task has retired.
+        out << " task_roster_member=" << roster_member
+            << " task_member=" << (s.active_task && roster_member)
+            << " snapshot_error=" << int(candidates.error) << " view=current_unbounded";
         if (candidates.snapshot) {
             std::map<int, int> counts;
+            std::map<int, std::int64_t> weights;
+            std::array<std::int64_t, 11> category_weights{};
             for (const auto &c : candidates.snapshot->cells)
-                if (c.instance && c.instance->legacy_phase == 1)
+                if (c.instance && c.instance->legacy_phase == 1) {
                     ++counts[c.instance->definition_id];
+                    // Preserve source duplicate cells and event appends, including mixed tiles.
+                    const auto &definition = ref::candidate_instance_definition(c);
+                    weights[definition.definition_id] += definition.definition_charm;
+                    category_weights.at(definition.legacy_category) += definition.definition_charm;
+                }
+            for (int category : {1, 2, 6, 8})
+                out << " category" << category << "_weight=" << category_weights[category];
             for (const auto &d : s.rules->facilities)
-                if (d.unlock_rank == 2 && (d.kind == 3 || d.kind == 9))
-                    out << " definition" << d.id << "_cells=" << counts[d.id];
+                if ((d.kind == 3 || d.kind == 9) &&
+                    (d.unlock_rank == 2 || built_definitions.count(d.id)))
+                    out << " definition" << d.id << "_cells=" << counts[d.id] << " definition"
+                        << d.id << "_weight=" << weights[d.id];
         }
         out << '\n';
     }
@@ -553,12 +574,11 @@ void income_strategy_contract() {
             "empty inventory cannot be replenished by the reward-only selector");
     // Explicit placement/history/loot qualification isolates player priority, not a dungeon grant.
     auto introductions = empty_inventory;
-    const auto store =
-        std::find_if(introductions.scene.world.world.facilities.begin(),
-                     introductions.scene.world.world.facilities.end(), [&](const auto &entry) {
-                         return entry.second.placement.definition_id == 28 &&
-                                entry.second.status == 1;
-                     });
+    const auto store = std::find_if(
+        introductions.scene.world.world.facilities.begin(),
+        introductions.scene.world.world.facilities.end(), [&](const auto &entry) {
+            return entry.second.placement.definition_id == 28 && entry.second.status == 1;
+        });
     require(store != introductions.scene.world.world.facilities.end(),
             "priority fixture requires an ordinary source shop");
     const auto older = store->first;

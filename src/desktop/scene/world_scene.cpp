@@ -1,13 +1,13 @@
 // Adapted from the frozen maintained prototype --world renderer, using native product resources.
 #include "world_scene.hpp"
-#include "boundary_render.hpp"
-#include "character_status.hpp"
-#include "road_render.hpp"
 #include "../ui/common/layout.hpp"
 #include "ark/presentation/world_combat_visuals.hpp"
 #include "ark/presentation/world_dungeon_visuals.hpp"
-#include "world_overlay_render.hpp"
 #include "ark/presentation/world_rest_visuals.hpp"
+#include "boundary_render.hpp"
+#include "character_status.hpp"
+#include "road_render.hpp"
+#include "world_overlay_render.hpp"
 #include <algorithm>
 #include <cmath>
 #include <functional>
@@ -229,9 +229,11 @@ void draw_world_scene(const State &s, Sprites &sprites, const Text &text, float 
                                           {bar.rgb[0], bar.rgb[1], bar.rgb[2], 255});
                      draw_world_overlay(world_actor_combat_visuals(s, id), sprites, point, zoom);
                  },
-                 SpritePickTarget{actor.kind == rules::ActorKind::human && actor.control.state != 4
-                                      ? SpritePickTarget::Kind::human
-                                      : SpritePickTarget::Kind::blocker,
+                 // Only the drawn body is selectable; labels never enlarge this surface.
+                 SpritePickTarget{actor.kind == rules::ActorKind::monster
+                                      ? SpritePickTarget::Kind::monster
+                                  : actor.control.state != 4 ? SpritePickTarget::Kind::human
+                                                             : SpritePickTarget::Kind::blocker,
                                   id.value}});
         }
     // Neighbourhood notices already belong to the instance. Its f() projection is the

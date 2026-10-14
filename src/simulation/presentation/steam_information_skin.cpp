@@ -4,9 +4,12 @@
 #include "ark/simulation/world/startup_world_menu.hpp"
 #include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
 #include "ark/simulation/presentation/startup_world_visuals.hpp"
+#include "ark/simulation/village/startup_world_tax.hpp"
+#include "ark/simulation/actors/startup_world_human.hpp"
 #include "ark/simulation/presentation/steam_facility_skin.hpp"
 #include <algorithm>
 #include <limits>
+#include <set>
 #include <utility>
 
 namespace ark::simulation {
@@ -435,6 +438,63 @@ std::optional<SteamInformationSkinPlan> steam_facility_information_skin(
     return plan;
 }
 
+std::optional<SteamInformationSkinPlan> steam_tax_information_skin(
+    const SteamTaxInformationSkinInput &in,const SteamInformationSkinOptions &options) {
+    if(in.rows.size()>65536||in.selection<0||in.first_visible<0||
+       (in.rows.empty()?(in.selection!=0||in.first_visible!=0):
+        (static_cast<std::size_t>(in.selection)>=in.rows.size()||in.first_visible>in.selection||
+         static_cast<std::int64_t>(in.first_visible)+5<=in.selection)))return {};
+    std::set<int> identities;
+    for(const auto &row:in.rows)
+        if(row.definition<0||!identities.insert(row.definition).second||row.name.empty()||row.name.size()>4096||
+           !startup_title_actor_skin(row.profession,row.sex,-1,0,1,false))return {};
+    SteamInformationSkinPlan plan;
+    if(!directory_frame(plan,options,90,0))return {};
+    plan.soft_labels={0,0};
+    for(auto &draw:plan.draws)if(auto *label=std::get_if<SteamInformationText>(&draw))
+        if(label->role==Role::title)label->role=Role::tax_title;
+    text(plan,Role::tax_owner_header,0,-1,30,69,{},brown);
+    text(plan,Role::tax_income_header,0,-1,options.japanese?179:154,69,{},brown);
+    sprite(plan,103,12,20,204,70);
+    const int count=static_cast<int>(in.rows.size());
+    for(int row=in.first_visible;row<count&&row-in.first_visible<5;++row) {
+        const auto &entry=in.rows[static_cast<std::size_t>(row)];const int y=97+19*(row-in.first_visible);
+        if(row==in.selection)plan.draws.emplace_back(StartupSkinRect{{23,y-3,191,18},{255,153,55},false});
+        // 90无marker、无额外行margin，不复制35装备目录的触摸附加参数。
+        plan.touches.push_back({{11,0x20000|row,std::array<int,4>{3,y-3,231,18},{},0},{},{}});
+        plan.draws.emplace_back(StartupSkinRect{{29,y-2,16,16},{196,236,169},false});
+        plan.draws.emplace_back(StartupSkinRect{{29,y-2,16,16},{204,204,204},true});
+        plan.draws.emplace_back(SteamFacilityClip{SteamFacilityClipKind::push_intersect,{29,y-2,15,15}});
+        const auto body=startup_title_actor_skin(entry.profession,entry.sex,-1,0,1,false);
+        plan.draws.emplace_back(SteamInformationHumanBody{body->body,{37,y+21}});
+        plan.draws.emplace_back(SteamFacilityClip{SteamFacilityClipKind::pop,{}});
+        if(row==in.selection)sprite(plan,70,21,-1,21,y+8);
+        text(plan,Role::row_name,0,row,48,y,{},brown,0,entry.name);
+        number(plan,SteamFacilityAsset::number08,entry.amount,212,y+1,SteamFacilityNumberKind::money);
+    }
+    scroll(plan,count,in.first_visible,5,options.scroll_first_touch,111);
+    text(plan,Role::tax_total_label,0,-1,30,200,{},brown);
+    number(plan,SteamFacilityAsset::number05,in.total,212,201,SteamFacilityNumberKind::money);
+    plan.touches.push_back({{2,0,{},{},2},{},{}});
+    return plan;
+}
+std::optional<SteamInformationSkinPlan> steam_tax_information_skin(
+    const StartupWorldRuntimeState &state,std::uint64_t id,const SteamInformationSkinOptions &options) {
+    if(!state.rules||!state.tax_page_residents.count(id)||!state.tax_page_selection.count(id)||
+       !state.tax_page_scroll.count(id))return {};
+    const auto counter=state.page_counters.find(id);
+    if(counter==state.page_counters.end()||counter->second<0||counter->second==std::numeric_limits<int>::max())return {};
+    const auto view=inspect_startup_world_tax_page(state,id);
+    if(!view)return {};
+    SteamTaxInformationSkinInput in;
+    in.selection=view->selection;in.first_visible=view->first_visible;in.total=view->total;
+    for(const auto &row:view->rows) {
+        const auto human=startup_world_human_details(state,row.definition);
+        if(!human)return {};
+        in.rows.push_back({row.definition,human->profession,human->sex,row.amount,human->name});
+    }
+    return steam_tax_information_skin(in,options);
+}
 std::optional<SteamInformationSkinPlan> steam_adventurer_information_skin(
     const StartupWorldRuntimeState &state,std::uint64_t page,const SteamInformationSkinOptions &options) {
     const auto view=inspect_startup_world_information_page(state,page);

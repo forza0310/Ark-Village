@@ -1,4 +1,5 @@
 #include "world_management.hpp"
+#include "../ui/actors/world_monster.hpp"
 #include "../ui/common/skin.hpp"
 #include "../ui/system/world_menu.hpp"
 #include "world_save_menu.hpp"
@@ -40,6 +41,8 @@ void WorldManagement::observe(const app::WorldFrame &frame) {
         receipt_page_ = 0;
         commerce_amount_.reset();
         building_ = {};
+        tax_controls_.reset();
+        tax_gesture_ = {};
         manual_layout_.reset();
         building_detail_paint_.reset();
         commerce_top_controls_.reset();
@@ -92,6 +95,8 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
         facility_items_.scrolling = false;
         facility_catalog_gesture_.scrolling = false;
         award_ = {};
+        tax_controls_.reset();
+        tax_gesture_ = {};
         village_controls_.reset();
         village_gesture_.scrolling = false;
         magic_controls_.reset();
@@ -108,6 +113,17 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
                        (ui::world_facility_items_page(page) && IsKeyPressed(KEY_SPACE));
     const bool escape = back;
     const bool up = IsKeyPressed(KEY_UP), down = IsKeyPressed(KEY_DOWN);
+    if (ui::world_monster_intro_page(page)) {
+        if (ui::world_monster_intro_confirm(state, page, enter, blocked || !IsWindowFocused()))
+            queued(session.ack_page(page.id));
+        return true; // Source89 has no published mouse rectangle or cancel action.
+    }
+    if (ui::world_monster_detail_page(page)) {
+        if (const auto action = ui::world_monster_detail_input(state, page, enter, escape,
+                                                               blocked || !IsWindowFocused()))
+            queued(session.act_monster(page.id, *action == ui::WorldMonsterDetailAction::cancel));
+        return true; // Source92 returns immediately; Touch2 supplies no left-click area.
+    }
     if (ui::world_manual_page(page)) {
         const auto view = ui::world_manual_view(state, page);
         const ui::WorldManualInput input{point, enter, IsKeyPressed(KEY_RIGHT),
@@ -338,14 +354,22 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
     if (ui::world_tax_page(page)) {
         const auto view = ui::world_tax_view(state, page);
         const auto layout = ui::world_tax_layout(extent);
-        ui::WorldHumanInput input;
+        ui::WorldTaxInput input;
         input.click = point;
         input.enter = enter;
         input.up = up;
         input.down = down;
-        input.wheel_rows = -static_cast<int>(GetMouseWheelMove() * 2);
-        if (const auto intent = ui::world_tax_input(view, layout, input, blocked))
-            queued(session.act_tax(page.id, intent->action, intent->selection));
+        input.focus_lost = !IsWindowFocused();
+        input.wheel_rows = hit(mouse, layout.rows) ? -static_cast<int>(GetMouseWheelMove() * 2) : 0;
+        input.pointer = mouse;
+        input.pointer_pressed = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+        input.pointer_down = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+        input.pointer_released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
+        if (input.focus_lost)
+            tax_controls_.reset();
+        if (const auto frame =
+                ui::world_tax_input(view, layout, tax_gesture_, input, blocked, tax_controls_))
+            queued(session.input_tax(page.id, *frame));
         return true;
     }
     if (ui::world_building_page(page)) {
@@ -442,6 +466,16 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
 bool WorldManagement::draw_page(const State &state, const Page &page, Extent extent,
                                 const ui::Skin &skin, bool enabled) const {
     enabled = enabled && !pending();
+    if (ui::world_monster_intro_page(page)) {
+        ui::draw_world_monster_intro(ui::prepare_world_monster_intro(state, page, skin), extent,
+                                     skin);
+        return true;
+    }
+    if (ui::world_monster_detail_page(page)) {
+        ui::draw_world_monster_detail(ui::prepare_world_monster_detail(state, page, skin), extent,
+                                      skin);
+        return true;
+    }
     if (ui::world_manual_page(page)) {
         manual_layout_ =
             ui::draw_world_manual(state, ui::world_manual_view(state, page), extent, skin, enabled);
@@ -504,8 +538,11 @@ bool WorldManagement::draw_page(const State &state, const Page &page, Extent ext
             ui::world_human_painted_controls(view, ui::world_human_layout(extent), extent, skin);
         ui::draw_world_human(view, ui::world_human_layout(extent), skin, enabled, feedback_);
     } else if (ui::world_tax_page(page)) {
-        ui::draw_world_tax(ui::world_tax_view(state, page), ui::world_tax_layout(extent), skin,
-                           enabled);
+        auto view = ui::world_tax_view(state, page);
+        ui::prepare_world_tax(view, state, skin, tax_gesture_.scrolling);
+        tax_controls_ = ui::draw_world_tax(view, ui::world_tax_layout(extent), skin);
+        if (!IsWindowFocused())
+            tax_controls_.reset();
     } else if (ui::world_building_page(page)) {
         auto view = ui::world_building_view(state, page);
         ui::prepare_world_building_detail(view, state, building_, skin);
@@ -654,6 +691,14 @@ bool WorldManagement::input_scene(const State &state, const WorldCameraView &vie
             const auto &actors = state.scene.world.world.ai.battle.actors;
             if (actors.count(id)) {
                 queued(session.open_human(id, actors.at(id).definition));
+                return true;
+            }
+        }
+        if (target && target->kind == SpritePickTarget::Kind::monster) {
+            const simulation::rules::CharacterId id{target->id};
+            const auto &actors = state.scene.world.world.ai.battle.actors;
+            if (actors.count(id)) {
+                queued(session.open_monster(id, actors.at(id).definition));
                 return true;
             }
         }

@@ -13,6 +13,7 @@
 #include "ark/simulation/facilities/startup_world_commerce.hpp"
 #include "ark/simulation/village/startup_world_village_activity.hpp"
 #include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
+#include "ark/simulation/village/startup_world_tax.hpp"
 #include "ark/simulation/ai/rules/actor_control.hpp"
 #include "ark/simulation/ai/rules/world_perception.hpp"
 
@@ -1048,6 +1049,12 @@ struct Validation {
         if (!valid_startup_world_runtime_task_tracking_scene(s))
             return fail("task scene: 追踪名单/选择/目标载荷非法");
         for (const auto &p : s.scripts.pages) {
+            if(p.kind==ref::WorldScriptPageKind::raw_page&&p.legacy_page==89&&
+               !valid_startup_world_monster_intro_page(s,p))
+                return fail("monster intro89: 缺怪物定义/真实Init主钟或关闭待退休载荷非法");
+            if(p.kind==ref::WorldScriptPageKind::raw_page&&p.legacy_page==92&&
+               !valid_startup_world_monster_detail_page(s,p))
+                return fail("monster detail92: 缺共享定义/统计/真实Init主钟或关闭待退休载荷非法");
             if (p.kind == ref::WorldScriptPageKind::raw_page &&
                 p.legacy_page == 17 && !valid_startup_world_clear_page(s,p))
                 return fail("clear page: 初始化/阶段钟/独立主钟或关闭待退休载荷非法");
@@ -1162,17 +1169,8 @@ struct Validation {
             } else if (raw==48||raw==49||raw==50||raw==95) {
                 if(!valid_startup_world_town_progress_page(s,p))return fail("town progress: 初始化/选择/庆典/领取载荷非法");
             }
-            if (raw == 90 && (s.tax_page_selection.count(id) || s.tax_page_scroll.count(id)) &&
-                !s.tax_page_residents.count(id))
-                return fail("tax page: 初始化名单缺失");
-            if (raw == 90 && s.tax_page_residents.count(id)) {
-                const auto &list = s.tax_page_residents.find(id)->second;
-                const auto sel = get(s.tax_page_selection, id), scroll = get(s.tax_page_scroll, id);
-                if (!sel || !scroll || !s.page_counters.count(id) ||
-                    !scrolling(*sel, *scroll, list.size(), 5) ||
-                    !unique_references(list, [&](int n) { return human(n); }))
-                    return fail("tax page: 已初始化名单/选择非法");
-            }
+            if (raw == 90 && !valid_startup_world_tax_page(s, p))
+                return fail("tax page: 生命周期/四键/冻结名单或游标非法");
             if (raw == 87 &&
                 (s.award_announced.count(id) || s.award_termination_pending.count(id) ||
                  s.award_pending_humans.count(id)) &&

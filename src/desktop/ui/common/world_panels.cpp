@@ -15,6 +15,7 @@ namespace ark::desktop::ui {
 bool world_hud_buttons_visible(const simulation::rules::WorldScriptPage *page) {
     return !page ||
            (page->legacy_page != 21 && page->legacy_page != 74 && page->legacy_page != 29 &&
+            page->legacy_page != 89 && page->legacy_page != 90 && page->legacy_page != 92 &&
             (page->legacy_page < 22 || page->legacy_page > 24) && !world_source_menu_page(*page) &&
             page->legacy_page != 9 && page->legacy_page != 13 && page->legacy_page != 14 &&
             (page->legacy_page < 34 || page->legacy_page > 40) &&
@@ -31,14 +32,6 @@ std::string world_page_body(const simulation::StartupWorldRuntimeState &s,
         body += s.rules->tasks.at(*page.task_definition).name + "完成!";
     if (page.legacy_page == 49)
         body = s.page_counters.count(page.id) ? world_rank_conditions(s) : "";
-    if (page.legacy_page == 89 && page.monster_definition && body.empty()) {
-        // The source binds a definition identity, not an actor or source-record index.
-        const auto found = std::find_if(
-            s.rules->monsters.begin(), s.rules->monsters.end(),
-            [&](const auto &monster) { return monster.identity == *page.monster_definition; });
-        if (found != s.rules->monsters.end())
-            body = found->name;
-    }
     return body;
 }
 void draw_world_hud(const simulation::StartupWorldRuntimeState &s, const Layout &layout,

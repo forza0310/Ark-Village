@@ -446,7 +446,17 @@ void task_menu_report_and_departure() {
 // alternate reward calculation or long-running automatic player lives in transport tests.
 app::WorldState managed_page_fixture(int raw, bool ready = true) {
     auto state = initial();
-    if (raw == 60) {
+    if (raw == 90) {
+        // Tax constructor has no payload; only real framework Init may freeze its four keys.
+        rules::WorldScriptPage page;
+        page.kind = rules::WorldScriptPageKind::raw_page;
+        page.legacy_page = raw;
+        const auto opened =
+            rules::prepare_world_script_page(sim::startup_world_runtime_scripts(state), page);
+        check(opened.candidate &&
+                  sim::write_startup_world_runtime_scripts(state, opened.candidate->state),
+              "Tax callsite fixture allocates a real pending source page");
+    } else if (raw == 60) {
         check(sim::open_startup_world_human_page(state, 1) == sim::StartupWorldRuntimeError::none,
               "Details fixture obtains its source0 context from the real scene entry");
     } else {
@@ -757,8 +767,11 @@ void tax_command_transactions() {
     state.human_homes.at(1)[2] = 1;
     state.human_calendar.at(1).legacy_G = 100;
     state.scene.framework_paused = false;
-    check(sim::initialize_startup_world_tax_page(state, page) ==
-              sim::StartupWorldRuntimeError::none,
+    for (int n = 0; n < 4 && task_top(state).lifecycle != 2; ++n)
+        state = advance(std::move(state));
+    check(task_top(state).id == page && task_top(state).lifecycle == 2 &&
+              state.tax_page_residents.count(page) &&
+              state.tax_page_residents.at(page) == std::vector<int>{1},
           "Tax fixture freezes the real eligible resident list");
     state.scene.framework_paused = true;
     app::WorldSession session(state);

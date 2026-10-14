@@ -2,11 +2,13 @@
 // profession gates, gift rewards and tax posting; those transactions are not duplicated here.
 #include "../../src/desktop/inspection/world_human_inspection.hpp"
 #include "../../src/desktop/ui/actors/world_human.hpp"
+#include "../../src/desktop/ui/actors/world_monster.hpp"
 #include "../../src/desktop/ui/village/world_progression.hpp"
 #include "../../src/desktop/ui/village/world_tax.hpp"
 #include "../support/checks.hpp"
 #include "../support/world_fixture.hpp"
 #include "ark/simulation/facilities/startup_world_commerce.hpp"
+#include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
 #include <algorithm>
 
 namespace ark::test {
@@ -60,10 +62,85 @@ ui::WorldHumanPaintedControls painted_rows(const ui::WorldHumanView &v,
     }
     return p;
 }
+// Monster92 transport/layout uses one real entry; shared growth and numeric oracle stay below UI.
+void monster_detail_ui(Checks &check) {
+    sim::rules::EncounterCreationInput request;
+    request.kind = 0;
+    request.center = {10, 18};
+    request.year_index = 0;
+    request.month_index = 3;
+    const auto spawned = sim::prepare_startup_world_runtime_encounter(initial_world(), request);
+    check(spawned && !spawned->scene.world.world.ai.monster_order.empty(),
+          "Monster UI fixture obtains an actual current encounter actor");
+    auto owner = *spawned;
+    const auto actor = owner.scene.world.world.ai.monster_order.front();
+    check(sim::open_startup_world_monster_detail_page(owner, actor) ==
+              sim::StartupWorldRuntimeError::none,
+          "Monster UI fixture opens92 through the source actor entry");
+    const auto pending = owner.scripts.pages.back();
+    sim::SteamMonsterSkinOptions options;
+    options.view_y = 23;
+    options.title_widths = std::array<int, 2>{48, 48};
+    options.name_width = 48; // Explicit measurement fixture, never a character-count estimate.
+    check(ui::world_monster_detail_page(pending) &&
+              !ui::world_monster_detail_input(owner, pending, true, false, false) &&
+              !sim::steam_monster_detail_skin(owner, pending.id, options) &&
+              !owner.page_counters.count(pending.id),
+          "Pending92 drawing/input cannot initialize the source clock");
+    const auto ready = sim::prepare_startup_world_runtime(owner);
+    check(ready.candidate && ready.candidate->scripts.pages.back().lifecycle == 2,
+          "Actual framework Init admits92 before the desktop can close it");
+    owner = *ready.candidate;
+    owner.page_counters.at(pending.id) = 0; // A zero-clock ready92 is explicitly source-qualified.
+    const auto page = owner.scripts.pages.back();
+    const auto before = owner;
+    using Action = ui::WorldMonsterDetailAction;
+    const auto confirm = ui::world_monster_detail_input(owner, page, true, false, false);
+    const auto back = ui::world_monster_detail_input(owner, page, false, true, false);
+    check(confirm && *confirm == Action::confirm && back && *back == Action::cancel &&
+              !ui::world_monster_detail_input(owner, page, false, false, false) &&
+              !ui::world_monster_detail_input(owner, page, true, true, true),
+          "Ready92 immediately maps Enter/Back and has no coordinate-free mouse confirmation");
+    const auto plan = sim::steam_monster_detail_skin(owner, page.id, options);
+    const auto repeated = sim::steam_monster_detail_skin(owner, page.id, options);
+    check(plan && repeated && plan->title == "怪物情报" &&
+              plan->soft_labels == std::array<int, 2>{0, 2} &&
+              plan->operations.size() == repeated->operations.size() &&
+              owner.page_counters == before.page_counters && same_world_clock(owner, before) &&
+              owner.sound_requests == before.sound_requests &&
+              owner.scene.random.draws() == before.scene.random.draws() &&
+              owner.scene.world.world.ai.accounting.funds() ==
+                  before.scene.world.world.ai.accounting.funds(),
+          "Repeated92 plan/input queries preserve clocks, cash, random and one-shot sound");
+    auto paused = owner;
+    paused.scene.framework_paused = true;
+    check(!ui::world_monster_detail_input(paused, page, true, false, false),
+          "Paused92 refuses Enter even without a separate blocked input flag");
+    auto broken = owner;
+    broken.page_counters.erase(page.id);
+    check(!ui::world_monster_detail_input(broken, page, true, false, false) &&
+              !sim::steam_monster_detail_skin(broken, page.id, options) &&
+              !broken.page_counters.count(page.id),
+          "Ready92 missing its clock refuses input/drawing without reconstructing it");
+    auto covered = owner;
+    covered.scripts.executing_page = page.id;
+    Page overlay;
+    overlay.kind = sim::rules::WorldScriptPageKind::raw_page;
+    overlay.legacy_page = 16;
+    overlay.legacy_l = 2;
+    const auto inserted =
+        sim::rules::prepare_world_script_page(sim::startup_world_runtime_scripts(covered), overlay);
+    check(inserted.candidate &&
+              sim::write_startup_world_runtime_scripts(covered, inserted.candidate->state) &&
+              !ui::world_monster_detail_input(covered, page, false, true, false) &&
+              !sim::steam_monster_detail_skin(covered, page.id, options),
+          "Covered92 cannot close the newly allocated top page using an old input identity");
+}
 } // namespace
 
 void world_human() {
     Checks check{"world_human"};
+    monster_detail_ui(check);
     using Action = sim::StartupHumanPageAction;
     const auto layout = ui::world_human_layout({240, 256});
     auto state = initial_world();
@@ -751,7 +828,6 @@ void world_human() {
 
 void world_tax() {
     Checks check{"world_tax"};
-    using Action = sim::StartupWorldTaxAction;
     auto state = initial_world();
     auto page = human_page(state, 90);
     const auto layout = ui::world_tax_layout({240, 256});
@@ -760,6 +836,7 @@ void world_tax() {
     state.tax_page_residents[page.id] = {5, 2, 4, 1, 0, 3};
     state.tax_page_selection[page.id] = 5;
     state.tax_page_scroll[page.id] = 1;
+    page.lifecycle = state.scripts.pages.back().lifecycle = 2;
     for (int id = 0; id < 6; ++id)
         state.human_calendar.at(id).legacy_G = 10 + id;
     const auto before = state;
@@ -769,19 +846,76 @@ void world_tax() {
             view.rows[1].identity == 2 && view.rows[0].amount == 15 && view.total == 75 &&
             view.first_visible == 1 && view.selection == 5,
         "Tax shows source frozen order, current G amounts, exact total and source five-row scroll");
-    ui::WorldHumanInput input;
+    sim::SteamInformationSkinOptions options;
+    options.view_y = 23;
+    options.title_widths = std::array<int, 2>{48, 48};
+    view.skin = sim::steam_tax_information_skin(state, page.id, options);
+    auto controls = ui::world_tax_painted_controls(view, layout);
+    check(
+        view.skin && controls && controls->rows.size() == 5 && controls->scroll &&
+            controls->confirm.width == 0 && controls->cancel.width == 0,
+        "Source tax plan supplies five no-marker rows and scrollbar, without a fabricated button");
+    ui::WorldFacilityGesture gesture;
+    ui::WorldTaxInput input;
     input.escape = true;
-    check(!ui::world_tax_input(view, layout, input, false),
+    check(!ui::world_tax_input(view, layout, gesture, input, false, controls),
           "Tax report has no cancel acknowledgement");
     input = {};
-    input.click = middle({layout.rows.x, layout.rows.y, layout.rows.width, layout.row_height});
-    const auto selected = ui::world_tax_input(view, layout, input, false);
-    check(selected && selected->action == Action::select && selected->selection == 1,
-          "Tax visible row maps to the source list position, not resident identity");
+    input.click = middle(controls->rows.front().rectangle);
+    const auto selected = ui::world_tax_input(view, layout, gesture, input, false, controls);
+    check(selected && selected->selection == 1 && selected->confirm,
+          "No-marker tax release selects the source position and confirms in one frame");
+    input.up = input.down = true;
+    input.wheel_rows = -1;
+    const auto combined = ui::world_tax_input(view, layout, gesture, input, false, controls);
+    check(combined && combined->selection == 1 && combined->up && combined->down &&
+              combined->confirm && combined->scroll && !combined->scroll->absolute &&
+              combined->scroll->value == -1,
+          "Tax preserves scroll, selection, both directions and confirmation for source ordering");
+    for (int stale = 0; stale < 5; ++stale) {
+        auto old = controls;
+        if (stale == 0)
+            ++old->page;
+        if (stale == 1)
+            old->selection = 0;
+        if (stale == 2)
+            old->first = 0;
+        if (stale == 3)
+            --old->extent.width;
+        if (stale == 4)
+            ++old->rows.front().identity;
+        input = {};
+        input.click = middle(controls->rows.front().rectangle);
+        check(!ui::world_tax_input(view, layout, gesture, input, false, old),
+              "Tax rejects mouse actions from stale page, selection, scroll, size or identity");
+    }
+    input.focus_lost = true;
+    check(!ui::world_tax_input(view, layout, gesture, input, false, controls),
+          "Focus loss rejects the last-painted tax row");
+    input = {};
+    input.click = Vector2{layout.panel.x + 4, layout.panel.y + 4};
+    check(!ui::world_tax_input(view, layout, gesture, input, false, controls),
+          "Coordinate-free Touch2 never becomes a full-screen acknowledgement");
+    input = {};
+    input.pointer = Vector2{controls->scroll->x + 1, controls->scroll->y + 60};
+    input.pointer_pressed = input.pointer_down = true;
+    const auto drag_start = ui::world_tax_input(view, layout, gesture, input, false, controls);
+    check(drag_start && drag_start->scroll && !drag_start->confirm && gesture.scrolling,
+          "Tax scrollbar press submits only an absolute scroll request");
+    input.pointer->y -= 40;
+    input.pointer_pressed = input.pointer_down = false;
+    input.pointer_released = true;
+    input.click = middle(controls->rows.front().rectangle);
+    const auto drag_end = ui::world_tax_input(view, layout, gesture, input, false, controls);
+    check(
+        drag_end && drag_end->scroll && drag_end->scroll->absolute &&
+            drag_end->scroll->value == 0 && !drag_end->selection && !drag_end->confirm &&
+            !gesture.scrolling,
+        "Consumed drag release scrolls to the first window without confirming an overlapping row");
     input = {};
     input.enter = true;
-    check(ui::world_tax_input(view, layout, input, false)->action == Action::confirm &&
-              !ui::world_tax_input(view, layout, input, true),
+    check(ui::world_tax_input(view, layout, gesture, input, false, controls)->confirm &&
+              !ui::world_tax_input(view, layout, gesture, input, true, controls),
           "Tax confirmation has no animation threshold and obeys pending-command blocking");
     check(state.human_calendar.at(5).legacy_G == 15 && same_world_clock(state, before) &&
               state.scene.world.world.ai.accounting.funds() ==
@@ -790,11 +924,10 @@ void world_tax() {
     page.legacy_page = state.scripts.pages.back().legacy_page = 98;
     view = ui::world_tax_view(state, page);
     check(ui::world_tax_page(page) && !view.initialized &&
-              !ui::world_tax_input(view, layout, input, false),
+              !ui::world_tax_input(view, layout, gesture, input, false, controls),
           "Automatic raw98 has no user confirmation path");
-    check(inside(layout.panel, layout.rows) && inside(layout.panel, layout.total) &&
-              inside(layout.panel, layout.confirm),
-          "Five tax rows and total fit the minimum viewport");
+    check(inside({0, 0, 240, 256}, layout.rows) && inside(layout.panel, layout.total),
+          "Source five-row touch window and total fit the minimum viewport");
 
     // A preceding event input can expose raw98 immediately. The next source update both
     // pays and closes it, so the diagnostic must capture its input before that update.

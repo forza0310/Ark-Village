@@ -18,7 +18,8 @@ enum class SteamInformationTextRole {
     town_points_header, spending_header, adventurer_count,
     village_name, town_stat_label, town_adventurer_count, town_equipment_count,
     town_equipment_kinds, facility_income_list, facility_profit_header,
-    facility_name, facility_tracking_hint, menu_entry
+    facility_name, facility_tracking_hint, menu_entry,
+    tax_title, tax_owner_header, tax_income_header, tax_total_label
 };
 enum class SteamInformationTextMode { plain, layout, rich_text };
 struct SteamInformationText {
@@ -124,6 +125,20 @@ struct SteamInformationSkinOptions {
     bool english{}; // Steam35属性标题独立En分支，不能由!japanese推导。
     std::optional<int> bottom_width{}; // 仅34必需：当前Font对底部原字符串的真实StringWidth。
 };
+// raw90沿冻结居民引用读取当前G；皮肤不枚举入住资格，也不收税或刷新税额。
+struct SteamTaxInformationSkinRow {
+    int definition{}, profession{}, sex{}, amount{};
+    std::string name;
+};
+struct SteamTaxInformationSkinInput {
+    std::vector<SteamTaxInformationSkinRow> rows;
+    int selection{}, first_visible{}, total{};
+};
+std::optional<SteamInformationSkinPlan> steam_tax_information_skin(
+    const SteamTaxInformationSkinInput &input,const SteamInformationSkinOptions &options);
+// 仅原已初始化90：居民/选择/首行/计数缺一即拒绝，不能用实时枚举补缺页载荷。
+std::optional<SteamInformationSkinPlan> steam_tax_information_skin(
+    const StartupWorldRuntimeState &state,std::uint64_t page,const SteamInformationSkinOptions &options);
 // Steam34统计/星级/真实测宽底栏及39设施目录/利润；只读现有页面，不执行入页副作用。
 std::optional<SteamInformationSkinPlan> steam_town_information_skin(
     const StartupWorldRuntimeState &state, std::uint64_t page,

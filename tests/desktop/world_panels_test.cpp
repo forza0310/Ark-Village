@@ -1,16 +1,122 @@
 // Layout contracts keep active text and confirmation inside the viewport at every supported size.
+#include "../../src/desktop/ui/actors/world_monster.hpp"
 #include "../../src/desktop/ui/common/world_panels.hpp"
 #include "../../src/desktop/ui/common/world_reports.hpp"
 #include "../support/checks.hpp"
 #include "../support/world_fixture.hpp"
+#include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
 #include <cmath>
 #include <iostream>
+#include <tuple>
 
 namespace {
 bool contains(Rectangle outer, Rectangle inner) {
     return inner.width > 0 && inner.height > 0 && inner.x >= outer.x && inner.y >= outer.y &&
            inner.x + inner.width <= outer.x + outer.width &&
            inner.y + inner.height <= outer.y + outer.height;
+}
+// Observe only the desktop contract; the source skin suite owns whole-Owner equality.
+auto monster_intro_observation(const ark::simulation::StartupWorldRuntimeState &state) {
+    const auto &calendar = state.scene.calendar;
+    const auto random = state.scene.random.snapshot();
+    std::vector<std::tuple<std::uint64_t, ark::simulation::rules::WorldScriptPageKind, int, int,
+                           std::optional<int>>>
+        pages;
+    for (const auto &page : state.scripts.pages)
+        pages.emplace_back(page.id, page.kind, page.legacy_page, page.lifecycle,
+                           page.monster_definition);
+    return std::make_tuple(
+        std::make_tuple(calendar.year, calendar.month, calendar.subperiod, calendar.units,
+                        calendar.previous_units, calendar.month_ticks, state.scene.world.updates,
+                        state.simulation_steps, state.arrival_counter, state.scene.frame_counter,
+                        state.scene.scene_counter, state.scene.framework_paused),
+        state.scene.world.world.ai.accounting.funds(), state.village_points,
+        std::make_tuple(random.engine_state, random.tape, random.cursor, random.tape_mode),
+        state.sound_requests, state.page_counters, state.page_phases, state.page_secondary_counters,
+        state.scripts.executing_page, std::move(pages));
+}
+// One actual89 callsite checks desktop admission; source suites own body/clip combinations.
+void monster_introduction_input(ark::test::Checks &check) {
+    namespace sim = ark::simulation;
+    namespace ui = ark::desktop::ui;
+    namespace ref = sim::rules;
+    const auto generated = sim::consume_startup_world_runtime_encounter_request(
+        ark::test::initial_world(), {ref::EncounterCreationRequestKind::page89, 3});
+    check(generated.has_value(), "Actual encounter request creates the bound monster89 page");
+    auto state = *generated;
+    const auto page_id = state.scripts.pages.back().id;
+    sim::SteamMonsterSkinOptions options;
+    options.view_y = 23;
+    options.title_widths = std::array<int, 2>{48, 48}; // Explicit pure-plan measurement fixture.
+    const auto pending_before = monster_intro_observation(state);
+    check(ui::world_monster_intro_page(state.scripts.pages.back()) &&
+              !ui::world_monster_intro_confirm(state, state.scripts.pages.back(), true, false) &&
+              !sim::steam_monster_introduction_skin(state, page_id, options) &&
+              monster_intro_observation(state) == pending_before,
+          "Pending89 cannot acquire a main clock from drawing or desktop Enter qualification");
+    const auto initialized = sim::prepare_startup_world_runtime(state);
+    check(initialized.candidate && initialized.candidate->scripts.pages.back().lifecycle == 2 &&
+              initialized.candidate->page_counters.count(page_id),
+          "Actual framework initializes89 before desktop confirmation is available");
+    state = *initialized.candidate;
+    const auto page = state.scripts.pages.back();
+    const auto ready_before = monster_intro_observation(state);
+    check(!ui::world_monster_intro_confirm(state, page, false, false) &&
+              !ui::world_monster_intro_confirm(state, page, true, true) &&
+              ui::world_monster_intro_confirm(state, page, true, false),
+          "Monster89 needs an Enter edge and rejects blocked or unfocused desktop input");
+    const auto plan = sim::steam_monster_introduction_skin(state, page_id, options);
+    const auto repeated_plan = sim::steam_monster_introduction_skin(state, page_id, options);
+    check(plan && repeated_plan && plan->title == "新型怪物" &&
+              plan->soft_labels == std::array<int, 2>{0, 0} &&
+              repeated_plan->operations.size() == plan->operations.size() &&
+              monster_intro_observation(state) == ready_before,
+          "Repeated89 drawing/Enter queries preserve clocks, funds, random, sounds and page stack");
+
+    auto paused = state;
+    paused.scene.framework_paused = true;
+    const auto paused_before = monster_intro_observation(paused);
+    check(!ui::world_monster_intro_confirm(paused, paused.scripts.pages.back(), true, false) &&
+              monster_intro_observation(paused) == paused_before,
+          "Framework pause rejects89 even when the desktop blocked flag is false");
+    auto covered = state;
+    covered.scripts.executing_page = page_id;
+    ref::WorldScriptPage overlay;
+    overlay.kind = ref::WorldScriptPageKind::raw_page;
+    overlay.legacy_page = 16;
+    overlay.legacy_l = 2;
+    const auto inserted =
+        ref::prepare_world_script_page(sim::startup_world_runtime_scripts(covered), overlay);
+    check(inserted.candidate &&
+              sim::write_startup_world_runtime_scripts(covered, inserted.candidate->state),
+          "Covered89 fixture allocates a real overlay above the observed page");
+    const auto covered_before = monster_intro_observation(covered);
+    check(!ui::world_monster_intro_confirm(covered, page, true, false) &&
+              !sim::steam_monster_introduction_skin(covered, page_id, options) &&
+              monster_intro_observation(covered) == covered_before,
+          "Covered89 cannot confirm another top page or expose a stale drawing plan");
+    auto missing_clock = state;
+    missing_clock.page_counters.erase(page_id);
+    const auto broken_before = monster_intro_observation(missing_clock);
+    check(!ui::world_monster_intro_confirm(missing_clock, page, true, false) &&
+              !sim::steam_monster_introduction_skin(missing_clock, page_id, options) &&
+              monster_intro_observation(missing_clock) == broken_before,
+          "Ready89 with a missing source clock refuses drawing/input without repairing Owner");
+    check(ui::world_monster_intro_confirm(state, page, true, false) &&
+              sim::acknowledge_startup_world_runtime_page(state, page_id) ==
+                  sim::StartupWorldRuntimeError::none &&
+              state.page_counters.at(page_id) == 40 && state.scripts.pages.back().lifecycle == 2,
+          "Qualified early89 Enter reaches source40 without closing the introduction");
+    check(ui::world_monster_intro_confirm(state, state.scripts.pages.back(), true, false) &&
+              sim::acknowledge_startup_world_runtime_page(state, page_id) ==
+                  sim::StartupWorldRuntimeError::none &&
+              state.scripts.pages.back().lifecycle == 4,
+          "The next qualified89 Enter closes through the actual source consumer");
+    const auto closed_before = monster_intro_observation(state);
+    check(!ui::world_monster_intro_confirm(state, state.scripts.pages.back(), true, false) &&
+              !sim::steam_monster_introduction_skin(state, page_id, options) &&
+              monster_intro_observation(state) == closed_before,
+          "Retired89 has no further desktop confirmation or drawing plan");
 }
 } // namespace
 namespace ark::test {
@@ -19,9 +125,8 @@ void world_panels() {
     using namespace ark::desktop;
     using namespace ark::simulation::rules;
     check(ui::world_hud_buttons_visible(nullptr), "Main scene retains mouse pause/menu controls");
-    for (const int raw :
-         {3, 4, 7, 9, 10, 13, 14, 21, 22, 23, 24, 29, 34, 35, 36, 37, 38, 39, 40, 74, 75, 60,
-          83, 84, 85, 86}) {
+    for (const int raw : {3,  4,  7,  9,  10, 13, 14, 21, 22, 23, 24, 29, 34, 35, 36,
+                          37, 38, 39, 40, 74, 75, 60, 83, 84, 85, 86, 89, 90, 92}) {
         WorldScriptPage page;
         page.kind = WorldScriptPageKind::raw_page;
         page.legacy_page = raw;
@@ -252,6 +357,7 @@ void world_panels() {
     reward.lifecycle = 4;
     check(!ui::world_script_reward_view(reward_state, reward).initialized,
           "Retired reward cannot expose another claim button");
+    monster_introduction_input(check);
     std::cout << "PASS world page layout contracts\n";
 }
 } // namespace ark::test

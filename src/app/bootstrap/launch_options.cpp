@@ -34,10 +34,10 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
                 page != "world-title-cash" && page != "world-title-configure" &&
                 page != "world-title-configure-female" && page != "world-title-text" &&
                 page != "world-title-clear" && page != "world-active" && page != "world-month" &&
-                page != "world-rank" && page != "world-combat" && page != "world-reward" &&
-                page != "world-exp" && page != "world-rest" && page != "world-rest-hp" &&
-                page != "world-news" && page != "world-break" && page != "world-award" &&
-                page != "world-task-team" && page != "world-task-result" &&
+                page != "world-rank" && page != "world-combat" && page != "world-monster-intro" &&
+                page != "world-reward" && page != "world-exp" && page != "world-rest" &&
+                page != "world-rest-hp" && page != "world-news" && page != "world-break" &&
+                page != "world-award" && page != "world-task-team" && page != "world-task-result" &&
                 page != "world-task-recruitment" && page != "world-menu" &&
                 page != "world-building" && page != "world-build-preview" &&
                 page != "world-build-preview-hidden" && page != "world-build-rotated" &&

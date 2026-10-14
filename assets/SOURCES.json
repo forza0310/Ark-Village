@@ -5259,6 +5259,22 @@
       "sha256": "7387ea688a142c547bed1ec0d643ab7c11762cd21ab27f40ebdc1fe7eca1ad96",
       "bytes": 68,
       "purpose": "Commerce83 three category icons; independent common2 image2 and SEB1."
+    },
+    {
+      "file": "common2/monster_money.png",
+      "source": "research/dungeon_village_1/assets/original/common2/monster_money.png",
+      "sha256": "50290ce85900b804da323fc8c0f3fb3491c6351e414deeedac7e661cc0c455d1",
+      "bytes": 401,
+      "purpose": "Published monster92 reward artwork; common2 image1 / two-frame SEB, distinct from common resources.",
+      "width": 28,
+      "height": 18
+    },
+    {
+      "file": "common2/monster_money.seb",
+      "source": "research/dungeon_village_1/assets/original/common2/monster_money.seb",
+      "sha256": "394deeb355f165d13d0500959f5c800b393389c2ab4e9ba39a581e73da2f918b",
+      "bytes": 48,
+      "purpose": "Published monster92 reward artwork; common2 image1 / two-frame SEB, distinct from common resources."
     }
   ]
 }

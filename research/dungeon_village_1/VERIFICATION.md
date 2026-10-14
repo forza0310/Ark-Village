@@ -6,11 +6,15 @@
 
 接`58eedb1`继续补同一模块的Update纯候选：先钟、state0资格、Left／Right Repeat短路及soft2 Pop请求；现套件追加同时方向、方向与返回、非state0、回卷和坏初态。最终单Release动态构建，visuals **1/1通过1.59秒**（总1.60秒），无绘制改动不重复窗口。Net getter已证仅读系统备用long项，无网络副作用。保存主线补FRAME_TIME1具名初始写者27但不外推后继运行值；字体补默认开关的正常构造／配置范围，实际运行开关仍未知。
 
-两页各8帧、0世界更新并正常退出，[两页图例](ui/examples/steam-record-pages.png)960×640／118885字节已查看。真实默认系统纪录0／没有记录与维护初装，frame19／名单0,1仅显示条件；原字体、联网getter、物理输入及独立纪录钟Owner／恢复未完成，不新增持久字段或假称自然取得。并行将FontTexture→Image同步UI任务→共享图集区域退休／Unity释放销毁请求合入[字体合同](ui/STEAM_FONT_BACKEND.md)，原GPU回收时刻仍未知；合并启动页过期引言，不新建过程文档／audit／指纹。
+两页各8帧、0世界更新并正常退出，[两页图例](ui/examples/steam-record-pages.png)960×640／118885字节已查看。真实默认系统纪录0／没有记录与维护初装，frame19／名单0,1仅显示条件；原字体、物理输入及独立纪录钟Owner／恢复未完成，不新增持久字段或假称自然取得。并行将FontTexture→Image同步UI任务→共享图集区域退休／Unity释放销毁请求合入[字体合同](ui/STEAM_FONT_BACKEND.md)，原GPU回收时刻仍未知；合并启动页过期引言，不新建过程文档／audit／指纹。
 
 图元逐项消费，触区／软标签只记意图；只读人物按值预备后释放临时Session，不保留Owner引用，计划最多定义预算4096＋11项。纪录窗口批清理4份临时图／日志278247字节，后继纯更新批无新增临时取证产物；最新Release1377文件／146181236字节、assets863文件／9488214字节，合法历史仍可增长。构建／测试／窗口及三个子任务均结束，不编他人住宅测试、不跑长测；连续队列撤下重复完成清单，保留真实待办及证据入口。仅研究白名单本地checkpoint，不推送。
 
-## 平台点击意图、纪录返回与字体退休 2026-10-14
+## 平台提示生命周期、点击意图与语言／字体边界 2026-10-14
+
+接`e33f042`，新增实际平台职责的[提示表纯模块](prototype/include/dungeon_village_prototype/steam_joystick_prompts.hpp)，登记现application目标；复用保留life／scale，释放按button遍历全部可见记录，button7使用右软标签计数，0..3新建返回自动取消请求。现startup皮肤套件补资格、缺字段／坏旧表／溢出拒绝、输入不变、原序矩阵和4096条／20482操作预算。单Release动态主程序与visuals构建通过，**visuals 1/1通过1.59秒**；不新增target、Owner／持久字段，不构建他人住宅测试或跑长测。
+
+并行合入[语言结果与标题callback](ui/STEAM_LANGUAGE_INSTALL.md)、[UnityPlayer默认字体／皮肤入口](ui/STEAM_FONT_BACKEND.md)，保留平台取消、完整重载及实际中文glyph缺口。魔法壶反馈已复核：通道正常、无原窗口、五项未覆盖、无截图；现提示词的壶主页／目录前提继续有效。纯提示计划尚未安装窗口／SDK，未新增窗口验收或素材；输出供宿主按序消费，不持页面／设备引用，Reset隐藏不等于退休。Release1378文件／146289949字节、assets863文件／9488214字节；合法保留与历史增长不称永久有界。本批无新增取证缓存、报告／audit／指纹；构建／测试与子任务均结束，仅已验research白名单提交，不推送。
 
 接`fc8170d`，在现[平台模块](prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)新增已分发void回调的纯动作计划：控制器CLICK资格／64位零handle、键盘原语言Concat、DEBUG共同长按时钟及Push后重新取钟。独立机器码复核纠正极端时间值的sbb flags分支，保留已有断言并补借位／溢出oracle。单Release动态构建通过，现visuals **1/1通过1.57秒**（总1.58秒）；不执行外链／SDK／奖杯页或修改平台时钟，无Owner／格式／target变化。本批没有绘制变更，不重复窗口检查或长跑，不编他人住宅测试。
 

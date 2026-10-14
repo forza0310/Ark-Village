@@ -19,6 +19,7 @@
 | `steam_startup_skin` | Steam共用窗框、标题菜单／选档局部及背景→upper→演员插入点→草／Logo的有序前段；整场组合仍待接；[标题绘制](../ui/STEAM_TITLE_DRAW.md) |
 | `steam_platform_button_skin` | 平台绑定／键盘／语言按钮及NEW原序请求、Switch／PS4／Xbox后备及有效glyph／原右键图的矩阵分支几何；不调用Steam或发现设备；[按钮及glyph合同](../ui/STEAM_FONT_CONSUMER.md#内嵌按钮提示) |
 | `steam_cursor_skin` | 虚拟光标的按下图资格、原SEB两帧、平台坐标补偿和恢复缩放／混合的有序纯计划；不合成Touch或推进平台状态；[原输入与绘制合同](../ui/STEAM_INTERACTIONS.md#虚拟屏幕光标模式位置与合成touch) |
+| `steam_joystick_prompts` | 平台提示表的登记／复用、Reset／Raise／释放及有序DrawButtons计划；保留button7软标签与0..3自动取消请求，不接SDK、世界Owner或持久格式；[生命周期合同](../ui/STEAM_INTERACTIONS.md) |
 | `startup_world_persistence`／codec／restore_validation | [正常文件、精确回放及字段政策](PERSISTENCE.md) |
 | `startup_world_presentation`／`visuals`、`startup_view`／`startup_window_host` | [显式表现请求](../ui/INPUT_RENDER_REQUESTS.md)、只读计划与平台执行；[声音一次输出](AUDIO_REQUESTS.md) |
 

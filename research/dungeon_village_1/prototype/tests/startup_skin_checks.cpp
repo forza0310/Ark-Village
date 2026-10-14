@@ -6,6 +6,7 @@
 #include "dungeon_village_prototype/startup_world_commerce.hpp"
 #include "dungeon_village_prototype/steam_platform_button_skin.hpp"
 #include "dungeon_village_prototype/steam_cursor_skin.hpp"
+#include "dungeon_village_prototype/steam_joystick_prompts.hpp"
 #include "dungeon_village_prototype/startup_information.hpp"
 #include "dungeon_village_prototype/steam_information_skin.hpp"
 #include "dungeon_village_prototype/steam_monster_skin.hpp"
@@ -1523,6 +1524,230 @@ void steam_platform_skin_checks(Checks &check,const std::filesystem::path &sourc
     }
     event.kind=static_cast<SteamPlatformButtonKind>(99);
     check(!steam_platform_button_event(event),"未知按钮身份不按键盘分支蒙混通过");
+}
+// 平台登记表只验证调用计划；原GetJoystickUp、SDK图标及窗口输入另有消费者。
+void steam_joystick_prompt_checks(Checks &check) {
+    const auto same=[](const SteamJoystickPromptState &a,const SteamJoystickPromptState &b) {
+        if(a.table_present!=b.table_present||a.entries.size()!=b.entries.size())return false;
+        for(std::size_t i=0;i<a.entries.size();++i) {
+            const auto &x=a.entries[i];const auto &y=b.entries[i];
+            if(x.button!=y.button||x.registration!=y.registration||x.displayed!=y.displayed||
+               x.anchor!=y.anchor||x.life!=y.life||x.scale!=y.scale)return false;
+        }
+        return true;
+    };
+    const SteamJoystickPromptState empty{true,{}};
+    SteamJoystickRegisterInput input;input.request={8,24,50,{20,30}};
+    SteamJoystickDrawInput draw;
+    {
+        SteamJoystickRegisterInput ignored;ignored.application_type=4;ignored.request={-7,-9,-1,{}};
+        SteamJoystickDrawInput ignored_draw;ignored_draw.application_type=4;ignored_draw.cursor_draw_frame=-1;
+        const auto result=steam_joystick_register({},ignored);
+        const auto plan=steam_joystick_draw({},ignored_draw);
+        check(result&&!result->registered&&!result->state.table_present&&plan&&plan->operations.empty(),
+              "无登记表合法早退，不消费请求、尺寸、frame或ratio");
+    }
+    input.application_type=4;
+    for(const int button:{0,1,8,9,43}) {
+        input.request.button=button;
+        const auto result=steam_joystick_register(empty,input);
+        check(result&&!result->registered&&same(result->state,empty),"type4无手柄不登记非2/3/7，8/9也不例外");
+    }
+    input.request.button=7;
+    check(!steam_joystick_register(empty,input),"type4无手柄button7缺右软键标签拒绝");
+    input.right_soft_label="返回";
+    const auto unqualified=steam_joystick_register(empty,input);
+    check(unqualified&&!unqualified->registered,"中文近义词不能替代原日文准入串");
+    input.screen_size=std::array<int,2>{799,1001};input.application_size=std::array<int,2>{1000,800};
+    input.steam_offset_enabled=true;
+    for(const auto *label:{"戻る","メニュー","ﾒﾆｭｰ"}) {
+        input.right_soft_label=label;
+        const auto result=steam_joystick_register(empty,input);
+        check(result&&result->registered&&result->state.entries[0].anchor==std::array<int,2>{-80,130},
+              "button7精确三标签准入；尺寸差为负奇数仍向零除2");
+    }
+    input.right_soft_label.reset();input.steam_offset_enabled=false;
+    for(const int button:{2,3}) {
+        input.request.button=button;
+        const auto result=steam_joystick_register(empty,input);
+        check(result&&result->registered&&result->state.entries[0].anchor==std::array<int,2>{20,30},
+              "type4无手柄2/3可登记；offset关闭不改锚点");
+    }
+    for(int fault=0;fault<4;++fault) {
+        auto bad=input;
+        if(fault==0)bad.screen_size.reset();
+        if(fault==1)bad.application_size.reset();
+        if(fault==2)(*bad.screen_size)[0]=0;
+        if(fault==3)(*bad.application_size)[1]=65537;
+        check(!steam_joystick_register(empty,bad),"type4即使offset关闭仍读取并校验四尺寸");
+    }
+    input.has_controller=true;input.request.button=8;
+    const auto first=steam_joystick_register(empty,input);
+    check(first&&first->registered&&first->state.entries.size()==1&&!first->auto_cancel_button&&
+          first->state.entries[0].life==4&&first->state.entries[0].scale==50,"有手柄登记8/24并保存scale及初始life");
+    auto prior=first->state;prior.entries[0].displayed=false;prior.entries[0].life=0;
+    const auto frozen=prior;
+    input.request.scale=-1;input.request.anchor={91,92};input.top_form_present=true;
+    const auto reused=steam_joystick_register(prior,input);
+    check(reused&&reused->registered&&!reused->auto_cancel_button&&reused->state.entries.size()==1&&
+          reused->state.entries[0].displayed&&reused->state.entries[0].life==0&&
+          reused->state.entries[0].scale==50&&reused->state.entries[0].anchor==std::array<int,2>{91,92}&&
+          same(prior,frozen),"同key仅刷新显示与锚点，不复活life、不读取新scale、不产生autoCancel");
+    input.request={9,2,100,{40,50}};
+    const auto second=steam_joystick_register(first->state,input);
+    check(second&&second->state.entries.size()==2&&second->state.entries[0].button==8&&
+          second->state.entries[1].button==9&&!second->auto_cancel_button,"8/24与9/2保持登记次序，无方向键autoCancel");
+    input.application_type=0;input.screen_size.reset();input.application_size.reset();
+    input.has_controller=false;
+    for(int button=0;button<4;++button) {
+        input.request={button,-1,100,{}};
+        const auto result=steam_joystick_register(empty,input);
+        check(result&&result->registered&&result->auto_cancel_button==button,"新0..3且顶页存在输出autoCancel意图");
+    }
+    input.top_form_present=false;
+    const auto no_top=steam_joystick_register(empty,input);
+    check(no_top&&no_top->registered&&!no_top->auto_cancel_button,"无顶页不发autoCancel；非type4不读尺寸");
+    for(int fault=0;fault<6;++fault) {
+        auto bad=input;
+        if(fault==0)bad.request.button=-1;
+        if(fault==1)bad.request.button=44;
+        if(fault==2)bad.request.registration=-2;
+        if(fault==3)bad.request.scale=-1;
+        if(fault==4)bad.request.scale=10001;
+        if(fault==5) {
+            bad.application_type=4;bad.has_controller=true;bad.steam_offset_enabled=true;
+            bad.screen_size=std::array<int,2>{3,3};bad.application_size=std::array<int,2>{1,1};
+            bad.request.anchor[0]=std::numeric_limits<int>::max();
+        }
+        check(!steam_joystick_register(prior,bad)&&same(prior,frozen),"坏新项或偏移溢出显式拒绝且旧表不变");
+    }
+    SteamJoystickPromptState lifecycle{true,{{8,24,true,{1,2},2,50},{8,25,true,{3,4},0,100},
+        {8,26,false,{5,6},1,100},{9,2,true,{},3,100},{24,0,true,{},4,100},{43,0,true,{},4,100}}};
+    const auto lifecycle_before=lifecycle;
+    std::array<bool,24> releases{};releases[8]=true;
+    const auto released=steam_joystick_release(lifecycle,releases);
+    const auto reset=steam_joystick_reset(lifecycle);
+    check(released&&reset,"有效生命周期操作返回候选");
+    const auto raised=steam_joystick_raise(*reset);
+    check(raised&&released->entries[0].life==1&&released->entries[1].life==0&&
+          released->entries[2].life==1&&released->entries[3].life==3&&released->entries[4].life==4&&
+          released->entries[5].life==4,"释放按button匹配所有可见registration，夹零且不索引24..43");
+    for(std::size_t i=0;i<lifecycle.entries.size();++i) {
+        const auto &before=lifecycle.entries[i];const auto &hidden=reset->entries[i];
+        check(!hidden.displayed&&hidden.life==before.life&&hidden.anchor==before.anchor&&hidden.scale==before.scale&&
+              !raised->entries[i].displayed&&raised->entries[i].life==4,"reset仅隐藏；raise包含隐藏项但不恢复displayed");
+    }
+    check(same(lifecycle,lifecycle_before)&&same(*released,*steam_joystick_release(lifecycle,releases)),
+          "生命周期查询不改输入，重复查询不叠加释放");
+    SteamJoystickPromptState single{true,{{9,2,true,{40,50},2,50}}};
+    const auto plan=steam_joystick_draw(single,draw);
+    check(plan&&plan->operations.size()==5,"半比例提示输出内Push、混合、按钮、默认混合、Pop");
+    const auto *scale=std::get_if<SteamCursorPushScale>(&plan->operations[0]);
+    const auto *mode=std::get_if<SteamCursorRenderMode>(&plan->operations[1]);
+    const auto *button=std::get_if<SteamJoystickDrawButton>(&plan->operations[2]);
+    const auto *restore=std::get_if<SteamCursorRenderMode>(&plan->operations[3]);
+    check(scale&&scale->x==0.5F&&scale->y==0.5F&&scale->pivot==std::array<int,2>{0,0}&&
+          mode&&mode->operation==1&&mode->source==127&&mode->destination==128&&
+          button&&button->button==9&&button->anchor==std::array<int,2>{40,50}&&button->layer==0&&button->auto_key_reverse&&
+          restore&&restore->operation==0&&restore->source==255&&restore->destination==0&&
+          std::holds_alternative<SteamCursorPopMatrix>(plan->operations[4]),"life2独立alpha127；原锚点不预缩，恢复默认混合");
+    single.entries[0].scale=100;
+    for(const auto sample:std::array<std::array<int,2>,4>{{{1,63},{2,127},{3,191},{4,255}}}) {
+        single.entries[0].life=sample[0];const auto p=steam_joystick_draw(single,draw);
+        check(p&&p->operations.size()==3,"scale100无内矩阵");
+        const auto *m=std::get_if<SteamCursorRenderMode>(&p->operations[0]);
+        check(m&&m->source==sample[1]&&m->destination==255-sample[1],"life1..4独立透明度oracle");
+    }
+    single.entries[0].scale=0;
+    const auto zero_scale=steam_joystick_draw(single,draw);
+    check(zero_scale&&std::get<SteamCursorPushScale>(zero_scale->operations[0]).x==0.F,"scale0仍输出零矩阵");
+    draw.application_type=4;draw.scale_ratio=100.F;
+    const auto empty_scaled=steam_joystick_draw(empty,draw);
+    check(empty_scaled&&empty_scaled->operations.size()==2&&
+          std::get<SteamCursorPushScale>(empty_scaled->operations[0]).x==0.2222222238779068F&&
+          std::holds_alternative<SteamCursorPopMatrix>(empty_scaled->operations[1]),"空表仍输出type4外层240/1080浮点矩阵");
+    draw.application_type=0;draw.scale_ratio.reset();draw.cursor_draw_frame=167;
+    const auto before_pulse=steam_joystick_draw(empty,draw);
+    draw.cursor_draw_frame=168;const auto pulse=steam_joystick_draw(empty,draw);
+    check(before_pulse&&before_pulse->operations.empty()&&pulse&&pulse->operations.size()==2&&
+          std::get<SteamCursorPushScale>(pulse->operations[0]).x==1.1F,"所有平台frame168开始外层1.1缩放");
+    draw={};draw.use_steam=true;
+    SteamJoystickPromptState right{true,{{7,-1,true,{3,4},0,100}}};
+    check(!steam_joystick_draw(right,draw),"Steam无手柄button7缺标签拒绝，即使登记life0");
+    draw.right_soft_label="戻る";
+    check(!steam_joystick_draw(right,draw),"匹配右标签必须提供点击计数");
+    draw.right_click_counts=std::array<int,2>{1,0};
+    const auto return_key=steam_joystick_draw(right,draw);
+    check(return_key&&return_key->operations.size()==3&&
+          std::get<SteamCursorRenderMode>(return_key->operations[0]).source==63&&right.entries[0].life==0,
+          "返回使用右计数0替换有效life，不回写登记life");
+    right.entries[0].life=4;
+    for(const auto *label:{"メニュー","ﾒﾆｭｰ"}) {
+        draw.right_soft_label=label;const auto p=steam_joystick_draw(right,draw);
+        check(p&&p->operations.empty()&&right.entries[0].life==4,"两种菜单使用计数1，零有效life抑制旧life4");
+    }
+    draw.right_click_counts=std::array<int,2>{-1,99};draw.right_soft_label="メニュー";
+    const auto capped=steam_joystick_draw(right,draw);
+    check(capped&&std::get<SteamCursorRenderMode>(capped->operations[0]).source==255,"右点击计数超过4时alpha夹255");
+    draw.right_soft_label="戻る";
+    const auto negative=steam_joystick_draw(right,draw);
+    check(negative&&negative->operations.empty(),"负右点击计数不绘制");
+    draw.right_soft_label="其他";draw.right_click_counts.reset();
+    const auto other=steam_joystick_draw(right,draw);
+    check(other&&other->operations.size()==3,"不匹配标签使用登记life，不消费点击计数");
+    draw.right_soft_label.reset();draw.has_controller=true;
+    check(bool(steam_joystick_draw(right,draw)),"有手柄不消费软键标签与计数");
+    draw.has_controller=false;draw.use_steam=false;draw.xbox=true;
+    check(!steam_joystick_draw(right,draw),"Xbox同样执行button7软键life分支");
+    draw.xbox=false;
+    check(bool(steam_joystick_draw(right,draw)),"非Steam非Xbox使用登记life");
+    draw.use_steam=true;
+    const auto old_triggers=steam_joystick_draw(second->state,draw);
+    check(old_triggers&&old_triggers->operations.size()==8,"断开设备的旧8/9仍交下层provider，不在登记表draw擅自丢弃");
+    for(int fault=0;fault<7;++fault) {
+        SteamJoystickDrawInput bad;bad.application_type=4;
+        if(fault==1)bad.scale_ratio=0.F;
+        if(fault==2)bad.scale_ratio=std::numeric_limits<float>::quiet_NaN();
+        if(fault==3)bad.scale_ratio=std::numeric_limits<float>::infinity();
+        if(fault==4)bad.scale_ratio=10001.F;
+        if(fault==5){bad.scale_ratio=100.F;bad.cursor_draw_frame=-1;}
+        if(fault==6){bad.scale_ratio=100.F;bad.cursor_draw_frame=192;}
+        check(!steam_joystick_draw(empty,bad),"有表必须拒绝坏ratio或frame，空表也不绕过");
+    }
+    for(int fault=0;fault<8;++fault) {
+        auto bad=single;
+        if(fault==0)bad.table_present=false;
+        if(fault==1)bad.entries.push_back(bad.entries.front());
+        if(fault==2)bad.entries[0].button=44;
+        if(fault==3)bad.entries[0].registration=-2;
+        if(fault==4)bad.entries[0].life=-1;
+        if(fault==5)bad.entries[0].life=5;
+        if(fault==6)bad.entries[0].scale=-1;
+        if(fault==7)bad.entries[0].scale=10001;
+        const auto before=bad;
+        check(!steam_joystick_register(bad,input)&&!steam_joystick_reset(bad)&&!steam_joystick_raise(bad)&&
+              !steam_joystick_release(bad,releases)&&!steam_joystick_draw(bad,{})&&same(bad,before),
+              "各入口拒绝损坏表／重复key且保持旧状态");
+    }
+    SteamJoystickPromptState full{true,{}};
+    for(int i=0;i<4096;++i)full.entries.push_back({43,i,false,{},0,100});
+    input.request={43,4095,-1,{}};
+    const auto full_reuse=steam_joystick_register(full,input);
+    input.request={43,4096,100,{}};
+    check(full_reuse&&full_reuse->registered&&full_reuse->state.entries.size()==4096&&
+          !steam_joystick_register(full,input)&&full.entries.size()==4096&&!full.entries.back().displayed,
+          "4096维护预算允许复用但拒绝新增；button43合法且输入仍不变");
+    for(auto &entry:full.entries){entry.displayed=true;entry.life=4;entry.scale=50;}
+    SteamJoystickDrawInput largest;largest.application_type=4;largest.scale_ratio=100.F;
+    const auto maximum=steam_joystick_draw(full,largest);
+    check(maximum&&maximum->operations.size()==20482&&
+          std::holds_alternative<SteamCursorPushScale>(maximum->operations.front())&&
+          std::holds_alternative<SteamCursorPushScale>(maximum->operations[1])&&
+          std::holds_alternative<SteamCursorPopMatrix>(maximum->operations[20480])&&
+          std::holds_alternative<SteamCursorPopMatrix>(maximum->operations.back()),
+          "最大输出4096乘5加外矩阵两项，20482操作；内外矩阵按原顺序闭合");
+    full.entries.push_back({43,4096,false,{},0,100});
+    check(!steam_joystick_reset(full),"超过维护预算明确拒绝，不把4096声称原版硬上限");
 }
 void steam_language_checks(Checks &check,const std::filesystem::path &root) {
     const auto directory=root.parent_path()/"steam-platform";
@@ -3538,6 +3763,7 @@ int check_startup_skin(const std::filesystem::path &source_root,
     steam_commerce_result_skin_checks(check);
     steam_commerce_facility_skin_checks(check,source_root);
     steam_platform_skin_checks(check,source_root);
+    steam_joystick_prompt_checks(check);
     steam_title_actor_projection_checks(check);
     steam_language_checks(check,source_root);
     steam_cursor_checks(check,source_root);

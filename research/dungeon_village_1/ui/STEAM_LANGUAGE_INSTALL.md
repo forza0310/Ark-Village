@@ -74,17 +74,53 @@
 
 `Language.Init`（`0x80F820`）有9952字节登记范围。本批核到它重置静态状态、设置偏好键、建立语言目录／设置集合、读取默认locale和保存的包偏好、执行匹配分支，然后将偏好值传`SetLanguagePack(file,null,false)`。失败后有`SetLanguagePack(null,null,true)`回退。它还注册IApplication.Updated事件并维护语言变化检查。
 
-这不等于“默认一定简体”或“Steam语言与Windowslocale完全等价”：系统locale的实际来源、所有Config条件、目录筛选／匹配优先级和语言页选择输入还未逐项闭合；本批未读用户偏好。原静态初始化大方法`Language.cctor`未盲扫。
+这不等于“默认一定简体”或“Steam语言与Windowslocale完全等价”：系统locale的实际来源、所有Config条件、目录筛选／匹配优先级还未逐项闭合；语言页的普通结果消费后继见下节，本批未读用户偏好。原静态初始化大方法`Language.cctor`未盲扫。
 
 前批已核`LoadTranslateTable`会优先调用`translateTableMethod_`，没有回调才走默认表读取。本批核`RegistTranslateTable(ThreadStart)`（`0x81DC40`）仅写该字段；`InitStaticFields`先将它清空。对固定DLL可执行节只搜索指向这一地址的直接E8／E9，结果为0；`system.KairoText.cctor`也没有注册调用，仅初始化自己的静态数组。
 
 **注册者尚未找到，不是证明不存在回调。** 直接调用搜索不覆盖内联写字段、反射与间接委托。下一步应从实际启动宿主／翻译表创建者追有限写入与委托绑定，不能把这次零候选写成“所有游戏只读xls.dat”。
 
+## 语言页的选择、结果与标题回调
+
+固定DLL的`LanguageForm.Init/Update/OnTouchEvent`（RVA `1EB390/1EB9B0/1EB400`）已从具名入口顺序核对。
+TypeInfo槽`110FB090/110FB03C/110F404C`独立对应LanguageForm／Language／Config，
+标题委托槽`1110041C`解为TitleForm的`<_draw>b__51_0`（MethodDef33478），不按同址别名猜接收者。
+以下是原静态调用顺序，本批没有实际切换语言、读偏好或执行外链／下载。
+
+| 局部步骤 | 已核消费者与边界 |
+| --- | --- |
+| 入页 | 已有[原标题按钮合同](STEAM_TITLE_DRAW.md#右上语言按钮)的匹配UP事件创建表单908并Push；Draw保存的是共享静态callback，本次UP不调用它 |
+| 初始化 | 先MyFormBase.Init；mode0且`Language.IsLanguageCreate()`假时改mode2。该资格方法`812420`读Config.DEBUG，不是从“有CSV”推导编辑功能开放 |
+| 首次Update | 先MyFormBase.Update，将`start_ +0x88`置true；从Language静态`systemLangPackFiles_ +0x68`复制有序行至`languages_ +0x78`，各行[0]交平台作标题、[1]作安装文件。按文件与当前`langPackFile_ +0x64`相等选择索引，初值0，多个相同匹配保留最后一项 |
+| 自定义候选 | 若GetCustomLanguagePackLocation非null且media1的`_custom_lang_pack.csv`存在，读取其包头；以标题及`@作者`构造额外行，文件仍取该自定义位置。此处只列候选，不安装，不把归档12条直接当作全部当前菜单 |
+| 平台面板 | 调`KairoPlugin.StartLanguagePanel(titles,index,customLocation,mode)`（`87BF60`）；后续Update等IsLanguagePanelFinish（`878C10`），完成才取GetLanguagePanelResult（`8754E0`）。传入菜单索引与内部定义ID无关 |
+| 非负选择 | result[0]解析为int索引，再取冻结行[1]；与GetLanguagePackFile相同就请求Pop。不同才`SetLanguagePack(file,null,true)`；成功后调用非null共享callback，随后请求Pop。false返回则不调用callback、仍请求Pop，不能补成原子失败回滚 |
+| 空结果 | result[0]为null直接请求Pop，没有本分支安装或callback；这只认证空结果消费者，未证明所有桌面取消／关窗输入都生成相同结果，也不把空字符串、负数或格式错误合并为取消 |
+
+普通成功的顺序是**语言安装及原偏好保存／清缓存→callback→Pop请求**，不是先退页后异步保存。
+标题实际传入的callback（RVA `20BFD0`）在`1020BFE3`调用`AppData.StopBgm(0)`，
+随后`1020C002`调用`FormManagerBase.ChangeCurrentForm(apdat_.titleForm_,false)`；
+本callback不直接调用资源重载器，标题重新初始化／资源重新选择须沿该管理器后继处理，
+不能把ChangeCurrentForm请求等同于所有资源已成功重建。callback抛异常时本页随后的线性Pop不执行；
+已发生的语言／偏好副作用不会因这一局部自动撤销。本页消费的是Draw时共享callback，不是冻结到每个表单的私有委托。
+
+负结果各有独立职责：−1把result[1]存共享下载位置、清本页下载字节、Push带两个具名回调的HttpForm，
+再请求Pop；−2按result[1]是否`ja`选模板生成方向并Push另一HttpForm链；−3调用
+`Canvas.OpenBrowser(http://kairopark.jp/language_pack_en.html)`后请求Pop。不能用普通选择合同隐含支持这些下载／上传／外链动作。
+下载完成回调`<Update>b__13_3 RVA1EB850`只有ResultData的complete为真才以共享下载位置及本页下载字节调用
+`SetLanguagePack(...,true)`，成功后再消费共享callback；未完成则创建mode1语言页及错误提示。
+完整HTTP失败、平台取消产生者和模板上传副作用未由此局部穷尽，不主动执行它们。
+
+菜单目录上游已缩小到`Language.Init RVA80F820`：字段非null时跳过重建；否则读取media3的`language.dat`，
+可读取归档内`config.inf`，枚举归档文件并取包头，结合LanguageConfig设置构造／排序／筛选，
+最后在`10810FF8`发布`systemLangPackFiles_`。本固定归档无config.inf是资源事实；
+不能因此跳过源代码的条件路径，或把存在12包认证成每个实际运行都显示同序12项。
+
 ## 交付与后继
 
 产品可消费以上语言输入区分、条件资源目录顺序、中文包身份及失败／保存副作用边界。当前不提供完整多语言播放器、字体替代、已观测当前中文文字全集或可操作语言页；也没有改变APK业务、C++Owner、应用快照格式或发布素材。
 
-后继最小研究是：启动宿主与回调字段写入者、LanguageConfig／locale选择的实际输入、语言页确认后的重载链、最终Graphics文字基线与Unity／插件字形回退。外部窗口可记录当前语言菜单和同一标题的文字／Logo，但不得为验证本合同自行覆盖用户语言偏好。
+后继最小研究是：翻译注册者、LanguageConfig／locale选择的实际输入、标题ChangeCurrentForm后的资源重建、平台取消结果产生者、最终Graphics文字基线与Unity／插件字形回退。外部窗口可记录当前语言菜单和同一标题的文字／Logo，但不得为验证本合同自行覆盖用户语言偏好。
 
 ## 静态来源范围
 

@@ -24,9 +24,19 @@ GameSkin的script引用也是file0/path12001。MonoBehaviour公共前缀、对�
 
 `GUISkin.MakeCurrent` RVA`C2DA60`也将自身m_Font交同一默认字体入口。`GUISkin.set_font` RVA`C2DD50`先原样写m_Font；只有自身与GUISkin.current相等时，才将新值交SetDefaultFont，随后调用Apply重建样式。因此游戏DrawString把当前skin.font设null时，**null也会被提交给原生默认字体入口**，不能解释成此setter先重新加载Arial、M+或某个中文Font。GUIStyle的get_font／set_font（`C30060`／`C306E0`）本身同样只跨原生对象边界，不在已核包装里指定字体family。
 
-原调用目标通过实际字符串与调用点闭合：默认皮肤包装RVA`C31770`解析`UnityEngine.GUIUtility::Internal_GetDefaultSkin(System.Int32)`；默认Font包装`C2FB90`解析`UnityEngine.GUIStyle::SetDefaultFont(UnityEngine.Font)`；GUIStyle两访问器解析相应get_font／set_font入口。它们缓存的是原生函数指针，**不是中文字体资源注册表**。本批闭合到这组原生消费者／对象供给边界；尚未解析UnityPlayer中的实现及字体fallback注册来源，不因入口名、默认资源包存在Arial或当前Font为空便指定“微软雅黑”“Arial中文”或M+。
+原调用目标通过实际字符串与调用点闭合：默认皮肤包装RVA`C31770`解析`UnityEngine.GUIUtility::Internal_GetDefaultSkin(System.Int32)`；默认Font包装`C2FB90`解析`UnityEngine.GUIStyle::SetDefaultFont(UnityEngine.Font)`；GUIStyle两访问器解析相应get_font／set_font入口。它们缓存的是原生函数指针，**不是中文字体资源注册表**。下文已补固定UnityPlayer的两条真实注册及局部消费者，字体fallback注册来源仍未闭合，不因入口名、默认资源包存在Arial或当前Font为空便指定“微软雅黑”“Arial中文”或M+。
 
 最小后续观测应在同一中文文字实际绘制处关联：真实语言码及skinMode、Internal_GetDefaultSkin返回的GUISkin与其Font对象、游戏GUIStyle.font及提交的默认Font；若这些为null或缺字，还须记录引擎为一段固定中文串实际请求的字体family／字形供给。对象名和窗口截图只能分别证明对象／最终外观，不能单独证明中文glyph来自哪个字体文件。本批没有动态对象，保留该缺口，不为其新增字体副本或猜测fallback表。
+
+### 固定UnityPlayer的真实icall注册与默认皮肤路径
+
+2026-10-14只读研究副本`DungeonVillageEXE/UnityPlayer.dll`，PE32/i386，文件版本`2021.3.11.679073`、产品版本`2021.3.11f1 (0a5ca18544bf)`，与[固定身份](../verification/STEAM_ASSESSMENT.md)一致。具名字符串并非单独命中就认证函数：原生注册入口RVA`14E090`在`1014E093–1014E0B0`逐项从名称表VA`114E0448`及函数表`114E07A0`取同一偏移，交`104F6850`，每次增加4字节、到`0x354`停止，共213项。该消费者继续调用槽`11554CBC`；其真实安装点`10506EE1`保存的是按字面`il2cpp_add_internal_call`查得的函数。名称表索引168是`UnityEngine.GUIStyle::SetDefaultFont`，对应函数RVA`14D4D0`；索引206是`UnityEngine.GUIUtility::Internal_GetDefaultSkin`，对应`14DA80`。原生注册名不带托管参数后缀；保留两侧各自真实名字，不把它们当两套功能。
+
+SetDefaultFont的原生包装先处理对象桥接，各条正常分支交helper RVA`869650`。该helper在`10869653–1086966F`中，非空参数取其+4指针写全局`11568F54`，空参数则将此全局写0；**这条局部原生setter也没有把空值自动换成Arial或某个中文字库**。这里认证指针安装，尚未认证后续字形消费者在默认指针为空时如何选择Font或fallback。不能因setter已到原生就宣称glyph供给闭合。
+
+Internal_GetDefaultSkin的包装RVA`14DA80`将当次整数交helper `869C30`；后者调用`867AF0`取得皮肤对象，再处理其对象状态／引用桥接。已核`867AF0`完整正常体不读取传入的skinMode，先检查缓存`11569020`及其对象有效性，缺失／失效才经`103E0450`请求**原字面路径`GameSkin/GameSkin.guiskin`**，成功后更新缓存。失败侧原字面为`Failed to find default skin in editor resources!`，不能仅凭这个错误文本把当前player路径说成Editor专用。此处已取得固定player的具名资源请求与缓存供给，仍未把返回实例ID直接配对为磁盘path10102的Font，更未取得中文glyph来源。
+
+本样本仅导出UnityMain；PE调试目录指向`UnityPlayer_Win32_player_il2cpp_x86.pdb`，研究副本未附该PDB／map。现有iced解码足以沿上述注册表闭合入口及局部指针／资源请求，但没有具名字形解析符号或实际运行对象来认证fallback列表。二进制中虽有Font的OS字体枚举及fontNames访问器注册字符串，它们只能证明接口存在，不能证明某段中文实际使用哪项。本批不调用这些枚举、不读系统字库／偏好，也不盲扫全引擎；未知继续限定为真实Font实例、fallback供给及单串glyph选择。
 
 ## OnGUI与DrawString的字体交接
 

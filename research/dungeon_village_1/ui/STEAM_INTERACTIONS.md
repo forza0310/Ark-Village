@@ -125,15 +125,27 @@ ShaderBuilder.Init／GetNameId（73DD30／73D730）对该模式选择位0x2040�
 
 研究raylib普通适配可把不透明颜色的8位alpha设为src，对纹理保持原纹理alpha再乘该tint；需要保留透明RenderTexture输出时还应维持上述独立RGB／alpha混合因子，而不凭默认名称假定两者相同。原src0／64／128／192分别为0／64／128／192除255的源权重。已核生成链支持此局部适配，不认证当前预编译Material、GPU色域或像素一致性；特殊Image.alphaType3的分pass、自定义Material、clip／offscreen和额外BlendMode不由此方程通用覆盖，人物深层效果也可能另改模式。保持具名原请求与研究适配分层，不用这次结论宣称整套标题人物GPU已验。
 
-**控制器附加按键图标的登记与消费。** `Canvas.SetJoystickButtonDraw RVA751DC0`写入`joystickButtonDraw_`的七整数记录`{button,registerID,disp,x,y,life,scale}`，不是即时绘制或另一个Touch组件。以`(button,registerID)`查重；首次8/24登记为`{8,24,1,x,y,4,100}`，再次只更新disp和位置，保留life与scale（`10752049–10752105`）。存储不存在时直接返回；`InitJoystick 1074CCF3–1074CD5A`仅在主机或摇杆仿真资格下建表，否则置空。Steam无控制器时button8也直接拒登记；`HasController RVA7B7D10`检查64位controllerHandle非零，不把“图标可见”当成已有控制器。`steamOffsetEnable_`为真时另给坐标加`trunc((Screen尺寸−IApplication尺寸)/2)`，不能只用窗口外框替代这些输入。
+**控制器附加按键图标的登记与消费。** `Canvas.SetJoystickButtonDraw RVA751DC0`全960字节已核，写入`joystickButtonDraw_`的七整数记录`{button,registerID,disp,x,y,life,scale}`，不是即时绘制或另一个Touch组件。以`(button,registerID)`找首个匹配；复用仅令disp=1并更新位置，保留life及旧scale，不执行新记录的后继调用（`10752049–10752077`）。新记录追加`{button,registerID,1,x,y,4,scale}`后，若存在栈顶表单，调用`SetAutoCancelJoystick(button)`（`10752147–1075215B`）。后者RVA7E3AC0仅button0..3可能写自动取消槽，仍受自己的全局开关／槽资格限制；8和9不写该槽。不能把8样例的无副作用推给0..3。
 
-`FormManagerBase.OnDraw`在BeginPaint成功后先于`107E7669`调用Reset，将旧记录disp全清0；页面绘制及触摸登记重新标活，屏幕指针之后才在`107E77AB`调用DrawJoystickButtons，随后画触摸效果。Reset不删记录，没再登记的旧项当轮隐藏；此固定8/24键反复出现复用同一记录，不逐帧新增对象。`RaiseJoystickButtonDraw`只把全部life重置4；所核输入回调`10754EBC–10755016`在对应按钮GetJoystickUp且disp非零时将life减1并夹0，普通重绘不减life。它是使用次数相关的显隐量，不是四帧倒计时；Canvas重新初始化可重建／清空登记表，不能把合法保留条目称作泄漏或迁进世界存档。
+登记资格在查找旧记录之前判定：表不存在直接返回；`InitJoystick 1074CCF3–1074CD5A`仅在主机或摇杆仿真资格下建表，否则置空。非`APPLI_TYPE4`不查控制器；type4调用`HasController RVA7B7D10`，它检查64位controllerHandle是否非零。有控制器允许继续；没有时仅button2／3直接允许，button7须当前`GetSoftLabelR()`精确等于`戻る`、`メニュー`或`ﾒﾆｭｰ`之一，其它button均拒绝（`10751EB5–10751F18`）。因此绑定8／24与语言9／2的**登记资格相同**，不能因为语言按钮可见就认定其glyph已登记。原方法没有button、registerID或scale范围钳位；维护拒绝范围是独立预算。
 
-`DrawJoystickButtons RVA749220`只消费disp=1且life>0，先按顺序计算单精度`(GetScaleRatio(false)/100)*240/1080`；`screenCursorDrawFrame_>=168`再乘1.1，记录scale非100再叠其百分比矩阵。透明度沿`Graph.Easing(0,255,4,life,0)`交`SetRenderMode(1,alpha)`，用登记位置调用`Kairolib.DrawButtons(buttonFrame8,layer0,autoKeyReverse=true)`，之后恢复渲染模式及矩阵。registerID24只作登记键，不是SEB帧或绘制层；button8是原ZL／`Buttons.TriggerL`，不参与仅0/1的确认取消反转。SetAutoCancelJoystick虽被调用，所核`107E3B42–107E3B65`不对button8写0..3的自动取消槽。
+type4通过上述准入后，源先读取Screen宽高及`IApplication.GetWidth/GetHeight`，再检查`steamOffsetEnable_`；为真才各加`trunc((Screen尺寸−IApplication尺寸)/2)`（`10751F1E–10751FB2`）。负奇数差也向零，例如−201得到−100，不是floor；不取GetGameWidth，不替换成OS外框尺寸。非type4不走该偏移，禁止将ratio换算重复加到已登记锚。
+
+`FormManagerBase.OnDraw`在BeginPaint成功后先于`107E7669`调用Reset；页面绘制及触摸登记重新标活，屏幕指针之后才在`107E77AB`调用DrawJoystickButtons，随后画触摸效果。Reset（RVA751B70）全192字节仅将全部disp清0；Raise（RVA751960）全192字节仅将全部life置4，包括隐藏记录。二者不删除记录，不改其它字段；同键反复登记不逐帧新增对象，life0也不会因重新登记而自动回4。
+
+释放路径位于`DecideKeyState`闭包RVA752BB0的`10754EA6–1075501D`：按index0..23原序查询`GetJoystickUp(index)`，为真时遍历整表，对button匹配且disp非零的**全部**记录将life减1并夹0，不按registerID只减一项。button8／9还可先向各自映射键发送OnKeyUp；该物理输入桥不属于登记表纯消费者。更早的button11释放／DEBUG分支可先Raise，再进入这段循环，不能把Release与Raise合成同一动作。Reset、登记和普通绘制都不减life；它是使用次数相关的显隐量，不是四帧倒计时。Canvas初始化可以重建表，合法保留条目不等于泄漏；注册不同键可使表增长，不能宣称全局永久有界或迁入世界存档。
+
+`DrawJoystickButtons RVA749220`全1424字节已核。表不存在立即返回；表存在时基础比例初为1，仅`APPLI_TYPE4`改为逐步float32的`((GetScaleRatio(false)/100)*240)/1080`，然后所有平台在`screenCursorDrawFrame_>=168`时再乘float32的1.1。基础比例不等于1先全表外PushScale，即使表空或本轮没有可见记录仍有这对正常Push／Pop。以下按登记原序逐条执行，不把scale预乘成整数或缩放锚点：
+
+1. 仅disp恰1继续。effective life先取记录life；若`USE_STEAM`或Xbox查询为真、无控制器且button7，当前右软标签为`戻る`时改用`rightClickButtonCount_[0]`，两种菜单串改用`[1]`（`107494BF–107495B9`），其它情形不替换。此为局部有效值，不回写记录life；本固定DLL的Xbox共享小方法返回false。
+2. effective life≤0跳过；否则记录scale不等于100时再内PushScale(float32(scale)/100)，然后以`Graph.Easing(0,255,4,effective,0)`设置`SetRenderMode(1,alpha)`。life1／2／3／4的alpha独立值为63／127／191／255，不作四舍五入；Easing入口RVA8A4A40在frame≥4时直接返回255。
+3. 调用`Kairolib.DrawButtons(g,record.x,record.y,record.button,layer0,autoKeyReverse=true)`，再无参SetRenderMode清默认`(0,255,0)`，再按实际内Push弹矩阵；全部记录结束才弹外矩阵。原catch不构成完整图形栈异常回滚证明。
+
+registerID只作登记键，不是SEB帧或绘制层；8和9在这层没有独立过滤，深层设备图像资格继续由`_drawButtons`处理。button8为原ZL／`Buttons.TriggerL`，不能因此把所有记录的frame固定成8，或把button7有效life的特例忽略掉。
 
 `Kairolib._drawButtons RVA805D60`会再次拒绝Steam无控制器的button8。`USE_STEAM`有效时于`1080602A–1080604D`读取`Buttons.TriggerL.GetImage()`；有有效尺寸的动态图片以最大边60等比居中绘制，不同时叠底版。`Buttons..cctor 107A696F–107A69AA`独立核其对象为`DigialButton`、action名`TriggerL`；其`GetImage RVA7A6D70`依据当前action set／controller／digital action查询`GetDigitalActionOrigins`，取首个origin交`GetGlyphForActionOrigin_Legacy`路径；路径变化时退役旧Image，再读文件并加载新图，不能冻结为游戏内固定PNG。正常返回但没有有效动态图时走Kairolib原包后备SEB：InputType5／13取`buttons_ps4`（SEB19／图片22），1／2／3取`buttons_xbox`（SEB29／图片33），其余取`buttons_switch`（SEB13／图片15），均frame8／layer0；文件读取异常不能擅自改写成正常后备结果。后备身份与`IMAGE_COVERAGE.json`已有原包条目交叉；本批未取得实际Steam返回路径、设备按键映射或动态图文件，不将后备图冒充当前设备图。
 
-可实施边界是独立的平台登记器与只读图标计划：显式输入表是否可用、控制器资格、8/24旧记录、运行时比例及Screen／Application尺寸差、光标显示计数、动态图有效尺寸或后备InputType；输出当轮可见图元和更新后的该条记录。每轮Reset→页面重新登记→统一绘制的次序、按钮释放降低life、初次和重复登记的差异须保留。动态Steam图标provider及跨设备缓存仍是平台资源职责；标题组合窗口已画绑定按钮、键盘、语言及NEW，但只记录附加登记意图，在显式无登记表条件下不画glyph，仍未接完整动态后端。
+维护[提示表纯接口](../prototype/include/dungeon_village_prototype/steam_joystick_prompts.hpp)显式输入表是否可用、APPLI_TYPE／控制器、原记录表、比例／尺寸差及光标显示计数，输出私有候选表及有序DrawButtons请求；不新建世界Owner或快照字段。4096条、button0..43及scale0..10000是维护预算，坏旧表／重复键／实际消费字段缺失／坐标偏移溢出明确拒绝，不留下部分修改。0..3新登记返回自动取消后继请求；button7读取右软标签／有效计数；释放遍历只处理0..23，不能保证更大button自行消退。表项按值持有、不保存页面／设备引用，Reset隐藏并不退休条目；宿主结束平台会话时释放整表。Draw最多5×4096＋2项，按原序交平台消费者，SDK动态图和跨设备缓存仍是下层职责。标题组合窗口此前在显式无登记表条件下只消费入口图像和登记意图，不等于已接完整动态后端。
 
 ## 后续业务重载观察
 

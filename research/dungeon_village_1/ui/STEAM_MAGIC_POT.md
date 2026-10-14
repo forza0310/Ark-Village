@@ -44,4 +44,4 @@
 
 输入经`StartupMagicPotInput`一次提交Session／Application／Owner。首行、页签及冻结结果沿原有字段；44副钟复用已编码map，恢复拒半载荷、不重Init／重抽／重扣。原Draw44恰35调用PlaySe8，维护沿已批准显式表现方案在Owner获准更新35排一次ordinary SE8；这不是原平台绘制次数认证。具体存取边界见[持久模块](../prototype/PERSISTENCE.md#魔法壶皮肤接线中的载荷约定)。本批实现验收以[验证入口](../VERIFICATION.md)为准，原字体／完整TextLayout、共享scratch和原OS动态仍独立待证。
 
-维护验收：七页功能／恢复和有序图元检查已收口，产品参考见[两张条件拼图](examples/README.md)。八个有界入口可独立复现；原Steam窗口动态仍待外部反馈，不以维护窗口替代。
+维护验收：七页功能／恢复和有序图元检查已收口，产品参考见[两张条件拼图](examples/README.md)。八个有界入口可独立复现；2026-10-13外部反馈已收到，通道正常但无原游戏窗口，五项观察均未覆盖、无截图。原动态补证仍需现成壶主页／目录，不以维护窗口替代。

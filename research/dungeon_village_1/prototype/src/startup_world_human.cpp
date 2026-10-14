@@ -1481,7 +1481,7 @@ StartupWorldResourceUsage startup_world_resource_usage(const State &s) {
                       s.magic_pot_page_data.size() + s.magic_pot_page_lists.size() +
                       s.magic_pot_page_parents.size() + s.magic_pot_pages_initialized.size() +
                       s.facility_definition_page_bindings.size() + s.facility_page_bindings.size() +
-                      s.facility_page_neighbours.size() + s.build_page_catalogs.size() +
+                      s.facility_page_neighbours.size() + s.build_page_catalogs.size() + s.build_page_ui.size() +
                       s.residence_page_candidates.size() + s.facility_upgrade_initialized.size();
     r.sound_outputs = s.sound_requests.size();
     r.effects = s.visual_effects.size() + s.delayed_effects.size() + s.global_effects.size();

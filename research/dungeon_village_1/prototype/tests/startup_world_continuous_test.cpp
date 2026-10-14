@@ -453,7 +453,7 @@ void managed_resource_references(const StartupWorldRuntimeState &s) {
               page_owned(s.commerce_page_lists) &&
               page_owned(s.facility_definition_page_bindings) &&
               page_owned(s.facility_page_bindings) && page_owned(s.facility_page_neighbours) &&
-              page_owned(s.build_page_catalogs) && page_owned(s.residence_page_candidates) &&
+              page_owned(s.build_page_catalogs) && page_owned(s.build_page_ui) && page_owned(s.residence_page_candidates) &&
               std::all_of(s.facility_upgrade_initialized.begin(),
                           s.facility_upgrade_initialized.end(),
                           [&](auto id) { return pages.count(id) != 0; }) &&

@@ -340,9 +340,9 @@ void normal_construction() {
     const auto groups = startup_world_build_catalog(s);
     check(groups && groups->at(1) == std::vector<int>({28, 30, 31, 45}) &&
               groups->at(2) == std::vector<int>({33, 35}) &&
-              groups->at(0) == std::vector<int>({24, 66}),
-          "actual initial catalogue includes recruitment, excludes road/private housing, preserves "
-          "source groups");
+              groups->at(0) == std::vector<int>({18, -1, 24, 66}),
+          "complete source initial catalogue includes road and remove at category0 index1, "
+          "while private housing still requires its actual H entitlement");
     const auto count = s.scene.world.facility_order.size();
     const auto funds = s.scene.world.world.ai.accounting.funds();
     const auto draws = s.scene.random.draws();
@@ -804,6 +804,211 @@ void shared_upgrade() {
               broken.facility_upgrade_initialized.empty() && broken.page_counters.empty() &&
               broken.scene.random.draws() == 0,
           "failed upgrade rolls back shared level, page initialization and random");
+}
+// 21唯一Owner接线；游标算式矩阵仍由build_menu_cursor主责，不重复每个方向组合。
+void build_menu_owner() {
+    using E=StartupWorldRuntimeError;
+    const auto admit=[&](auto &s,std::uint64_t page) {
+        if(s.scripts.pages.back().lifecycle==0) {
+            const auto initialized=update_startup_world_build_menu(s,page);
+            check(initialized.has_value(),"actual21 page update initializes framework lifecycle");
+            s=*initialized;
+        }
+        for(int n=0;n<3;++n)
+            check(draw_startup_world_build_menu(s,page)==E::none,"actual21 Draw reaches source input gate");
+    };
+    auto s=test_support::world_fixture();
+    check(open_startup_world_build_menu(s)==E::none,"complete21 opens through real producer");
+    const auto parent=s.scripts.pages.back().id;
+    const auto cursor=startup_world_build_menu_cursor(s,parent);
+    check(cursor&&cursor->page==0&&cursor->selection==0&&cursor->scroll==0&&
+              s.page_counters.at(parent)==0&&s.page_secondary_counters.at(parent)==0,
+          "producer installs class selection first and both clocks together");
+    check(s.scripts.pages.back().lifecycle==0,"framework producer leaves raw21 pending Init");
+    const auto uninitialized=startup_world_state_digest(s);
+    StartupBuildMenuInput input;input.page=1;input.selection=1;input.details=true;
+    check(draw_startup_world_build_menu(s,parent)==E::invalid_page&&
+              input_startup_world_build_menu(s,parent,input).error==E::invalid_page&&
+              startup_world_state_digest(s)==uninitialized,
+          "pending Init21 refuses Draw and input without changing installed zero payload");
+    const auto initialized=update_startup_world_build_menu(s,parent);
+    check(initialized&&initialized->scripts.pages.back().lifecycle==2&&
+              initialized->page_counters.at(parent)==1&&initialized->page_secondary_counters.at(parent)==1,
+          "real page update initializes21 and independently advances both clocks");
+    s=*initialized;
+    const auto before=startup_world_state_digest(s);
+    check(input_startup_world_build_menu(s,parent,input).error==E::none&&
+              startup_world_state_digest(s)==before,
+          "early legitimate input cannot move cursor or open preview before Draw gate");
+    admit(s,parent);
+    const auto draws=s.scene.random.draws();
+    const auto funds=s.scene.world.world.ai.accounting.funds();
+    check(draw_startup_world_build_menu(s,parent)==E::none&&s.page_counters.at(parent)==3&&
+              s.scene.random.draws()==draws&&s.scene.calendar.units==0,
+          "admitted Draw saturates only source main clock without advancing world or random");
+    const auto frozen=s.build_page_catalogs.at(parent);
+    const auto updated=update_startup_world_build_menu(s,parent);
+    check(updated&&updated->build_page_catalogs.at(parent)==frozen&&
+              updated->page_counters.at(parent)==4&&updated->page_secondary_counters.at(parent)==2,
+          "admitted page update advances independent clocks while preserving frozen source IDs");
+    s=*updated;
+    input.directions.down=true;
+    const auto notices=s.facility_unlock_notices;
+    const auto category_new=s.build_category_new;
+    check(input_startup_world_build_menu(s,parent,input).error==E::none,
+          "same-input direction is consumed before selected definition preview");
+    const auto child=s.scripts.pages.back().id;
+    check(s.scripts.pages.back().legacy_page==74&&s.scripts.pages.back().legacy_f==31&&
+              s.scripts.pages.back().legacy_g==1&&s.facility_definition_page_bindings.at(child)==31&&
+              !s.facility_page_bindings.count(child)&&!s.facility_page_neighbours.count(child)&&
+              s.page_phases.at(parent)==1&&s.build_page_ui.at(parent).selection==2&&
+              s.build_page_ui.at(parent).scroll==0,
+          "21 current real row31 creates independent definition-only74 and preserves parent cursor");
+    check(valid_startup_world_facility_page(s,s.scripts.pages.back())&&
+              act_startup_world_facility_page(s,child,StartupFacilityPageAction::next)==E::none&&
+              s.page_phases.at(child)==0&&
+              act_startup_world_facility_page(s,child,StartupFacilityPageAction::confirm)==E::none&&
+              s.facility_unlock_notices==notices&&s.build_category_new==category_new&&
+              s.scene.world.world.ai.accounting.funds()==funds&&s.scene.random.draws()==draws,
+          "already-open building preview bypasses85 purchase gate and never charges or clears NEW");
+    const auto returned=prepare_startup_world_runtime(s);
+    check(returned.candidate&&!returned.candidate->facility_definition_page_bindings.count(child)&&
+              returned.candidate->build_page_catalogs.at(parent)==frozen&&
+              returned.candidate->build_page_ui.at(parent).selection==2&&
+              returned.candidate->build_page_ui.at(parent).scroll==0,
+          "real74 Finish releases child payload and resumes the existing frozen21 parent");
+    s=*returned.candidate;
+    input={};input.selection=4;
+    check(input_startup_world_build_menu(s,parent,input).error==E::none,
+          "short four-entry source category accepts registered fifth empty row");
+    input={};input.confirm=input.cancel=input.details=true;
+    const auto empty=startup_world_state_digest(s);
+    check(input_startup_world_build_menu(s,parent,input).error==E::none&&
+              startup_world_state_digest(s)==empty,
+          "empty-row confirm takes priority over cancel and details without placing or retiring");
+    input={};input.page=0;input.selection=0;input.details=true;
+    const auto no_detail=startup_world_state_digest(s);
+    check(input_startup_world_build_menu(s,parent,input).error!=E::none&&
+              startup_world_state_digest(s)==no_detail,
+          "forged road detail rejects and rolls back same-input category and selection");
+    for(int fault=0;fault<4;++fault) {
+        auto broken=s;
+        if(fault==0)broken.build_page_ui.erase(parent);
+        if(fault==1)broken.build_page_ui.at(parent).selection=5;
+        if(fault==2)broken.build_page_ui.at(parent).scroll=5;
+        if(fault==3)broken.page_secondary_counters.erase(parent);
+        const auto digest=startup_world_state_digest(broken);
+        input={};input.directions.down=true;input.cancel=true;
+        check(input_startup_world_build_menu(broken,parent,input).error!=E::none&&
+                  startup_world_state_digest(broken)==digest&&!update_startup_world_build_menu(broken,parent),
+              "broken initialized21 refuses all mutation instead of repairing missing or invisible cursor");
+    }
+    input={};input.cancel=true;
+    check(input_startup_world_build_menu(s,parent,input).error==E::none&&s.build_page_ui.count(parent),
+          "closing21 retains complete payload until actual Finish");
+    const auto retired=prepare_startup_world_runtime(s);
+    check(retired.candidate&&!retired.candidate->build_page_ui.count(parent)&&
+              !retired.candidate->build_page_catalogs.count(parent)&&
+              !retired.candidate->page_secondary_counters.count(parent),
+          "21 Finish releases cursor frozen definitions and independent clock references");
+
+    auto long_menu=test_support::world_fixture();
+    // 仅目录资格条件；不新建实体、修改原表或冒称自然全开放。
+    for(auto &entry:long_menu.facility_presence)entry.second=1;
+    long_menu.facility_free_builds.at(25)=long_menu.facility_free_builds.at(27)=1;
+    check(open_startup_world_build_menu(long_menu)==E::none,"source full-candidate condition directory");
+    const auto long_page=long_menu.scripts.pages.back().id;
+    admit(long_menu,long_page);
+    input={};input.page=1;input.selection=5;input.scroll=4;
+    check(input_startup_world_build_menu(long_menu,long_page,input).error==E::none,
+          "Owner accepts legitimate independent first row not derived from selection-minus-four");
+    input={};input.directions.up=true;
+    check(input_startup_world_build_menu(long_menu,long_page,input).error==E::none&&
+              long_menu.build_page_ui.at(long_page).selection==4&&long_menu.build_page_ui.at(long_page).scroll==4,
+          "runtime up within window preserves independently held source first row");
+    input={};input.directions.left=input.directions.right=true;
+    check(input_startup_world_build_menu(long_menu,long_page,input).error==E::none&&
+              long_menu.page_phases.at(long_page)==2&&long_menu.build_page_ui.at(long_page).selection==0&&
+              long_menu.build_page_ui.at(long_page).scroll==0,
+          "runtime right overrides left and class change atomically resets both cursor fields");
+
+    auto poor=test_support::world_fixture();
+    check(open_startup_world_build_menu(poor)==E::none,"affordability input fixture uses complete21 producer");
+    const auto poor_page=poor.scripts.pages.back().id;
+    admit(poor,poor_page);
+    auto &accounting=poor.scene.world.world.ai;
+    check(accounting.accounting.post_cash({accounting.next_cash_id++,1,ref::CashCategory::other,
+              ref::CashDirection::expense,4500})==ref::AccountingError::none,
+          "existing expense fixture prepares insufficient actual construction funds");
+    const auto poor_before=poor;
+    const auto poor_funds=poor.scene.world.world.ai.accounting.funds();
+    const auto poor_draws=poor.scene.random.draws();
+    const int old_event11=poor.scripts.event_calls.count(11)?poor.scripts.event_calls.at(11):0;
+    input={};input.page=1;input.selection=1;input.confirm=true;
+    const auto refused=input_startup_world_build_menu(poor,poor_page,input);
+    check(refused.error==E::none&&refused.denial==StartupBuildDenial::insufficient_funds&&
+              poor.page_phases.at(poor_page)==1&&poor.build_page_ui.at(poor_page).selection==1&&
+              poor.scripts.pages.at(poor.scripts.pages.size()-2).id==poor_page&&
+              poor.scripts.pages.at(poor.scripts.pages.size()-2).lifecycle==3&&
+              poor.scripts.pages.back().kind==ref::WorldScriptPageKind::dialogue&&
+              poor.scripts.pages.back().source_record==8&&
+              poor.scripts.pages.back().paragraphs==startup_world_runtime_catalog().talks.at(8).paragraphs&&
+              poor.scripts.event_calls.at(11)==old_event11+1&&
+              poor.scene.scene_state==0&&poor.build_mode==poor_before.build_mode&&
+              poor.scripts.user_flags==poor_before.scripts.user_flags&&
+              poor.facility_unlock_notices==poor_before.facility_unlock_notices&&
+              poor.build_category_new==poor_before.build_category_new&&
+              poor.scene.world.world.ai.accounting.funds()==poor_funds&&poor.scene.random.draws()==poor_draws,
+          "actual event11 feedback retains same-input cursor and suspends21 without charge build or NEW changes");
+    auto event_failure=poor_before;
+    event_failure.scripts.next_page_id=std::numeric_limits<std::uint64_t>::max();
+    const auto event_digest=startup_world_state_digest(event_failure);
+    check(input_startup_world_build_menu(event_failure,poor_page,input).error==E::script_failed&&
+              startup_world_state_digest(event_failure)==event_digest,
+          "failed event11 page publication rolls back whole input including cursor and event call");
+
+    for(const int choice:{18,-1,-2,31}) {
+        auto selected=test_support::world_fixture();
+        if(choice==-2)selected.scripts.user_flags|=32U;
+        check(open_startup_world_build_menu(selected)==E::none,"source road/remove/conditional move directory");
+        const auto page=selected.scripts.pages.back().id;
+        check(selected.build_page_catalogs.at(page)[0]==
+                  (choice==-2?std::vector<int>{18,-1,-2,24,66}:std::vector<int>{18,-1,24,66}),
+              "source category0 inserts remove at1 and only enabled move at2");
+        admit(selected,page);
+        const int category=choice==31?1:0;
+        const auto &list=selected.build_page_catalogs.at(page)[category];
+        const auto position=std::find(list.begin(),list.end(),choice)-list.begin();
+        const auto cash=selected.scene.world.world.ai.accounting.funds();
+        const auto random=selected.scene.random.draws();
+        input={};input.page=category;input.selection=static_cast<int>(position);input.confirm=true;
+        const auto select_before=selected;
+        check(input_startup_world_build_menu(selected,page,input).error==E::none&&selected.scene.scene_state==1&&
+                  selected.build_mode==(choice==18?1:choice==-1?3:choice==-2?6:0)&&
+                  selected.scene.world.world.ai.accounting.funds()==cash&&selected.scene.random.draws()==random,
+              "21 dispatches road/remove/move/ordinary mode with quote-only precheck and no upfront payment");
+        if(choice>=0) {
+            const auto flag=choice==18?64U:128U;
+            const auto &hint=selected.scripts.pages.back();
+            check((selected.scripts.user_flags&flag)&&hint.kind==ref::WorldScriptPageKind::dialogue&&
+                      hint.legacy_page==0&&hint.source_record==-1&&hint.speaker_definition==-1&&
+                      hint.paragraphs==std::vector<std::string>{choice==18?
+                          "接下来要开始铺路!!<br>点击想要开始的地点拖动后就可以铺路啦。":
+                          "一边旋转画面一边选择想要建筑的地点。点击建筑还可以进行微调。"},
+                  "first road64 or ordinary128 flag and exact APK source instruction publish together");
+            auto repeated=select_before;repeated.scripts.user_flags|=flag;
+            check(input_startup_world_build_menu(repeated,page,input).error==E::none&&
+                      repeated.scripts.pages.size()==select_before.scripts.pages.size()&&
+                      repeated.scripts.pages.back().id==page&&repeated.scripts.pages.back().lifecycle==4,
+                  "already-seen instruction flag closes21 without creating a repeated talk page");
+            auto hint_failure=select_before;
+            hint_failure.scripts.next_page_id=std::numeric_limits<std::uint64_t>::max();
+            const auto hint_digest=startup_world_state_digest(hint_failure);
+            check(input_startup_world_build_menu(hint_failure,page,input).error==E::script_failed&&
+                      startup_world_state_digest(hint_failure)==hint_digest,
+                  "late first-instruction publication failure rolls back flag NEW mode cursor and menu close");
+        }
+    }
 }
 void menu_and_current_quotes() {
     auto s = test_support::world_fixture();
@@ -2148,6 +2353,7 @@ void commerce_definition_preview() {
 int main() {
     try {
         build_menu_cursor();
+        build_menu_owner();
         construction_notice_cache();
         normal_construction();
         progression_building_unlocks();

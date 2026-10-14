@@ -222,7 +222,7 @@ bool references(const StartupWorldRuntimeState &s) {
                                                                    [&](const auto &v) { return owns(v.first); }); };
     return pages(s.page_counters) && pages(s.page_phases) && pages(s.award_rankings) &&
         pages(s.activity_page_lists) && pages(s.task_page_lists) && pages(s.facility_page_bindings) &&
-        pages(s.build_page_catalogs) && pages(s.human_page_catalogs) &&
+        pages(s.build_page_catalogs) && pages(s.build_page_ui) && pages(s.human_page_catalogs) &&
         std::all_of(s.facility_upgrade_initialized.begin(), s.facility_upgrade_initialized.end(), owns) &&
         std::all_of(s.shops.begin(), s.shops.end(), [&](const auto &v) { return s.scene.world.world.facilities.count(v.first); }) &&
         std::all_of(s.shop_order.begin(), s.shop_order.end(), [&](auto id) { return s.shops.count(id); });

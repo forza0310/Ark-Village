@@ -11,7 +11,7 @@
 | 人物详情／表现 | [人物60](STEAM_HUMAN_DETAIL.md)、[翻页与触摸](STEAM_HUMAN_INPUT.md)、[人物表现](STEAM_HUMAN_PRESENTATION.md)、[危险偏移](STEAM_HUMAN_PINCH.md)、[差异素材](../assets/steam-human-common/README.md) | 页面、正常基础裁片和部分源副作用已核；完整动作／共享历史／OS投递沿各合同限制 |
 | 设施详情／升级 | [详情74](STEAM_FACILITY_DETAIL.md)、[升级81](STEAM_FACILITY_UPGRADE.md)、[软标签](STEAM_FACILITY_LABELS.md)、[共用helper](STEAM_FACILITY_DRAW_HELPERS.md)、[维护模块](../prototype/STEAM_FACILITY_SKIN.md)、[差异素材](../assets/steam-facility-common/README.md) | 定义预览／实例入口、升级提示／真正升级分开；[六阶段例图](examples/STEAM_FACILITY_UPGRADE.md)是维护条件展示 |
 | 设施加成／图标 | [逐来源行](FACILITY_BONUS_ROWS.md)、[类别与属性](FACILITY_BONUS_ICONS.md)、[人物增长头标](ATTRIBUTE_GAIN_RENDER.md)、[普通道具图标](ITEM_ICON_RENDER.md) | 同定义序号、零图标与原加号保留；研究绘制与原动态分别验收，产品缺口查[需求回应](../verification/PRODUCT_REQUESTS.md) |
-| 建设／地图图块 | [目录布局](STEAM_BUILD_LIST.md)、[业务／输入](STEAM_BUILD_LIST_BUSINESS.md)、[图块全集](STEAM_MAPCHIP_PATTERNS.md)、[资源安装／旋转](STEAM_BUILD_RESOURCE_INSTALL.md)、[差异素材](../assets/steam-build-common/README.md) | 五行空选及预览已有局部交付，完整21 Owner设计待确认；Steam98／103不能用APK图替代，目录确认不等于落地付款 |
+| 建设／地图图块 | [目录布局](STEAM_BUILD_LIST.md)、[业务／输入](STEAM_BUILD_LIST_BUSINESS.md)、[图块全集](STEAM_MAPCHIP_PATTERNS.md)、[资源安装／旋转](STEAM_BUILD_RESOURCE_INSTALL.md)、[差异素材](../assets/steam-build-common/README.md) | 五行空选及预览已有局部交付，21 Owner持久游标／详情返回及短验已交付；Steam98／103不能用APK图替代，目录确认不等于落地付款 |
 | 魔法壶 | [41–47皮肤](STEAM_MAGIC_POT.md)、[业务规则](../rules/MAGIC_POT.md) | 维护目录／处理／发现链已短验，外部反馈无原窗口，五项原动态未覆盖 |
 | 任务／探索／战斗 | [页面总表](PAGES.md)、[任务与周期报告](TASK_REPORT_RENDER.md)、[探索](DUNGEON_RENDER.md)、[战斗](COMBAT_RENDER.md)、[金币Steam交叉](STEAM_COIN_RENDER.md) | 页面、攻略／结算、计数／领取和场景层序分别登记；纯日期推进不证明任务自然完成 |
 | 信息／音频 | [信息菜单](INFORMATION_MENU.md)、[声音请求](AUDIO_REQUESTS.md) | 只读统计与菜单动作分开，BGM替换／jingle／SE请求不合并成一个播放动作 |

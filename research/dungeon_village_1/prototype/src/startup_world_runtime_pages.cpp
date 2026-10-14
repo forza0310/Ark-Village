@@ -1057,6 +1057,8 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
     if (state.scene.framework_paused) {
         const auto page = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
                                       [](const auto &p) { return p.lifecycle != 4; });
+        if(page!=state.scripts.pages.rend()&&page->kind==ref::WorldScriptPageKind::raw_page&&
+           page->legacy_page==21&&!valid_startup_world_build_menu(state,*page))return {};
         if (page != state.scripts.pages.rend() && page->kind == ref::WorldScriptPageKind::raw_page &&
             page->legacy_page == 14 && !inspect_startup_world_save_page(state,page->id))
             return {};
@@ -1089,6 +1091,8 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
                                   [](const auto &p) { return p.lifecycle != 4; });
     if (top == state.scripts.pages.rend() || top->kind == ref::WorldScriptPageKind::scene)
         return {};
+    if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==21)
+        return update_startup_world_build_menu(state,top->id);
     if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==17)return {};
     if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==89&&
        (top->lifecycle!=2||!valid_startup_world_monster_intro_page(state,*top)))return {};

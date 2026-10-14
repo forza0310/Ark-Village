@@ -120,6 +120,8 @@ class StartupApplication {
     // 首星/住宅/二星管理命令：复用Session资格与唯一应用提交点，不开放可写world。
     std::string open_build_menu();
     StartupApplicationBuildResult select_build_menu(std::uint64_t page, int definition);
+    StartupApplicationBuildResult input_build_menu(std::uint64_t page, const StartupBuildMenuInput &input);
+    std::string draw_build_menu(std::uint64_t page);
     std::string cancel_build_menu(std::uint64_t page);
     StartupApplicationBuildResult confirm_build(ref::Position anchor,
                                                 ref::FacilityOrientation orientation);

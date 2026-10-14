@@ -37,7 +37,7 @@ bool extra_payload(const State &s,std::uint64_t id) {
     EXTRA(task_extra_pages);EXTRA(task_page_predictions);EXTRA(task_page_acceleration);EXTRA(task_display_initialized);
     EXTRA(deadline_initialized);EXTRA(deadline_grades);EXTRA(deadline_returns);
     EXTRA(crew_summaries);EXTRA(exploration_summaries);EXTRA(facility_page_bindings);
-    EXTRA(facility_definition_page_bindings);EXTRA(facility_page_neighbours);EXTRA(build_page_catalogs);
+    EXTRA(facility_definition_page_bindings);EXTRA(facility_page_neighbours);EXTRA(build_page_catalogs);EXTRA(build_page_ui);
     EXTRA(residence_page_candidates);EXTRA(facility_upgrade_initialized);EXTRA(award_rankings);
     EXTRA(award_announced);EXTRA(award_termination_pending);EXTRA(award_pending_humans);
     EXTRA(rank_celebration_participants);EXTRA(tax_page_residents);EXTRA(tax_page_selection);EXTRA(tax_page_scroll);
@@ -188,7 +188,8 @@ std::optional<State> prepare_startup_world_save_export(const State &s,std::uint6
     const auto view=inspect_startup_world_save_page(s,id);
     if(s.scene.framework_paused || !callable(s,id) || !view || view->stage!=1 || s.scripts.executing_page ||
        !s.sound_requests.empty() || s.scene.scene_state!=0 || s.build_mode!=0 || s.build_definition ||
-       s.build_anchor || s.build_moving_facility || s.scripts.pages.size()!=2 ||
+       s.build_anchor || s.build_moving_facility || !s.build_page_catalogs.empty() || !s.build_page_ui.empty() ||
+       s.scripts.pages.size()!=2 ||
        s.scripts.pages.front().kind!=ref::WorldScriptPageKind::scene || s.scripts.pages.front().lifecycle!=3 ||
        s.scripts.pages.back().id!=id)return {};
     auto next=s;

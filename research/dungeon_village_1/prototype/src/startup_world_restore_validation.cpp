@@ -603,6 +603,7 @@ struct Validation {
         PAGE_MAP(facility_definition_page_bindings);
         PAGE_MAP(facility_page_neighbours);
         PAGE_MAP(build_page_catalogs);
+        PAGE_MAP(build_page_ui);
         PAGE_MAP(residence_page_candidates);
         PAGE_MAP(facility_item_page_items);
         PAGE_MAP(facility_item_page_lists);
@@ -724,7 +725,7 @@ struct Validation {
             if (!counter(n))
                 return fail("page: 计数非法");
         for (const auto &[id, n] : s.page_secondary_counters)
-            if (!counter(n)||!page_kind(id,{17,22,24,28,30,44,50,70,81,82,96})||
+            if (!counter(n)||!page_kind(id,{17,21,22,24,28,30,44,50,70,81,82,96})||
                 (page_kind(id,{82})&&(!s.facility_catalog_pages_initialized.count(id)||n==std::numeric_limits<int>::max())))
                 return fail("page: 独立计数非法");
         for (const auto &[id, n] : s.page_phases)
@@ -813,11 +814,14 @@ struct Validation {
             if (!page_kind(id, {80}) || !unique_references(list, [&](int n) { return human(n); }))
                 return fail("residence page: 候选名单非法");
         for (const auto &[id, lists] : s.build_page_catalogs) {
+            (void)lists;
             if (!page_kind(id, {21}))
                 return fail("build page: 目录页型错误");
-            for (const auto &list : lists)
-                if (!unique_references(list, [&](int n) { return facilities.count(n) != 0; }))
-                    return fail("build page: 目录定义非法");
+        }
+        for (const auto &[id, ui] : s.build_page_ui) {
+            (void)ui;
+            if (!page_kind(id, {21}))
+                return fail("build page: 游标页型错误");
         }
         const auto deadline_exists = [&](std::uint64_t id) {
             return page_kind(id, {33}) ||
@@ -1109,6 +1113,13 @@ struct Validation {
             if(p.kind==ref::WorldScriptPageKind::raw_page&&p.legacy_page>=31&&p.legacy_page<=33&&
                !valid_startup_world_runtime_task_summary_ui_page(s,p))
                 return fail("task summary UI: 初始化/摘要/期限/退休载荷非法");
+            // 待Finish仍持有冻结目录及游标；不能把退休页当作坏载荷的藏身处。
+            if(p.kind==ref::WorldScriptPageKind::raw_page&&p.legacy_page==21&&
+               !valid_startup_world_build_menu(s,p))
+                return fail("build page: 三目录/五行游标/双计数及退休载荷非法");
+            if(p.kind==ref::WorldScriptPageKind::raw_page&&p.legacy_page==74&&
+               !valid_startup_world_facility_page(s,p))
+                return fail("facility page: 详情绑定/父21或85及退休载荷非法");
             if (p.lifecycle == 4 || p.kind == ref::WorldScriptPageKind::scene)
                 continue;
             const auto id = p.id;
@@ -1157,9 +1168,6 @@ struct Validation {
             } else if (raw == 83 || raw == 84 || raw == 85 || raw == 86 || raw == 93) {
                 if (!commerce_page(p))
                     return false;
-            } else if (raw == 74) {
-                if (!valid_startup_world_facility_page(s, p))
-                    return fail("facility page: 详情载荷非法");
             } else if (raw >= 75 && raw <= 77) {
                 if (!valid_startup_world_facility_item_page(s, p))
                     return fail("facility item page: 载荷非法");
@@ -1191,13 +1199,6 @@ struct Validation {
                     (pending &&
                      (!active.count(*pending) || s.award_termination_pending.find(id)->second)))
                     return fail("award page: 排名/待授予人物与在籍名单失配");
-            }
-            if (raw == 21) {
-                const auto lists = get(s.build_page_catalogs, id);
-                const auto phase = get(s.page_phases, id);
-                if (!lists || !phase || !s.page_counters.count(id) ||
-                    !selected(*phase, lists->size()))
-                    return fail("build page: 缺建设目录/分页/计数");
             }
             if (raw == 80 &&
                 (!s.facility_page_bindings.count(id) || !s.residence_page_candidates.count(id))) {

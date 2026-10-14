@@ -4,6 +4,7 @@
 #include "dungeon_village_prototype/startup_world_facility_catalog.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_menu.hpp"
+#include "dungeon_village_prototype/startup_world_editing.hpp"
 #include "dungeon_village_reference/world_map_refresh.hpp"
 #include "dungeon_village_reference/world_residence.hpp"
 
@@ -324,7 +325,9 @@ std::optional<std::array<std::vector<int>, 3>> startup_world_build_catalog(const
     if (!s.rules)
         return {};
     std::array<std::vector<int>, 3> groups;
+    std::set<int> definitions;
     for (const auto &d : s.rules->facilities) {
+        if(d.id<0||!definitions.insert(d.id).second)return {};
         const auto presence = s.facility_presence.find(d.id);
         if (presence == s.facility_presence.end())
             return {};
@@ -333,13 +336,15 @@ std::optional<std::array<std::vector<int>, 3>> startup_world_build_catalog(const
         if (remaining == s.facility_free_builds.end() || remaining->second < 0 ||
             remaining->second > 99)
             return {};
-        if (presence->second != 0 && (d.flags & 4) && (d.kind != 12 || remaining->second > 0) &&
-            d.kind != 6) {
+        if (presence->second != 0 && (d.flags & 4) && (d.kind != 12 || remaining->second > 0)) {
             if (d.tab < 0 || d.tab > 2)
                 return {};
             groups[d.tab].push_back(d.id);
         }
     }
+    if(groups[0].empty())return {}; // 原索引1插入必须有真实首项，不能补演示定义。
+    groups[0].insert(groups[0].begin()+1,-1);
+    if(s.scripts.user_flags&32U)groups[0].insert(groups[0].begin()+2,-2);
     return groups;
 }
 StartupBuildResult begin_startup_world_build(State &s, int id) {
@@ -353,10 +358,11 @@ StartupBuildResult begin_startup_world_build(State &s, int id) {
             return std::find(group.begin(), group.end(), id) != group.end();
         }))
         return {Error::none, StartupBuildDenial::unavailable};
-    const auto quote = ref::derive_facility_economy(d->economy, input(s, id));
-    if (!quote.values)
+    if(d->kind==6)return {Error::none,StartupBuildDenial::unavailable}; // 道路有独立线段事务。
+    const auto quote = startup_world_build_quote(s,id);
+    if (!quote)
         return {Error::missing_source};
-    if (quote.values->construction_cost > s.scene.world.world.ai.accounting.funds())
+    if (quote->construction_cost > 0 && quote->construction_cost > s.scene.world.world.ai.accounting.funds())
         return {Error::none, StartupBuildDenial::insufficient_funds};
     s.build_definition = id;
     s.build_mode = 0;
@@ -370,8 +376,7 @@ StartupBuildResult begin_startup_world_build(State &s, int id) {
     return {};
 }
 std::optional<ref::FacilityEconomyValues> startup_world_build_quote(const State &s, int id) {
-    const auto *d = definition(s, id);
-    return d ? ref::derive_facility_economy(d->economy, input(s, id)).values : std::nullopt;
+    return startup_world_facility_definition_values(s,id);
 }
 int startup_world_facility_page_count(const State &s, const ref::WorldScriptPage &page) {
     const auto *d = definition(s, page.legacy_f);
@@ -400,15 +405,97 @@ Error open_startup_world_build_menu(State &s) {
         !write_startup_world_runtime_scripts(next, r.candidate->state))
         return Error::script_failed;
     const auto id = r.candidate->inserted_pages.front().id;
-    next.build_page_catalogs[id] = *catalog;
-    next.page_phases[id] = next.page_counters[id] = 0;
+    if(!next.build_page_catalogs.emplace(id,*catalog).second||
+       !next.build_page_ui.emplace(id,StartupWorldBuildPageUi{}).second||
+       !next.page_phases.emplace(id,0).second||!next.page_counters.emplace(id,0).second||
+       !next.page_secondary_counters.emplace(id,0).second)return Error::missing_source;
+    // 原21.Init目录冻结之后Update_residentFlg(false)，允许原人物首次愿望脚本。
+    // 既有消费者内部按定义查询，调用前拒绝缺失字段，不能map.at异常代替拒绝。
+    for(const auto &d:next.rules->facilities)
+        if(d.kind==13&&!next.residence_catalog_available.count(d.id))return Error::missing_source;
+    for(const auto &h:next.rules->humans)
+        if(!next.human_flags.count(h.identity)||!next.human_presence.count(h.identity)||
+           !next.human_homes.count(h.identity)||!next.shop_humans.count(h.identity))return Error::missing_source;
+    const auto refreshed=refresh_startup_world_residence_requests(next,false);
+    if(!refreshed)return Error::script_failed;
+    next=*refreshed;
     s = std::move(next);
     return Error::none;
+}
+bool valid_startup_world_build_menu(const State &s,const ref::WorldScriptPage &page) {
+    if(!s.rules||!page.id||page.kind!=ref::WorldScriptPageKind::raw_page||page.legacy_page!=21||
+       page.lifecycle<0||page.lifecycle>4||page.task_identity||page.task_definition||page.monster_definition||
+       page.facility_definition||s.facility_page_bindings.count(page.id)||
+       s.facility_definition_page_bindings.count(page.id)||s.facility_page_neighbours.count(page.id))return false;
+    const auto lists=s.build_page_catalogs.find(page.id);const auto ui=s.build_page_ui.find(page.id);
+    const auto phase=s.page_phases.find(page.id),main=s.page_counters.find(page.id),secondary=s.page_secondary_counters.find(page.id);
+    if(lists==s.build_page_catalogs.end()||ui==s.build_page_ui.end()||phase==s.page_phases.end()||
+       main==s.page_counters.end()||secondary==s.page_secondary_counters.end()||main->second<0||
+       main->second==std::numeric_limits<int>::max()||secondary->second<0||
+       secondary->second==std::numeric_limits<int>::max())return false;
+    std::array<int,3> counts{};std::map<int,std::size_t> ordinal;
+    for(std::size_t n=0;n<s.rules->facilities.size();++n)
+        if(!ordinal.emplace(s.rules->facilities[n].id,n).second)return false;
+    std::set<int> seen;
+    for(std::size_t category=0;category<3;++category) {
+        const auto &list=lists->second[category];
+        if(list.size()>static_cast<std::size_t>(std::numeric_limits<int>::max()))return false;
+        counts[category]=static_cast<int>(list.size());
+        std::optional<std::size_t> previous;
+        for(std::size_t index=0;index<list.size();++index) {
+            const int id=list[index];if(!seen.insert(id).second)return false;
+            if(id<0) {
+                if(category!=0||!((id==-1&&index==1)||(id==-2&&index==2)))return false;
+                continue;
+            }
+            const auto order=ordinal.find(id);const auto *d=definition(s,id);
+            if(!d||order==ordinal.end()||!(d->flags&4)||d->tab!=static_cast<int>(category)||
+               (previous&&*previous>=order->second))return false;
+            previous=order->second;
+        }
+    }
+    if(lists->second[0].size()<2||lists->second[0][0]<0||lists->second[0][1]!=-1||
+       (seen.count(-2)&&!(s.scripts.user_flags&32U)))return false;
+    if(!prepare_startup_build_menu_cursor(counts,{phase->second,ui->second.selection,ui->second.scroll},{}))return false;
+    // 活目录没有可改变资格的业务子页；比较完整目录只作校验，不在恢复时重建。
+    // 关闭后仍留原目录直到Finish，不把后来的领取/建设库存变化强加给历史。
+    if(page.lifecycle!=4) {
+        const auto expected=startup_world_build_catalog(s);
+        if(!expected||*expected!=lists->second)return false;
+    }
+    return true;
+}
+std::optional<StartupBuildMenuCursor> startup_world_build_menu_cursor(const State &s,std::uint64_t id) {
+    const auto page=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[&](const auto &p){return p.id==id;});
+    if(page==s.scripts.pages.end()||!valid_startup_world_build_menu(s,*page))return {};
+    const auto &ui=s.build_page_ui.find(id)->second;
+    return StartupBuildMenuCursor{s.page_phases.find(id)->second,ui.selection,ui.scroll};
+}
+Error draw_startup_world_build_menu(State &s,std::uint64_t id) {
+    const auto p=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[&](const auto &v){return v.id==id;});
+    if(p==s.scripts.pages.end()||!valid_startup_world_build_menu(s,*p)||p->lifecycle==0||p->lifecycle==4)
+        return Error::invalid_page;
+    if(!s.scene.framework_paused) {
+        auto &counter=s.page_counters.find(id)->second;
+        counter=counter>=2?3:counter+1;
+    }
+    return Error::none;
+}
+std::optional<State> update_startup_world_build_menu(const State &s,std::uint64_t id) {
+    const auto *p=top(s);
+    if(!p||p->id!=id||!valid_startup_world_build_menu(s,*p))return {};
+    if(s.scene.framework_paused)return s;
+    auto next=s;
+    for(auto *map:{&next.page_counters,&next.page_secondary_counters}) {
+        auto &counter=map->find(id)->second;counter=(counter+1)%std::numeric_limits<int>::max();
+    }
+    std::find_if(next.scripts.pages.begin(),next.scripts.pages.end(),[&](const auto &v){return v.id==id;})->lifecycle=2;
+    return next;
 }
 Error cancel_startup_world_build_menu(State &s, std::uint64_t id) {
     const auto *page = top(s);
     if (s.scene.framework_paused || !page || page->id != id || page->legacy_page != 21 ||
-        !s.build_page_catalogs.count(id))
+        !valid_startup_world_build_menu(s,*page))
         return Error::invalid_page;
     auto next = s;
     const auto r = ref::prepare_world_script_close_page(startup_world_runtime_scripts(next), id);
@@ -419,25 +506,104 @@ Error cancel_startup_world_build_menu(State &s, std::uint64_t id) {
 }
 StartupBuildResult select_startup_world_build_menu(State &s, std::uint64_t page,
                                                    int definition_id) {
+    const auto *p=top(s);
+    if(!p||p->id!=page||!valid_startup_world_build_menu(s,*p))return {Error::invalid_page};
     const auto listing = s.build_page_catalogs.find(page);
     if (listing == s.build_page_catalogs.end() ||
         std::none_of(listing->second.begin(), listing->second.end(), [&](const auto &group) {
             return std::find(group.begin(), group.end(), definition_id) != group.end();
         }))
         return {Error::invalid_page};
-    if (!s.facility_unlock_notices.count(definition_id))
+    if (definition_id>=0&&!s.facility_unlock_notices.count(definition_id))
         return {Error::missing_source};
     auto next = s;
+    // 保留既有显式定义命令供研究控制器；同轮输入只传当前选中定义。
+    for(int category=0;category<3;++category) {
+        const auto &group=listing->second[category];const auto selected=std::find(group.begin(),group.end(),definition_id);
+        if(selected==group.end())continue;
+        auto &ui=next.build_page_ui.at(page);const int index=static_cast<int>(selected-group.begin());
+        if(next.page_phases.at(page)!=category){next.page_phases.at(page)=category;ui={};}
+        ui.selection=index;
+        if(index<ui.scroll)ui.scroll=index;
+        if(index>=ui.scroll+5)ui.scroll=index-4;
+        break;
+    }
     if (cancel_startup_world_build_menu(next, page) != Error::none)
         return {Error::invalid_page};
-    const auto result = begin_startup_world_build(next, definition_id);
+    const auto *selected=definition_id>=0?definition(next,definition_id):nullptr;
+    const auto result=definition_id==-1?begin_startup_world_edit(next,false):
+        definition_id==-2?begin_startup_world_edit(next,true):
+        selected&&selected->kind==6?begin_startup_world_road(next,definition_id):
+        begin_startup_world_build(next,definition_id);
     if (result.error != Error::none || result.denial != StartupBuildDenial::none)
         return result; // 拒绝时菜单仍在，不提交候选close。
     // raw21真实定义选择先清r，再刷新aY/P；放置、撤除与直接建设入口不补此调用。
-    if (!refresh_startup_world_build_notices(next))
+    if (definition_id>=0&&selected&&selected->kind!=6&&!refresh_startup_world_build_notices(next))
         return {Error::missing_source};
     s = std::move(next);
     return result;
+}
+StartupBuildResult input_startup_world_build_menu(State &s,std::uint64_t id,const StartupBuildMenuInput &in) {
+    const auto *p=top(s);const auto old=startup_world_build_menu_cursor(s,id);
+    if(s.scene.framework_paused||!p||p->id!=id||p->lifecycle==0||!old)return {Error::invalid_page};
+    if(s.page_counters.find(id)->second<3)return {}; // 未绘够入场门槛，无输入副作用。
+    auto cursor=*old;const auto &lists=s.build_page_catalogs.find(id)->second;
+    std::array<int,3> counts{};
+    for(std::size_t n=0;n<3;++n)counts[n]=static_cast<int>(lists[n].size());
+    if(in.page) {
+        if(*in.page<0||*in.page>=3)return {Error::invalid_page};
+        if(cursor.page!=*in.page)cursor={*in.page,0,0};
+    }
+    if(in.selection)cursor.selection=*in.selection;
+    if(in.scroll)cursor.scroll=*in.scroll;
+    const auto moved=prepare_startup_build_menu_cursor(counts,cursor,in.directions);
+    if(!moved)return {Error::invalid_page};
+    auto next=s;next.page_phases.at(id)=moved->page;
+    next.build_page_ui.at(id)={moved->selection,moved->scroll};
+    const auto &list=lists[moved->page];const bool actual=static_cast<std::size_t>(moved->selection)<list.size();
+    if(in.confirm&&actual) {
+        const auto result=select_startup_world_build_menu(next,id,list[moved->selection]);
+        if(result.error!=Error::none)return result;
+        if(result.denial==StartupBuildDenial::insufficient_funds) {
+            // 原21报价失败是event11正常分支，保留本轮选择但不扣款/关闭目录。
+            // 维护直接select命令仍保留旧的无修改denial合同；精确UI入口独立消费消息。
+            const auto executing=next.scripts.executing_page;next.scripts.executing_page=id;
+            const auto event=ref::prepare_world_script(startup_world_runtime_catalog(),
+                startup_world_runtime_scripts(next),{11,{},{}});
+            if(!event.candidate||!write_startup_world_runtime_scripts(next,event.candidate->state))
+                return {Error::script_failed};
+            next.scripts.executing_page=executing;
+            if(!event.candidate->inserted_pages.empty())
+                for(auto &parent:next.scripts.pages)if(parent.id==id&&parent.lifecycle!=4)parent.lifecycle=3;
+            s=std::move(next);return result;
+        }
+        if(result.denial!=StartupBuildDenial::none)return result;
+        const int definition_id=list[moved->selection];
+        if(definition_id>=0) {
+            const auto *d=definition(next,definition_id);if(!d)return {Error::missing_source};
+            const std::uint32_t flag=d->kind==6?64U:128U;
+            if(!(next.scripts.user_flags&flag)) {
+                next.scripts.user_flags|=flag;
+                ref::WorldScriptPage hint;
+                hint.kind=ref::WorldScriptPageKind::dialogue;hint.legacy_page=0;
+                // 固定APK b/g:11620/11624原中文及h(text,"")无人物/无纪录号。
+                // Steam315DE0同为MakeTalkForm(-1,text,"")；普通分支含btn码，译文不混证。
+                hint.paragraphs={d->kind==6?
+                    "接下来要开始铺路!!<br>点击想要开始的地点拖动后就可以铺路啦。":
+                    "一边旋转画面一边选择想要建筑的地点。点击建筑还可以进行微调。"};
+                const auto opened=ref::prepare_world_script_page(startup_world_runtime_scripts(next),hint);
+                if(!opened.candidate||opened.candidate->inserted_pages.size()!=1||
+                   !write_startup_world_runtime_scripts(next,opened.candidate->state))return {Error::script_failed};
+            }
+        }
+    } else if(!in.confirm&&in.cancel) {
+        const auto error=cancel_startup_world_build_menu(next,id);if(error!=Error::none)return {error};
+    } else if(!in.confirm&&in.details) {
+        if(!actual||list[moved->selection]<0)return {Error::invalid_page};
+        const auto error=open_startup_world_facility_definition(next,list[moved->selection]);
+        if(error!=Error::none)return {error};
+    }
+    s=std::move(next);return {};
 }
 bool refresh_startup_world_connections(State &s) {
     const auto search =
@@ -793,21 +959,35 @@ bool valid_startup_world_facility_page(const State &s, const ref::WorldScriptPag
         const auto status = s.facility_presence.find(preview->second);
         if (!d || preview->second != p.legacy_f || p.legacy_g != 1 ||
             s.facility_page_bindings.count(p.id) || s.facility_page_neighbours.count(p.id) ||
-            status == s.facility_presence.end() || status->second != 0 || d->unlock_rank < 0 ||
-            d->unlock_rank > s.rank || !s.scripts.facilities.count(d->id))
+            status == s.facility_presence.end() || !s.scripts.facilities.count(d->id))
             return false;
         const ref::WorldScriptPage *parent = nullptr;
         for (const auto &page : s.scripts.pages) {
             if (page.id == p.id)
                 break;
-            if (page.lifecycle != 4)
+            if (page.lifecycle != 4 || (p.lifecycle==4&&page.kind==ref::WorldScriptPageKind::raw_page&&
+                (page.legacy_page==21||page.legacy_page==85)))
                 parent = &page;
         }
-        if (!parent || parent->kind != ref::WorldScriptPageKind::raw_page ||
-            parent->legacy_page != 85 || !valid_startup_world_commerce_page(s, *parent))
+        if (!parent || parent->kind != ref::WorldScriptPageKind::raw_page)
             return false;
+        if(parent->legacy_page==21) {
+            if(!valid_startup_world_build_menu(s,*parent)||!(d->flags&4)||
+               (d->kind!=2&&d->kind!=3&&d->kind!=13)||status->second==0)return false;
+            const auto cursor=startup_world_build_menu_cursor(s,parent->id);
+            if(!cursor)return false;
+            const auto &list=s.build_page_catalogs.find(parent->id)->second[cursor->page];
+            if(p.lifecycle==4)return std::any_of(s.build_page_catalogs.find(parent->id)->second.begin(),
+                s.build_page_catalogs.find(parent->id)->second.end(),[&](const auto &group){
+                    return std::find(group.begin(),group.end(),d->id)!=group.end();});
+            return static_cast<std::size_t>(cursor->selection)<list.size()&&list[cursor->selection]==d->id;
+        }
+        if(parent->legacy_page!=85||!valid_startup_world_commerce_page(s,*parent)||
+           status->second!=0||d->unlock_rank<0||d->unlock_rank>s.rank)return false;
         const auto list = s.commerce_page_lists.find(parent->id);
         const auto data = s.commerce_page_data.find(parent->id);
+        if(p.lifecycle==4)return list!=s.commerce_page_lists.end()&&
+            std::find(list->second.begin(),list->second.end(),d->id)!=list->second.end();
         return list != s.commerce_page_lists.end() && data != s.commerce_page_data.end() &&
                data->second[2] >= 0 &&
                static_cast<std::size_t>(data->second[2]) < list->second.size() &&
@@ -883,19 +1063,28 @@ startup_world_facility_bonus_window(const State &s, std::uint64_t page, std::siz
 Error open_startup_world_facility_definition(State &s, int d) {
     const auto *parent = top(s);
     if (!s.rules || s.scene.framework_paused || !parent ||
-        parent->kind != ref::WorldScriptPageKind::raw_page || parent->legacy_page != 85 ||
-        !s.commerce_pages_initialized.count(parent->id))
+        parent->kind != ref::WorldScriptPageKind::raw_page ||
+        (parent->legacy_page != 85&&parent->legacy_page!=21)||parent->lifecycle==0)
         return Error::invalid_page;
     const auto *source = definition(s, d);
     const auto presence = s.facility_presence.find(d);
-    const auto list = s.commerce_page_lists.find(parent->id);
-    const auto data = s.commerce_page_data.find(parent->id);
-    if (!source || presence == s.facility_presence.end() || presence->second != 0 ||
-        source->unlock_rank < 0 || source->unlock_rank > s.rank || !s.scripts.facilities.count(d) ||
-        list == s.commerce_page_lists.end() || data == s.commerce_page_data.end() ||
-        data->second[2] < 0 || static_cast<std::size_t>(data->second[2]) >= list->second.size() ||
-        list->second[data->second[2]] != d)
+    if (!source || presence == s.facility_presence.end() || !s.scripts.facilities.count(d))
         return Error::missing_source;
+    if(parent->legacy_page==21) {
+        const auto cursor=startup_world_build_menu_cursor(s,parent->id);
+        if(!cursor||presence->second==0||!(source->flags&4)||
+           (source->kind!=2&&source->kind!=3&&source->kind!=13))return Error::invalid_page;
+        const auto &list=s.build_page_catalogs.find(parent->id)->second[cursor->page];
+        if(static_cast<std::size_t>(cursor->selection)>=list.size()||list[cursor->selection]!=d)
+            return Error::invalid_page;
+    } else {
+        const auto list=s.commerce_page_lists.find(parent->id);const auto data=s.commerce_page_data.find(parent->id);
+        if(!s.commerce_pages_initialized.count(parent->id)||!valid_startup_world_commerce_page(s,*parent)||
+           presence->second!=0||source->unlock_rank<0||source->unlock_rank>s.rank||
+           list==s.commerce_page_lists.end()||data==s.commerce_page_data.end()||data->second[2]<0||
+           static_cast<std::size_t>(data->second[2])>=list->second.size()||list->second[data->second[2]]!=d)
+            return Error::missing_source;
+    }
     auto next = s;
     next.scripts.executing_page = parent->id;
     ref::WorldScriptPage page;
@@ -911,6 +1100,7 @@ Error open_startup_world_facility_definition(State &s, int d) {
     const auto id = result.candidate->inserted_pages.front().id;
     next.facility_definition_page_bindings[id] = d;
     next.page_counters[id] = next.page_phases[id] = 0;
+    for(auto &p:next.scripts.pages)if(p.id==parent->id&&p.lifecycle!=4)p.lifecycle=3;
     next.scripts.executing_page.reset();
     s = std::move(next);
     return Error::none;

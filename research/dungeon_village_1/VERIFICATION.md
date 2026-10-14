@@ -1,5 +1,15 @@
 # 当前研究验证与历史索引
 
+## 建设21持久游标、详情返回与完整目录 2026-10-14
+
+用户批准后接`99c095d`，唯一Owner新增`build_page_ui`两整数，冻结三目录纳入道路／撤除／条件移动；类目、双钟沿现容器。21同轮方向／滚动／确认／取消／详情、父21与父85独立资格、74返回及退休接齐。资金不足执行event11但不付款；首次道路64／普通128说明与标志同事务，文本沿固定APK并在[业务合同](ui/STEAM_BUILD_LIST_BUSINESS.md)注明Steam差异。codec／schema同步，旧字段布局拒绝；世界5／应用8／系统2、128MiB及普通档稳定边界不变。
+
+Windows单Release动态构建通过；现building／pages／visuals／application **4/4通过19.87秒**。现codec与restore_checks用忽略build内临时启动器链接同一DLL运行，**1912项恢复检查通过**，完整codec后的21待Init／活动／覆盖／退休、相同输入及一次输出均有覆盖；没有构建他人在途的持久化主测试程序。首轮发现独立计数白名单漏21及新测试误用producer生命周期，分别修实现与真实Init前置后复验，未删断言／放宽校验。两个历史长测的新增map归属检查仅语法通过，不运行长跑。
+
+`world-building`、`world-building-preview`、`world-building-return`最终各8帧正常退出，真实新局选定义24进入74／返回选择2、首行0，均5000G／0世界更新／0随机抽。窗口改用Owner及正式有序皮肤，只保留短期手势；已修父软标签穿透及全角Ｇ缺字，修后复验受影响窗口。[现图例](ui/examples/steam-build-menu.png)保留历史四态并追加本次详情／返回，960×1920／188721字节，无新图文件。Noto／手形关键帧0、物理输入适配及窗口Draw→下帧输入时序不冒充Steam原动态。
+
+资源统计纳入新map，关闭待退休先验证再释放；新字段没有引用世界副本，声音／脚本输出仍走唯一Owner。Release1378文件／144083288字节、assets863文件／9488214字节；临时AST已清理，另清理本轮9份启动器／图／日志1308952字节，不新增tracked audit／指纹或过程报告。所有本轮构建、测试、窗口与子任务结束，仅提交已验research、保留他人修改、不推送；合法历史增长仍不称永久有界。
+
 ## Steam纪录两页、更新与图像生命周期 2026-10-14
 
 接`90c6267`，新增实际RankForm职责的[纪录皮肤模块](prototype/include/dungeon_village_prototype/steam_record_skin.hpp)，显式加入现application目标，无新CTest。Steam完整正常state0调用独立核出：双窗与不同翻译、效果箭头、int／float测宽、全冻结名单及P／Ｇ格式；非日文分数无P，fallback不裁5。现startup皮肤套件扩原序、六人／空列表、语言／最大非负long、时钟、拒绝及输出预算oracle。单Release动态构建，visuals **1/1通过1.54秒**（总1.55秒）。
@@ -100,7 +110,7 @@
 
 ## 建设目录纯游标与公共弹窗调度 2026-10-14
 
-接`7fe54fa`，建设21新增[纯游标候选](prototype/include/dungeon_village_prototype/startup_world_building.hpp)，现building套件覆盖原方向顺序、五行空选、精确绕回、独立首行、同时方向及整数／坏初态边界。单Release动态构建通过，主责CTest **1/1通过2.10秒**（总2.11秒）；不接Owner／codec或窗口，不编其它维护者三份住宅持久化测试，不跑长测。21→74源入口及父字段保持合入[业务合同](ui/STEAM_BUILD_LIST_BUSINESS.md)，新增Owner载荷仅列[待确认设计](prototype/PERSISTENCE.md#建设21目录游标与74预览恢复设计待确认)，不能据纯函数宣称完整恢复。
+接`7fe54fa`，建设21新增[纯游标候选](prototype/include/dungeon_village_prototype/startup_world_building.hpp)，现building套件覆盖原方向顺序、五行空选、精确绕回、独立首行、同时方向及整数／坏初态边界。单Release动态构建通过，主责CTest **1/1通过2.10秒**（总2.11秒）；不接Owner／codec或窗口，不编其它维护者三份住宅持久化测试，不跑长测。21→74源入口及父字段保持合入[业务合同](ui/STEAM_BUILD_LIST_BUSINESS.md)，新增Owner载荷仅列[待确认设计](prototype/PERSISTENCE.md#建设21目录游标与74预览恢复设计)，不能据纯函数宣称完整恢复。
 
 并行补[公共SubForm单轮](ui/INPUT_RENDER_REQUESTS.md#steam公共subform单轮页面钟手形与待发jingle)：双钟、wait早退、待发jingle及共享手形的真实门槛；完整运行期写者／自动动画后继保留未证。建设文档合并过时缺口并移除重复指纹，没有新增报告、脚本、素材或target。魔法壶外部反馈仍为通道正常但无目标窗口，五项未覆盖、无截图；原动态与维护短测分开。
 

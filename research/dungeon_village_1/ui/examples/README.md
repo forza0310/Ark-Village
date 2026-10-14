@@ -12,7 +12,7 @@
 
 [Steam控制器后备裁片](steam-controller-buttons.png)（680×352／44354字节）：从Switch、PS4／PS5、Xbox三套原PNG／SEB取frame0、1、7、32–35，64×64裁片不缩放，仅加研究表头。不是窗口截图、当前设备识别或实际确定／取消绑定；frame0／1先受Canvas映射影响，layer1的16–19再变32–35，所有源layer最终归0。供[后备资源接口](../../prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)和[字体消费者](../STEAM_FONT_CONSUMER.md#内嵌按钮提示)交叉，不代替Steam动态图像或无控制器frame7的鼠标图。
 
-[建设目录三类与叠图条件](steam-build-menu.png)（960×1280／69665字节）：左上设备、右上一般、左下饮食、右下全开放条件。`build-menu-equipment`／`build-menu-general`／`build-menu-food`／`build-menu-overlays`各8帧、0世界更新、不加`--world`。前三态从真实新局读取，调用正式NEW刷新后投影完整源目录；第四态的全开放／移动／住宅H1／入住／NEW／余额0及左箭头高亮仅为显示条件，不写世界。原尺寸拼接保留图块、五行空项、不足价色、Steam入住图、数量、手形与surface箭头；中文／Noto、绿色背景及画布平移40为适配。纯计划无Owner游标或原OS输入认证，详见[建设合同](../STEAM_BUILD_LIST.md#维护纯计划与产品消费)。
+[建设目录三类、叠图条件与详情返回](steam-build-menu.png)（960×1920／188721字节）：左上设备、右上一般、左下饮食、右下全开放条件。`build-menu-equipment`／`build-menu-general`／`build-menu-food`／`build-menu-overlays`各8帧、0世界更新、不加`--world`。前三态从真实新局读取，调用正式NEW刷新后投影完整源目录；第四态的全开放／移动／住宅H1／入住／NEW／余额0及左箭头高亮仅为显示条件，不写世界。原尺寸拼接保留图块、五行空项、不足价色、Steam入住图、数量、手形与surface箭头；中文／Noto、绿色背景及画布平移40为适配。前四态仍只证明条件绘制。新增最下排为`--world --inspect-page world-building-preview`／`world-building-return`，各8帧，从真实新局目录选定义24进入74并返回；选择2／首行0、5000G及0世界更新保持。原`world-building`入口同批短验。父页仅背景绘制，软标签归栈顶；主钟只在实际Draw后提交。Noto／手形关键帧0、40像素画布平移与物理输入转换是研究适配，不认证原OS动态，详见[建设合同](../STEAM_BUILD_LIST.md#维护纯计划与产品消费)。
 
 [怪物详情初值／成长条件](steam-monster-detail.png)（960×640／35556字节）：`monster-detail`、`monster-detail-grown`各8帧、0世界更新、不加`--world`。实际遭遇消费者生成首只怪物，经当前实例入口打开92并真实Init；右图仅将共享累计击败设100、倒下人数设2，不制造自然战果。两图读取原定义名／说明，Lv1不画级别、Lv2按实测名宽布置；金币由50变60、经验整数截断仍4。非JP单句没有足够分段，沿原后备显示静态日文标签；中文／Noto及研究背景不认证Steam字体或翻译。钱袋使用原common2图与SEB内部偏移，定义页不保留实例、收费或发奖；见[92合同](../../rules/STEAM_MONSTER_PROGRESSION.md#raw92怪物信息共享定义入口与局部皮肤)。
 

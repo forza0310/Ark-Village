@@ -70,8 +70,6 @@
 namespace dungeon_village_prototype {
 namespace {
 constexpr int width = 240, height = 320, scale = 2;
-// 原21窗口中心偏移；绘制与本研究窗口拾取共用逻辑坐标，不写入领域状态。
-constexpr int build_menu_x = width / 2 - 87, build_menu_y = height / 2 - 104;
 const Color ink{48, 44, 46, 255}, paper{248, 248, 244, 255};
 
 std::vector<std::uint8_t> read_bytes(const std::filesystem::path &path) {
@@ -1366,7 +1364,8 @@ void draw_human_overview(const SteamHumanOverviewPlan &plan,SourceSprites &sprit
     if(plan.soft_labels[1]==2)font.text("返回",188,272);
 }
 // 两种设施演出共用有序执行器，保留裁剪栈；每个variant恰消费一次。
-template<class Plan> void draw_facility_ceremony(const Plan &plan,SourceSprites &sprites,const ChineseFont &font,Vector2 origin=human_overview_origin) {
+template<class Plan> void draw_facility_ceremony(const Plan &plan,SourceSprites &sprites,const ChineseFont &font,
+    Vector2 origin=human_overview_origin,bool include_soft_labels=true) {
     std::vector<std::array<int,4>> clips;
     const auto apply_clip=[&] {
         if(clips.empty())return;
@@ -1577,6 +1576,7 @@ template<class Plan> void draw_facility_ceremony(const Plan &plan,SourceSprites 
         }
     },op);
     if(!clips.empty())throw std::runtime_error("设施演出裁剪未释放");
+    if(!include_soft_labels)return; // 覆盖中的父页只画内容，软标签由栈顶拥有。
     if(plan.soft_labels[0]==6)font.text("查看位置",12,272);
     else if(plan.soft_labels[0]==7)font.text("详细",12,272);
     if(plan.soft_labels[1]==12)font.text("开始",188,272);
@@ -2047,6 +2047,46 @@ std::optional<SteamFacilityDetailSkinPlan> facility_special_example(const std::s
     if(!state)return {};
     return window_facility_special_plan(*state,state->scripts.pages.back().id,font);
 }
+// 真实Owner与显示条件共用行投影；不重建冻结目录、改变选择或刷新NEW。
+bool window_build_menu_rows(const StartupWorldRuntimeState &s,SteamBuildMenuSkinInput &in,
+                           const ChineseFont &font,bool overlays=false) {
+    const auto &catalog=in.catalogs[in.cursor.page];
+    const auto residents=startup_world_residence_candidates(s);if(!residents)return false;
+    for(int n=in.cursor.scroll;n<int(catalog.size())&&n<in.cursor.scroll+5;++n) {
+        SteamBuildMenuRow row;row.definition=catalog[n];
+        if(row.definition<0) {row.name=row.definition==-1?"撤除":"移动";row.quote=row.definition==-1?0:300;}
+        else {
+            const auto d=std::find_if(s.rules->facilities.begin(),s.rules->facilities.end(),[&](const auto &v){return v.id==row.definition;});
+            const auto quote=startup_world_build_quote(s,row.definition);
+            if(d==s.rules->facilities.end()||!quote||quote->construction_cost<0||
+               quote->construction_cost>std::numeric_limits<int>::max())return false;
+            row.mapchip=d->display_id;row.kind=d->kind;row.name=d->name;row.quote=int(quote->construction_cost);
+            const auto remaining=s.facility_free_builds.find(d->id);
+            const auto present=s.facility_build_present.find(d->id);
+            if(remaining==s.facility_free_builds.end()||present==s.facility_build_present.end())return false;
+            row.remaining=overlays&&d->kind==12?1:remaining->second;
+            row.build_now=overlays?false:present->second;
+            row.resident=overlays||!residents->empty();
+        }
+        row.price_text=facility_gold_text(row.quote);row.price_text.pop_back();row.price_text+="Ｇ";
+        row.name_width=int(font.measure(row.name,10));in.visible_rows.push_back(std::move(row));
+    }
+    return true;
+}
+std::optional<SteamBuildMenuSkinPlan> window_build_menu_plan(
+    const StartupWorldRuntimeState &s,std::uint64_t id,const ChineseFont &font,bool dragging=false) {
+    const auto cursor=startup_world_build_menu_cursor(s,id);
+    const auto catalog=s.build_page_catalogs.find(id);
+    const auto secondary=s.page_secondary_counters.find(id);
+    if(!cursor||catalog==s.build_page_catalogs.end()||secondary==s.page_secondary_counters.end())return {};
+    SteamBuildMenuSkinInput in;in.catalogs=catalog->second;in.cursor=*cursor;
+    in.origin={33,16};in.category_names={"设备","一般","饮食"};
+    in.category_new=s.build_category_new;in.funds=s.scene.world.world.ai.accounting.funds();
+    in.frame2=secondary->second;in.scroll_first_touch=dragging;
+    // 手形关键帧0为研究适配；副钟直接读Owner，不从渲染帧数造值。
+    if(!window_build_menu_rows(s,in,font))return {};
+    return steam_build_menu_skin(in);
+}
 std::optional<SteamBuildMenuSkinPlan> build_menu_example(const std::string &name,const ChineseFont &font) {
     StartupSession initial;StartupWorldRuntimeSession world(initial.state(),ref::WorldRandomStream::from_java_seed(1));
     auto s=world.state();
@@ -2076,24 +2116,7 @@ std::optional<SteamBuildMenuSkinPlan> build_menu_example(const std::string &name
         if(home==catalog.end())return {};
         in.cursor.selection=int(home-catalog.begin());in.cursor.scroll=std::max(0,in.cursor.selection-4);
     }
-    const auto &catalog=in.catalogs[in.cursor.page];
-    const auto residents=startup_world_residence_candidates(s);if(!residents)return {};
-    for(int n=in.cursor.scroll;n<int(catalog.size())&&n<in.cursor.scroll+5;++n) {
-        SteamBuildMenuRow row;row.definition=catalog[n];
-        if(row.definition<0) {row.name=row.definition==-1?"撤除":"移动";row.quote=row.definition==-1?0:300;}
-        else {
-            const auto d=std::find_if(s.rules->facilities.begin(),s.rules->facilities.end(),[&](const auto &v){return v.id==row.definition;});
-            const auto quote=startup_world_build_quote(s,row.definition);
-            if(d==s.rules->facilities.end()||!quote||quote->construction_cost<0||
-               quote->construction_cost>std::numeric_limits<int>::max())return {};
-            row.mapchip=d->display_id;row.kind=d->kind;row.name=d->name;row.quote=int(quote->construction_cost);
-            row.remaining=overlays&&d->kind==12?1:s.facility_free_builds.at(d->id);
-            row.build_now=overlays?false:s.facility_build_present.at(d->id);
-            row.resident=overlays||!residents->empty();
-        }
-        row.price_text=facility_gold_text(row.quote);row.price_text.pop_back();row.price_text+="Ｇ";
-        row.name_width=int(font.measure(row.name,10));in.visible_rows.push_back(std::move(row));
-    }
+    if(!window_build_menu_rows(s,in,font,overlays))return {};
     return steam_build_menu_skin(in);
 }
 std::optional<SteamConfigSkinPlan> config_example(const std::string &name,const ChineseFont &font) {
@@ -3649,6 +3672,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
     };
     for (const auto &human : rules.humans)
         glyphs += human_name(human.identity); // 原字体目录外的自定义中文在载入后一次装入。
+    glyphs += "设备一般饮食撤除移动返回详细Ｇ"; // raw21正式皮肤的全角货币，不能退化为缺字问号。
     ChineseFont font(font_path, glyphs);
     const auto available_road = [](const StartupWorldRuntimeState &s) -> std::optional<int> {
         for (const auto &d : s.rules->facilities) {
@@ -4025,9 +4049,39 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 StartupWorldRuntimeError::none) ||
             !startup_world_facility_bonus_rows(session.state(), page))
             throw std::runtime_error("真实设施详情载荷拒绝");
-    } else if (inspect_page == "world-building") {
+    } else if (inspect_page == "world-building"||inspect_page=="world-building-preview"||inspect_page=="world-building-return") {
         if (session.open_build_menu() != StartupWorldRuntimeError::none)
             throw std::runtime_error("真实新局建设目录检查入口失败");
+        if(inspect_page!="world-building") {
+            const auto parent=session.state().scripts.pages.back().id;
+            for(int n=0;n<3;++n)if(!session.update().committed)
+                throw std::runtime_error("建设目录预览前置更新拒绝");
+            const auto catalog=session.state().build_page_catalogs.find(parent);
+            if(catalog==session.state().build_page_catalogs.end())throw std::runtime_error("建设目录未冻结");
+            std::optional<StartupBuildMenuInput> request;
+            for(int category=0;category<3&&!request;++category)
+                for(int row=0;row<int(catalog->second[category].size())&&!request;++row) {
+                    const int id=catalog->second[category][row];
+                    const auto &defs=session.state().rules->facilities;
+                    const auto definition=std::find_if(defs.begin(),defs.end(),[=](const auto &d){return d.id==id;});
+                    if(definition!=defs.end()&&(definition->kind==2||definition->kind==3||definition->kind==13)) {
+                        StartupBuildMenuInput input;input.page=category;input.selection=row;
+                        input.scroll=std::max(0,row-4);input.details=true;request=input;
+                    }
+                }
+            if(!request||session.input_build_menu(parent,*request).error!=StartupWorldRuntimeError::none)
+                throw std::runtime_error("真实建设目录没有合法详情入口");
+            const auto child=session.state().scripts.pages.back().id;
+            if(session.state().scripts.pages.back().legacy_page!=74)
+                throw std::runtime_error("建设详情没有创建74");
+            if(inspect_page=="world-building-return") {
+                if(session.act_facility_page(child,StartupFacilityPageAction::confirm)!=StartupWorldRuntimeError::none||
+                   !session.update().committed)throw std::runtime_error("建设详情返回拒绝");
+                const auto restored=startup_world_build_menu_cursor(session.state(),parent);
+                if(!restored||restored->page!=*request->page||restored->selection!=*request->selection||
+                   restored->scroll!=*request->scroll)throw std::runtime_error("建设父目录返回丢失游标");
+            }
+        }
     } else if (inspect_page == "world-goods" || inspect_page == "world-goods-attributes" || inspect_page == "world-equipment-info" || inspect_page == "world-shop-details") {
         // 真实新局已有武器设施优先；没有时按当前建设/施工消费者形成，不注入实例或资金。
         std::optional<std::uint64_t> shop;
@@ -4370,7 +4424,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
     std::uint64_t viewed_page{};
     int residence_selection{}; // 80旧目录适配；任务25–33游标由Owner保存。
     int award_selection{}, prompt_selection{};
-    int build_tab{}, build_selection{};
+    std::optional<std::pair<std::uint64_t,int>> build_item_marker; // 类目切换、覆盖或失焦时清除。
     int bonus_selection{}, bonus_scroll{}; // 原5行视窗的研究输入适配，不进入Owner或存档。
     std::map<std::uint64_t,SteamFacilityBonusCursor> bonus_views; // 父74覆盖后恢复，退休页及时回收。
     std::optional<std::pair<std::uint64_t,int>> facility_arrow_press; // 原CheckTouch的研究按下适配，非悬停。
@@ -4396,11 +4450,14 @@ int run_startup_world_window(const std::filesystem::path &assets,
         if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT))facility_arrow_press.reset();
         const auto current_top=std::find_if(session.state().scripts.pages.rbegin(),session.state().scripts.pages.rend(),
                                             [](const auto &page){return page.lifecycle!=4;});
+        if(build_item_marker&&(session.state().scene.framework_paused||!IsWindowFocused()||
+           current_top==session.state().scripts.pages.rend()||current_top->id!=build_item_marker->first||
+           current_top->legacy_page!=21))build_item_marker.reset();
         const bool application_clear=session.application_mode() && current_top!=session.state().scripts.pages.rend() &&
             current_top->kind==ref::WorldScriptPageKind::raw_page && current_top->legacy_page==17;
         if(human_scroll_drag&&(session.state().scene.framework_paused||
            current_top==session.state().scripts.pages.rend()||current_top->id!=human_scroll_drag->page||
-           (current_top->legacy_page!=22&&current_top->legacy_page!=25&&current_top->legacy_page!=26&&current_top->legacy_page!=27&&current_top->legacy_page!=31&&current_top->legacy_page!=32&&current_top->legacy_page!=42&&current_top->legacy_page!=43&&current_top->legacy_page!=51&&current_top->legacy_page!=54&&current_top->legacy_page!=60&&current_top->legacy_page!=61&&current_top->legacy_page!=64&&current_top->legacy_page!=75&&current_top->legacy_page!=79&&current_top->legacy_page!=85)))human_scroll_drag.reset();
+           (current_top->legacy_page!=22&&current_top->legacy_page!=25&&current_top->legacy_page!=26&&current_top->legacy_page!=27&&current_top->legacy_page!=31&&current_top->legacy_page!=32&&current_top->legacy_page!=42&&current_top->legacy_page!=43&&current_top->legacy_page!=51&&current_top->legacy_page!=54&&current_top->legacy_page!=60&&current_top->legacy_page!=61&&current_top->legacy_page!=64&&current_top->legacy_page!=75&&current_top->legacy_page!=79&&current_top->legacy_page!=85&&current_top->legacy_page!=21)))human_scroll_drag.reset();
         if(tax_scroll_drag&&(session.state().scene.framework_paused||!IsWindowFocused()||
            current_top==session.state().scripts.pages.rend()||current_top->id!=tax_scroll_drag->page||
            current_top->legacy_page!=90))tax_scroll_drag.reset();
@@ -4448,7 +4505,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 paragraph_index = 0;
                 body_scroll = body_extent = 0;
                 residence_selection = 0;
-                build_tab = build_selection = 0;
+                build_item_marker.reset();
                 const auto old_bonus=bonus_views.find(page->id);
                 bonus_selection=old_bonus==bonus_views.end()?0:old_bonus->second.selection;
                 bonus_scroll=old_bonus==bonus_views.end()?0:old_bonus->second.first;
@@ -5221,39 +5278,82 @@ int run_startup_world_window(const std::filesystem::path &assets,
                             throw std::runtime_error("税收同轮输入拒绝");
                 } else if(!plan&&page->lifecycle!=0)throw std::runtime_error("税收输入来源缺失");
             } else if (raw == 21) {
-                const auto &groups = session.state().build_page_catalogs.at(page->id);
-                if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT)) {
-                    build_tab = (build_tab + (IsKeyPressed(KEY_LEFT) ? 2 : 1)) % 3;
-                    build_selection = 0;
-                }
-                for (int tab = 0; tab < 3; ++tab)
-                    if (hit({static_cast<float>(build_menu_x + 3 + tab * 57),
-                             static_cast<float>(build_menu_y + 2), 56, 16})) {
-                        build_tab = tab;
-                        build_selection = 0;
+                const auto pid=page->id;
+                const auto cursor=startup_world_build_menu_cursor(session.state(),pid);
+                const auto plan=window_build_menu_plan(session.state(),pid,font,
+                    human_scroll_drag&&human_scroll_drag->page==pid);
+                if(!cursor||!plan)throw std::runtime_error("建设目录Owner或皮肤载荷拒绝");
+                if(IsWindowFocused()&&page->lifecycle!=0) {
+                    StartupBuildMenuInput input;
+                    input.directions={IsKeyPressed(KEY_UP),IsKeyPressed(KEY_DOWN),
+                                      IsKeyPressed(KEY_LEFT),IsKeyPressed(KEY_RIGHT)};
+                    input.confirm=IsKeyPressed(KEY_ENTER);
+                    input.cancel=IsKeyPressed(KEY_ESCAPE)||hit({176,265,58,24});
+                    input.details=plan->soft_labels[0]==7&&(IsKeyPressed(KEY_I)||hit({8,265,58,24}));
+                    const auto catalogs=session.state().build_page_catalogs.find(pid);
+                    if(catalogs==session.state().build_page_catalogs.end())throw std::runtime_error("建设冻结目录缺失");
+                    const int count=int(catalogs->second[cursor->page].size()),upper=std::max(count-1,4);
+                    const auto point=[](std::array<int,4> r){return Rectangle{human_overview_origin.x+r[0],
+                        human_overview_origin.y+r[1],float(r[2]),float(r[3])};};
+                    if(input.directions.up||input.directions.down||input.directions.left||input.directions.right||
+                       input.confirm||input.cancel||input.details)build_item_marker.reset();
+                    std::optional<int> first;
+                    for(const auto &op:plan->operations)if(const auto *touch=std::get_if<SteamBuildMenuTouch>(&op)) {
+                        if(!touch->touch.rectangle)continue;
+                        const auto r=*touch->touch.rectangle;
+                        if(touch->touch.component==12&&count>5&&hit(point(r))) {
+                            const float length=float(945/std::max(count,5));
+                            const float grid=(189.F-length)/float(count-5);
+                            human_scroll_drag=FacilityScrollDrag{pid,mouse.y,cursor->scroll,grid>0?grid:1.F};
+                            human_scroll_gesture=true;pointer_consumed=true;build_item_marker.reset();
+                        } else if(touch->touch.component==25&&count>5&&!pointer_consumed&&hit(point(r))) {
+                            const int thumb_y=16+21+int(189LL*cursor->scroll/std::max(count,5));
+                            first=std::clamp(cursor->scroll+(mouse.y<human_overview_origin.y+thumb_y?-5:5),0,count-5);
+                            human_scroll_gesture=true;pointer_consumed=true;
+                        } else if(touch->touch.component==3&&IsMouseButtonReleased(MOUSE_BUTTON_LEFT)&&
+                                  !pointer_consumed&&CheckCollisionPointRec(mouse,point(r))) {
+                            input.page=touch->touch.value&0xffff;build_item_marker.reset();pointer_consumed=true;
+                        } else if(touch->touch.component==11&&IsMouseButtonReleased(MOUSE_BUTTON_LEFT)&&
+                                  !pointer_consumed&&!human_scroll_gesture&&CheckCollisionPointRec(mouse,point(r))) {
+                            const int row=touch->touch.value&0xffff;
+                            if(row<=upper) {
+                                input.selection=row;
+                                input.confirm=build_item_marker==std::make_optional(std::make_pair(pid,row));
+                                build_item_marker=std::make_pair(pid,row);pointer_consumed=true;
+                            }
+                        }
                     }
-                const auto &list = groups.at(build_tab);
-                const auto count = static_cast<int>(list.size());
-                if (count && IsKeyPressed(KEY_UP))
-                    build_selection = (build_selection + count - 1) % count;
-                if (count && IsKeyPressed(KEY_DOWN))
-                    build_selection = (build_selection + 1) % count;
-                const int first = std::max(0, build_selection - 4);
-                for (int row = first; row < count && row < first + 5; ++row)
-                    if (hit({static_cast<float>(build_menu_x + 4),
-                             static_cast<float>(build_menu_y + 22 + (row-first)*37), 162, 37}))
-                        build_selection = row;
-                const auto pid = page->id;
-                if (IsKeyPressed(KEY_ESCAPE) || hit({8, 265, 58, 24})) {
-                    if (session.cancel_build_menu(pid) != StartupWorldRuntimeError::none)
-                        throw std::runtime_error("建设目录返回失败");
-                } else if (count && (IsKeyPressed(KEY_ENTER) || hit({176, 265, 58, 24}))) {
-                    const auto r = session.select_build_menu(pid, list.at(build_selection));
-                    if (r.error != StartupWorldRuntimeError::none)
-                        throw std::runtime_error("建设选择失败");
-                    command_feedback =
-                        r.denial == StartupBuildDenial::insufficient_funds ? "金钱不足" : "";
-                    build_orientation = ref::FacilityOrientation::first;
+                    for(const auto &op:plan->operations)if(const auto *arrow=std::get_if<SteamBuildMenuArrowTouch>(&op)) {
+                        const auto bounds=sprites.manual_arrow_bounds(arrow->frame);
+                        const auto &m=arrow->margin;
+                        const std::array<int,4> area{arrow->position[0]+bounds[0]-m[0],
+                            arrow->position[1]+bounds[1]-m[2],bounds[2]+m[0]+m[1],bounds[3]+m[2]+m[3]};
+                        if(!pointer_consumed&&IsMouseButtonReleased(MOUSE_BUTTON_LEFT)&&
+                           CheckCollisionPointRec(mouse,point(area))) {
+                            if(arrow->value==16)input.directions.left=true;
+                            else if(arrow->value==18)input.directions.right=true;
+                            else throw std::runtime_error("建设箭头方向拒绝");
+                            pointer_consumed=true;build_item_marker.reset();
+                        }
+                    }
+                    const float wheel=GetMouseWheelMove();
+                    if(count>5&&wheel!=0)first=std::clamp(cursor->scroll+(wheel>0?-1:1),0,count-5);
+                    if(human_scroll_drag&&human_scroll_drag->page==pid) {
+                        const double wanted=human_scroll_drag->first+
+                            std::trunc(double(mouse.y-human_scroll_drag->start_y)/human_scroll_drag->grid);
+                        first=int(std::clamp(wanted,0.,double(std::max(count-5,0))));
+                    }
+                    if(first) {
+                        input.scroll=*first;input.selection=std::clamp(cursor->selection,*first,std::min(upper,*first+4));
+                        build_item_marker.reset();
+                    }
+                    if(input.page||input.selection||input.scroll||input.directions.up||input.directions.down||
+                       input.directions.left||input.directions.right||input.confirm||input.cancel||input.details) {
+                        const auto result=session.input_build_menu(pid,input);
+                        if(result.error!=StartupWorldRuntimeError::none)throw std::runtime_error("建设同轮输入拒绝");
+                        command_feedback=result.denial==StartupBuildDenial::insufficient_funds?"金钱不足":"";
+                        if(input.confirm)build_orientation=ref::FacilityOrientation::first;
+                    }
                 }
             } else if (raw == 74) {
                 const auto pid = page->id;
@@ -5654,6 +5754,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
         }
         // 本研究窗口暂未实现音频；明确消费一次性请求，不保存无限声音历史。
         (void)session.take_sound_requests();
+        std::vector<std::uint64_t> build_pages_drawn;
         const auto &state = session.state();
         if(facility_scroll_drag) {
             const auto active=std::find_if(state.scripts.pages.rbegin(),state.scripts.pages.rend(),
@@ -6039,6 +6140,13 @@ int run_startup_world_window(const std::filesystem::path &assets,
             font.text("返回 Esc",12,263,ink,10);font.text("确定 Enter",170,263,ink,10);
             if(!command_feedback.empty())font.text(command_feedback,12,282,ink,10);
         } else if (const auto page = top_page()) {
+            // 21的详情／资金不足说明覆盖期间仍绘父内容；当前子页拥有软标签。
+            for(const auto &parent:state.scripts.pages)if(parent.legacy_page==21&&parent.lifecycle==3) {
+                const auto background=window_build_menu_plan(state,parent.id,font);
+                if(!background)throw std::runtime_error("建设父目录背景绘制拒绝");
+                draw_facility_ceremony(*background,sprites,font,human_overview_origin,false);
+                build_pages_drawn.push_back(parent.id);
+            }
             const bool steam_info=page->legacy_page==29;
             const bool steam_task=(page->legacy_page>=22&&page->legacy_page<=28)||(page->legacy_page>=30&&page->legacy_page<=33);
             const bool steam_residence=page->legacy_page==96||page->legacy_page==67||page->legacy_page==88||page->legacy_page==70;
@@ -6195,39 +6303,14 @@ int run_startup_world_window(const std::filesystem::path &assets,
             } else if (page->legacy_page == 95) {
                 if(const auto plan=window_town_progress_plan(state,page->id,font))draw_facility_ceremony(*plan,sprites,font);
             } else if (page->legacy_page == 21) {
-                DrawRectangle(build_menu_x,build_menu_y,175,210,{79,72,48,255});
-                DrawRectangle(build_menu_x+1,build_menu_y+1,173,208,{193,234,94,255});
-                DrawRectangle(build_menu_x+4,build_menu_y+22,162,184,paper);
-                constexpr std::array<const char *, 3> tabs{{"设备", "一般", "饮食"}};
-                for (int tab = 0; tab < 3; ++tab) {
-                    const int x = build_menu_x+3+tab*57;
-                    DrawRectangle(x,build_menu_y+2,56,16,
-                                  tab==build_tab ? Color{3,255,133,255} : Color{223,255,67,255});
-                    font.text(tabs[tab], x+(56-font.measure(tabs[tab],10))/2,build_menu_y+5,ink,10);
+                const auto plan=window_build_menu_plan(state,page->id,font,
+                    human_scroll_drag&&human_scroll_drag->page==page->id);
+                if(!plan)throw std::runtime_error("建设目录正式皮肤拒绝");
+                if(page->lifecycle!=0) {
+                    draw_facility_ceremony(*plan,sprites,font);
+                    build_pages_drawn.push_back(page->id);
                 }
-                const auto &list = state.build_page_catalogs.at(page->id).at(build_tab);
-                const int first = std::max(0,build_selection-4);
-                for (int row = first; row < static_cast<int>(list.size()) && row < first+5; ++row) {
-                    const auto &d = rules.facilities.at(list[row]);
-                    const int x = build_menu_x+10, y = build_menu_y+25+(row-first)*37;
-                    DrawRectangle(x,y,64,32,{190,242,230,255});
-                    const auto icon = startup_world_building_draws(state,d.id,ref::FacilityOrientation::first);
-                    if (!icon) throw std::runtime_error("建设目录建筑绘制载荷非法");
-                    // 原图大小、原分片顺序；不按包围盒居中或缩放。
-                    BeginScissorMode(x,y,64,32);
-                    sprites.building(*icon,{static_cast<float>(x+2),static_cast<float>(y+10)});
-                    EndScissorMode();
-                    if (row == build_selection)
-                        DrawRectangle(x+73,y,static_cast<int>(font.measure(d.name,10))+8,15,{248,193,108,255});
-                    font.text(d.name,x+73,y+3,ink,10);
-                    const auto quote = startup_world_build_quote(state, d.id);
-                    if (!quote)
-                        throw std::runtime_error("建设目录报价缺失");
-                    const auto price=std::to_string(quote->construction_cost)+"G";
-                    font.text(price,x+154-font.measure(price,10),y+18,ink,10);
-                }
-                font.text(command_feedback, 65, 272, ink, 10);
-                font.text("返回", 18, 272);
+                font.text(command_feedback,65,272,ink,10);
             } else if (page->legacy_page == 74 &&
                        state.facility_definition_page_bindings.count(page->id)) {
                 if (!valid_startup_world_facility_page(state, *page))
@@ -6468,7 +6551,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 font.text("确定", 190, 272);
             } else if (page->legacy_page == 83)
                 font.text("取消", 18, 270);
-            else if (!steam_gift_claim&&!steam_info&&!steam_task&&!steam_residence&&!steam_effect&&!steam_facility&&page->legacy_page != 97 && page->legacy_page != 72 &&
+            else if (!steam_gift_claim&&!steam_info&&!steam_task&&!steam_residence&&!steam_effect&&!steam_facility&&page->legacy_page != 21&&page->legacy_page != 97 && page->legacy_page != 72 &&
                      page->legacy_page != 79 && page->legacy_page != 82 &&
                      (page->legacy_page < 41 || page->legacy_page > 47) &&
                      (page->legacy_page != 59 || (state.page_counters.count(page->id) &&
@@ -6519,6 +6602,9 @@ int run_startup_world_window(const std::filesystem::path &assets,
         DrawTexturePro(canvas.value.texture, {0, 0, width, -height},
                        {0, 0, width * scale, height * scale}, {0, 0}, 0, WHITE);
         EndDrawing();
+        for(const auto id:build_pages_drawn)
+            if(session.draw_build_menu(id)!=StartupWorldRuntimeError::none)
+                throw std::runtime_error("建设已绘制页面钟提交拒绝");
         ++frame_count;
         if (frames > 0 && frame_count >= frames) {
             if (screenshot) {

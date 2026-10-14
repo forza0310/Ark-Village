@@ -65,6 +65,6 @@ struct SteamBuildMenuSkinPlan {
     std::array<int,2> soft_labels{0,2}; // 当前合法type2／3／13为7／2；空行／特殊条目为0／2。
 };
 // 原raw21有序只读皮肤；不读写Owner、不推进源Draw中的frame、不安装目录或抽随机。
-// 明确输入资格及资源边界；完整Owner游标／绘制准入／恢复与OS投递仍另行接线。
+// Owner游标／绘制准入／恢复由startup_world_building负责；OS投递与此纯查询分开。
 std::optional<SteamBuildMenuSkinPlan> steam_build_menu_skin(const SteamBuildMenuSkinInput &input);
 } // namespace dungeon_village_prototype

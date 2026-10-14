@@ -244,6 +244,12 @@ class StartupWindowHost {
     StartupBuildResult select_build_menu(std::uint64_t page, int definition) {
         return command([&](auto &owner) { return owner.select_build_menu(page, definition); });
     }
+    StartupBuildResult input_build_menu(std::uint64_t page, const StartupBuildMenuInput &input) {
+        return command([&](auto &owner) { return owner.input_build_menu(page, input); });
+    }
+    StartupWorldRuntimeError draw_build_menu(std::uint64_t page) {
+        return command([&](auto &owner) { return owner.draw_build_menu(page); });
+    }
     StartupBuildResult confirm_build(ref::Position anchor, ref::FacilityOrientation orientation) {
         return command([&](auto &owner) { return owner.confirm_build(anchor, orientation); });
     }

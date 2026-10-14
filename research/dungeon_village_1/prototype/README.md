@@ -8,7 +8,7 @@
 | --- | --- |
 | `startup_world_runtime`／Session及各`startup_world_*`消费者 | 唯一Owner协调世界、页面、随机和一次输出；[Owner接口](include/dungeon_village_prototype/startup_world_runtime.hpp) |
 | `startup_world_human`、`steam_human_skin` | 60详情、职业／赠礼目录和演出；[人物合同](../ui/STEAM_HUMAN_DETAIL.md) |
-| `startup_world_building`／`facility_catalog`／`facility_items`、`steam_facility_*_skin` | 21独立纯游标／原序皮肤（完整Owner接线待补），74详情、79／72商品、75／76／77改良、82口碑；[建设输入](../ui/STEAM_BUILD_LIST_BUSINESS.md)、[设施皮肤](STEAM_FACILITY_SKIN.md)、[商品](../rules/COMMERCE.md)、[效果](../rules/FACILITY_EFFECTS.md) |
+| `startup_world_building`／`facility_catalog`／`facility_items`、`steam_facility_*_skin` | 21持久游标／双钟、同轮输入／原序皮肤及74返回，74详情、79／72商品、75／76／77改良、82口碑；[建设输入](../ui/STEAM_BUILD_LIST_BUSINESS.md)、[设施皮肤](STEAM_FACILITY_SKIN.md)、[商品](../rules/COMMERCE.md)、[效果](../rules/FACILITY_EFFECTS.md) |
 | `startup_world_village_activity`／runtime_pages、`steam_village_activity_skin`／`steam_town_progress_skin` | 51–54村办、48／49／50晋级及95领取；[规则与皮肤](../ui/PAGES.md#steam-village-progress) |
 | `startup_world_runtime_task_pages`、`steam_task_selection_skin`／`steam_task_roster_skin`／`steam_task_result_skin` | 22–24与scene4查看位置、raw29严格信息桥；25–28及31–33已有Owner UI、严格恢复和研究窗口接线；[任务操作与皮肤](../ui/PAGES.md#steam任务选择与募集22–24) |
 | `startup_world_magic_pot`、`steam_magic_pot_skin`／`steam_magic_pot_effect_skin` | 41–47壶目录、投入／处理演出、配方发现／制作确认；[操作与表现](../ui/STEAM_MAGIC_POT.md) |

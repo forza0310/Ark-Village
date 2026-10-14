@@ -22,13 +22,19 @@ struct StartupBuildMenuCursor {
 struct StartupBuildMenuDirections {
     bool up{}, down{}, left{}, right{}; // 同轮重复脉冲，按原先上下后左右消费。
 };
+// 一次解析输入；触摸已取得的原值在方向之前应用，不保存marker/设备状态。
+struct StartupBuildMenuInput {
+    StartupBuildMenuDirections directions;
+    bool confirm{}, cancel{}, details{};
+    std::optional<int> page, selection, scroll;
+};
 // Steam21的纯游标候选：不足五项仍有空行，右覆盖左，换类才清选择／首行。
 // counts仅为冻结三类长度；坏初态明确拒绝，不读取世界或推进页面／随机。
-// 此接口不代表Owner输入接线或持久化载荷已经完成。
+// Owner同轮输入复用此候选，字段与恢复规则见下方build_menu接口及PERSISTENCE.md。
 std::optional<StartupBuildMenuCursor> prepare_startup_build_menu_cursor(
     const std::array<int, 3> &counts, StartupBuildMenuCursor cursor,
     StartupBuildMenuDirections directions);
-// 当前21目录子集：p/flags4与住宅H过滤，按原定义序和j分组；尚排道路及撤除/移动哨兵。
+// 原21完整目录：p/flags4与住宅H过滤，按定义序和j分组；0类插入撤除/条件移动。
 std::optional<std::array<std::vector<int>, 3>>
 startup_world_build_catalog(const StartupWorldRuntimeState &state);
 // 原c/n.w()/SetIsExistBuildNew：显式刷新P与三类NEW缓存，不是即时查询。
@@ -39,6 +45,17 @@ startup_world_build_quote(const StartupWorldRuntimeState &state, int definition)
 int startup_world_facility_page_count(const StartupWorldRuntimeState &state,
                                       const ref::WorldScriptPage &page);
 StartupWorldRuntimeError open_startup_world_build_menu(StartupWorldRuntimeState &state);
+bool valid_startup_world_build_menu(const StartupWorldRuntimeState &state,
+                                    const ref::WorldScriptPage &page);
+std::optional<StartupBuildMenuCursor> startup_world_build_menu_cursor(
+    const StartupWorldRuntimeState &state, std::uint64_t page);
+StartupBuildResult input_startup_world_build_menu(StartupWorldRuntimeState &state,
+    std::uint64_t page, const StartupBuildMenuInput &input);
+// 仅一次获准Draw的原主钟加一钳3；可绘覆盖中的父21，纯皮肤查询不调用它。
+StartupWorldRuntimeError draw_startup_world_build_menu(StartupWorldRuntimeState &state,
+                                                       std::uint64_t page);
+std::optional<StartupWorldRuntimeState> update_startup_world_build_menu(
+    const StartupWorldRuntimeState &state, std::uint64_t page);
 StartupBuildResult select_startup_world_build_menu(StartupWorldRuntimeState &state,
                                                    std::uint64_t page, int definition);
 StartupWorldRuntimeError cancel_startup_world_build_menu(StartupWorldRuntimeState &state,
@@ -73,7 +90,7 @@ bool refresh_startup_world_profession_economy(StartupWorldRuntimeState &state);
 enum class StartupFacilityPageAction { previous, next, confirm, cancel };
 StartupWorldRuntimeError open_startup_world_facility_page(StartupWorldRuntimeState &state,
                                                           std::uint64_t facility);
-// 原85按钮7：raw74只读定义，无实例/邻接；返回保留商会父页选择及资金。
+// 原21/85按钮7：raw74只读定义，无实例/邻接；各父页入口资格独立，返回保留游标。
 StartupWorldRuntimeError open_startup_world_facility_definition(StartupWorldRuntimeState &state,
                                                                 int definition);
 StartupWorldRuntimeError act_startup_world_facility_page(StartupWorldRuntimeState &state,

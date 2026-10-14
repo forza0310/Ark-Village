@@ -1671,23 +1671,94 @@ int check_startup_world_restore_contracts(
     expect(deadline, true, "retired deadline awaiting main scene");
     {
         auto build = baseline;
-        r::WorldScriptPage menu;
-        menu.id = build.scripts.next_page_id++;
-        menu.kind = r::WorldScriptPageKind::raw_page;
-        menu.legacy_page = 21;
-        menu.lifecycle = 2;
-        build.scripts.pages.push_back(menu);
-        build.build_page_catalogs.try_emplace(menu.id);
-        build.page_phases[menu.id] = 0;
-        build.page_counters[menu.id] = 0;
-        expect(build, true, "build menu structural fixture");
-        auto damaged = build;
-        damaged.build_page_catalogs.erase(menu.id);
-        expect(damaged, false, "build menu missing catalogue");
-        damaged = build;
-        damaged.page_phases[menu.id] =
-            static_cast<int>(build.build_page_catalogs.at(menu.id).size());
-        expect(damaged, false, "build menu tab overflow");
+        using E=p::StartupWorldRuntimeError;
+        const auto require=[&](bool ok,const char *why){++checks;if(!ok)throw std::runtime_error(std::string("restore build21: ")+why);};
+        const auto replay=[&](const auto &source,const auto &consume,const char *why) {
+            expect(source,true,why);
+            const auto bytes=p::persistence_detail::encode_state(source);
+            auto restored=p::persistence_detail::decode_state(bytes,*source.rules),live=source;
+            require(p::persistence_detail::encode_state(restored)==bytes,"complete catalogue and cursor restore exact");
+            consume(live);consume(restored);expect(live,true,why);expect(restored,true,why);
+            require(p::persistence_detail::encode_state(live)==p::persistence_detail::encode_state(restored),
+                    "same input preserves full Owner random and one-time outputs");
+        };
+        const auto tick=[&](auto &s){const auto next=p::prepare_startup_world_runtime(s);require(next.candidate.has_value(),"actual page framework");s=*next.candidate;};
+        require(p::open_startup_world_build_menu(build)==E::none,"real21 producer on natural stable baseline");
+        const auto menu=build.scripts.pages.back().id;
+        expect(build,true,"new21 complete producer payload");
+        replay(build,tick,"21 pending Init restores and initializes through actual framework");
+        tick(build);
+        for(int n=0;n<3;++n)require(p::draw_startup_world_build_menu(build,menu)==E::none,"admitted source draw clock");
+        for(int fault=0;fault<11;++fault) {
+            auto damaged=build;
+            if(fault==0)damaged.build_page_catalogs.erase(menu);
+            if(fault==1)damaged.build_page_ui.erase(menu);
+            if(fault==2)damaged.page_phases.at(menu)=3;
+            if(fault==3)damaged.build_page_ui.at(menu).selection=-1;
+            if(fault==4)damaged.build_page_ui.at(menu).selection=std::max(
+                static_cast<int>(damaged.build_page_catalogs.at(menu)[0].size())-1,4)+1;
+            if(fault==5)damaged.build_page_ui.at(menu).scroll=1; // selection0处于首行外。
+            if(fault==6)damaged.page_counters.erase(menu);
+            if(fault==7)damaged.page_secondary_counters.erase(menu);
+            if(fault==8)damaged.build_page_ui.emplace(damaged.scripts.next_page_id+100, p::StartupWorldBuildPageUi{});
+            if(fault==9)damaged.build_page_ui.emplace(damaged.scripts.pages.front().id,p::StartupWorldBuildPageUi{});
+            if(fault==10)damaged.build_page_catalogs.emplace(damaged.scripts.next_page_id+100,
+                std::array<std::vector<int>,3>{});
+            expect(damaged,false,"21 missing invalid isolated or wrong-page cursor payload");
+            if(fault<8) { // 孤立map键由恢复全域校验主责，页输入只消费自己的完整载荷。
+                const auto bytes=p::persistence_detail::encode_state(damaged);
+                p::StartupBuildMenuInput input;input.directions.down=true;input.cancel=true;
+                require(p::input_startup_world_build_menu(damaged,menu,input).error!=E::none&&
+                            p::persistence_detail::encode_state(damaged)==bytes,
+                        "invalid page payload refuses mixed input without partial cursor or retirement");
+            }
+        }
+        replay(build,[&](auto &s){
+            p::StartupBuildMenuInput road;road.confirm=true;
+            require(p::input_startup_world_build_menu(s,menu,road).error==E::none&&s.build_mode==1,
+                    "actual first-road dispatch after restored21 input gate");
+        },"21 restored first-road flag and one-time explanation publication");
+        p::StartupBuildMenuInput input;input.page=1;input.selection=3;input.scroll=3;
+        replay(build,[&](auto &s){require(p::input_startup_world_build_menu(s,menu,input).error==E::none,
+                                        "legitimate independent tail first row");},"21 nonderived first row");
+        require(p::input_startup_world_build_menu(build,menu,input).error==E::none,"select actual initial class1 tail");
+        input={};input.directions.up=true;
+        replay(build,[&](auto &s){require(p::input_startup_world_build_menu(s,menu,input).error==E::none&&
+                                        s.build_page_ui.at(menu).selection==2&&s.build_page_ui.at(menu).scroll==2,
+                                        "up past first follows source row");},"21 independent first same-input restore");
+        input={};input.page=1;input.selection=0;input.scroll=0;input.details=true;
+        const auto preview=[&](auto &s){require(p::input_startup_world_build_menu(s,menu,input).error==E::none&&
+                                                s.scripts.pages.back().legacy_page==74,"real21 current row opens74");};
+        replay(build,preview,"21 to74 restored source parent");preview(build);
+        const auto child=build.scripts.pages.back().id;
+        for(int fault=0;fault<4;++fault) {
+            auto damaged=build;
+            if(fault==0)damaged.build_page_ui.at(menu).selection=1;
+            if(fault==1)damaged.facility_definition_page_bindings.erase(child);
+            if(fault==2)damaged.scripts.pages.back().legacy_f=30;
+            if(fault==3) {
+                auto wrong=damaged.scripts.pages.at(damaged.scripts.pages.size()-2);
+                wrong.id=damaged.scripts.next_page_id++;wrong.legacy_page=83;
+                damaged.scripts.pages.insert(damaged.scripts.pages.end()-1,wrong);
+            }
+            expect(damaged,false,"21 preview rejects selected-definition mismatch or wrong actual parent");
+        }
+        const auto close=[&](auto &s){require(p::act_startup_world_facility_page(s,child,p::StartupFacilityPageAction::cancel)==E::none,
+                                              "preview cancel requests retirement");};
+        replay(build,close,"74 cancel preserves21 after exact restore");close(build);
+        auto damaged=build;damaged.build_page_ui.erase(menu);
+        expect(damaged,false,"closed74 still requires intact initialized21 parent until Finish");
+        replay(build,tick,"74 actual retirement resumes21 without recreating catalogue");tick(build);
+        require(!build.facility_definition_page_bindings.count(child)&&build.build_page_ui.at(menu).selection==0&&
+                    build.build_page_ui.at(menu).scroll==0,"child references retired and original parent cursor survives");
+        input={};input.cancel=true;
+        const auto cancel=[&](auto &s){require(p::input_startup_world_build_menu(s,menu,input).error==E::none,"close21");};
+        replay(build,cancel,"21 cancellation restores complete pending-Finish payload");cancel(build);
+        damaged=build;damaged.build_page_ui.erase(menu);
+        expect(damaged,false,"pending-Finish21 missing cursor refuses before payload removal");
+        replay(build,tick,"21 actual Finish retires current schema cursor references");tick(build);
+        require(!build.build_page_ui.count(menu)&&!build.build_page_catalogs.count(menu)&&
+                    !build.page_secondary_counters.count(menu),"no orphaned build cursor or frozen source references after Finish");
     }
     {
         auto residence = baseline;

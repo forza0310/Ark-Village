@@ -135,9 +135,17 @@ Character2.Init（284080）的`10284193–1028421D`显式写objType=0、动画�
 | 1 Unity2018 | `JRandom.Random2018`继承上述Random且没有重写Next；Init（RVA `0x808E70`）按原metadata字符串`_inextp`反射查字段，找到后在`0x10808F29`设置31，未找到则跳过。名称不代表调用UnityEngine.Random |
 | 2 Xorshift128 | 独立四uint状态；Next（RVA `0x80B090`）以左移11和无符号右移异或推进并返回32位结果。SetSeed（`0x80B140`）令x=seed&0x7fffffff，y/z/w为原固定常量，不能混用前两支状态 |
 
-`JRandom.SetSeed(long)`（RVA `0x7F7F20`）也取低32位、遵守fix_并重建三个后端；它不是只改当前选择后端的一个整数。`IApplication.Awake`在`0x10782182–0x1078218A`存在条件写fix_=true的路径，前置涉及回放检查／PlayerPrefs。未读取用户设置或原进程，本批不认证该条件当前成立；更不能把修改fix_等同于立即重置既有对象，种子替换发生在构造／SetSeed。
+`JRandom.SetSeed(long)`（RVA `0x7F7F20`）也取低32位、遵守fix_并重建三个后端；它不是只改当前选择后端的一个整数。`set_Logic`（`0x7F8300–0x7F832F`）则只在`107F832B`写共同静态字段+4，不调用SetSeed、不重建三个后端。故切模式与重种是两种操作：各JRandom实例的后端状态保留，而模式选择是这些实例共同读取的静态值。此处未执行任何切换。
 
-未见JRandom静态构造器，Logic静态零默认与Default分支一致；具名直接调用扫描未发现set_Logic调用，但这不是所有间接／反射设置者的完整闭包，**静态默认0不等于实际运行模式已经观察**。原流的初始化时点、模式变更、存读档交接及标题深层绘制的全部随机消费仍须分别闭合。此处已有字节依据否定“名字叫java.util就必是APK Java随机序列”的推论；不修改APK共同随机实现、黄金轨迹或现有快照身份，也不以相同bound或seed宣称两版逐抽等价。
+**正常根启动的固定种子资格。** 2026-10-14沿Awake入口补核：`1078212E–10782133`先读`Config.UNITY_EDITOR`（类型551静态+28）；仅为true才检查`ActionReplay.CheckReplayFile()`或`PlayerPrefs.GetString("DEVCMD_REPLAY_RECORD","off")=="on"`，满足其一才在`10782182–1078218A`写`JRandom.fix_=true`。三字符串由本DLL使用槽与metadata字面表核对，未读取本机PlayerPrefs或回放文件。基础Config.cctor确实在`1083DA48`先把UNITY_EDITOR设true，但游戏MyConfig.cctor在`10228F62`写自己的同名字段false；沿[已核根应用配置链](../rules/PERSISTENCE.md)，Awake的`1078169C`先执行Config.Create同名字段复制，随后才到此资格检查。因此**正常根游戏启动不会因为存在回放设置就自动固定seed0**，不能用框架基类默认true代替游戏配置。该局部只有置true，没有false分支清除旧fix_；既有同进程历史、子应用或外部改写不由正常冷启动结论覆盖。修改fix_也不立即重置既有对象，替换仍发生在构造／SetSeed。
+
+**具名重种调用与共同实例分开。** 可执行节对SetSeed的E8相对调用候选只找到`LineupManager.Start`（RVA7247A0）的一处；沿该方法入口核到`10725594–107255B2`先分配并构造新的局部JRandom，`107255BD`再取CurrentTimeMillis，`107255CC`给这个局部对象SetSeed，随后`10725649`用于推荐列表抽选。它不是读取或重种`GameUtil.random`。对set_Logic的同类候选扫描仍为零；字节候选须回到具名入口验证，零候选只说明未找到这种直接调用，不排除内联写字段、委托、反射或原生写者。Config.Create的已核反射目标是Config字段，也不能把它想象成JRandom属性setter。
+
+**标题到新世界不是已证的新随机零点。** `GameUtil.Random`在`102A4505–102A4519`检查类型初始化后读取静态+40。`UserData.NewGame`在`102E0489`调用Init；Init的`102DF272–102DF28B`确实新建一个GameUtil，但其**实例构造**（RVA2A6C50）只重建SIN表及三组角度缓存，`102A6CB9`写的是静态+44，不是random的+40，也不调用JRandom构造或SetSeed。实例构造中的类型初始化检查只在静态类尚未初始化时触发cctor；不能把每次NewGame里的`new GameUtil`误读成每次新建共同随机。
+
+本次同时沿TitleForm.Init／NewGame／SetAppearCnt、AppData.NewGame、UserData.NewGame／Init／Setting及AppData.LoadGame的具名方法检查直接调用边界：标题SetAppearCnt于`1020BD88`继续调用同一GameUtil.Random，未在这些入口发现JRandom重种或Logic设置调用。结合上面的真实实例构造，已证的普通交接没有“从标题拷贝seed并建立世界专用流”这一步；在共同对象未被其它写者替换时，世界继续消费它已有的后端状态，标题等待与已准入的抽签属于前缀。这里没有穷尽上述方法的所有传递调用或计算前缀总抽数，也没有把原存档未保存随机状态扩大成所有运行中恢复都不可能改静态字段。Awake另有`Config.MULTIPLE_PACKAGE`为真才进入的`ApplicationManager.BackupStaticFields/RestoreStaticFields`路径（`10782690–1078272A`）；基础cctor在`1083DB23`设false，MyConfig无同名覆盖，本批不将这条正常根启动跳过的框架能力认证成游戏档案随机恢复。
+
+未见JRandom静态构造器，Logic静态零默认与Default分支一致；**静态默认0不等于实际运行模式已经观察**。精确冷启动首次触发时点、未闭合的模式／反射写者、标题深层绘制全部随机消费及完整世界前缀仍各自保留。此处已有字节依据否定“名字叫java.util就必是APK Java随机序列”的推论；不修改APK共同随机实现、黄金轨迹或现有快照身份，也不以相同bound或seed宣称两版逐抽等价。
 
 ## 静态来源范围
 

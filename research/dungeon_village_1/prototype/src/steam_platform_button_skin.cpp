@@ -117,6 +117,25 @@ SteamLanguageTouchResult steam_language_button_touch(int component,int value,int
     if(component!=3||value!=0x133A066)return {true,false};
     return {false,event_type==1};
 }
+std::optional<SteamLanguagePanelResultPlan> steam_language_panel_result(const SteamLanguagePanelResultInput &in) {
+    SteamLanguagePanelResultPlan plan;
+    if(in.kind==SteamLanguagePanelResultKind::null_result) {
+        plan.actions.emplace_back(SteamLanguagePopRequest{});
+        return plan;
+    }
+    if(in.kind!=SteamLanguagePanelResultKind::parsed_selection||in.selection<0||
+       in.frozen_files.size()>4096||static_cast<std::size_t>(in.selection)>=in.frozen_files.size()||
+       !in.current_file_resolved)return {};
+    const auto &file=in.frozen_files[static_cast<std::size_t>(in.selection)];
+    if((file&&file->size()>4096)||(in.current_file&&in.current_file->size()>4096))return {};
+    // 只比较所选冻结文件与实际当前文件；不按菜单标题、文件存在与否或locale推定安装。
+    if(file!=in.current_file) {
+        plan.actions.emplace_back(SteamLanguageInstallRequest{file,true});
+        plan.actions.emplace_back(SteamLanguageSuccessCallbackRequest{});
+    }
+    plan.actions.emplace_back(SteamLanguagePopRequest{});
+    return plan;
+}
 std::optional<SteamTitlePlatformPlan> steam_title_platform_skin(const SteamTitlePlatformInput &in) {
     if(in.title_frame<0||in.title_frame>std::numeric_limits<int>::max()-1||in.state<0||in.state>1)return {};
     SteamTitlePlatformPlan plan;

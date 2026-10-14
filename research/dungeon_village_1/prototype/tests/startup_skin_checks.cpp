@@ -1750,6 +1750,58 @@ void steam_joystick_prompt_checks(Checks &check) {
     check(!steam_joystick_reset(full),"超过维护预算明确拒绝，不把4096声称原版硬上限");
 }
 void steam_language_checks(Checks &check,const std::filesystem::path &root) {
+    using ResultKind=SteamLanguagePanelResultKind;
+    SteamLanguagePanelResultInput result;
+    result.kind=ResultKind::null_result;result.selection=-99;
+    const auto cancelled=steam_language_panel_result(result);
+    check(cancelled&&cancelled->actions.size()==1&&
+          std::holds_alternative<SteamLanguagePopRequest>(cancelled->actions[0]),
+          "平台null结果只Pop，不要求无关目录或当前包，不把未知取消产生者认证为此分支");
+    result.kind=ResultKind::parsed_selection;result.selection=1;
+    result.frozen_files={"unused.csv","DungeonVillage_SC.csv",std::nullopt};
+    result.current_file_resolved=true;result.current_file="DungeonVillage_SC.csv";
+    const auto same=steam_language_panel_result(result);
+    check(same&&same->actions.size()==1&&std::holds_alternative<SteamLanguagePopRequest>(same->actions[0]),
+          "选择当前冻结文件仅退出，不重新安装或重建Boot/标题");
+    result.current_file="DungeonVillage_TC.csv";
+    const auto changed=steam_language_panel_result(result);
+    check(changed&&changed->actions.size()==3&&
+          std::get_if<SteamLanguageInstallRequest>(&changed->actions[0])&&
+          std::get<SteamLanguageInstallRequest>(changed->actions[0]).file==std::optional<std::string>{"DungeonVillage_SC.csv"}&&
+          std::get<SteamLanguageInstallRequest>(changed->actions[0]).save&&
+          std::holds_alternative<SteamLanguageSuccessCallbackRequest>(changed->actions[1])&&
+          std::holds_alternative<SteamLanguagePopRequest>(changed->actions[2]),
+          "新包请求严格安装并保存→成功条件读取共享callback→Pop，不先退页或无条件回调");
+    result.selection=2;result.current_file.reset();
+    const auto same_null=steam_language_panel_result(result);
+    check(same_null&&same_null->actions.size()==1,
+          "已解析有效行中的null文件与当前null相等，与平台结果null的入口语义分开");
+    result.current_file="current.csv";
+    const auto install_null=steam_language_panel_result(result);
+    check(install_null&&install_null->actions.size()==3&&
+          !std::get<SteamLanguageInstallRequest>(install_null->actions[0]).file,
+          "选中null文件保留原SetLanguagePack(null,null,true)参数，不补包名");
+    for(int selected:{-3,-2,-1,3,std::numeric_limits<int>::max()}) {
+        result.selection=selected;
+        check(!steam_language_panel_result(result),"负HTTP/模板/外链及越界索引显式拒绝，不当取消或map.at异常");
+    }
+    result.selection=1;
+    for(int fault=0;fault<5;++fault) {
+        auto bad=result;
+        if(fault==0)bad.current_file_resolved=false;
+        if(fault==1)bad.frozen_files[1]=std::string(4097,'x');
+        if(fault==2)bad.current_file=std::string(4097,'x');
+        if(fault==3)bad.frozen_files.resize(4097);
+        if(fault==4)bad.kind=static_cast<ResultKind>(99);
+        check(!steam_language_panel_result(bad),"缺实际当前值、已消费超预算或坏结果类型明确拒绝");
+    }
+    result.frozen_files[0]=std::string(4097,'x'); // 未选行不在原本分支消费。
+    result.current_file="dungeonVillage_SC.csv";
+    const auto case_changed=steam_language_panel_result(result);
+    check(case_changed&&case_changed->actions.size()==3&&
+          steam_language_panel_result(result)->actions.size()==3&&
+          result.current_file==std::optional<std::string>{"dungeonVillage_SC.csv"},
+          "按文件串精确比较不折叠大小写，未消费行不补验证，重复计划不安装/写偏好/保存回调");
     const auto directory=root.parent_path()/"steam-platform";
     CpuImage button(LoadImage((directory/"button_language.png").string().c_str()));
     const auto button_seb=tools::parse_legacy_seb(read_bytes(directory/"button_language.seb"));

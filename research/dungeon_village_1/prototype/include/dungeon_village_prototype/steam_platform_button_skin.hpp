@@ -120,6 +120,30 @@ std::optional<SteamLanguageButtonPlan> steam_language_button_skin(const SteamLan
 struct SteamLanguageTouchResult { bool propagate{}, open_language{}; };
 // 匹配组件3/value0x133A066只在UP1请求入页；其它匹配事件截断分发，不调callback。
 SteamLanguageTouchResult steam_language_button_touch(int component,int value,int event_type);
+// LanguageForm.Update普通结果；平台字符串解析由适配层完成，空字符串/坏格式不能当null取消。
+enum class SteamLanguagePanelResultKind { null_result, parsed_selection };
+struct SteamLanguagePanelResultInput {
+    SteamLanguagePanelResultKind kind{};
+    int selection{};
+    std::vector<std::optional<std::string>> frozen_files; // 入页时复制的行[1]，保留null语义。
+    bool current_file_resolved{};
+    std::optional<std::string> current_file;
+};
+struct SteamLanguageInstallRequest {
+    std::optional<std::string> file;
+    bool save{true}; // 原SetLanguagePack(file,null,true)，不传CSV字节。
+};
+// 消费时只在前一安装返回true后读取并调用当前共享callback；不能冻结为入页私有回调。
+struct SteamLanguageSuccessCallbackRequest {};
+struct SteamLanguagePopRequest {};
+using SteamLanguagePanelAction=std::variant<SteamLanguageInstallRequest,
+    SteamLanguageSuccessCallbackRequest,SteamLanguagePopRequest>;
+struct SteamLanguagePanelResultPlan { std::vector<SteamLanguagePanelAction> actions; };
+// null/相同包仅Pop；新包按安装→成功条件回调→Pop。安装false仍Pop，异常不执行余项。
+// 负结果的HTTP/模板/外链另属平台分支，本接口显式拒绝；不安装、不保存、不调用callback。
+// 目录至多4096行、实际消费的字符串至多4096字节为维护预算；输出至多3项。
+std::optional<SteamLanguagePanelResultPlan> steam_language_panel_result(
+    const SteamLanguagePanelResultInput &input);
 inline constexpr const char *steam_language_new_image_path="steam-platform/new.png";
 inline constexpr const char *steam_language_new_sprite_path="steam-platform/new.seb";
 

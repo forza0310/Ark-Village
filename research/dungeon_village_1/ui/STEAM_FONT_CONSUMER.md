@@ -236,6 +236,14 @@ Draw在107DA945–DAA8A取注册Frame／Wait／X／Y，再按非空参数1／2�
 
 DLL中Add入口绝对VA的唯一四字节匹配在`.data`的1112D608；邻项依次对应SetTextCheckSize、SetRenderRectVisible、GetRenderRectVisible、Add／Get／Remove／ClearPictographs及SetPictographVisible，呈方法指针表排列，**不是具名游戏注册调用证据**。metadata全部11013条字符串literal中，含精确`<pic=`的只有前缀`<pic=`与模板`<pic=>`，没有可直接绑定SEB的具体key实例；这不覆盖外部本地化文本、运行时拼串或资源注入。当前仍无已证游戏调用者／key→SEB绑定，不凭素材名称补注册表，也不据上述有限扫描排除间接／虚调用、反射、Unity或原生注入，更不宣称运行时字典必为空。后继应从实际具名生产者或注册证据继续，不重复扫描helper绘制。
 
+## 启动宿主的直接翻译表供给
+
+2026-10-14沿固定Steam具名入口补核，未运行游戏或读取语言偏好。`Main.OnCreate` RVA`2AD440`在`102AD63B`读取**资源组1／记录10**并创建JarInflater；不是玩家世界记录。其正常路径从`softkey.txt`读取各行、按实际Tab拆列，`trim／excludeZeroLength／escape`均false，在`102AD72A`调用`Language.SetSoftLabelTable`；随后读`text.txt`，先将原字面两字符`\n`替换为真正LF，再按同样Tab参数拆列，于`102AD869`调用`SetTextTable`。源文件不存在时跳过对应安装；读／安装异常进入已有异常处理及Jar退休路径，不提供两表联合回滚。不能把两个文件名与默认`LoadTranslateTable`的media3／xls.dat路径合并为同一次读取，实际当前表资格还取决于调用时序与随后语言安装。
+
+此处找到的是**表值writer，尚未找到翻译委托writer**。类型槽`110FB03C`沿MetadataRegistration.types独立解析为Language（TypeDef600）。`SetSoftLabelTable` RVA`81F210`在`1081F264`原样安装数组引用到静态`+0x14`，随后原序就地将每行前两列中的单个反斜线替为`¥`；只检查当前行／列的原边界，不认证所有第三列也被转换。`SetTextTable` RVA`81F400`先清静态`+0x18`，非null输入交`MakeTextTable`，正常返回才安装其三维表；失败不恢复旧表。两入口均不写静态`translateTableMethod_ +0x3C`，也不生成ThreadStart。消费者仍沿[保存页翻译链](STEAM_SAVE_MENU.md#文本翻译的已核边界)处理当前表／内置表／语言包资格，不能机械把所有中文列固定为第2或第3列。
+
+本批有限排查另外顺序读取`IApplication.Awake` RVA`781120`（7008字节）、`BootForm.InitApp` RVA`1FB3A0`（352字节）及`BootForm.Load` RVA`1FBE90`（9712字节）：Awake可见语言Get／TranslateEnable及Config安装，Boot两个入口负责业务初始化／定义与资源加载，没有在这些已读入口直接安装翻译委托。这个范围不覆盖其全部间接构造、虚调用、平台注册或反射，也未展开Language的大静态构造；[语言安装合同](STEAM_LANGUAGE_INSTALL.md#启动选择与翻译注册的边界)的`+0x3C`注册者仍未知。直接供给与当前回调是否存在必须分别认证，不将已找到两表安装升级为“从未注册回调”或当前中文逐字内容已经取得。
+
 ## 仍需闭合及产品使用边界
 
 已核资源查找、GUIStyle切换、本地化公式、两种测宽链、14项TAG局部生产／消费，以及普通溢出／LF行提交、整词前瞻、末行对齐、format标点／CR等零增量单元的最终块字符串范围和SetText／Init空串字段分工。仍缺当前语言与实际翻译串样本、Unity空font具体回退、局部开关／scale／offset完整设置来源、全部语言禁则覆盖、具体运行图标注册与素材绑定，以及真实字形宽度／baseline；已核原串与处理后串混用索引及字符串重建不等于这些运行输入／像素已验。[文字后端](STEAM_FONT_BACKEND.md)已有开关资格及栈恢复，[普通DrawString](STEAM_FONT_DRAW.md)已核锚点／字号补偿／矩阵→clip→GUI位置；这些不代替当前运行字体对象和字形度量。

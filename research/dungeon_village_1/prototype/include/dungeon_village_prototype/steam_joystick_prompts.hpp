@@ -50,6 +50,7 @@ struct SteamJoystickDrawButton {
     bool auto_key_reverse{true};
 };
 // 借用光标模块的通用图形操作载体，不调用光标更新或重排矩阵。
+// PushScale作用局部图元；DrawButtons的anchor由原worldMatrix最后平移，不随局部缩放。
 using SteamJoystickDrawOperation=std::variant<SteamCursorPushScale,SteamCursorRenderMode,
     SteamJoystickDrawButton,SteamCursorPopMatrix>;
 struct SteamJoystickDrawPlan { std::vector<SteamJoystickDrawOperation> operations; };

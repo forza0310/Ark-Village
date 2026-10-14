@@ -12,6 +12,10 @@
 
 ## 平台提示生命周期、点击意图与语言／字体边界 2026-10-14
 
+接`22175c7`，提示表接入两个有界标题条件入口，复用既有后备PNG／SEB与同一纹理缓存；四个8帧窗口均正常退出、0世界更新，旧无表两态逐像素不变。[现四态图](ui/examples/steam-title-platform.png)扩为960×1280／301115字节，无新增图文件。两项提示跨Draw复用，前置三次释放的life1不被重绘复活；局部矩阵的锚点保持由原Seb→BeginRenderMatrix→UpdateScreenMatrix链补核，8操作全部消费。单Release动态构建及visuals **1/1通过1.71秒**（总1.72秒），未执行SDK／物理输入或世界长跑。
+
+本次纠正前批语言callback的字段归属：AppData实例+8是Boot，+12才是Title；正常链经Boot加载完成后重新Init Title、替换标题资源，不能套普通纪录Pop恢复。[语言合同](ui/STEAM_LANGUAGE_INSTALL.md)已原位修正并补资源退休，相关实现尚未接入Owner。另补[恢复false账号旁支](rules/PERSISTENCE.md)，账号Prefs.Save不等于业务保存。Release1378文件／146331553字节、assets863文件／9488214字节；清理本轮8份临时图／日志667646字节。显示表退出释放，无新持久字段、来源素材副本或核对产物；合法历史仍可增长。构建／测试／窗口及取证任务结束，建设21的已授权接线另批推进，保留他人修改。
+
 接`e33f042`，新增实际平台职责的[提示表纯模块](prototype/include/dungeon_village_prototype/steam_joystick_prompts.hpp)，登记现application目标；复用保留life／scale，释放按button遍历全部可见记录，button7使用右软标签计数，0..3新建返回自动取消请求。现startup皮肤套件补资格、缺字段／坏旧表／溢出拒绝、输入不变、原序矩阵和4096条／20482操作预算。单Release动态主程序与visuals构建通过，**visuals 1/1通过1.59秒**；不新增target、Owner／持久字段，不构建他人住宅测试或跑长测。
 
 并行合入[语言结果与标题callback](ui/STEAM_LANGUAGE_INSTALL.md)、[UnityPlayer默认字体／皮肤入口](ui/STEAM_FONT_BACKEND.md)，保留平台取消、完整重载及实际中文glyph缺口。魔法壶反馈已复核：通道正常、无原窗口、五项未覆盖、无截图；现提示词的壶主页／目录前提继续有效。纯提示计划尚未安装窗口／SDK，未新增窗口验收或素材；输出供宿主按序消费，不持页面／设备引用，Reset隐藏不等于退休。Release1378文件／146289949字节、assets863文件／9488214字节；合法保留与历史增长不称永久有界。本批无新增取证缓存、报告／audit／指纹；构建／测试与子任务均结束，仅已验research白名单提交，不推送。

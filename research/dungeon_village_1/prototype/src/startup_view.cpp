@@ -20,6 +20,7 @@
 #include "dungeon_village_prototype/steam_commerce_skin.hpp"
 #include "dungeon_village_prototype/steam_build_menu_skin.hpp"
 #include "dungeon_village_prototype/steam_platform_button_skin.hpp"
+#include "dungeon_village_prototype/steam_joystick_prompts.hpp"
 #include "dungeon_village_prototype/steam_startup_skin.hpp"
 #include "dungeon_village_prototype/steam_record_skin.hpp"
 #include "dungeon_village_prototype/startup_system_records.hpp"
@@ -221,7 +222,7 @@ class SourceSprites {
     }
     void crop(const std::filesystem::path &relative, Rectangle source, Vector2 position,
               bool published = false, std::optional<Vector2> extent = {},
-              std::array<bool,2> flip = {}) {
+              std::array<bool,2> flip = {}, Color tint = WHITE) {
         if (relative.is_absolute() || relative.string().find("..") != std::string::npos)
             throw std::runtime_error("裁剪资源路径无效");
         const auto path = (published ? root_.parent_path() : root_) / relative;
@@ -242,8 +243,8 @@ class SourceSprites {
         if(extent) {
             if(!std::isfinite(extent->x) || !std::isfinite(extent->y) || extent->x<=0 || extent->y<=0)
                 throw std::runtime_error("原图缩放尺寸拒绝");
-            DrawTexturePro(found->second,painted,{position.x,position.y,extent->x,extent->y},{0,0},0,WHITE);
-        } else DrawTexturePro(found->second,painted,{position.x,position.y,source.width,source.height},{0,0},0,WHITE);
+            DrawTexturePro(found->second,painted,{position.x,position.y,extent->x,extent->y},{0,0},0,tint);
+        } else DrawTexturePro(found->second,painted,{position.x,position.y,source.width,source.height},{0,0},0,tint);
     }
     // 原arrow02单层单部件边界；说明用左右帧，人物目录另用上下帧。
     std::array<int,4> manual_arrow_bounds(int frame) {
@@ -401,6 +402,28 @@ void main() {
         BeginShaderMode(*platform_blend_);
         try {paint();} catch(...) {EndShaderMode();throw;}
         EndShaderMode();
+    }
+    // 只消费已取得原包后备的显示条件；动态图provider是否返回图像由外部显式限定。
+    void joystick_fallback(const SteamControllerButtonFallbackPlan &plan,std::array<int,2> anchor,Color tint) {
+        if(!plan.resource.image_path||!plan.resource.sprite_path||plan.layer!=0)
+            throw std::runtime_error("提示后备资源或层拒绝");
+        const auto key=std::string(plan.resource.sprite_path);
+        auto found=sprites_.find(key);
+        if(found==sprites_.end())found=sprites_.emplace(key,dungeon_village_tools::parse_legacy_seb(
+            read_bytes(root_.parent_path()/key))).first;
+        if(found->second.layers.size()!=1||plan.frame<0||plan.frame>=found->second.frame_count)
+            throw std::runtime_error("提示后备SEB帧或层越界");
+        bool painted{};
+        for(const auto &part:found->second.layers[0].parts)if(part.frame==plan.frame) {
+            if(part.image_index!=plan.resource.image||part.width<=0||part.height<=0||
+               part.flip_x<0||part.flip_x>1||part.flip_y<0||part.flip_y>1)
+                throw std::runtime_error("提示后备裁片身份或翻转拒绝");
+            crop(plan.resource.image_path,{float(part.source_x),float(part.source_y),float(part.width),float(part.height)},
+                {float(anchor[0]+part.offset_x),float(anchor[1]+part.offset_y)},true,{},
+                {part.flip_x!=0,part.flip_y!=0},tint);
+            painted=true;
+        }
+        if(!painted)throw std::runtime_error("提示后备具名帧无图元，不静默漏绘");
     }
     // NEW是独立图像矩阵请求；不继承语言按钮的高亮混色/0.5缩放，也不写newFrame。
     void language_new_text(const SteamLanguageNewText &request) {
@@ -727,6 +750,16 @@ std::optional<SteamStartupSkinPlan> window_save_plan(const StartupWorldSavePageV
 }
 // 已核普通mode1/src+dst=255的颜色混合；本例图入口和收尾均为默认绘制模式。
 // raylib默认alpha通道混合不同，明确设置RGB/alpha分别混合，不由截图猜透明度。
+struct SourceBlendScope {
+    SourceBlendScope() {
+        rlSetBlendFactorsSeparate(RL_SRC_ALPHA,RL_ONE_MINUS_SRC_ALPHA,RL_ONE,RL_ONE_MINUS_SRC_ALPHA,
+                                  RL_FUNC_ADD,RL_FUNC_ADD);
+        BeginBlendMode(BLEND_CUSTOM_SEPARATE);
+    }
+    ~SourceBlendScope() {EndBlendMode();}
+    SourceBlendScope(const SourceBlendScope &)=delete;
+    SourceBlendScope &operator=(const SourceBlendScope &)=delete;
+};
 void draw_startup_fill(const SteamStartupFill &fill,Vector2 origin) {
     if(fill.source_ratio<0||fill.source_ratio>256)throw std::runtime_error("启动填色混合比例拒绝");
     const auto &r=fill.rectangle;
@@ -734,14 +767,7 @@ void draw_startup_fill(const SteamStartupFill &fill,Vector2 origin) {
         static_cast<unsigned char>(fill.rgb[2]),static_cast<unsigned char>(fill.source_ratio==256?255:fill.source_ratio)};
     const auto paint=[&] {DrawRectangleRec({origin.x+float(r[0]),origin.y+float(r[1]),float(r[2]),float(r[3])},color);};
     if(fill.source_ratio==256) {paint();return;}
-    struct SourceBlendScope {
-        SourceBlendScope() {
-            rlSetBlendFactorsSeparate(RL_SRC_ALPHA,RL_ONE_MINUS_SRC_ALPHA,RL_ONE,RL_ONE_MINUS_SRC_ALPHA,
-                                      RL_FUNC_ADD,RL_FUNC_ADD);
-            BeginBlendMode(BLEND_CUSTOM_SEPARATE);
-        }
-        ~SourceBlendScope() {EndBlendMode();}
-    } blend;
+    SourceBlendScope blend;
     paint();
 }
 // 执行正式raw14及标题图元；12号Noto字体及中文译文是研究窗口适配，不认证Unity字体。
@@ -2479,9 +2505,19 @@ struct TitleBackdropExampleActor {
 struct TitlePlatformExampleRequests {
     int callbacks{},new_frames{},touches{},joystick_intents{},next_new_frame{-1};
     std::vector<const char *> order; // 每次Draw独立收齐，不能积成外部登记表或NEW历史。
+    SteamJoystickPromptState *prompts{}; // 仅有界显示条件持有，不指向世界/页面/SDK。
 };
-// 此有界示例的手柄登记表明确不存在；与HasController或Steam初始化资格无关。
-// 仅消费/记录登记意图，不创造SDK图像、后备glyph或实际触摸组件。
+void register_title_prompt_example(SteamJoystickPromptState &state,const SteamPlatformJoystickRequest &request) {
+    SteamJoystickRegisterInput input;input.request=request;input.application_type=4;
+    input.has_controller=true;input.top_form_present=true;
+    input.screen_size=std::array<int,2>{width,height};input.application_size=input.screen_size;
+    const auto result=steam_joystick_register(state,input);
+    if(!result||!result->registered||result->auto_cancel_button||result->state.entries.size()>2)
+        throw std::runtime_error("标题提示登记拒绝或超出两项显示预算");
+    state=result->state;
+}
+// 普通例图无登记表；prompts例图显式有表/有手柄，不能反推当前设备或Steam初始化。
+// 触区/callback仍只消费意图，登记表只在有界窗口内存中存在。
 void draw_title_language_example(const SteamLanguageButtonPlan &plan,SourceSprites &sprites,
     std::array<int,2> entry_origin,TitlePlatformExampleRequests &requests) {
     if(!plan.body) {
@@ -2513,7 +2549,9 @@ void draw_title_language_example(const SteamLanguageButtonPlan &plan,SourceSprit
             ++requests.touches;requests.order.push_back("language.touch-intent");break;
         case Step::register_joystick:
             if(depth!=2||!plan.body->joystick)throw std::runtime_error("语言手柄登记缺载荷");
-            ++requests.joystick_intents;requests.order.push_back("language.joystick-intent/table-absent");break;
+            ++requests.joystick_intents;
+            if(requests.prompts)register_title_prompt_example(*requests.prompts,*plan.body->joystick);
+            requests.order.push_back(requests.prompts?"language.joystick-register":"language.joystick-intent/table-absent");break;
         case Step::pop_origin:
             if(depth==0)throw std::runtime_error("语言原点栈下溢");
             origin=saved[--depth];requests.order.push_back("language.pop-origin");break;
@@ -2533,11 +2571,58 @@ void draw_title_platform_tail_example(const std::vector<SteamPlatformButtonBody>
         sprites.platform_button_image(button);requests.order.push_back(keyboard?"keyboard.image":"controller.image");
         ++requests.touches;requests.order.push_back(keyboard?"keyboard.touch-intent/callback":"controller.touch-intent/callback");
         if(button.joystick) {
-            ++requests.joystick_intents;requests.order.push_back(keyboard?
-                "keyboard.joystick-intent/table-absent":"controller.joystick-intent/table-absent");
+            ++requests.joystick_intents;
+            if(requests.prompts)register_title_prompt_example(*requests.prompts,*button.joystick);
+            requests.order.push_back(requests.prompts?(keyboard?"keyboard.joystick-register":"controller.joystick-register"):
+                (keyboard?"keyboard.joystick-intent/table-absent":"controller.joystick-intent/table-absent"));
         }
         requests.order.push_back(keyboard?"keyboard.pop-origin":"controller.pop-origin");
     }
+}
+// 原局部矩阵只变换SEB偏移/尺寸；BeginRenderMatrix将Draw原锚放入worldMatrix。
+// 因而不能将这些PushScale直接当作绕屏幕(0,0)的rlgl全局缩放。
+int draw_title_prompts_example(const SteamJoystickDrawPlan &plan,SourceSprites &sprites) {
+    std::array<SteamCursorPushScale,2> matrices{};std::size_t depth{};
+    std::unique_ptr<SourceBlendScope> blend;int alpha=255,draws{};
+    struct DrawMatrixScope {
+        DrawMatrixScope(std::array<int,2> anchor,const std::array<SteamCursorPushScale,2> &stack,std::size_t depth) {
+            rlPushMatrix();rlTranslatef(float(anchor[0]),float(anchor[1]),0.F);
+            for(std::size_t i=0;i<depth;++i)rlScalef(stack[i].x,stack[i].y,1.F);
+        }
+        ~DrawMatrixScope(){rlPopMatrix();}
+        DrawMatrixScope(const DrawMatrixScope &)=delete;
+        DrawMatrixScope &operator=(const DrawMatrixScope &)=delete;
+    };
+    for(const auto &operation:plan.operations) {
+        if(const auto *push=std::get_if<SteamCursorPushScale>(&operation)) {
+            if(depth==matrices.size()||push->pivot!=std::array<int,2>{0,0}||
+               !std::isfinite(push->x)||!std::isfinite(push->y)||push->x<0||push->y<0)
+                throw std::runtime_error("提示局部矩阵越界或未知枢轴");
+            matrices[depth++]=*push;
+        } else if(std::holds_alternative<SteamCursorPopMatrix>(operation)) {
+            if(!depth)throw std::runtime_error("提示局部矩阵下溢");
+            --depth;
+        } else if(const auto *mode=std::get_if<SteamCursorRenderMode>(&operation)) {
+            if(mode->operation==1&&mode->source>=0&&mode->source<=255&&mode->destination==255-mode->source) {
+                if(blend)throw std::runtime_error("提示混合重复激活");
+                blend=std::make_unique<SourceBlendScope>();alpha=mode->source;
+            } else if(mode->operation==0&&mode->source==255&&mode->destination==0) {
+                if(!blend)throw std::runtime_error("提示默认混合恢复缺前置");
+                blend.reset();alpha=255;
+            } else throw std::runtime_error("提示出现未支持混合计划");
+        } else if(const auto *button=std::get_if<SteamJoystickDrawButton>(&operation)) {
+            if(!blend||(button->button!=8&&button->button!=9)||button->layer!=0||!button->auto_key_reverse)
+                throw std::runtime_error("提示显示条件只允许已登记8/9且完整混合载荷");
+            // InputType2、手柄存在、动态图未取得均为明确条件，绝不查询或伪报SDK状态。
+            const auto fallback=steam_controller_button_fallback({2,button->button,button->layer,button->auto_key_reverse,{},{}});
+            if(!fallback)throw std::runtime_error("提示Xbox2后备选择拒绝");
+            DrawMatrixScope matrix(button->anchor,matrices,depth);
+            sprites.joystick_fallback(*fallback,{0,0},{255,255,255,static_cast<unsigned char>(alpha)});
+            ++draws;
+        } else throw std::runtime_error("提示出现未消费操作");
+    }
+    if(depth||blend)throw std::runtime_error("提示局部矩阵/混合未收齐");
+    return draws;
 }
 // 仅执行已核标题前段与明确的普通演员显示条件；确认注册只计请求，不接物理输入。
 int draw_title_backdrop_example(const SteamTitleBackdropPlan &plan,SourceSprites &sprites,
@@ -2657,7 +2742,8 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
     SourceSprites sprites(assets / "original");
     const bool title_backdrop_fixture=inspect_page=="title-backdrop-early"||inspect_page=="title-backdrop-entry"||
         inspect_page=="title-backdrop-original"||inspect_page=="title-backdrop-english";
-    const bool title_platform_fixture=inspect_page=="title-platform"||inspect_page=="title-platform-touched";
+    const bool title_prompts_fixture=inspect_page=="title-platform-prompts"||inspect_page=="title-platform-prompts-faded";
+    const bool title_platform_fixture=inspect_page=="title-platform"||inspect_page=="title-platform-touched"||title_prompts_fixture;
     const bool title_composite_fixture=inspect_page=="title-menu-start"||inspect_page=="title-menu-records"||
         inspect_page=="title-slots-empty"||inspect_page=="title-slots-filled"||
         inspect_page=="title-slots-menu"||inspect_page=="title-slots-confirm"||title_platform_fixture;
@@ -2799,11 +2885,34 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
                     throw std::runtime_error("纪录基础人物皮肤拒绝");
             }
         }
-        int count{},confirmations{};std::size_t touches{};TitlePlatformExampleRequests platform_requests;
+        SteamJoystickPromptState title_prompts{title_prompts_fixture,{}};
+        const bool faded_prompts=inspect_page=="title-platform-prompts-faded";
+        if(faded_prompts) {
+            if(!platform||!platform->language.body||!platform->language.body->joystick)
+                throw std::runtime_error("淡出提示条件缺语言登记载荷");
+            register_title_prompt_example(title_prompts,*platform->language.body->joystick);
+            for(const auto &button:platform->after_menu)if(button.joystick)
+                register_title_prompt_example(title_prompts,*button.joystick);
+            // 明确三次8/9释放条件，绝不把截图帧数当OS释放次数。
+            std::array<bool,24> released{};released[8]=released[9]=true;
+            for(int i=0;i<3;++i) {
+                const auto next=steam_joystick_release(title_prompts,released);
+                if(!next)throw std::runtime_error("提示淡出条件释放拒绝");
+                title_prompts=*next;
+            }
+        }
+        int count{},confirmations{},glyph_draws{};std::size_t touches{},prompt_operations{};
+        TitlePlatformExampleRequests platform_requests;
         while(!WindowShouldClose()&&count<frames) {
             BeginTextureMode(canvas.value);ClearBackground(BLACK);
-            confirmations=draw_title_backdrop_example(*plan,sprites,actors);
             platform_requests={};
+            if(title_prompts_fixture) {
+                const auto next=steam_joystick_reset(title_prompts);
+                if(!next)throw std::runtime_error("标题每Draw提示reset拒绝");
+                title_prompts=*next;platform_requests.prompts=&title_prompts;
+                platform_requests.order.push_back("joystick.reset");
+            }
+            confirmations=draw_title_backdrop_example(*plan,sprites,actors);
             if(platform)draw_title_language_example(platform->language,sprites,plan->final_origin,platform_requests);
             touches=0;
             for(const auto &overlay:overlays) {
@@ -2817,6 +2926,24 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
                 if(platform_requests.callbacks!=1||platform_requests.new_frames!=1||platform_requests.touches!=3||
                    platform_requests.joystick_intents!=2||platform_requests.next_new_frame!=8)
                     throw std::runtime_error("标题平台例图存在未收齐或重复消费请求");
+                if(title_prompts_fixture) {
+                    if(title_prompts.entries.size()!=2||title_prompts.entries[0].button!=9||
+                       title_prompts.entries[0].registration!=2||title_prompts.entries[1].button!=8||
+                       title_prompts.entries[1].registration!=24)
+                        throw std::runtime_error("标题提示插入次序或复用规模变化");
+                    for(const auto &entry:title_prompts.entries)
+                        if(!entry.displayed||entry.life!=(faded_prompts?1:4)||entry.scale!=100)
+                            throw std::runtime_error("标题提示每Draw复用意外改life/scale");
+                    SteamJoystickDrawInput request;request.application_type=4;request.scale_ratio=100.F;
+                    request.use_steam=true;request.has_controller=true;request.cursor_draw_frame=0;
+                    const auto prompt_plan=steam_joystick_draw(title_prompts,request);
+                    if(!prompt_plan||prompt_plan->operations.size()!=8)
+                        throw std::runtime_error("标题提示统一Draw载荷缺失或超出8操作预算");
+                    glyph_draws=draw_title_prompts_example(*prompt_plan,sprites);
+                    prompt_operations=prompt_plan->operations.size();
+                    if(glyph_draws!=2)throw std::runtime_error("标题提示后备图元未完整消费");
+                    platform_requests.order.push_back("joystick.draw/fallback-xbox2");
+                }
             }
             EndTextureMode();BeginDrawing();ClearBackground(BLACK);
             DrawTexturePro(canvas.value.texture,{0,0,width,-height},{0,0,width*scale,height*scale},{0,0},0,WHITE);
@@ -2833,15 +2960,21 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
                  <<" touch_requests_per_draw="<<touches
                  <<" actors="<<actors.size()
                  <<" world_updates=0；空/非空目录及普通演员仅显示条件、中文/Noto为维护适配；"
-                 <<"非Steam调度/scratch全树，未覆盖GPU演员淡出/平台glyph/物理输入，尚非完整标题\n";
+                 <<"非Steam调度/scratch全树，未覆盖GPU演员淡出/SDK动态glyph/物理输入，尚非完整标题\n";
         if(platform) {
             std::cout<<"平台/语言显示条件：callback_intents="<<platform_requests.callbacks
                      <<" new_frame_intents="<<platform_requests.new_frames<<" new_frame_input=7 next_frame_intent="
                      <<platform_requests.next_new_frame<<" touch_intents="<<platform_requests.touches
                      <<" joystick_intents="<<platform_requests.joystick_intents
-                     <<" joystick_table_present=false glyph_draws=0 external_state_writes=0 order=";
+                     <<" joystick_table_present="<<(title_prompts_fixture?"true":"false")
+                     <<" entries="<<title_prompts.entries.size()<<" glyph_draws="<<glyph_draws
+                     <<" prompt_operations="<<prompt_operations<<" external_state_writes=0 order=";
             for(const auto step:platform_requests.order)std::cout<<step<<'|';
             std::cout<<"\n两原平台入口与语言按钮仅条件展示，不认证绑定面板/外链或当前SDK图像。\n";
+            if(title_prompts_fixture)std::cout<<"提示显示条件：has_controller=true application_type=4 ratio=100"
+                <<" input_type=2 dynamic_glyph=absent release_prefix="<<(faded_prompts?3:0)
+                <<" life="<<(faded_prompts?1:4)<<" alpha="<<(faded_prompts?63:255)
+                <<"；登记表仅本窗口持有，重复Draw不释放/复活life，退出销毁；非实际手柄接线。\n";
         }
         if(record)std::cout<<"独立纪录两窗/箭头/背景/人物/文字按原序消费：record_frame=19 frozen_definitions=0,1"
             <<" record_actors="<<record_actors.size()<<" system_values=0 system_village=没有记录"

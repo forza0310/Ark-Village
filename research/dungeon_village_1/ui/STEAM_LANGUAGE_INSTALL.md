@@ -99,9 +99,11 @@ TypeInfo槽`110FB090/110FB03C/110F404C`独立对应LanguageForm／Language／Con
 
 普通成功的顺序是**语言安装及原偏好保存／清缓存→callback→Pop请求**，不是先退页后异步保存。
 标题实际传入的callback（RVA `20BFD0`）在`1020BFE3`调用`AppData.StopBgm(0)`，
-随后`1020C002`调用`FormManagerBase.ChangeCurrentForm(apdat_.titleForm_,false)`；
-本callback不直接调用资源重载器，标题重新初始化／资源重新选择须沿该管理器后继处理，
-不能把ChangeCurrentForm请求等同于所有资源已成功重建。callback抛异常时本页随后的线性Pop不执行；
+随后`1020C002`调用`FormManagerBase.ChangeCurrentForm(apdat_.frmBoot_,false)`。
+接收者是AppData**实例**字段`+0x08`的BootForm；TitleForm在`+0x0C`、GameForm在`+0x10`，
+不能把此处的`+0x08`误认成标题页，或与AppData静态区同偏移的UserData混读。
+callback本身不直接加载资源，其正常Boot→Title后继见下节；ChangeCurrentForm请求不等于重建已成功。
+callback抛异常时本页随后的线性Pop不执行；
 已发生的语言／偏好副作用不会因这一局部自动撤销。本页消费的是Draw时共享callback，不是冻结到每个表单的私有委托。
 
 负结果各有独立职责：−1把result[1]存共享下载位置、清本页下载字节、Push带两个具名回调的HttpForm，
@@ -116,11 +118,49 @@ TypeInfo槽`110FB090/110FB03C/110F404C`独立对应LanguageForm／Language／Con
 最后在`10810FF8`发布`systemLangPackFiles_`。本固定归档无config.inf是资源事实；
 不能因此跳过源代码的条件路径，或把存在12包认证成每个实际运行都显示同序12项。
 
+### 正常标题切语言后的Boot→Title重建
+
+`AppData`的TypeInfo槽`110F1FFC`独立解为TypeDef4061；以上实例字段又与具名callback的
+`[this+0x4C]→[app+0x08]`调用链交叉。原程序复用AppData保存的Boot／Title**表单对象**，
+callback没有new这两个表单；表单复用不等于复用其资源管理器或显示scratch。
+
+`ChangeCurrentForm RVA7E4A50`先查目标是否在栈、移除旧目标，再把剩余页`formProcMode_`置FINISH4。
+目标未在栈时走`Push(null,target)`（`107E4E19`）；Push委托`7F2580`在`107F2778`明确置INIT0。
+已在栈且不是原栈顶则只重新追加并RefreshSoftLabel，不自动重Init；原栈顶还会走Push支。
+因此“ChangeCurrentForm总重Init”不成立。下面针对正常初始启动已完成、Boot已退休离栈、
+Title为当前父页的普通语言选择，保留这一前提，不套调试／嵌套Boot状态。
+
+callback返回后的`LanguageForm.Pop`是对本页对象的请求；委托`7F29E0`把它置4，
+从全栈末端找首个非4页，已追加的Boot保持INIT0，不会因本次Pop改成退休页。
+框架`_executeInitAndFinish RVA7E9360`先处理FINISH4，成功且仍为4才移出引用，随后处理INIT0。
+Title.Finish（`20AD50`）在`1020AD9D`Dispose旧`resTitle_ +0x78`，并在`1020ADA8`清引用；
+不是用普通纪录返回的PREUPDATE路径恢复旧标题资源。
+
+Boot.Init（`1FB500`）先MyFormBase.Init，再LoadSystem，false才InitApp，随后Init2；
+Init2（`1FADD0`）建立新的加载画面ResourceManager、置boot state0、清错误／注册字节并新建JThread启动Run。
+Run（`1FE4E0`）正常进入state1后在`101FE8FC`执行Load（`1FBE90`）；
+Load读取资源组1的记录10并重建定义目录，且依原序Dispose／重建公共资源管理器，例如入口在
+`101FC188`Dispose原resCom。这个加载链含系统写入及后台任务，不是纯菜单翻译或全局事务。
+正常加载／等待完成后`101FEC49`置state4；Boot.Update（`1FF530`）在无需版本提示的普通支
+于`101FF74F`调用`ChangeCurrentForm(app.frmTitle_,false)`，这次读的是实例`+0x0C`。
+
+旧Title已成功Finish并离栈时，这次Push重新置其INIT0，随后真正执行Title.Init（`20ADF0`）：
+`1020AF21`绑定新ResourceManager，`1020AF4C`读取资源组1／记录11，`1020AF62`调用Load(bytes,3)。
+所以标题图片重新选择发生在**Boot重载完成后重新初始化Title的资源加载**，不是首次callback或Pop时；
+其语言目录／Logo选择沿既有[资源加载合同](STEAM_TITLE_DRAW.md#logo资源选择链与中文资格)，
+条件仍是先前SetLanguagePack成功且期间没有其它语言变更。Title.Init随后调用UserData.Setting，
+重建显示scratch的边界见[演员合同](STEAM_TITLE_ACTORS.md#scratch副作用与交付边界)，不重新创建AppData或表单对象。
+
+Language.ClearCache（`80CA00`）只在锁内清翻译缓存列表；其Updated回调RemoveExpiredTranslateCache（`81DCA0`）
+同样是缓存寿命消费者，不充作ResourceManager重建回调。原翻译表／语言目录已由SetLanguagePack变更，
+实际逐字文本及字体重选仍须由各消费者认证。Boot的注册／版本提示／错误模式、线程完成与平台加载异常、
+Finish失败或目标仍在栈的分支不由上述普通成功链穷尽；已发生的偏好、旧页退休和资源替换不保证回滚。
+
 ## 交付与后继
 
 产品可消费以上语言输入区分、条件资源目录顺序、中文包身份及失败／保存副作用边界。当前不提供完整多语言播放器、字体替代、已观测当前中文文字全集或可操作语言页；也没有改变APK业务、C++Owner、应用快照格式或发布素材。
 
-后继最小研究是：翻译注册者、LanguageConfig／locale选择的实际输入、标题ChangeCurrentForm后的资源重建、平台取消结果产生者、最终Graphics文字基线与Unity／插件字形回退。外部窗口可记录当前语言菜单和同一标题的文字／Logo，但不得为验证本合同自行覆盖用户语言偏好。
+后继最小研究是：翻译注册者、LanguageConfig／locale选择的实际输入、Boot加载异常与平台线程完成、平台取消结果产生者、最终Graphics文字基线与Unity／插件字形回退。上述正常Boot→Title资源重建不再列为整体未知；外部窗口可记录当前语言菜单和同一标题的文字／Logo，但不得为验证本合同自行覆盖用户语言偏好。
 
 ## 静态来源范围
 

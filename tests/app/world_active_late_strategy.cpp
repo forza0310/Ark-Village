@@ -462,6 +462,8 @@ std::optional<Command> ActiveLateVillageStrategy::next(const State &s) {
             if (catalog)
                 for (const auto &group : *catalog)
                     for (const int id : group) {
+                        if (id < 0)
+                            continue; // Source21 tools have no building quote or revenue role.
                         const auto &d = s.rules->facilities.at(id);
                         const bool required = !has_definition(s, mandatory);
                         // Bound expansion by the real income deficit and keep one of each
@@ -539,6 +541,8 @@ std::optional<Command> ActiveLateVillageStrategy::next(const State &s) {
                                      eligible(s, recipient_);
                 for (const auto &group : *catalog)
                     for (const int id : group) {
+                        if (id < 0)
+                            continue; // Demolition/movement are intents, not shop definitions.
                         const auto &d = s.rules->facilities.at(id);
                         if (d.shape != 0 ||
                             (housing ? id != 24

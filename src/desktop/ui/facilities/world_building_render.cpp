@@ -1,6 +1,6 @@
 // Render a frozen building view; no input polling, world writes or animation clock updates.
 #include "ark/simulation/actors/startup_world_profile.hpp"
-// Page21/74/80/81 fields and actions follow the frozen 2b479f6 maintained prototype.
+// Facility74/80/81 draw only their read-only source projections.
 // Drawing never initializes a page, charges money or changes a facility's shared level.
 #include "../../scene/world_overlay_render.hpp"
 #include "../common/skin.hpp"
@@ -94,101 +94,24 @@ void draw_world_building(const WorldBuildingView &view, const WorldBuildingLayou
                                                       std::to_string(view.page_count)
                                                 : "")
             : view.title;
-    if (view.raw == 21) {
-        DrawRectangleRec(layout.panel, {222, 230, 144, 255});
-        DrawRectangleLinesEx(layout.panel, 1, {59, 66, 18, 255});
-        DrawRectangleLinesEx({layout.panel.x + 1, layout.panel.y + 1, layout.panel.width - 2,
-                              layout.panel.height - 2},
-                             1, {139, 142, 53, 255});
-        DrawRectangleRec(layout.body, {250, 254, 248, 255});
-    } else {
-        skin.window(layout.panel, title);
-        skin.content(layout.body);
-    }
+    skin.window(layout.panel, title);
+    skin.content(layout.body);
     if (view.initialized) {
-        if (view.raw == 21 || view.raw == 80) {
-            if (view.raw == 21) {
-                constexpr const char *titles[]{"设备", "一般", "饮食"}; // S057 display wording.
-                for (int tab = 0; tab < 3; ++tab) {
-                    DrawRectangleRec(layout.tabs[tab], tab == selection.tab
-                                                           ? Color{0, 241, 115, 255}
-                                                           : Color{225, 255, 69, 255});
-                    DrawRectangleLinesEx(layout.tabs[tab], 1, {60, 96, 6, 255});
-                    skin.centered(titles[tab], layout.tabs[tab], ink, 10);
-                }
-                const auto p = layout.panel;
-                DrawTriangle({p.x - 8, p.y + 11}, {p.x, p.y + 18}, {p.x, p.y + 4}, GOLD);
-                DrawTriangle({p.x + p.width + 8, p.y + 11}, {p.x + p.width, p.y + 4},
-                             {p.x + p.width, p.y + 18}, GOLD);
-            }
-            const auto &list = world_building_rows(view, selection.tab);
+        if (view.raw == 80) {
+            const auto &list = view.residents;
             if (list.empty())
                 skin.text.draw("暂无候选", layout.rows.x + 4, layout.rows.y + 4, ink);
             const int first = std::clamp(selection.first_row, 0, static_cast<int>(list.size()));
             for (int row = 0; row < world_building_visible_rows(layout) &&
-                              row + first < static_cast<int>(list.size());
-                 ++row) {
+                              row + first < static_cast<int>(list.size()); ++row) {
                 Rectangle box{layout.rows.x, layout.rows.y + row * layout.row_height,
                               layout.rows.width, layout.row_height};
-                if (view.raw != 21 && first + row == selection.selected)
+                if (first + row == selection.selected)
                     DrawRectangleRec(box, {255, 236, 174, 255});
                 const auto &item = list[first + row];
-                float label_x = box.x + 4;
-                if (!item.graphic.frames.empty() || !item.common_image.empty()) {
-                    const auto icon = world_building_icon(layout, row);
-                    DrawRectangleRec(icon.clip, icon.background);
-                    for (const auto &[frame, offset] : item.graphic.frames)
-                        skin.sprites.draw(item.graphic.sprite, frame,
-                                          {icon.anchor.x + offset.x, icon.anchor.y + offset.y},
-                                          WHITE, Sprites::Binding::map, 1, -1, icon.clip);
-                    if (!item.common_image.empty()) {
-                        const Rectangle target{icon.clip.x + item.image_offset.x,
-                                               icon.clip.y + item.image_offset.y,
-                                               item.image_source.width, item.image_source.height};
-                        const auto clipped =
-                            clip_sprite_blit({item.image_source, target}, icon.clip);
-                        if (clipped)
-                            skin.sprites.image(item.common_image, clipped->source,
-                                               clipped->destination, Sprites::Binding::common);
-                    }
-                    label_x = box.x + 72;
-                }
-                const auto &name = item.name;
-                if (view.raw == 21) {
-                    DrawRectangleLinesEx(box, 1, {11, 181, 0, 255});
-                    if (first + row == selection.selected) {
-                        const float label_width =
-                            std::min(box.x + box.width - label_x - 3, skin.text.width(name) + 4);
-                        DrawRectangleRec({label_x - 1, box.y + 2, label_width, 15},
-                                         {255, 185, 87, 255});
-                        skin.sprites.draw("finger_r.seb", 0, {label_x - 8, box.y + 9}, WHITE,
-                                          Sprites::Binding::common);
-                    }
-                }
-                fitted(skin, name, {label_x, box.y + 3, box.x + box.width - label_x - 4, 14});
-                if (item.residence_qualifications)
-                    skin.text.draw("H " + std::to_string(*item.residence_qualifications), label_x,
-                                   box.y + 22, blue, 10);
-                if (view.raw == 21) {
-                    skin.number(item.cost, {box.x + box.width - 13, box.y + 23}, "number05.seb",
-                                Sprites::Binding::steam_common);
-                    skin.sprites.draw("number05.seb", 20, {box.x + box.width - 12, box.y + 23},
-                                      WHITE, Sprites::Binding::steam_common);
-                } else
-                    skin.right(std::to_string(item.cost) + "G", box.x + box.width - 4, box.y + 22,
-                               ink, 10);
-            }
-            if (view.raw == 21) {
-                const Rectangle track{layout.panel.x + layout.panel.width - 7, layout.rows.y, 5,
-                                      layout.rows.height};
-                DrawRectangleRec(track, {33, 20, 91, 255});
-                const int count = std::max(1, static_cast<int>(list.size()));
-                const float visible = std::min(count, world_building_visible_rows(layout));
-                const float thumb_height = track.height * visible / count;
-                const float thumb_y = track.y + (track.height - thumb_height) * first /
-                                                    std::max(1, count - static_cast<int>(visible));
-                DrawRectangleRec({track.x, thumb_y, track.width, thumb_height},
-                                 {50, 164, 234, 255});
+                fitted(skin, item.name, {box.x + 4, box.y + 3, box.width - 8, 14});
+                skin.right(std::to_string(item.cost) + "G", box.x + box.width - 4,
+                            box.y + 22, ink, 10);
             }
         } else if (view.raw == 74) {
             draw_home_detail(view, layout, skin);
@@ -228,16 +151,14 @@ void draw_world_building(const WorldBuildingView &view, const WorldBuildingLayou
         skin.sprites.draw("arrow02.seb", active ? 3 : 1, {layout.next.x + 4, layout.next.y + 9},
                           WHITE, Sprites::Binding::common);
     }
-    if (view.raw != 21 && (view.raw != 74 || view.can_confirm))
+    if (view.raw != 74 || view.can_confirm)
         skin.choice(layout.confirm,
-                    view.raw == 21            ? "建设"
-                    : view.raw == 81          ? "确定"
+                    view.raw == 81            ? "确定"
                     : view.definition_preview ? "关闭"
                     : view.can_use_items      ? "使用道具"
                     : view.can_view_products  ? "商品"
                                               : "入住希望者",
-                    active && view.can_confirm &&
-                        (view.raw != 21 || !world_building_rows(view, selection.tab).empty()));
+                    active && view.can_confirm);
     if (!feedback.empty())
         fitted(skin, feedback,
                {layout.body.x, layout.panel.y + layout.panel.height - 45, layout.body.width, 14},

@@ -182,6 +182,8 @@ if(ARK_BUILD_DESKTOP)
             src/desktop/ui/system/world_manual.cpp # raw13 reuses the existing world_menu scenarios.
             src/desktop/ui/facilities/world_building_view.cpp
         src/desktop/ui/facilities/world_building_input.cpp src/desktop/ui/facilities/world_building_render.cpp
+        src/desktop/ui/facilities/world_build_menu_view.cpp src/desktop/ui/facilities/world_build_menu_input.cpp
+        src/desktop/ui/facilities/world_build_menu_render.cpp
         src/desktop/ui/facilities/world_facility_upgrade.cpp src/desktop/ui/facilities/world_facility_detail.cpp
         src/desktop/ui/village/world_progression.cpp
         src/desktop/ui/village/world_village_skin.cpp

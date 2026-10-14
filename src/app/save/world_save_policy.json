@@ -410,6 +410,7 @@
             ["facility_definition_page_bindings", "std::map<std::uint64_t, int>"],
             ["facility_page_neighbours", "std::map<std::uint64_t, std::vector<ref::NeighbourSource>>"],
             ["build_page_catalogs", "std::map<std::uint64_t, std::array<std::vector<int>, 3>>"],
+            ["build_page_ui", "std::map<std::uint64_t, StartupWorldBuildPageUi>"],
             ["residence_page_candidates", "std::map<std::uint64_t, std::vector<int>>"],
             ["facility_upgrade_initialized", "std::set<std::uint64_t>"],
             ["facility_upgrade_display", "std::array<std::array<std::int64_t, 3>, 3>"],
@@ -2984,6 +2985,18 @@
               "std::optional<int>"
             ]
           ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::StartupWorldBuildPageUi",
+      "reason": "Construction cursor belongs to the modal source directory, not the stable player world.",
+      "wire_fields": [],
+      "groups": [
+        {
+          "action": "discard",
+          "reason": "Stable player cold restore clears build_page_ui; maintenance replay alone retains the exact directory cursor.",
+          "fields": [["selection", "int"], ["scroll", "int"]]
         }
       ]
     }

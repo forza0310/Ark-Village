@@ -7,6 +7,7 @@
 #include "../ui/actors/world_human.hpp"
 #include "../ui/common/world_panels.hpp"
 #include "../ui/facilities/world_building.hpp"
+#include "../ui/facilities/world_build_menu.hpp"
 #include "../ui/facilities/world_facility_catalog.hpp"
 #include "../ui/facilities/world_facility_items.hpp"
 #include "../ui/information/world_information.hpp"
@@ -27,6 +28,8 @@ class WorldManagement {
     bool pending() const { return pending_ != 0; }
     // Local keyboard reset also applies while a FIFO command is pending; it changes no Owner.
     void clear_mouse_marker() {
+        build_menu_gesture_.marked_row.reset();
+        build_menu_gesture_.scrolling = false;
         facility_items_.marked_row.reset();
         facility_items_.scrolling = false;
         facility_catalog_gesture_.scrolling = false;
@@ -39,6 +42,12 @@ class WorldManagement {
                     bool keyboard_event, bool blocked, app::WorldSession &session);
     bool draw_page(const app::WorldState &state, const simulation::rules::WorldScriptPage &page,
                    Extent extent, const ui::Skin &skin, bool enabled) const;
+    // Covered21 is really painted before its child, but contributes no pointer controls.
+    void draw_build_background(const app::WorldState &state,
+                               const simulation::rules::WorldScriptPage &page, Extent extent,
+                               const ui::Skin &skin) const;
+    // Submit completed drawing facts only after EndDrawing, once per source epoch/page.
+    void presented(const app::WorldFrame &frame, bool blocked, app::WorldSession &session);
     // Called only for an unobstructed main scene. A click selects a cell; confirmation is a
     // separate input, preventing one physical click from both choosing and buying a building.
     bool input_scene(const app::WorldState &state, const WorldCameraView &view, Extent extent,
@@ -64,6 +73,18 @@ class WorldManagement {
     std::optional<std::int64_t> commerce_amount_;
     std::string feedback_;
     ui::WorldBuildingSelection building_;
+    ui::WorldBuildMenuGesture build_menu_gesture_;
+    mutable std::optional<ui::WorldBuildMenuControls> build_menu_controls_;
+    struct BuildPresentation {
+        std::uint64_t page{}, generation{}, epoch{};
+        bool same(const BuildPresentation &other) const {
+            return page == other.page && generation == other.generation && epoch == other.epoch;
+        }
+    };
+    std::uint64_t presentation_epoch_{}, build_draw_pending_{};
+    std::optional<BuildPresentation> build_draw_inflight_, build_draw_ready_;
+    std::vector<BuildPresentation> build_draw_submitted_; // Bounded by the current page stack/epoch.
+    mutable std::vector<BuildPresentation> build_pages_drawn_;
     ui::WorldFacilityItemsSelection facility_items_;
     ui::WorldFacilityGesture facility_catalog_gesture_;
     mutable std::optional<ui::WorldFacilityPaintedControls> facility_controls_;

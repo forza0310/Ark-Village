@@ -1,7 +1,6 @@
 #pragma once
 
-// 2b479f6 building pages read the canonical Owner. Selection and responsive geometry are
-// desktop state; only intents cross to the simulation thread, carrying stable page/definition IDs.
+// Facility74, residence80 and upgrade81 projections. Raw21 has its own Owner-backed adapter.
 #include "../../scene/world_build_placement.hpp"
 #include "../common/layout.hpp"
 #include "ark/app/queries/world_facility_queries.hpp"
@@ -15,14 +14,9 @@
 namespace ark::desktop::ui {
 class Skin;
 struct WorldBuildingRow {
-    int identity{}; // Definition for raw21; human definition for raw80, never a row index.
+    int identity{}; // Human definition for raw80, never a row index.
     std::string name;
     std::int64_t cost{};
-    WorldBuildGraphic graphic{};                   // Empty for human residence rows.
-    std::optional<int> residence_qualifications{}; // Published H, independent of the gold quote.
-    std::string common_image{}; // Special -1/-2 rows bind PNG indices, never guessed SEB frames.
-    Rectangle image_source{};
-    Vector2 image_offset{};
 };
 struct WorldFacilityBonusRow {
     simulation::StartupFacilityBonusRow source;
@@ -44,7 +38,6 @@ struct WorldBuildingView {
     std::optional<simulation::StartupVisualDraw> category_icon;
     std::vector<simulation::StartupFacilityExitEffectDraw> exit_effects;
     std::optional<std::size_t> product_count;
-    std::array<std::vector<WorldBuildingRow>, 3> catalogs;
     std::vector<WorldBuildingRow> residents;
     int phase{}, page_count{};
     std::array<std::int64_t, 4> attributes{};
@@ -60,7 +53,6 @@ struct WorldBuildingView {
 struct WorldBuildingLayout {
     Rectangle panel, body, rows, cancel, confirm, previous, next;
     Rectangle footer_name{}, footer_profit{};
-    std::array<Rectangle, 3> tabs;
     float row_height{38};
 };
 // Legacy geometry retained only for the residential static subset; other74 templates
@@ -73,14 +65,7 @@ struct WorldBuildingDetailLayout {
 WorldBuildingDetailLayout world_building_detail_layout(const WorldBuildingLayout &layout,
                                                        app::WorldFacilityTemplate type);
 struct WorldBuildingSelection {
-    int tab{}, selected{}, first_row{};
-    std::optional<int> marked_definition{};
-    std::uint64_t marker_page{};
-};
-struct WorldBuildingIcon {
-    Rectangle clip;
-    Vector2 anchor;
-    Color background{190, 242, 230, 255};
+    int selected{}, first_row{}; // Residence list or facility bonus page; never raw21's cursor.
 };
 struct WorldBuildingInput {
     std::optional<Vector2> click;
@@ -88,8 +73,6 @@ struct WorldBuildingInput {
     int wheel_rows{};
 };
 enum class WorldBuildingAction {
-    select_build,
-    cancel_build,
     facility_previous,
     facility_next,
     facility_confirm,
@@ -103,17 +86,14 @@ struct WorldBuildingIntent {
     std::uint64_t page{};
     int selection{};
 };
-// Catalogue/resident row order is shared by input and drawing.
-const std::vector<WorldBuildingRow> &world_building_rows(const WorldBuildingView &view, int tab);
 bool world_building_page(const simulation::rules::WorldScriptPage &page);
 WorldBuildingView world_building_view(const simulation::StartupWorldRuntimeState &state,
                                       const simulation::rules::WorldScriptPage &page);
-WorldBuildingLayout world_building_layout(Extent extent, int raw = 21);
+WorldBuildingLayout world_building_layout(Extent extent, int raw = 80);
 // Replace legacy hit boxes with the measured plan's actual bottom and arrow Touch requests.
 WorldBuildingLayout world_building_source_layout(const WorldBuildingView &view,
                                                  WorldBuildingLayout layout, const Skin &skin);
 int world_building_visible_rows(const WorldBuildingLayout &layout);
-WorldBuildingIcon world_building_icon(const WorldBuildingLayout &layout, int visible_row);
 std::optional<WorldBuildingIntent> world_building_input(const WorldBuildingView &view,
                                                         const WorldBuildingLayout &layout,
                                                         WorldBuildingSelection &selection,

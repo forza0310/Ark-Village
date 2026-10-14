@@ -34,6 +34,18 @@ void source_save_bridge() {
     const auto revision = frame->revision;
     check(session.wait_for_frame_after(revision, std::chrono::milliseconds(100)) == frame,
           "slot selection freezes source menu lifecycle and world");
+    // The current parent is raw10: cover the delayed receipt boundary, not a live21/overlay route.
+    const auto overlay = frame;
+    const auto late_draw =
+        session.draw_build_menu(page, overlay->presentation_epoch, overlay->generation);
+    frame = input_frame(session, late_draw);
+    check(!frame->failed && frame->save_menu_open && frame->save_source_page == page &&
+              frame->state == overlay->state && frame->generation == overlay->generation &&
+              frame->presentation_epoch == overlay->presentation_epoch &&
+              input_result(*frame, late_draw).outcome == app::WorldCommandOutcome::rejected &&
+              input_result(*frame, late_draw).runtime_error ==
+                  sim::StartupWorldRuntimeError::invalid_page,
+          "Save overlay explicitly rejects a late Draw receipt without changing Owner or token");
     frame = input_frame(session, session.load_slot(0));
     check(frame->save_menu_open && frame->state == old && frame->generation == 1 &&
               input_result(*frame, frame->last_command_serial).outcome ==

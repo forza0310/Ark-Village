@@ -371,28 +371,16 @@ void apply_world_decision(WorldState &state, const WorldCommand &command,
         result.runtime_error = simulation::open_startup_world_build_menu(state);
         break;
     case Kind::select_build_menu:
-        if (command.definition == -1 || command.definition == -2 ||
-            std::any_of(state.rules->facilities.begin(), state.rules->facilities.end(),
-                        [&](const auto &d) { return d.id == command.definition && d.kind == 6; })) {
-            // Source denials can carry valid feedback candidates, so the worker commits them.
-            // This bridge has no such feedback: close and begin must succeed together.
-            auto next = state;
-            result.runtime_error = simulation::cancel_startup_world_build_menu(next, command.page);
-            if (result.runtime_error == Error::none) {
-                build_result(
-                    command.definition < 0
-                        ? simulation::begin_startup_world_edit(next, command.definition == -2)
-                        : simulation::begin_startup_world_road(next, command.definition),
-                    result);
-                if (result.runtime_error == Error::none &&
-                    result.build_denial == simulation::StartupBuildDenial::none)
-                    state = std::move(next);
-            }
-        } else {
-            build_result(simulation::select_startup_world_build_menu(state, command.page,
-                                                                     command.definition),
-                         result);
-        }
+        // Explicit definitions remain available to business drivers. The source now owns
+        // ordinary buildings, roads and tools together; no cancel+begin desktop bridge.
+        build_result(
+            simulation::select_startup_world_build_menu(state, command.page, command.definition),
+            result);
+        break;
+    case Kind::build_menu_input:
+        build_result(simulation::input_startup_world_build_menu(state, command.page,
+                                                                command.build_menu_input),
+                     result);
         break;
     case Kind::cancel_build_menu:
         result.runtime_error = simulation::cancel_startup_world_build_menu(state, command.page);
@@ -625,6 +613,23 @@ std::uint64_t WorldSession::select_build_menu(std::uint64_t page, int definition
     command.kind = WorldCommandKind::select_build_menu;
     command.page = page;
     command.definition = definition;
+    return submit(command);
+}
+std::uint64_t WorldSession::input_build_menu(std::uint64_t page,
+                                             const simulation::StartupBuildMenuInput &input) {
+    WorldCommand command;
+    command.kind = WorldCommandKind::build_menu_input;
+    command.page = page;
+    command.build_menu_input = input;
+    return submit(command);
+}
+std::uint64_t WorldSession::draw_build_menu(std::uint64_t page, std::uint64_t epoch,
+                                            std::uint64_t generation) {
+    WorldCommand command;
+    command.kind = WorldCommandKind::build_menu_draw;
+    command.page = page;
+    command.presentation_epoch = epoch;
+    command.generation = generation;
     return submit(command);
 }
 std::uint64_t WorldSession::cancel_build_menu(std::uint64_t page) {

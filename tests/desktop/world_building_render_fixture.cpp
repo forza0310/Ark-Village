@@ -6,6 +6,7 @@
 #include "../../src/desktop/scene/world_overlay_render.hpp"
 #include "../../src/desktop/ui/common/skin.hpp"
 #include "../../src/desktop/ui/facilities/world_building.hpp"
+#include "../../src/desktop/ui/facilities/world_build_menu.hpp"
 #include "../../src/desktop/ui/facilities/world_facility_catalog.hpp"
 #include "../../src/desktop/ui/facilities/world_facility_items.hpp"
 #include "../../src/desktop/ui/village/world_commerce.hpp"
@@ -489,6 +490,9 @@ void world_facility_static_render_fixture() {
     catalogue.scripts.user_flags |= 32U; // Explicit moving-entry gate for the S057 callsite.
     require(sim::open_startup_world_build_menu(catalogue) == sim::StartupWorldRuntimeError::none,
             "source cannot open the real S057 catalogue callsite");
+    const auto catalogue_ready = sim::update_startup_world_build_menu(catalogue, top_page(catalogue).id);
+    require(catalogue_ready.has_value(), "Build menu fixture reaches its real initialized lifecycle");
+    catalogue = *catalogue_ready;
     auto second = ordinary;
     require(sim::act_startup_world_facility_page(second, top_page(second).id,
                                                  sim::StartupFacilityPageAction::next) ==
@@ -564,6 +568,10 @@ void world_facility_static_render_fixture() {
             "source confirm83 facilities option failed");
     require(top_page(preview).legacy_page == 85, "source confirm83 did not create actual85");
     require(sim::initialize_startup_world_commerce_pages(preview), "source initialize85 failed");
+    const auto merchant_ready = sim::prepare_startup_world_runtime(preview);
+    require(merchant_ready.candidate.has_value(),
+            "Unbuilt85 preview fixture reaches its real initialized lifecycle");
+    preview = *merchant_ready.candidate;
     commerce_page = top_page(preview).id;
     const auto offers = sim::inspect_startup_world_commerce_page(preview, commerce_page);
     require(offers.has_value(), "source lost facilities85 offers");
@@ -604,6 +612,7 @@ void world_facility_static_render_fixture() {
     glyphs += "魔法壶投入道具开发确认处理结果发现配方火冰雷暗等级经验持有";
     glyphs += "商品装备情报设施口碑名称能力正在销售种攻击防御魔法幸运确认可快进继续";
     glyphs += "传说中的商店冒险者们中间话题传开街道人气上升出售中装备信息剩余";
+    glyphs += "撤除移动设备一般饮食情报Ｇ---";
     desktop::Text text(ARK_TEST_FONT, glyphs);
     std::cout << "Attribute font metrics: digit12=" << text.width("1", 12)
               << " digit14=" << text.width("1", 14) << " digit16=" << text.width("1", 16)
@@ -612,7 +621,8 @@ void world_facility_static_render_fixture() {
     desktop::WorldCanvas canvas;
     const auto capture = [&](const auto &state, const char *filename, bool narrow,
                              const ui::WorldBuildingView *display_override = nullptr,
-                             int first_row = 0) {
+                             int first_row = 0,
+                             const ui::WorldBuildMenuView *build_override = nullptr) {
         if ((magic_only && !ui::world_magic_pot_page(top_page(state))) ||
             (detail_only && top_page(state).legacy_page != 74))
             return;
@@ -653,10 +663,18 @@ void world_facility_static_render_fixture() {
                 ui::prepare_world_facility_items(view, state, skin);
                 ui::draw_world_facility_items(
                     view, ui::world_facility_items_layout(extent, view.raw), skin, true);
+            } else if (ui::world_build_menu_page(page)) {
+                auto view = build_override ? *build_override : ui::world_build_menu_view(state, page);
+                ui::prepare_world_build_menu(view, skin);
+                ui::draw_world_build_menu(view, extent, skin, true, true);
+                const auto controls = ui::world_build_menu_controls(view, extent, sprites, 1, 1);
+                require(controls.rows[4].y - controls.rows[0].y == 148 &&
+                            !CheckCollisionRecs(controls.rows[4], controls.cancel),
+                        "Actual source build rows retain five-row pitch and footer separation");
             } else {
                 auto view =
                     display_override ? *display_override : ui::world_building_view(state, page);
-                const ui::WorldBuildingSelection selection{0, first_row, first_row};
+                const ui::WorldBuildingSelection selection{first_row, first_row};
                 ui::prepare_world_building_detail(view, state, selection, skin);
                 if (display_override && view.detail_skin) {
                     // Stress only the copied display plan, with a valid real Owner binding.
@@ -903,6 +921,10 @@ void world_facility_static_render_fixture() {
                     sim::StartupWorldRuntimeError::none &&
                 sim::initialize_startup_world_commerce_pages(definition_preview),
             "Definition preview batch enters actual85");
+    const auto definitions_ready = sim::prepare_startup_world_runtime(definition_preview);
+    require(definitions_ready.candidate.has_value(),
+            "Definition preview batch reaches its real85 Update before requesting details");
+    definition_preview = *definitions_ready.candidate;
     const auto offers_page = top_page(definition_preview).id;
     const auto candidates =
         sim::inspect_startup_world_commerce_page(definition_preview, offers_page);
@@ -934,6 +956,103 @@ void world_facility_static_render_fixture() {
     capture(reinforced, "raw77-minimum.png", true);
     capture(catalogue, "raw21-s057-catalogue.png", false);
     capture(catalogue, "raw21-s057-minimum.png", true);
+    // The opened21 route is distinct from the unpurchased85 preview above. Its complete
+    // input installs the current Owner row and requests74 only after actual Draw admission.
+    auto build_preview = catalogue;
+    const auto build_parent = top_page(build_preview).id;
+    for (int n = 0; n < 3; ++n)
+        require(sim::draw_startup_world_build_menu(build_preview, build_parent) ==
+                    sim::StartupWorldRuntimeError::none,
+                "Opened building preview reaches its real Draw input gate");
+    sim::StartupBuildMenuInput details;
+    bool found_build_preview = false;
+    const auto &build_lists = build_preview.build_page_catalogs.at(build_parent);
+    for (int category = 0; category < 3; ++category) {
+        const auto found = std::find(build_lists[category].begin(), build_lists[category].end(), 28);
+        if (found != build_lists[category].end()) {
+            details.page = category;
+            details.selection = int(found - build_lists[category].begin());
+            details.scroll = std::max(0, *details.selection - 4);
+            details.details = true;
+            found_build_preview = true;
+            break;
+        }
+    }
+    require(found_build_preview, "Real initial21 contains the already-open flower-shop definition28");
+    const auto build_cash = build_preview.scene.world.world.ai.accounting.funds();
+    const auto build_notices = build_preview.facility_unlock_notices;
+    require(sim::input_startup_world_build_menu(build_preview, build_parent, details).error ==
+                    sim::StartupWorldRuntimeError::none &&
+                top_page(build_preview).legacy_page == 74 &&
+                build_preview.facility_definition_page_bindings.at(top_page(build_preview).id) == 28 &&
+                !build_preview.facility_page_bindings.count(top_page(build_preview).id),
+            "Real21 complete input opens the currently selected definition-only74 preview");
+    capture(build_preview, "raw21-definition-preview-minimum.png", true);
+    capture(build_preview, "raw21-definition-preview-desktop.png", false);
+    require(sim::act_startup_world_facility_page(build_preview, top_page(build_preview).id,
+                                                  sim::StartupFacilityPageAction::confirm) ==
+                sim::StartupWorldRuntimeError::none, "Real21 definition preview closes its child74");
+    const auto build_return = sim::prepare_startup_world_runtime(build_preview);
+    require(build_return.candidate.has_value(), "Child74 Finish resumes the existing21 Owner");
+    build_preview = *build_return.candidate;
+    const auto returned_cursor = sim::startup_world_build_menu_cursor(build_preview, build_parent);
+    require(top_page(build_preview).id == build_parent && returned_cursor &&
+                returned_cursor->page == *details.page && returned_cursor->selection == *details.selection &&
+                returned_cursor->scroll == *details.scroll &&
+                build_preview.scene.world.world.ai.accounting.funds() == build_cash &&
+                build_preview.facility_unlock_notices == build_notices && !build_preview.build_definition,
+            "21 preview return retains its parent cursor and NEW without charging or beginning construction");
+    capture(build_preview, "raw21-definition-return-minimum.png", true);
+    capture(build_preview, "raw21-definition-return-desktop.png", false);
+    // Legal producer with explicit eligibility conditions; not a natural-unlock campaign.
+    auto full_build = initial_world();
+    for (auto &entry : full_build.facility_presence)
+        entry.second = 2;
+    full_build.facility_free_builds.at(25) = full_build.facility_free_builds.at(27) = 3;
+    full_build.scripts.user_flags |= 32U;
+    require(sim::open_startup_world_build_menu(full_build) == sim::StartupWorldRuntimeError::none,
+            "Full-eligibility build callsite freezes a legal source directory");
+    const auto full_ready = sim::update_startup_world_build_menu(full_build, top_page(full_build).id);
+    require(full_ready.has_value(), "Full build callsite reaches real initialization");
+    full_build = *full_ready;
+    for (int n = 0; n < 3; ++n)
+        require(sim::draw_startup_world_build_menu(full_build, top_page(full_build).id) ==
+                    sim::StartupWorldRuntimeError::none,
+                "Explicit source Draw admission prepares fixture navigation");
+    auto build_overlays = ui::world_build_menu_view(full_build, top_page(full_build));
+    build_overlays.source.category_new = {true, true, true};
+    for (auto &row : build_overlays.source.visible_rows)
+        row.resident = row.kind == 13;
+    capture(full_build, "raw21-overlays-minimum.png", true, nullptr, 0, &build_overlays);
+    capture(full_build, "raw21-overlays-desktop.png", false, nullptr, 0, &build_overlays);
+    for (int category = 0; category < 3; ++category) {
+        auto sample = full_build;
+        sim::StartupBuildMenuInput input;
+        input.page = category;
+        require(sim::input_startup_world_build_menu(sample, top_page(sample).id, input).error ==
+                    sim::StartupWorldRuntimeError::none, "Real build category input accepted");
+        for (bool narrow : {false, true}) {
+            const auto name = "raw21-category" + std::to_string(category) +
+                              (narrow ? "-minimum.png" : "-desktop.png");
+            capture(sample, name.c_str(), narrow);
+        }
+    }
+    auto tail_build = full_build;
+    const auto build_id = top_page(tail_build).id;
+    const int build_count = int(tail_build.build_page_catalogs.at(build_id)[1].size());
+    sim::StartupBuildMenuInput tail;
+    tail.page = 1;
+    tail.selection = build_count - 1;
+    tail.scroll = build_count - 5;
+    require(sim::input_startup_world_build_menu(tail_build, build_id, tail).error ==
+                sim::StartupWorldRuntimeError::none, "Real build input selects its tail window");
+    capture(tail_build, "raw21-tail-minimum.png", true);
+    auto stress_build = ui::world_build_menu_view(tail_build, top_page(tail_build));
+    // Only the copied display input changes. Published mapchips, directory and Owner stay real.
+    stress_build.source.visible_rows.back().name = "设施名称设施名称123456789";
+    stress_build.source.visible_rows.back().quote = std::numeric_limits<int>::max();
+    stress_build.source.visible_rows.back().price_text = "2,147,483,647Ｇ";
+    capture(tail_build, "raw21-long-price-minimum.png", true, nullptr, 0, &stress_build);
     capture(goods, "raw79-goods.png", false);
     capture(goods, "raw79-minimum.png", true);
     capture(equipment_info, "raw72-equipment.png", true);

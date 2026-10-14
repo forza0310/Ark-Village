@@ -1099,6 +1099,12 @@ StartupBuildResult StartupWorldRuntimeSession::begin_build(int definition) {
 StartupWorldRuntimeError StartupWorldRuntimeSession::open_build_menu() {
     return open_startup_world_build_menu(state_);
 }
+StartupBuildResult StartupWorldRuntimeSession::input_build_menu(std::uint64_t page,const StartupBuildMenuInput &input) {
+    return input_startup_world_build_menu(state_,page,input);
+}
+StartupWorldRuntimeError StartupWorldRuntimeSession::draw_build_menu(std::uint64_t page) {
+    return draw_startup_world_build_menu(state_,page);
+}
 StartupBuildResult StartupWorldRuntimeSession::select_build_menu(std::uint64_t page,
                                                                  int definition) {
     return select_startup_world_build_menu(state_, page, definition);
@@ -1304,6 +1310,12 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
         return {StartupWorldRuntimeError::invalid_initial_state, {}, {}, {}, {}};
     // 原30/67/88/96载荷在producer已完整安装；退休前拒绝损坏，不以清理掩盖半载荷。
     for(const auto &page:s.scripts.pages) {
+        if(page.kind==ref::WorldScriptPageKind::raw_page&&page.legacy_page==21&&
+           !valid_startup_world_build_menu(s,page))
+            return {StartupWorldRuntimeError::missing_source,{},ref::WorldSceneError::missing_consumer,{}, {}};
+        if(page.kind==ref::WorldScriptPageKind::raw_page&&page.legacy_page==74&&
+           !valid_startup_world_facility_page(s,page))
+            return {StartupWorldRuntimeError::missing_source,{},ref::WorldSceneError::missing_consumer,{}, {}};
         if(page.kind==ref::WorldScriptPageKind::raw_page&&page.legacy_page==89&&
            !valid_startup_world_monster_intro_page(s,page))
             return {StartupWorldRuntimeError::missing_source,{},ref::WorldSceneError::missing_consumer,{}, {}};
@@ -1376,6 +1388,7 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
             admitted.commerce_page_lists.erase(page.id);
             admitted.facility_page_neighbours.erase(page.id);
             admitted.build_page_catalogs.erase(page.id);
+            admitted.build_page_ui.erase(page.id);
             admitted.award_rankings.erase(page.id);
             admitted.award_announced.erase(page.id);
             admitted.award_termination_pending.erase(page.id);

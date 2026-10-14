@@ -23,7 +23,7 @@
 - [x] 3f744f3普通定义预览/严格挂起父商会、c982176装备店/植物、048b282募集详情已接；真实共享值/商品数/植物增量/入住资格、绘后热区及两Debug/Release检查通过，保存生命周期仅登记合同，玩家政策保持。见[B1](docs/stages/B1-playable-prototype.md#research-048b282-facility-details)。
 - [x] d6b546c税收90四键Init/整帧FIFO及正常怪物介绍89已接；两Debug失败夹具修正、Release受影响检查与最小窗口/真实新局介绍通过，见[B1](docs/stages/B1-playable-prototype.md#research-7fe54fa-tax-monsters)。
 - [x] 7fe54fa怪物92当前名单入口、共享统计/有序皮肤和common2金币袋已接，实际可见像素拾取/FIFO身份复核及0钟关闭通过；495来源/79适配、733素材，玩家存档政策保持。OS输入未验，见[本批记录](docs/stages/B1-playable-prototype.md#research-7fe54fa-tax-monsters)。
-- [ ] 99c095d后继已交建设纯游标/有序皮肤、标题联合输入事务/投影、纪录/平台/语言纯计划，下一批统一审定；完整目录Owner、纪录独立钟、共享手形及原91/80等Owner仍等正式交付，不接Steam服务或恢复二倍速。
+- [x] 正式9cee27a/5708375完整建设目录、Owner游标、整帧输入、21→74→21返回、EndDrawing后Draw交接及两处纪录静态皮肤已接；503来源/80适配、749素材，两Debug修后检查/Release受影响检查、两尺寸条件图与月107隔离冷载通过，见[B1](docs/stages/B1-playable-prototype.md#research-9cee27a-build-record)。纪录独立钟、共享手形及原91/80等Owner仍缺，不接Steam服务或恢复二倍速。
 - [x] 获批steam-month分段月96→97→98→99及三次独立冷载通过；每段6分钟/10000轮，原季度入口保持，失败观察档不作输入，见[B1](docs/stages/B1-playable-prototype.md#research-e22ed0a-human-ui)。
 
 - [x] 正式bb61d5f普通设施两页维护计划：获批四目标已导入，455来源/70适配保留，新增资源映射现有Steam属性图标；后续c6b1a5b无闭包增量，见[方案](docs/MILESTONES.md#research-bb61d5f-detail-plan)。
@@ -44,7 +44,8 @@
 - [x] 月87定向中止恢复营业、月88玩家存读、限时经营至月90四星及独立冷载；真实付费补员至9人后任务42胜利，现金145338G、两月预算31460G、布局50/50，见[经营状态](docs/stages/ACTIVE_VILLAGE_PLAN.md#campaign-fourth-star)。
 - [x] 月93有限季度存读通过：真实13次付费/4免费装备装配、任务43胜利、炖肉39营业及25目标位置全收入；月亏损仍保留，见[B1](docs/stages/B1-playable-prototype.md#four-star-consumption-20261012)。
 - [x] 月104→105真实300G移动博物馆及20G补两格道路，布局恢复50/50、原住宅/住户保留，保存和独立冷载通过，见[B1](docs/stages/B1-playable-prototype.md#research-ea9876a-commerce-top)。
-- [ ] 从有效月106前缀定向核任务47与现金流，取得任务道具、优先强化博物馆64并验首次营业（sales0/共享魅力10）；现金87945G/预算38820G，五星人气差224、最高月收入差30460。活动19独立延迟效果、活动7人物效果、职业/魔法和余项继续覆盖，再通关/继续/继承及全部可达定义，不注资或降低阈值。
+- [x] 月107任务47胜利、任务道具9/18实际强化博物馆64、玩家保存及独立冷载通过；50/50布局与既有住户保持，见[现状](docs/stages/ACTIVE_VILLAGE_PLAN.md)。
+- [ ] 从有效月107前缀定位博物馆首次营业：已有当前候选格/共享权重诊断，继续核人物实际决策的购物机会/优先抢占及到达收费；sales仍0/共享魅力14，五星人气差182、最高月收入差30460。活动19独立延迟效果、活动7人物效果、职业/魔法和余项继续覆盖，再通关/继续/继承及全部可达定义，不注资或降低阈值。
 
 ## 表现与研究边界
 

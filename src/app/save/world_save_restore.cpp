@@ -244,6 +244,7 @@ void clear_presentation(State &s) {
     s.facility_definition_page_bindings.clear();
     s.facility_page_neighbours.clear();
     s.build_page_catalogs.clear();
+    s.build_page_ui.clear();
     s.residence_page_candidates.clear();
     s.facility_upgrade_initialized.clear();
     s.facility_item_pages_initialized.clear();

@@ -5275,6 +5275,138 @@
       "sha256": "394deeb355f165d13d0500959f5c800b393389c2ab4e9ba39a581e73da2f918b",
       "bytes": 48,
       "purpose": "Published monster92 reward artwork; common2 image1 / two-frame SEB, distinct from common resources."
+    },
+    {
+      "file": "steam_platform/button_language.png",
+      "source": "research/dungeon_village_1/assets/steam-platform/button_language.png",
+      "purpose": "Published pure platform/title/cursor resource and source CPU oracle; no Steam service integration.",
+      "sha256": "cbf9c42202c030f31111b2dcd689532bc5181b1f99cb66502e3d857bf49506fc",
+      "bytes": 4918,
+      "width": 60,
+      "height": 60
+    },
+    {
+      "file": "steam_platform/button_language.seb",
+      "source": "research/dungeon_village_1/assets/steam-platform/button_language.seb",
+      "purpose": "Published pure platform/title/cursor resource and source CPU oracle; no Steam service integration.",
+      "sha256": "96ff3fb5bfa91b89260c1b2b4519404ec9188229089e519ff2e1f977ab5b006e",
+      "bytes": 28
+    },
+    {
+      "file": "steam_platform/buttons_ps4.png",
+      "source": "research/dungeon_village_1/assets/steam-platform/buttons_ps4.png",
+      "purpose": "Published pure platform/title/cursor resource and source CPU oracle; no Steam service integration.",
+      "sha256": "614fd43ce767070fc6d8ffb260be59ec325b561ee37207e088ad01d08f0ed4fa",
+      "bytes": 34075,
+      "width": 512,
+      "height": 512
+    },
+    {
+      "file": "steam_platform/buttons_ps4.seb",
+      "source": "research/dungeon_village_1/assets/steam-platform/buttons_ps4.seb",
+      "purpose": "Published pure platform/title/cursor resource and source CPU oracle; no Steam service integration.",
+      "sha256": "8e35fbf26f7e275b44fa8c745dfc7bd4cc25c3438340d62b7615875823a3047d",
+      "bytes": 888
+    },
+    {
+      "file": "steam_platform/buttons_switch.png",
+      "source": "research/dungeon_village_1/assets/steam-platform/buttons_switch.png",
+      "purpose": "Published pure platform/title/cursor resource and source CPU oracle; no Steam service integration.",
+      "sha256": "f45f6f945d2616dbe839073f633d7d203340a9dab7c93a623a3f310bd41b1042",
+      "bytes": 36972,
+      "width": 512,
+      "height": 512
+    },
+    {
+      "file": "steam_platform/buttons_switch.seb",
+      "source": "research/dungeon_village_1/assets/steam-platform/buttons_switch.seb",
+      "purpose": "Published pure platform/title/cursor resource and source CPU oracle; no Steam service integration.",
+      "sha256": "8f0cb6f6643fd64ab60a15a1fa9d0e78bb1d052eb79d67c368501cf976c6cc22",
+      "bytes": 888
+    },
+    {
+      "file": "steam_platform/buttons_xbox.png",
+      "source": "research/dungeon_village_1/assets/steam-platform/buttons_xbox.png",
+      "purpose": "Published pure platform/title/cursor resource and source CPU oracle; no Steam service integration.",
+      "sha256": "afe484fd2b0fdef17836336f0dbc7a2fa4d97cff3aed7b41b02fd3dcde420280",
+      "bytes": 29317,
+      "width": 512,
+      "height": 512
+    },
+    {
+      "file": "steam_platform/buttons_xbox.seb",
+      "source": "research/dungeon_village_1/assets/steam-platform/buttons_xbox.seb",
+      "purpose": "Published pure platform/title/cursor resource and source CPU oracle; no Steam service integration.",
+      "sha256": "5aa02e67d46a552740bc52b905f34b74f3c145fc00455dba6f2e33480eb0b445",
+      "bytes": 888
+    },
+    {
+      "file": "steam_platform/new.png",
+      "source": "research/dungeon_village_1/assets/steam-platform/new.png",
+      "purpose": "Published pure platform/title/cursor resource and source CPU oracle; no Steam service integration.",
+      "sha256": "d1291b6b6b96702188b97b6a0710ce9f8ab4b9db519414b48b2e0b4bc0243611",
+      "bytes": 392,
+      "width": 28,
+      "height": 22
+    },
+    {
+      "file": "steam_platform/new.seb",
+      "source": "research/dungeon_village_1/assets/steam-platform/new.seb",
+      "purpose": "Published pure platform/title/cursor resource and source CPU oracle; no Steam service integration.",
+      "sha256": "5ad594334a02ab50c7dbc6482fd6239c6673b8b666bdbc852571d9138f15fb34",
+      "bytes": 88
+    },
+    {
+      "file": "steam_platform/screen_cursor.png",
+      "source": "research/dungeon_village_1/assets/steam-platform/screen_cursor.png",
+      "purpose": "Published pure platform/title/cursor resource and source CPU oracle; no Steam service integration.",
+      "sha256": "53e90fe9f7aeb41c1b7936acbe431bf0bdf8b9c7e86fbbc6b2ed2b52e23c4e02",
+      "bytes": 4905,
+      "width": 311,
+      "height": 236
+    },
+    {
+      "file": "steam_platform/screen_cursor.seb",
+      "source": "research/dungeon_village_1/assets/steam-platform/screen_cursor.seb",
+      "purpose": "Published pure platform/title/cursor resource and source CPU oracle; no Steam service integration.",
+      "sha256": "e4bc43d6569ce1efe5e99da914585b6943db52f4cdc31399d474184dbf17ec2a",
+      "bytes": 180
+    },
+    {
+      "file": "steam_platform/right_click.png",
+      "source": "research/dungeon_village_1/assets/steam-platform/right_click.png",
+      "purpose": "Published no-controller right-click button whole image; distinct from controller fallback SEB.",
+      "sha256": "2eafaaf3de588a451c3155103c6e83cdb2fd806a56e1d73db910859d017846e2",
+      "bytes": 3548,
+      "width": 128,
+      "height": 128
+    },
+    {
+      "file": "steam_common/tenant_resident.png",
+      "source": "research/dungeon_village_1/assets/steam-build-common/original/common/tenant_resident.png",
+      "purpose": "Steam raw21 resident mark image98; distinct Steam pixels, shared original common/tenant_resident.seb81 remains unchanged.",
+      "sha256": "1a02c85d1b51db3da5789a6469d60bcf72a44de346f5ec251e9bb56169adb7c7",
+      "bytes": 512,
+      "width": 50,
+      "height": 15
+    },
+    {
+      "file": "steam_title/title_logo.png",
+      "source": "research/dungeon_village_1/assets/steam-startup/original/title/title_logo.png",
+      "purpose": "Published Steam title backdrop whole-image Logo and source CPU oracle; separate from original APK artwork.",
+      "sha256": "325bfee44b0bec4f9f77e0a87acc9e6fef595f0535b882db425d0d5d10b20b02",
+      "bytes": 33672,
+      "width": 236,
+      "height": 115
+    },
+    {
+      "file": "steam_title/English.lproj/title_logo.png",
+      "source": "research/dungeon_village_1/assets/steam-startup/original/title/English.lproj/title_logo.png",
+      "purpose": "Published Steam title backdrop whole-image Logo and source CPU oracle; separate from original APK artwork.",
+      "sha256": "54d42e3863b2606143320281210c5ec9e6bf89af50217d0c58bb30deba0a79f4",
+      "bytes": 34283,
+      "width": 236,
+      "height": 132
     }
   ]
 }

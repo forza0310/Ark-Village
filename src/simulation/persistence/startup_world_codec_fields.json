@@ -177,6 +177,19 @@
       ]
     },
     {
+      "name": "dungeon_village_prototype::StartupWorldBuildPageUi",
+      "fields": [
+        {
+          "name": "selection",
+          "type": "int"
+        },
+        {
+          "name": "scroll",
+          "type": "int"
+        }
+      ]
+    },
+    {
       "name": "dungeon_village_prototype::StartupWorldFocusActor",
       "fields": [
         {
@@ -910,6 +923,10 @@
         {
           "name": "build_page_catalogs",
           "type": "std::map<std::uint64_t, std::array<std::vector<int>, 3>>"
+        },
+        {
+          "name": "build_page_ui",
+          "type": "std::map<std::uint64_t, StartupWorldBuildPageUi>"
         },
         {
           "name": "residence_page_candidates",

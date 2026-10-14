@@ -4,6 +4,7 @@
 #include "ark/assets/table.hpp"
 #include "support/world_fixture.hpp"
 #include "steam_facility_skin_example.hpp"
+#include "ark/simulation/presentation/steam_build_menu_skin.hpp"
 int check_steam_village_activity_skins(const std::filesystem::path &);
 int check_steam_town_progress_skin(const std::filesystem::path &);
 int check_steam_magic_pot_skins(const std::filesystem::path &);
@@ -29,6 +30,196 @@ void check(bool condition, const char *message) {
     ++checks;
     if (!condition)
         throw std::runtime_error(message);
+}
+void build_menu_skin(const std::filesystem::path &root) {
+    // Product packages retain original common resources and the separately published
+    // Steam resident image. Resource identities and source assertions stay unchanged.
+    const auto packaged=[&](const char *published) {
+        const std::filesystem::path file(published);
+        if(file.generic_string().rfind("original/",0)==0)
+            return root/file.lexically_relative("original");
+        if(file.generic_string()=="steam-build-common/original/common/tenant_resident.png")
+            return root/"steam_common"/file.filename();
+        throw std::invalid_argument("Unmapped construction resource fixture");
+    };
+    SteamBuildMenuSkinInput in;
+    in.catalogs[0]={-1,-2,28,29,65};in.cursor={0,2,0};in.origin={33,56};
+    in.category_names={"设备","一般","饮食"};in.category_new={true,false,false};
+    in.funds=200;in.finger_frame=3;in.frame2=15;in.arrow_selected={true,false};
+    for(const int id:in.catalogs[0]) {
+        SteamBuildMenuRow row;row.definition=id;row.name_width=16;
+        if(id<0) { row.name=id==-1?"撤除":"移动";row.quote=id==-1?0:300; }
+        else {
+            const auto &d=startup_world_rules().facilities.at(static_cast<std::size_t>(id));
+            row.mapchip=d.display_id;row.kind=d.kind;row.name=d.name;row.quote=123;
+        }
+        row.price_text=std::to_string(row.quote)+"Ｇ";in.visible_rows.push_back(row);
+    }
+    const auto plan=steam_build_menu_skin(in);
+    check(plan && plan->soft_labels==std::array<int,2>{7,2},"build21 valid ordinary selection exposes source preview label7");
+    const auto *first=std::get_if<SteamStartupFrameDraw>(&plan->operations.front());
+    const auto *outer=first?std::get_if<StartupSkinRect>(first):nullptr;
+    check(outer&&outer->rect==std::array<int,4>{33,56,176,211}&&outer->rgb==std::array<int,3>{79,72,48}&&outer->outline,
+          "build21 source outer DrawRect retains inclusive dimensions and independent colors");
+    int clips{},clears{},mapchips{},rows{},categories{},arrows{};bool clip_open{};
+    bool saw_move{},saw_bad_price{},saw_plain_anchor{},saw_two_piece_anchor{};
+    for(const auto &op:plan->operations) {
+        if(const auto *clip=std::get_if<SteamBuildMenuClip>(&op)) {
+            if(clip->kind==SteamBuildMenuClipKind::set) {
+                check(!clip_open,"row SetClip occurs after prior ClearClip");clip_open=true;++clips;
+            } else {
+                check(clip_open,"row ClearClip consumes the preceding source SetClip");clip_open=false;++clears;
+            }
+        }
+        if(const auto *part=std::get_if<SteamFacilityMapchipDraw>(&op)) {
+            check(clip_open,"ordinary building parts remain inside original row SetClip");
+            ++mapchips;
+            saw_plain_anchor|=part->position==std::array<int,2>{45,165}&&part->frame==0;
+            saw_two_piece_anchor|=part->position==std::array<int,2>{75,187}&&part->frame==0;
+        }
+        if(const auto *im=std::get_if<SteamBuildMenuImage>(&op)) {
+            if(im->asset==SteamBuildMenuAsset::movement||im->asset==SteamBuildMenuAsset::demolition||
+               im->asset==SteamBuildMenuAsset::resident||
+               (im->asset==SteamBuildMenuAsset::new_tag&&im->position[1]>=in.origin[1]+48))
+                check(clip_open,"row special images and overlays are emitted before corresponding ClearClip");
+            saw_move|=im->asset==SteamBuildMenuAsset::movement&&im->position==std::array<int,2>{44,118};
+        }
+        if(const auto *t=std::get_if<SteamHumanOverviewText>(&op)) {
+            if(std::any_of(in.visible_rows.begin(),in.visible_rows.end(),[&](const auto &row){
+                return t->value==row.name||t->value==row.price_text;}))
+                check(!clip_open,"row names and prices occur only after row ClearClip");
+            saw_bad_price|=t->value=="300Ｇ"&&t->rectangle==std::array<int,4>{197,136,0,0}&&
+                t->rgb==std::array<int,3>{210,0,0}&&t->anchor==4&&!t->layout;
+        }
+        if(const auto *touch=std::get_if<SteamBuildMenuTouch>(&op)) {
+            if(touch->touch.component==11) {
+                check(touch->touch.value==(0x20000|rows)&&touch->touch.option==16&&
+                          touch->margin==std::array<int,4>{10,0,0,0},"build21 row touches preserve absolute selection and marker16 left-only margin");
+                ++rows;
+            } else if(touch->touch.component==3) {
+                check(touch->touch.rectangle==std::array<int,4>{33+57*categories,58,60,20}&&
+                          touch->margin==std::array<int,4>{0,0,30,0},"build21 category touch uses Steam60-wide base and original top margin");
+                ++categories;
+            }
+        }
+        if(const auto *arrow=std::get_if<SteamBuildMenuArrowTouch>(&op)) {
+            check(arrow->position==std::array<int,2>{arrows?210:27,65}&&arrow->frame==(arrows?0:3)&&
+                      arrow->value==(arrows?18:16)&&arrow->selected==!bool(arrows),
+                  "build21 arrow bounds preserve frame2 drift, absolute x and independent CheckTouch result");
+            ++arrows;
+        }
+    }
+    check(clips==5&&clears==5&&mapchips==7&&rows==5&&categories==3&&arrows==2&&
+              saw_move&&saw_bad_price&&saw_plain_anchor&&saw_two_piece_anchor&&!clip_open,
+          "build21 source clip/special image/text order and ordinary pattern anchors exclude Mapchip2 centering");
+    const auto *finger=std::get_if<SteamFacilityImage>(&plan->operations.back());
+    check(finger&&finger->asset==SteamFacilityAsset::finger&&finger->frame==3&&
+              finger->position==std::array<int,2>{101,163},"build21 draws public current finger frame last rather than deriving it from frame2");
+    for(const auto asset:{SteamBuildMenuAsset::demolition,SteamBuildMenuAsset::movement,
+                         SteamBuildMenuAsset::resident,SteamBuildMenuAsset::new_tag}) {
+        const auto resource=steam_build_menu_resource(asset);
+        check(resource&&std::filesystem::is_regular_file(packaged(resource->published_image)),
+              "build21 dedicated resource requests point only to existing published image files");
+        if(resource->published_sprite)check(std::filesystem::is_regular_file(packaged(resource->published_sprite)),
+              "build21 resident sprite keeps independently published SEB alias");
+    }
+    auto shorter=in;shorter.catalogs[0]={-2};shorter.visible_rows={in.visible_rows[1]};shorter.cursor={0,4,0};
+    const auto blanks=steam_build_menu_skin(shorter);
+    check(blanks&&blanks->soft_labels==std::array<int,2>{0,2},"selectable fifth empty row has no fabricated preview button");
+    int empty{};
+    for(const auto &op:blanks->operations)if(const auto *t=std::get_if<SteamHumanOverviewText>(&op))
+        if(t->value=="---") { ++empty;check(t->rgb==std::array<int,3>{210,0,0},"empty row inherits prior insufficient-price color"); }
+    check(empty==4,"short category renders every registered empty row");
+    shorter.catalogs[0].clear();shorter.visible_rows.clear();shorter.cursor={0,0,0};
+    const auto no_rows=steam_build_menu_skin(shorter);empty=0;
+    check(no_rows.has_value(),"entire empty category remains a valid five-row skin");
+    for(const auto &op:no_rows->operations)if(const auto *t=std::get_if<SteamHumanOverviewText>(&op))
+        if(t->value=="---") { ++empty;check(t->rgb==std::array<int,3>{5,184,2},"first empty row retains preceding divider color"); }
+    check(empty==5,"fully empty category preserves five visible placeholders");
+    // 源通用scroll在越尾时使用h-top，而非h-(top-y)；此条件不夹原独立首行。
+    shorter.cursor={0,4,4};
+    const auto null_thumb=steam_build_menu_skin(shorter);int dark{},thumb{};bool original12{},original25{};
+    check(null_thumb.has_value(),"legal fifth empty-row cursor with independent first survives source null-thumb condition");
+    for(const auto &op:null_thumb->operations) {
+        if(const auto *f=std::get_if<SteamStartupFrameDraw>(&op))if(const auto *r=std::get_if<StartupSkinRect>(f)) {
+            dark+=r->rgb==std::array<int,3>{7,5,78};
+            thumb+=r->rgb==std::array<int,3>{48,160,255}||r->rgb==std::array<int,3>{246,129,0};
+        }
+        if(const auto *t=std::get_if<SteamBuildMenuTouch>(&op)) {
+            original12|=t->touch.component==12&&t->touch.rectangle==std::array<int,4>{203,77,3,189}&&
+                t->arguments==std::optional<std::array<int,3>>(std::array<int,3>{0,5,0x20000})&&
+                t->flags==0&&!t->drag_grid_y;
+            original25|=t->touch.component==25&&t->touch.rectangle==std::array<int,4>{203,77,3,189}&&t->touch.option==4;
+        }
+    }
+    check(dark==1&&thumb==0&&original12&&original25,
+          "null scroll thumb preserves dark track and original12 then unconditional25 registration");
+    auto dragging=in;dragging.catalogs[0].push_back(0);dragging.scroll_first_touch=true;
+    const auto drag_plan=steam_build_menu_skin(dragging);bool expanded_drag{},orange{};
+    check(drag_plan.has_value(),"long construction list preserves actual firstTouch presentation state");
+    for(const auto &op:drag_plan->operations) {
+        if(const auto *t=std::get_if<SteamBuildMenuTouch>(&op))if(t->touch.component==12)
+            expanded_drag=t->touch.rectangle==std::array<int,4>{173,-1000,125,2000}&&t->flags==0x24&&
+                t->drag_grid_y==std::optional<float>(32.F)&&t->margin==std::array<int,4>{3,20,0,0};
+        if(const auto *f=std::get_if<SteamStartupFrameDraw>(&op))if(const auto *r=std::get_if<StartupSkinRect>(f))
+            orange|=r->rect==std::array<int,4>{202,77,5,158}&&r->rgb==std::array<int,3>{246,129,0};
+    }
+    check(expanded_drag&&orange,"active long-list scroll expands source12 touch with actual0x24 flags/float grid and orange thumb");
+    auto negative=in;negative.visible_rows[2].quote=-123;negative.visible_rows[2].price_text="-123Ｇ";
+    negative.funds=0;const auto signed_price=steam_build_menu_skin(negative);bool negative_text{};
+    check(signed_price.has_value(),"signed source quote is retained as explicit YEN result rather than rewritten to free");
+    for(const auto &op:signed_price->operations)if(const auto *t=std::get_if<SteamHumanOverviewText>(&op))
+        negative_text|=t->value=="-123Ｇ"&&t->rgb==std::array<int,3>{99,101,112};
+    check(negative_text,"negative quote compares nonzero signed amount with funds and preserves supplied money text");
+    auto home=in;home.catalogs[0]={25};home.visible_rows.clear();home.cursor={0,0,0};
+    const auto &d=startup_world_rules().facilities.at(25);
+    home.visible_rows.push_back({25,d.display_id,d.kind,2,100,false,false,d.name,"100Ｇ",16});
+    const auto home_plan=steam_build_menu_skin(home);bool house_count{};
+    check(home_plan&&home_plan->soft_labels==std::array<int,2>{0,2},"home preview exclusion follows type12 rather than availability of skin template");
+    clip_open=false;
+    for(const auto &op:home_plan->operations) {
+        if(const auto *clip=std::get_if<SteamBuildMenuClip>(&op))clip_open=clip->kind==SteamBuildMenuClipKind::set;
+        if(const auto *n=std::get_if<SteamFacilityNumber>(&op)) {
+            check(clip_open,"home multiValue remains in building thumbnail clip");
+            house_count|=n->kind==SteamFacilityNumberKind::multi_value&&n->asset==SteamFacilityAsset::number05&&
+                n->value==2&&n->position==std::array<int,2>{108,103};
+        }
+    }
+    check(house_count,"home H is shown by original multiValue at fixed anchor inside row clip");
+    const auto &definitions=startup_world_rules().facilities;
+    const auto recruit=std::find_if(definitions.begin(),definitions.end(),[](const auto &source){return source.kind==13;});
+    check(recruit!=definitions.end(),"original definitions supply actual recruitment building type13");
+    auto resident=in;resident.catalogs[0]={recruit->id};resident.cursor={0,0,0};resident.visible_rows={
+        {recruit->id,recruit->display_id,recruit->kind,0,0,false,true,recruit->name,"0Ｇ",16}};
+    const auto resident_plan=steam_build_menu_skin(resident);bool mark{};clip_open=false;
+    check(resident_plan&&resident_plan->soft_labels==std::array<int,2>{7,2},"type13 definition retains preview label even when resident decoration appears");
+    for(const auto &op:resident_plan->operations) {
+        if(const auto *clip=std::get_if<SteamBuildMenuClip>(&op))clip_open=clip->kind==SteamBuildMenuClipKind::set;
+        if(const auto *im=std::get_if<SteamBuildMenuImage>(&op))if(im->asset==SteamBuildMenuAsset::resident) {
+            check(clip_open,"resident frame0 is inside thumbnail clip rather than covering later name/price");
+            mark|=im->position==std::array<int,2>{75,96}&&im->frame==0;
+        }
+    }
+    check(mark,"resident predicate yields exact source SEB81 anchor and retains resource offset for consumer");
+    auto japanese=in;japanese.japanese=true;const auto jp=steam_build_menu_skin(japanese);bool jp_name{};
+    check(jp.has_value(),"Japanese construction naming retains source direct-string path");
+    for(const auto &op:jp->operations)if(const auto *t=std::get_if<SteamHumanOverviewText>(&op))
+        jp_name|=t->value==in.visible_rows[2].name&&t->rectangle==std::array<int,4>{119,157,0,0}&&
+            t->anchor==0x11&&t->font_size==0&&!t->layout;
+    check(jp_name,"Japanese name uses actual default0x11 anchor without non-Japanese size10 layout");
+    for(int fault=0;fault<9;++fault) {
+        auto bad=in;
+        if(fault==0)bad.cursor.selection=5;
+        if(fault==1)bad.visible_rows.pop_back();
+        if(fault==2)bad.visible_rows[2].name_width.reset();
+        if(fault==3)bad.visible_rows[2].mapchip=84;
+        if(fault==4)bad.catalogs[1].push_back(28);
+        if(fault==5)bad.visible_rows[0].quote=1;
+        if(fault==6)bad.finger_frame=6;
+        if(fault==7)bad.frame2=std::numeric_limits<int>::max();
+        if(fault==8)bad.origin[0]=std::numeric_limits<int>::max();
+        check(!steam_build_menu_skin(bad),"build21 rejects bad identity/selection/metadata/measurements/frames without filling unknown values");
+    }
 }
 std::vector<std::uint8_t> bytes(const std::filesystem::path &path) {
     std::ifstream stream(path, std::ios::binary);
@@ -937,6 +1128,7 @@ int main(int argc, char **argv) {
         cpu_equipment_and_growth(argv[1]);
         cpu_attribute_gains(argv[1]);
         building_draw_queries();
+        build_menu_skin(argv[1]);
         cpu_building_thumbnails(argv[1]);
         ordinary_item_icons(argv[1]);
         facility_detail_icons(argv[1]);

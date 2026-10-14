@@ -2,6 +2,7 @@
 
 // Desktop-only slot selection/confirmation. The worker owns file I/O and the world freeze.
 #include "../ui/common/layout.hpp"
+#include "../ui/system/world_startup.hpp"
 #include "ark/app/session/world_session.hpp"
 
 namespace ark::desktop {
@@ -35,6 +36,7 @@ class WorldSaveMenu {
     int selected_{};
     bool records_open_{};
     int record_page_{};
+    mutable std::optional<ui::WorldRecordsLayout> record_layout_;
     bool load_selected_{};
     bool opened_{};
     std::optional<std::uint64_t> source_page_;

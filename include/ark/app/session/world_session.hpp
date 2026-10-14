@@ -88,7 +88,9 @@ enum class WorldCommandKind {
     task_page_input,
     task_tracking_input,
     commerce_top_input,
-    commerce_facility_input
+    commerce_facility_input,
+    build_menu_input,
+    build_menu_draw
 };
 enum class WorldCommandOutcome { applied, rejected };
 struct WorldCommandResult {
@@ -111,6 +113,9 @@ struct WorldFrame {
     std::chrono::steady_clock::time_point published;
     double interval_seconds{.047};
     std::uint64_t revision{};
+    // A source update/input changes this token; acknowledging a painted plan does not.
+    // It is session handoff metadata, never part of the world or player save.
+    std::uint64_t presentation_epoch{1};
     std::uint64_t last_command_serial{};
     // Derived visibility of the real source raw3 page, never an independent update gate.
     bool main_menu_open{};
@@ -139,6 +144,7 @@ struct WorldCommand {
     std::uint64_t generation{};
     WorldCommandKind kind{WorldCommandKind::set_paused};
     std::uint64_t page{};
+    std::uint64_t presentation_epoch{}; // Observed token for a completed source-bound Draw.
     int report_phase{};
     simulation::rules::WorldAwardAction award_action{simulation::rules::WorldAwardAction::update};
     simulation::StartupWorldTaskAction task_action{simulation::StartupWorldTaskAction::confirm};
@@ -154,6 +160,7 @@ struct WorldCommand {
     simulation::StartupCommerceTopInput
         commerce_top_input; // One source navigation frame; no payment.
     simulation::StartupCommerceFacilityInput commerce_facility_input;
+    simulation::StartupBuildMenuInput build_menu_input;
     simulation::StartupInformationInput information_input;
     simulation::StartupWorldMenuInput menu_input;
     simulation::StartupManualInput manual_input;
@@ -226,6 +233,11 @@ class WorldSession {
     std::uint64_t open_menu_build();
     std::uint64_t open_build_menu();
     std::uint64_t select_build_menu(std::uint64_t page, int definition);
+    std::uint64_t input_build_menu(std::uint64_t page,
+                                   const simulation::StartupBuildMenuInput &input);
+    // Call after the observed plan has actually been presented. Stale/duplicate facts reject.
+    std::uint64_t draw_build_menu(std::uint64_t page, std::uint64_t presentation_epoch,
+                                  std::uint64_t generation = 0);
     std::uint64_t cancel_build_menu(std::uint64_t page);
     // Bind placement to the selection observed by the UI; an old click cannot build a new item.
     std::uint64_t confirm_build(int expected_definition, simulation::rules::Position anchor,

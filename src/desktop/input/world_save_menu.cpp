@@ -171,6 +171,7 @@ void WorldSaveMenu::observe(const app::WorldFrame &frame) {
         source_page_ = frame.save_source_page;
         confirmation_ = Confirmation::none;
         records_open_ = false;
+        record_layout_.reset();
         if (frame.save_source_page)
             load_selected_ = false;
         feedback_.clear();
@@ -193,19 +194,27 @@ void WorldSaveMenu::input(const app::WorldFrame &frame, Extent extent,
         return;
     const auto layout = world_save_menu_layout(extent);
     if (records_open_) {
-        if (input.escape || hit(input, layout.back))
-            records_open_ = false;
-        else if (input.left || input.right ||
-                 (input.click &&
-                  CheckCollisionPointRec(*input.click, {layout.panel.x + 8, layout.panel.y + 24,
-                                                        layout.panel.width - 16, 24})))
+        const auto *painted = record_layout_ && record_layout_->page == record_page_ &&
+                                      record_layout_->extent.width == extent.width &&
+                                      record_layout_->extent.height == extent.height
+                                  ? &*record_layout_
+                                  : nullptr;
+        const auto action =
+            ui::world_records_input(painted, input.click, input.left, input.right, input.escape);
+        if (action == ui::WorldRecordsAction::turn) {
             record_page_ = 1 - record_page_;
+            record_layout_.reset();
+        } else if (action == ui::WorldRecordsAction::back) {
+            records_open_ = false;
+            record_layout_.reset();
+        }
         return;
     }
     if (!frame.save_source_page && confirmation_ == Confirmation::none &&
         hit(input, layout.records)) {
         records_open_ = true;
         record_page_ = 0;
+        record_layout_.reset();
         return;
     }
     if (confirmation_ != Confirmation::none) {
@@ -259,8 +268,11 @@ void WorldSaveMenu::draw(const app::WorldFrame &frame, Extent extent, const ui::
         return;
     const auto layout = world_save_menu_layout(extent);
     if (records_open_) {
-        ui::draw_world_records(frame.system.records, record_page_, skin, layout.panel);
-        skin.button(layout.back, "返回");
+        const auto paint =
+            ui::prepare_world_records(frame.system.records, record_page_, extent, skin);
+        ui::draw_world_records(paint, skin);
+        skin.button(paint.layout.back, "返回");
+        record_layout_ = paint.layout;
         return;
     }
     skin.window(layout.panel, frame.save_source_page ? "保存游戏" : "保存 / 读取");

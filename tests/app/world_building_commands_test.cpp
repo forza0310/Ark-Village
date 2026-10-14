@@ -92,6 +92,123 @@ rules::Position one_cell_site(const app::WorldState &state) {
 }
 void building_command_transactions() {
     using Outcome = app::WorldCommandOutcome;
+    {
+        // Transport owns observation tokens and FIFO ordering; the frozen building suite
+        // owns cursor arithmetic and Draw/Update clock formulas.
+        auto painted = initial(true);
+        painted.scene.framework_paused = false;
+        check(sim::open_startup_world_build_menu(painted) == sim::StartupWorldRuntimeError::none,
+              "Presentation fixture opens the complete directory through its real producer");
+        const auto page = task_top(painted).id;
+        const auto initialized = sim::update_startup_world_build_menu(painted, page);
+        check(bool(initialized), "Source Update admits the new directory before any Draw");
+        painted = *initialized;
+        const auto funds = painted.scene.world.world.ai.accounting.funds();
+        const auto draws = painted.scene.random.draws();
+        app::WorldSession presentation(painted);
+        const auto first = presentation.frame();
+        const auto accepted =
+            presentation.draw_build_menu(page, first->presentation_epoch, first->generation);
+        const auto duplicate =
+            presentation.draw_build_menu(page, first->presentation_epoch, first->generation);
+        const auto wrong_generation =
+            presentation.draw_build_menu(page, first->presentation_epoch, first->generation + 1);
+        const auto wrong_page =
+            presentation.draw_build_menu(page + 1, first->presentation_epoch, first->generation);
+        const auto done = input_frame(presentation, presentation.set_paused(true));
+        check(!done->failed && input_result(*done, accepted).outcome == Outcome::applied &&
+                  input_result(*done, duplicate).outcome == Outcome::rejected &&
+                  input_result(*done, wrong_generation).outcome == Outcome::rejected &&
+                  input_result(*done, wrong_page).outcome == Outcome::rejected,
+              "Only one completed paint may commit for the observed page/generation/token");
+        check(done->presentation_epoch ==
+                  first->presentation_epoch + (done->outer_updates - first->outer_updates) + 1,
+              "Completed Draw adds no presentation token; only source updates and pause do");
+        const auto paused =
+            presentation.draw_build_menu(page, done->presentation_epoch, done->generation);
+        const auto rejected = input_frame(presentation, paused);
+        check(!rejected->failed && input_result(*rejected, paused).outcome == Outcome::rejected &&
+                  rejected->presentation_epoch == done->presentation_epoch &&
+                  rejected->state == done->state &&
+                  rejected->state->scene.world.world.ai.accounting.funds() == funds &&
+                  rejected->state->scene.random.draws() == draws,
+              "Paused/rejected Draw leaves immutable Owner, funds, randomness and token intact");
+        const auto stale =
+            presentation.draw_build_menu(page, first->presentation_epoch, first->generation);
+        const auto late = input_frame(presentation, stale);
+        check(input_result(*late, stale).outcome == Outcome::rejected,
+              "An older observed paint cannot cross a source input publication");
+        presentation.stop();
+    }
+    {
+        auto directory = initial();
+        check(sim::open_startup_world_build_menu(directory) == sim::StartupWorldRuntimeError::none,
+              "FIFO cursor fixture uses the complete source directory");
+        const auto page = task_top(directory).id;
+        directory = *sim::update_startup_world_build_menu(directory, page);
+        while (directory.page_counters.at(page) < 3)
+            check(sim::draw_startup_world_build_menu(directory, page) ==
+                      sim::StartupWorldRuntimeError::none,
+                  "Actual source Draw admits cursor input without assigning a clock");
+        auto expected = directory;
+        sim::StartupBuildMenuInput combined;
+        combined.page = 2;
+        combined.selection = 4; // The fifth empty row is a valid selection, never a definition.
+        combined.scroll = 0;
+        combined.directions = {true, true, true, true};
+        check(sim::input_startup_world_build_menu(expected, page, combined).error ==
+                  sim::StartupWorldRuntimeError::none,
+              "Sequential source consumes touch values then the entire direction frame");
+        app::WorldSession cursor_session(directory);
+        const auto submitted = cursor_session.input_build_menu(page, combined);
+        sim::StartupBuildMenuInput malformed;
+        malformed.selection = std::numeric_limits<int>::max();
+        const auto invalid = cursor_session.input_build_menu(page, malformed);
+        const auto frame = input_frame(cursor_session, cursor_session.set_paused(true));
+        const auto cursor = sim::startup_world_build_menu_cursor(*frame->state, page);
+        const auto oracle = sim::startup_world_build_menu_cursor(expected, page);
+        check(
+            !frame->failed && cursor && oracle && cursor->page == oracle->page &&
+                cursor->selection == oracle->selection && cursor->scroll == oracle->scroll &&
+                input_result(*frame, submitted).outcome == Outcome::applied &&
+                input_result(*frame, invalid).outcome == Outcome::rejected &&
+                frame->state->scene.world.world.ai.accounting.funds() ==
+                    expected.scene.world.world.ai.accounting.funds() &&
+                frame->state->scene.random.draws() == expected.scene.random.draws(),
+            "FIFO preserves one source cursor transaction and rejects malformed input atomically");
+        cursor_session.stop();
+    }
+    {
+        auto preview = initial();
+        check(sim::open_startup_world_build_menu(preview) == sim::StartupWorldRuntimeError::none,
+              "Covered-parent fixture opens21 through the source producer");
+        const auto parent = task_top(preview).id;
+        preview = *sim::update_startup_world_build_menu(preview, parent);
+        while (preview.page_counters.at(parent) < 3)
+            check(sim::draw_startup_world_build_menu(preview, parent) ==
+                      sim::StartupWorldRuntimeError::none,
+                  "Source Draw admits the preview action");
+        sim::StartupBuildMenuInput details;
+        details.page = 1;
+        details.selection = 1;
+        details.details = true;
+        check(sim::input_startup_world_build_menu(preview, parent, details).error ==
+                      sim::StartupWorldRuntimeError::none &&
+                  task_top(preview).legacy_page == 74,
+              "Source detail input suspends the real parent21 under74");
+        app::WorldSession covered(preview);
+        const auto observed = covered.frame();
+        const auto drawn =
+            covered.draw_build_menu(parent, observed->presentation_epoch, observed->generation);
+        const auto frame = input_frame(covered, covered.set_paused(true));
+        check(!frame->failed && input_result(*frame, drawn).outcome == Outcome::applied &&
+                  task_top(*frame->state).legacy_page == 74 &&
+                  frame->state->page_counters.at(parent) == 3 &&
+                  frame->state->build_page_ui.at(parent).selection ==
+                      preview.build_page_ui.at(parent).selection,
+              "Actual covered-parent Draw commits without retiring child, selection or parent");
+        covered.stop();
+    }
     auto state = initial(true);
     app::WorldSession session(state);
     const auto blocked_open = input_frame(session, session.open_main_menu());

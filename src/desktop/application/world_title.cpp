@@ -55,8 +55,11 @@ void draw(const WorldTitleSelection &selection, const WorldTitleLayout &layout,
         return;
     }
     if (selection.page == WorldTitlePage::records) {
-        ui::draw_world_records(system.records, selection.record_page, skin, layout.panel);
-        skin.button(layout.back, "返回");
+        const auto paint = ui::prepare_world_records(
+            system.records, selection.record_page,
+            {int(layout.viewport.width), int(layout.viewport.height)}, skin);
+        ui::draw_world_records(paint, skin);
+        skin.button(paint.layout.back, "返回");
         return;
     }
     if (selection.page == WorldTitlePage::configure ||
@@ -175,8 +178,9 @@ WorldTitleLayout world_title_layout(Extent extent) {
     for (int n = 0; n < 4; ++n)
         out.fields[n] = {out.panel.x + 100, out.panel.y + 105 + n * 20.F, 108, 19};
     out.fields[3] = {out.panel.x + 75, out.panel.y + 165, 75, 19};
-    out.previous = {out.panel.x + 8, out.panel.y + 24, 24, 24};
-    out.next = {out.panel.x + 190, out.panel.y + 24, 24, 24};
+    // Record controls are installed from the real arrow helper when that page is painted.
+    out.previous = {};
+    out.next = {};
     out.accept = {out.panel.x + 130, out.panel.y + 125, 68, 20};
     return out;
 }
@@ -184,6 +188,22 @@ std::optional<WorldTitleAction>
 world_title_input(WorldTitleSelection &selection, const WorldTitleLayout &layout,
                   const std::array<app::WorldSaveSlotInfo, 2> &slots,
                   const WorldTitleInput &input) {
+    if (selection.page == WorldTitlePage::records) {
+        ui::WorldRecordsLayout record_layout;
+        record_layout.extent = {int(layout.viewport.width), int(layout.viewport.height)};
+        record_layout.page = selection.record_page;
+        record_layout.arrows = {layout.previous, layout.next};
+        record_layout.back = layout.back;
+        const auto action = ui::world_records_input(&record_layout, input.click, input.left,
+                                                    input.right, input.back);
+        if (action == ui::WorldRecordsAction::turn)
+            selection.record_page = 1 - selection.record_page;
+        else if (action == ui::WorldRecordsAction::back) {
+            selection.page = WorldTitlePage::title;
+            selection.feedback.clear();
+        }
+        return {};
+    }
     const bool back =
         input.back || (selection.page != WorldTitlePage::title && hit(input, layout.back));
     if (back) {
@@ -220,7 +240,9 @@ world_title_input(WorldTitleSelection &selection, const WorldTitleLayout &layout
         return {};
     }
     if (selection.page == WorldTitlePage::title) {
-        if (input.up || input.down)
+        if (input.up)
+            selection.title_selection = 1 - selection.title_selection;
+        if (input.down)
             selection.title_selection = 1 - selection.title_selection;
         if (hit(input, layout.start))
             selection.title_selection = 0;
@@ -229,11 +251,6 @@ world_title_input(WorldTitleSelection &selection, const WorldTitleLayout &layout
         if (input.confirm || hit(input, layout.start) || hit(input, layout.records))
             selection.page =
                 selection.title_selection == 0 ? WorldTitlePage::slots : WorldTitlePage::records;
-        return {};
-    }
-    if (selection.page == WorldTitlePage::records) {
-        if (input.left || input.right || hit(input, layout.previous) || hit(input, layout.next))
-            selection.record_page = 1 - selection.record_page;
         return {};
     }
     if (selection.page == WorldTitlePage::overwrite) {
@@ -418,6 +435,13 @@ bool run_world_title(const app::LaunchOptions &options, const std::filesystem::p
             layout.panel = paint.layout.panel;
             layout.fields = paint.layout.fields;
             layout.sex_arrows = paint.layout.arrows;
+        }
+        if (selection.page == WorldTitlePage::records) {
+            const auto paint =
+                ui::prepare_world_records(system.records, selection.record_page, extent, skin);
+            layout.previous = paint.layout.arrows[0];
+            layout.next = paint.layout.arrows[1];
+            layout.back = paint.layout.back;
         }
         const auto destination = viewport(GetScreenWidth(), GetScreenHeight(), extent);
         canvas.resize({GetRenderWidth(), GetRenderHeight()});

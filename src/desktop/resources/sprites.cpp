@@ -13,7 +13,7 @@ namespace {
 // Explicit published Steam replacements. A missing replacement is an asset error,
 // not permission to silently fall back to the APK image with the same index.
 bool steam_common_override(int image) {
-    return image == 31 || image == 37 || image == 84 || image == 85 || image == 88 ||
+    return image == 31 || image == 37 || image == 84 || image == 85 || image == 88 || image == 98 ||
            image == 103 || image == 105 || image == 109 || image == 128 || image == 136 ||
            image == 151;
 }

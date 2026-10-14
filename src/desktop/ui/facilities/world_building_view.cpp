@@ -1,6 +1,6 @@
 // Read-only catalogue/facility projections. Selection never charges or initializes source pages.
 #include "ark/simulation/actors/startup_world_profile.hpp"
-// Page21/74/80/81 fields and actions follow the frozen 2b479f6 maintained prototype.
+// Facility74/80/81 fields and actions read the maintained Owner.
 // Drawing never initializes a page, charges money or changes a facility's shared level.
 #include "../../scene/world_overlay_render.hpp"
 #include "../common/skin.hpp"
@@ -43,12 +43,9 @@ std::optional<std::size_t> open_products(const State &state,
     return count;
 }
 } // namespace
-const std::vector<WorldBuildingRow> &world_building_rows(const WorldBuildingView &view, int tab) {
-    return view.raw == 21 ? view.catalogs.at(std::clamp(tab, 0, 2)) : view.residents;
-}
 bool world_building_page(const Page &page) {
     return page.kind == simulation::rules::WorldScriptPageKind::raw_page &&
-           (page.legacy_page == 21 || page.legacy_page == 74 || page.legacy_page == 80 ||
+           (page.legacy_page == 74 || page.legacy_page == 80 ||
             page.legacy_page == 81);
 }
 WorldBuildingView world_building_view(const State &state, const Page &page) {
@@ -57,55 +54,8 @@ WorldBuildingView world_building_view(const State &state, const Page &page) {
     WorldBuildingView view;
     view.raw = page.legacy_page;
     view.page = page.id;
-    view.title = view.raw == 21 ? "建设" : view.raw == 80 ? "入住" : "设施情报";
-    if (view.raw == 21) {
-        const auto catalog = state.build_page_catalogs.find(page.id);
-        if (catalog == state.build_page_catalogs.end())
-            return view;
-        for (std::size_t tab = 0; tab < 3; ++tab)
-            for (const int id : catalog->second[tab]) {
-                const auto quote = simulation::startup_world_build_quote(state, id);
-                if (!quote)
-                    throw std::invalid_argument("Building page is missing its current quote");
-                view.catalogs[tab].push_back(
-                    {id,
-                     definition(state, id).detail == 6 ? "募集入住" : definition(state, id).name,
-                     quote->construction_cost,
-                     world_build_graphic(state, id,
-                                         simulation::rules::FacilityOrientation::first)});
-            }
-        // The maintained base catalogue contains buildings only. The desktop raw21
-        // projection adds the published road/edit identities without changing that cache.
-        std::vector<WorldBuildingRow> roads;
-        for (const auto &item : state.rules->facilities) {
-            const auto presence = state.facility_presence.find(item.id);
-            if (item.kind != 6 || !(item.flags & 4) || presence == state.facility_presence.end() ||
-                presence->second == 0)
-                continue;
-            const auto quote = simulation::startup_world_build_quote(state, item.id);
-            if (!quote)
-                throw std::invalid_argument("Road catalogue is missing its current quote");
-            roads.push_back({item.id, "道路", quote->construction_cost,
-                             world_build_graphic(state, item.id,
-                                                 simulation::rules::FacilityOrientation::first)});
-        }
-        view.catalogs[0].insert(view.catalogs[0].begin(), roads.begin(), roads.end());
-        std::vector<WorldBuildingRow> tools{
-            {-1, "撤除", 0, {}, {}, "destruct00.png", {0, 0, 60, 29}, {4, 3}}};
-        if (state.scripts.user_flags & 32U)
-            tools.push_back(
-                {-2, "交换位置", 300, {}, {}, "moveTenant.png", {0, 0, 63, 32}, {1, 0}});
-        // S057 places editing entries directly after roads. Preserve the base building
-        // order/duplicates and all command identities; road-absent behavior stays unchanged.
-        const auto tools_position =
-            roads.empty() ? view.catalogs[0].end() : view.catalogs[0].begin() + roads.size();
-        view.catalogs[0].insert(tools_position, tools.begin(), tools.end());
-        for (auto &tab : view.catalogs)
-            for (auto &row : tab)
-                if (row.identity >= 0 && definition(state, row.identity).kind == 12)
-                    row.residence_qualifications = state.facility_free_builds.at(row.identity);
-        view.can_confirm = true;
-    } else if (view.raw == 80) {
+    view.title = view.raw == 80 ? "入住" : "设施情报";
+    if (view.raw == 80) {
         const auto list = state.residence_page_candidates.find(page.id);
         if (list == state.residence_page_candidates.end())
             return view;

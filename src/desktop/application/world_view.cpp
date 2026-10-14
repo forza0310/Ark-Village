@@ -581,6 +581,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
         ui::draw_world_hud(current, layout, skin, failed, publication->main_menu_open,
                            pending_menu != 0, active_page(current));
         if (const auto *page = active_page(current)) {
+            management.draw_build_background(current, *page, extent, skin);
             if (page->legacy_page == 17) {
                 if (publication->system.clear) {
                     const auto input =
@@ -683,6 +684,8 @@ static void run_world_game_capture(const app::LaunchOptions &options,
             {0, 0, static_cast<float>(GetScreenWidth()), static_cast<float>(GetScreenHeight())},
             {0, 0}, 0, WHITE);
         EndDrawing();
+        management.presented(*publication, desired_pause || failed || publication->save_menu_open,
+                             session);
         render_statistics.cost(frames, (GetTime() - now) * 1000);
         if (save_inspection_driver.ready())
             ++frames;

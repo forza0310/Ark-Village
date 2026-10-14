@@ -14,7 +14,8 @@ void check_assets(const std::filesystem::path &root) {
          {std::tuple{"number05.png", 100, 21}, std::tuple{"number08.png", 100, 21},
           std::tuple{"number12.png", 100, 21}, std::tuple{"menuRT00.png", 59, 45},
           std::tuple{"menuRT04.png", 11, 11}, std::tuple{"buttoneffect.png", 128, 128},
-          std::tuple{"icon_param00.png", 112, 32}, std::tuple{"wnd_ato.png", 10, 7}}) {
+          std::tuple{"icon_param00.png", 112, 32}, std::tuple{"wnd_ato.png", 10, 7},
+          std::tuple{"tenant_resident.png", 50, 15}}) {
         auto image = LoadImage((root / "steam_common" / name).string().c_str());
         const bool valid = image.data && image.width == width && image.height == height;
         if (image.data)

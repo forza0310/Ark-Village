@@ -3,12 +3,175 @@
 #include "../../src/desktop/scene/world_build_placement.hpp"
 #include "../../src/desktop/scene/world_editing.hpp"
 #include "../../src/desktop/ui/facilities/world_building.hpp"
+#include "../../src/desktop/ui/facilities/world_build_menu.hpp"
 #include "../support/checks.hpp"
 #include "../support/world_fixture.hpp"
 #include <algorithm>
 #include <utility>
 
 namespace ark::test {
+namespace {
+// Rule arithmetic belongs to the frozen building suite. This exercise uses its real
+// producer/Owner and verifies only the desktop's once-only pointer/keyboard mapping.
+void build_menu_mapping(Checks &check, desktop::Sprites &sprites) {
+    namespace ui = desktop::ui;
+    namespace sim = simulation;
+    using E = sim::StartupWorldRuntimeError;
+    auto state = initial_world();
+    check(sim::open_startup_world_build_menu(state) == E::none, "Real21 producer opens");
+    const auto id = state.scripts.pages.back().id;
+    check(!ui::world_build_menu_view(state, state.scripts.pages.back()).initialized &&
+              state.page_counters.at(id) == 0,
+          "Pure view never initializes or draws the pending21");
+    const auto initialized = sim::update_startup_world_build_menu(state, id);
+    check(initialized.has_value(), "Real21 Update initializes its source lifecycle");
+    state = *initialized;
+    for (int n = 0; n < 3; ++n)
+        check(sim::draw_startup_world_build_menu(state, id) == E::none,
+              "Explicit admitted Draw reaches the real input gate");
+    const auto cash = state.scene.world.world.ai.accounting.funds();
+    const auto draws = state.scene.random.draws();
+    const auto catalog = state.build_page_catalogs.at(id);
+    const auto measured_fixture = [&](const auto &s) {
+        auto view = ui::world_build_menu_view(s, s.scripts.pages.back());
+        // Input geometry tests do not claim real font rendering; the window fixture measures it.
+        for (auto &row : view.source.visible_rows)
+            row.name_width = 12;
+        view.skin = sim::steam_build_menu_skin(view.source);
+        check(view.skin.has_value(), "Legal source directory prepares a pure21 skin");
+        return view;
+    };
+    auto view = measured_fixture(state);
+    check(view.source.catalogs == catalog && catalog[0].front() == 18 && catalog[0][1] == -1,
+          "Desktop preserves the complete source directory without inserting extra tools");
+    check(view.source.visible_rows[1].definition == -1 &&
+              view.source.visible_rows[1].quote == 0 &&
+              view.source.visible_rows[0].mapchip >= 0,
+          "Negative tools have their source quote while road keeps its mapchip identity");
+    const auto real = std::find_if(view.source.visible_rows.begin(), view.source.visible_rows.end(),
+                                   [](const auto &row) { return row.definition >= 0 && row.kind != 6; });
+    check(real != view.source.visible_rows.end() &&
+              real->quote == sim::startup_world_build_quote(state, real->definition)->construction_cost,
+          "Desktop price comes from the current shared definition quote");
+    for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{384, 256},
+                              desktop::Extent{540, 360}, desktop::Extent{960, 640}}) {
+        auto local = state;
+        view = measured_fixture(local);
+        auto controls = ui::world_build_menu_controls(view, extent, sprites, 7, 11);
+        const auto middle = [](Rectangle r) { return Vector2{r.x + r.width / 2, r.y + r.height / 2}; };
+        check(controls.rows[4].y - controls.rows[0].y == 148 && controls.rows[0].width == 175 &&
+                  controls.track.height == 189 && controls.cancel.y == extent.height - 25 &&
+                  !CheckCollisionRecs(controls.rows[4], controls.cancel),
+              "Five37-pitch source rows retain margins and stay clear of the PC return key");
+        ui::WorldBuildMenuGesture gesture;
+        ui::WorldBuildMenuInput input;
+        input.click = middle(controls.rows[2]);
+        const auto first = ui::world_build_menu_input(view, extent, 7, 11, controls, gesture, input, false);
+        check(first && first->selection == 2 && !first->confirm && gesture.marked_row == 2,
+              "First construction click submits an absolute row and marks without buying");
+        const auto marked = gesture.marked_row;
+        check(!ui::world_build_menu_input(view, extent, 7, 11, controls, gesture, input, true) &&
+                  gesture.marked_row == marked,
+              "Pending input cannot consume or duplicate the marker");
+        const auto premature = ui::world_build_menu_input(view, extent, 7, 11, controls, gesture, input, false);
+        check(premature && !premature->confirm,
+              "Second physical click still cannot confirm before Owner selection commits");
+        check(sim::input_startup_world_build_menu(local, id, *first).error == E::none,
+              "The real Owner commits the first row selection");
+        view = measured_fixture(local);
+        controls = ui::world_build_menu_controls(view, extent, sprites, 7, 12);
+        const auto second = ui::world_build_menu_input(view, extent, 7, 12, controls, gesture, input, false);
+        check(second && second->confirm && second->selection == 2,
+              "Same marked committed row confirms without a double-click time threshold");
+        input = {};
+        input.up = input.down = input.left = input.right = input.inspect = true;
+        const auto keys = ui::world_build_menu_input(view, extent, 7, 12, controls, gesture, input, false);
+        check(keys && keys->directions.up && keys->directions.down && keys->directions.left &&
+                  keys->directions.right && keys->details && !gesture.marked_row,
+              "Whole keyboard frame keeps simultaneous directions and detail for source ordering");
+        input = {};
+        input.click = middle(controls.rows[2]);
+        for (int stale = 0; stale < 4; ++stale) {
+            auto old = controls;
+            if (stale == 0) ++old.epoch;
+            if (stale == 1) --old.generation;
+            if (stale == 2) ++old.extent.width;
+            if (stale == 3) old.cursor.selection = 0;
+            check(!ui::world_build_menu_input(view, extent, 7, 12, old, gesture, input, false),
+                  "Future epoch or stale generation/size/cursor cannot replay a pointer action");
+        }
+        check(ui::world_build_menu_input(view, extent, 7, 13, controls, gesture, input, false).has_value(),
+              "A new update epoch retains actually painted controls when source geometry still matches");
+        input.focus_lost = true;
+        check(!ui::world_build_menu_input(view, extent, 7, 12, controls, gesture, input, false) &&
+                  !gesture.marked_row,
+              "Losing focus clears the pointer marker without changing Owner selection");
+        input = {};
+        input.click = middle(controls.categories[2]);
+        const auto category = ui::world_build_menu_input(view, extent, 7, 12, controls, gesture, input, false);
+        check(category && category->page == 2 && !category->confirm && !gesture.marked_row,
+              "Category touch submits only the source category; Owner performs its cursor reset");
+    }
+    auto short_list = state;
+    sim::StartupBuildMenuInput tab;
+    tab.page = 2;
+    check(sim::input_startup_world_build_menu(short_list, id, tab).error == E::none,
+          "Real food category selected for empty-row input");
+    view = measured_fixture(short_list);
+    check(view.source.catalogs[2].size() < 5, "Real initial food directory has a registered empty row");
+    const desktop::Extent extent{540, 360};
+    const auto controls = ui::world_build_menu_controls(view, extent, sprites, 1, 1);
+    ui::WorldBuildMenuGesture gesture;
+    ui::WorldBuildMenuInput click;
+    click.click = Vector2{controls.rows[4].x + 60, controls.rows[4].y + 18};
+    const auto empty = ui::world_build_menu_input(view, extent, 1, 1, controls, gesture, click, false);
+    check(empty && empty->selection == 4 && !empty->confirm,
+          "An empty row is selectable and keeps its own absolute marker identity");
+    auto long_menu = initial_world();
+    for (auto &entry : long_menu.facility_presence)
+        entry.second = 2; // Source eligibility fixture, not claimed natural blueprint acquisition.
+    long_menu.facility_free_builds.at(25) = long_menu.facility_free_builds.at(27) = 1;
+    check(sim::open_startup_world_build_menu(long_menu) == E::none,
+          "Long source catalogue uses the real producer with supplied eligibility");
+    const auto long_id = long_menu.scripts.pages.back().id;
+    const auto long_initialized = sim::update_startup_world_build_menu(long_menu, long_id);
+    check(long_initialized.has_value(), "Long source page initializes through actual Update");
+    long_menu = *long_initialized;
+    for (int n = 0; n < 3; ++n)
+        check(sim::draw_startup_world_build_menu(long_menu, long_id) == E::none,
+              "Long page reaches its source gate through admitted Draw");
+    auto long_view = measured_fixture(long_menu);
+    long_view.source.scroll_first_touch = true;
+    long_view.skin = sim::steam_build_menu_skin(long_view.source);
+    const auto long_controls = ui::world_build_menu_controls(long_view, extent, sprites, 1, 1);
+    ui::WorldBuildMenuGesture drag;
+    ui::WorldBuildMenuInput movement;
+    movement.pointer = Vector2{long_controls.track.x + 1,
+                                long_controls.track.y + 2};
+    movement.pointer_pressed = movement.pointer_down = true;
+    (void)ui::world_build_menu_input(long_view, extent, 1, 1, long_controls, drag, movement, false);
+    check(drag.scrolling && drag.consumed && !drag.marked_row,
+          "Source scrollbar press starts a PC gesture and consumes its future release");
+    movement.pointer_pressed = false;
+    movement.pointer_released = true;
+    movement.pointer->y += 2.25F * long_controls.drag_grid;
+    movement.click = movement.pointer;
+    const auto scrolled = ui::world_build_menu_input(long_view, extent, 1, 1, long_controls,
+                                                    drag, movement, false);
+    check(scrolled && scrolled->scroll == 2 && scrolled->selection == 2 && !scrolled->confirm &&
+              !drag.scrolling && !drag.consumed,
+          "Source-grid drag submits the first row and visible selection without confirming a row");
+    auto broken = state;
+    broken.build_page_catalogs.at(id)[0].push_back(broken.build_page_catalogs.at(id)[0].front());
+    bool rejected = false;
+    try { (void)ui::world_build_menu_view(broken, broken.scripts.pages.back()); }
+    catch (const std::invalid_argument &) { rejected = true; }
+    check(rejected, "Duplicate source directory identities reject rather than being silently displayed");
+    check(state.build_page_catalogs.at(id) == catalog && state.scene.random.draws() == draws &&
+              state.scene.world.world.ai.accounting.funds() == cash,
+          "Desktop projection and input conversion never rewrite caches, random or funds");
+}
+} // namespace
 void world_building() {
     Checks check{"world_building"};
     namespace ui = desktop::ui;
@@ -89,36 +252,6 @@ void world_building() {
     check(scaled_crop && scaled_crop->source.x == 20 && scaled_crop->source.y == 25 &&
               scaled_crop->source.width == 30 && scaled_crop->source.height == 20,
           "Clipping respects an existing draw scale without fitting or recentering the sprite");
-    rules::WorldScriptPage page;
-    page.kind = rules::WorldScriptPageKind::raw_page;
-    page.legacy_page = 21;
-    page.id = 903;
-    check(!ui::world_building_view(state, page).initialized && state.build_page_catalogs.empty(),
-          "Rendering cannot initialize the build menu's source catalogue");
-    const int definition = catalogue.facilities.at(2).id;
-    const int other = catalogue.facilities.at(5).id;
-    state.build_page_catalogs[page.id][0] = {other, definition, other};
-    state.build_page_catalogs[page.id][2] = {definition};
-    state.facility_presence.at(18) = 0; // Isolate cached building order from road availability.
-    state.scripts.user_flags &= ~32U;
-    auto view = ui::world_building_view(state, page);
-    check(view.page == 903 && view.initialized && view.catalogs[0].size() == 4 &&
-              view.catalogs[0][0].identity == other && view.catalogs[0][1].identity == definition &&
-              view.catalogs[0][2].identity == other && view.catalogs[1].empty(),
-          "Build tabs preserve published page order, duplicates and actual definition identities");
-    check(view.catalogs[0].back().identity == -1 && view.catalogs[0].back().cost == 0 &&
-              view.catalogs[0].back().common_image == "destruct00.png" &&
-              view.catalogs[0].back().image_source.width == 60 &&
-              view.catalogs[0].back().image_source.height == 29 &&
-              view.catalogs[0].back().image_offset.x == 4 &&
-              view.catalogs[0].back().image_offset.y == 3,
-          "Removal is an independent stable identity with its published PNG crop and zero quote");
-    check(view.catalogs[0][1].cost ==
-              sim::startup_world_build_quote(state, definition)->construction_cost,
-          "Displayed cost uses current source economy rather than definition's initial cost");
-    check(!view.catalogs[0][1].graphic.sprite.empty() &&
-              view.catalogs[0][1].graphic.frames.front().first == 0,
-          "Catalogue carries source artwork in initial orientation instead of text-only rows");
     // FACILITIES shape/fragment tables and SPRITE_BINDINGS independently specify these
     // examples. In particular the two inn fragments come from different PNGs in one SEB.
     struct GraphicCase {
@@ -170,146 +303,10 @@ void world_building() {
     check(road_first.frames.size() == 1 && road_first.frames[0].first == 11 &&
               road_second.frames.size() == 1 && road_second.frames[0].first == 1,
           "Source road candidate uses masks11/1 rather than regular building fragment0/1");
-    {
-        auto editing = state;
-        editing.facility_presence.at(18) = 2;
-        editing.scripts.user_flags |= 32U;
-        const auto cache = editing.build_page_catalogs;
-        const auto cash = editing.scene.world.world.ai.accounting.funds();
-        const auto random = editing.scene.random.draws();
-        auto catalogue_view = ui::world_building_view(editing, page);
-        const auto &first_tab = catalogue_view.catalogs[0];
-        const int moving_row = 2;
-        check(first_tab.size() == 6 && first_tab.front().identity == 18 &&
-                  first_tab[1].identity == -1 && first_tab[2].identity == -2 &&
-                  first_tab[3].identity == other && first_tab[4].identity == definition &&
-                  first_tab[5].identity == other,
-              "S057 places editing tools after roads while base order and duplicates stay intact");
-        check(first_tab[2].cost == 300 && first_tab[2].common_image == "moveTenant.png" &&
-                  first_tab[2].image_source.width == 63 && first_tab[2].image_source.height == 32 &&
-                  first_tab[2].image_offset.x == 1 && first_tab[2].image_offset.y == 0 &&
-                  first_tab.front().cost ==
-                      sim::startup_world_build_quote(editing, 18)->construction_cost,
-              "Moving uses its actual fixed quote/PNG and road uses current economy quote");
-        editing.build_page_catalogs[page.id][0] = {25};
-        editing.facility_free_builds.at(25) = 3;
-        catalogue_view = ui::world_building_view(editing, page);
-        const auto house =
-            std::find_if(catalogue_view.catalogs[0].begin(), catalogue_view.catalogs[0].end(),
-                         [](const auto &row) { return row.identity == 25; });
-        check(house != catalogue_view.catalogs[0].end() && house->residence_qualifications == 3 &&
-                  house->cost == sim::startup_world_build_quote(editing, 25)->construction_cost,
-              "Residential H is displayed separately and does not erase the real gold price");
-        editing.build_page_catalogs = cache;
-        for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{540, 360}}) {
-            const auto geometry = ui::world_building_layout(extent);
-            ui::WorldBuildingSelection cursor{0, moving_row, 0};
-            ui::WorldBuildingInput request;
-            request.enter = true;
-            const auto action = ui::world_building_input(ui::world_building_view(editing, page),
-                                                         geometry, cursor, request, false);
-            check(
-                action && action->selection == -2 && action->action == Action::select_build,
-                "Special catalogue rows keep stable negative identities through responsive input");
-        }
-        check(editing.build_page_catalogs == cache && editing.scene.random.draws() == random &&
-                  editing.scene.world.world.ai.accounting.funds() == cash,
-              "Catalogue augmentation never rewrites cache, consumes random or spends money");
-        editing.facility_presence.at(18) = 0;
-        editing.scripts.user_flags &= ~32U;
-        catalogue_view = ui::world_building_view(editing, page);
-        check(catalogue_view.catalogs[0].size() == 4 &&
-                  catalogue_view.catalogs[0].back().identity == -1,
-              "Road absence and flag32 independently gate road and moving rows");
-    }
-    for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{384, 256},
-                              desktop::Extent{540, 360}, desktop::Extent{960, 640}}) {
-        const auto layout = ui::world_building_layout(extent);
-        check(layout.row_height == 37 && ui::world_building_visible_rows(layout) <= 5 &&
-                  (extent.height < 360 || ui::world_building_visible_rows(layout) == 5),
-              "Raw21 uses source row pitch and five rows when the desktop height permits");
-        check(ui::world_building_visible_rows(layout) == 5 && layout.panel.width == 176 &&
-                  layout.rows.height == 185 && layout.tabs[0].y < layout.rows.y &&
-                  layout.cancel.x == ui::Layout(extent).right_button.x &&
-                  layout.cancel.y == ui::Layout(extent).right_button.y &&
-                  layout.confirm.width == 0 && !CheckCollisionRecs(layout.rows, layout.cancel),
-              "S057 is a narrow five-row tab-first catalogue with only the footer return key");
-        for (int row = 0; row < ui::world_building_visible_rows(layout); ++row) {
-            const auto icon = ui::world_building_icon(layout, row);
-            check(icon.clip.width == 64 && icon.clip.height == 32 &&
-                      icon.clip.y == layout.rows.y + row * 37 + 2 &&
-                      icon.anchor.x == icon.clip.x + 2 && icon.anchor.y == icon.clip.y + 10 &&
-                      icon.background.r == 190 && icon.background.g == 242 &&
-                      icon.background.b == 230,
-                  "Raw21 preserves the published crop, source anchor and background");
-        }
-        check(layout.panel.x >= 0 && layout.panel.y >= 0 &&
-                  layout.panel.x + layout.panel.width <= extent.width &&
-                  layout.panel.y + layout.panel.height <= extent.height &&
-                  !CheckCollisionRecs(layout.previous, layout.cancel) &&
-                  !CheckCollisionRecs(layout.next, layout.confirm),
-              "Responsive page rows and navigation remain on-screen without button overlaps");
-        ui::WorldBuildingSelection selection;
-        ui::WorldBuildingInput input;
-        input.down = true;
-        (void)ui::world_building_input(view, layout, selection, input, false);
-        input = {};
-        input.enter = true;
-        auto intent = ui::world_building_input(view, layout, selection, input, false);
-        check(intent && intent->action == Action::select_build && intent->page == 903 &&
-                  intent->selection == definition,
-              "Keyboard selection submits stable definition and source page IDs");
-        input = {};
-        input.click = middle({layout.rows.x, layout.rows.y, layout.rows.width, layout.row_height});
-        check(!ui::world_building_input(view, layout, selection, input, false) &&
-                  selection.selected == 0,
-              "Steam first construction click selects and marks without entering build mode");
-        const auto marked = selection.marked_definition;
-        check(!ui::world_building_input(view, layout, selection, input, true) &&
-                  selection.marked_definition == marked,
-              "Pending construction input cannot change or consume the row marker");
-        const auto second = ui::world_building_input(view, layout, selection, input, false);
-        check(second && second->action == Action::select_build &&
-                  second->selection == view.catalogs[0][0].identity,
-              "Second click on the same marked definition enters construction without a time "
-              "threshold");
-        input = {};
-        input.up = true;
-        (void)ui::world_building_input(view, layout, selection, input, false);
-        check(!selection.marked_definition, "Keyboard navigation clears construction touch marker");
-        input = {};
-        input.click = middle(layout.tabs[2]);
-        input.enter = false;
-        (void)ui::world_building_input(view, layout, selection, input, false);
-        check(selection.tab == 2 && selection.selected == 0 && selection.first_row == 0,
-              "Changing category resets desktop list cursor without changing source catalogue");
-        input = {};
-        input.click = middle(layout.next);
-        check(!ui::world_building_input(view, layout, selection, input, false) &&
-                  selection.tab == 0,
-              "S057 right tab arrow wraps category without submitting a building");
-        input.click = middle(layout.previous);
-        check(!ui::world_building_input(view, layout, selection, input, false) &&
-                  selection.tab == 2,
-              "S057 left tab arrow returns to the previous category without buying");
-        input.click = middle(layout.cancel);
-        check(ui::world_building_input(view, layout, selection, input, false)->action ==
-                  Action::cancel_build,
-              "S057 screen-corner soft key cancels the catalogue through its existing consumer");
-        input.click = middle(layout.tabs[1]);
-        (void)ui::world_building_input(view, layout, selection, input, false);
-        input = {};
-        input.enter = true;
-        check(!ui::world_building_input(view, layout, selection, input, false),
-              "An empty source category never sends a fictitious build definition");
-        input.escape = true;
-        check(ui::world_building_input(view, layout, selection, input, false)->action ==
-                  Action::cancel_build,
-              "Back cancels the source build menu even when its tab is empty");
-        input.right = true;
-        check(!ui::world_building_input(view, layout, selection, input, true) && selection.tab == 1,
-              "Pause/pending barrier blocks page actions and cursor mutation together");
-    }
+    build_menu_mapping(check, sprites);
+    rules::WorldScriptPage page;
+    page.kind = rules::WorldScriptPageKind::raw_page;
+    page.id = 903;
     const auto layout = ui::world_building_layout({540, 360});
     ui::WorldBuildingSelection selection;
     ui::WorldBuildingInput input;
@@ -317,7 +314,7 @@ void world_building() {
     state.residence_page_candidates[page.id] = {catalogue.humans.at(3).identity,
                                                 catalogue.humans.at(1).identity};
     catalogue.humans.at(3).residence_fee = 901;
-    view = ui::world_building_view(state, page);
+    auto view = ui::world_building_view(state, page);
     check(view.residents[0].identity == catalogue.humans.at(3).identity &&
               view.residents[0].name == catalogue.humans.at(3).name &&
               view.residents[0].cost == 901,

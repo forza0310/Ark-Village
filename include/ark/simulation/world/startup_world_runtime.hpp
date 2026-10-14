@@ -16,6 +16,7 @@
 
 namespace ark::simulation {
 struct StartupBuildResult;
+struct StartupBuildMenuInput;
 struct StartupPresentationRequest;
 struct StartupPresentationResult;
 enum class StartupFacilityPageAction;
@@ -63,6 +64,10 @@ struct StartupWorldMenuPageData {
     std::vector<int> tags;
     int selection{};
     std::optional<std::uint64_t> parent;
+};
+// raw21绝对选择与独立五行首行；类目/冻结目录仍由同Owner的原映射持有。
+struct StartupWorldBuildPageUi {
+    int selection{}, scroll{};
 };
 struct StartupWorldHumanCalendar {
     int absent_months{}; // e.aq：月度累计/到访排序优先值，页59确认可置10，不是单纯缺席月数。
@@ -272,7 +277,8 @@ struct StartupWorldRuntimeState {
     std::map<std::uint64_t, std::vector<ref::NeighbourSource>>
         facility_page_neighbours; // 初始化Y。
     std::map<std::uint64_t, std::array<std::vector<int>, 3>>
-        build_page_catalogs;                                             // raw21原W普通子集。
+        build_page_catalogs; // raw21原W完整三类，含道路/住宅与−1撤除/条件−2移动。
+    std::map<std::uint64_t, StartupWorldBuildPageUi> build_page_ui;
     std::map<std::uint64_t, std::vector<int>> residence_page_candidates; // raw80初始化X。
     std::set<std::uint64_t> facility_upgrade_initialized; // raw81只初始化一次，不重复升级。
     std::array<std::array<std::int64_t, 3>, 3> facility_upgrade_display{}; // 全局o.ap。
@@ -523,6 +529,8 @@ class StartupWorldRuntimeSession {
     StartupBuildResult confirm_edit(ref::Position position, ref::FacilityOrientation orientation);
     StartupWorldRuntimeError cancel_edit();
     StartupWorldRuntimeError open_build_menu();
+    StartupBuildResult input_build_menu(std::uint64_t page, const StartupBuildMenuInput &input);
+    StartupWorldRuntimeError draw_build_menu(std::uint64_t page);
     StartupBuildResult select_build_menu(std::uint64_t page, int definition);
     StartupWorldRuntimeError cancel_build_menu(std::uint64_t page);
     StartupBuildResult confirm_build(ref::Position anchor, ref::FacilityOrientation orientation);

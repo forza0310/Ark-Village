@@ -93,6 +93,11 @@ class SteamPlanDraw {
     void replace_clip(const std::array<int, 4> &r) {
         clips_.push_back({origin_.x + r[0], origin_.y + r[1], float(r[2]), float(r[3])});
     }
+    // Raw21 SetClip replaces all prior bounds; ClearClip removes them rather than popping.
+    void set_clip(const std::array<int, 4> &r) {
+        clips_.assign(1, {origin_.x + r[0], origin_.y + r[1], float(r[2]), float(r[3])});
+    }
+    void clear_clip() { clips_.clear(); }
     void whole_image(const char *png, std::array<int, 2> position) const {
         const std::string source = png;
         const auto group = source.rfind("original/event/", 0) == 0 ? Sprites::Binding::event

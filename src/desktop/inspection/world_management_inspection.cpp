@@ -515,8 +515,12 @@ bool management_inspection_ready(const State &state, const std::string &mode,
                     ? view->raw == 53 && view->counter >= 70 && inspection.activity_started
                     : view->raw == 54 && inspection.activity_completed);
     }
-    if (mode == "world-building")
-        return page->legacy_page == 21 && state.build_page_catalogs.count(page->id);
+    if (mode == "world-building") {
+        const auto counter = state.page_counters.find(page->id);
+        return page->legacy_page == 21 && page->lifecycle != 0 &&
+               simulation::startup_world_build_menu_cursor(state, page->id).has_value() &&
+               counter != state.page_counters.end() && counter->second >= 3;
+    }
     if (mode == "world-details")
         return page->legacy_page == 74 && state.facility_page_bindings.count(page->id);
     if (mode == "world-facility-bonuses")

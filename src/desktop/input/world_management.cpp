@@ -36,11 +36,24 @@ void WorldManagement::queued(std::uint64_t serial) {
     feedback_.clear();
 }
 void WorldManagement::observe(const app::WorldFrame &frame) {
+    build_pages_drawn_.clear();
+    presentation_epoch_ = frame.presentation_epoch;
+    build_draw_submitted_.erase(
+        std::remove_if(build_draw_submitted_.begin(), build_draw_submitted_.end(),
+                         [&](const auto &p) { return p.generation != frame.generation ||
+                                                    p.epoch != frame.presentation_epoch; }),
+        build_draw_submitted_.end());
     if (generation_ != frame.generation) {
         generation_ = frame.generation;
         receipt_page_ = 0;
         commerce_amount_.reset();
         building_ = {};
+        build_menu_gesture_ = {};
+        build_menu_controls_.reset();
+        build_draw_pending_ = 0;
+        build_draw_submitted_.clear();
+        build_draw_inflight_.reset();
+        build_draw_ready_.reset();
         tax_controls_.reset();
         tax_gesture_ = {};
         manual_layout_.reset();
@@ -57,6 +70,17 @@ void WorldManagement::observe(const app::WorldFrame &frame) {
         village_gesture_ = {};
         magic_controls_.reset();
         magic_gesture_ = {};
+    }
+    if (build_draw_pending_) {
+        const auto result = std::find_if(frame.command_results.begin(), frame.command_results.end(),
+                                         [&](const auto &r) { return r.serial == build_draw_pending_; });
+        if (result != frame.command_results.end()) {
+            if (result->outcome == app::WorldCommandOutcome::applied)
+                build_draw_ready_ = build_draw_inflight_;
+            build_draw_pending_ = 0;
+        } else if (frame.last_command_serial >= build_draw_pending_) {
+            build_draw_pending_ = 0; // Missing receipts never fabricate an admitted Draw.
+        }
     }
     if (!pending_)
         return;
@@ -90,6 +114,8 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
         human_controls_.reset();
         human_gesture_ = {};
         building_ = {};
+        build_menu_controls_.reset();
+        build_menu_gesture_ = {};
         facility_controls_.reset();
         facility_items_.marked_row.reset();
         facility_items_.scrolling = false;
@@ -105,7 +131,7 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
     }
     blocked = blocked || pending();
     if (keyboard_event) {
-        building_.marked_definition.reset();
+        build_menu_gesture_.marked_row.reset();
         commerce_facility_gesture_.marked_row.reset();
     }
     const auto point = click ? mouse : std::nullopt;
@@ -372,6 +398,41 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
             queued(session.input_tax(page.id, *frame));
         return true;
     }
+    if (ui::world_build_menu_page(page)) {
+        const auto view = ui::world_build_menu_view(state, page);
+        ui::WorldBuildMenuInput input;
+        input.click = point;
+        input.pointer = mouse;
+        input.enter = enter;
+        input.escape = escape;
+        input.up = up;
+        input.down = down;
+        input.left = IsKeyPressed(KEY_LEFT);
+        input.right = IsKeyPressed(KEY_RIGHT);
+        input.inspect = IsKeyPressed(KEY_I);
+        input.keyboard_event = keyboard_event;
+        input.focus_lost = !IsWindowFocused();
+        input.pointer_pressed = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+        input.pointer_down = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+        input.pointer_released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
+        const auto origin = ui::world_build_menu_origin(extent);
+        input.wheel_rows = hit(mouse, {origin.x + 35, origin.y + 38, 172, 186})
+                               ? -static_cast<int>(GetMouseWheelMove()) : 0;
+        const bool admitted = build_draw_ready_ && build_draw_ready_->page == page.id &&
+                              build_draw_ready_->generation == generation_ &&
+                              build_draw_ready_->epoch <= presentation_epoch_;
+        if (const auto request = ui::world_build_menu_input(
+                view, extent, generation_, presentation_epoch_, build_menu_controls_,
+                build_menu_gesture_, input, blocked || build_draw_pending_ || !admitted)) {
+            app::WorldCommand command;
+            command.kind = app::WorldCommandKind::build_menu_input;
+            command.page = page.id;
+            command.generation = generation_;
+            command.build_menu_input = *request;
+            queued(session.submit(command));
+        }
+        return true;
+    }
     if (ui::world_building_page(page)) {
         const auto view = ui::world_building_view(state, page);
         auto layout = ui::world_building_layout(extent, page.legacy_page);
@@ -403,12 +464,6 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
         using Action = ui::WorldBuildingAction;
         using Facility = simulation::StartupFacilityPageAction;
         switch (intent->action) {
-        case Action::select_build:
-            queued(session.select_build_menu(page.id, intent->selection));
-            break;
-        case Action::cancel_build:
-            queued(session.cancel_build_menu(page.id));
-            break;
         case Action::facility_previous:
             queued(session.act_facility(page.id, Facility::previous));
             break;
@@ -543,6 +598,19 @@ bool WorldManagement::draw_page(const State &state, const Page &page, Extent ext
         tax_controls_ = ui::draw_world_tax(view, ui::world_tax_layout(extent), skin);
         if (!IsWindowFocused())
             tax_controls_.reset();
+    } else if (ui::world_build_menu_page(page)) {
+        auto view = ui::world_build_menu_view(state, page);
+        ui::prepare_world_build_menu(view, skin, build_menu_gesture_.scrolling);
+        ui::draw_world_build_menu(view, extent, skin, true, enabled, feedback_);
+        if (view.initialized) {
+            build_pages_drawn_.push_back({page.id, generation_, presentation_epoch_});
+            build_menu_controls_ = IsWindowFocused()
+                                       ? std::optional<ui::WorldBuildMenuControls>{
+                                             ui::world_build_menu_controls(view, extent, skin.sprites,
+                                                                          generation_, presentation_epoch_)}
+                                       : std::nullopt;
+        } else
+            build_menu_controls_.reset();
     } else if (ui::world_building_page(page)) {
         auto view = ui::world_building_view(state, page);
         ui::prepare_world_building_detail(view, state, building_, skin);
@@ -569,6 +637,36 @@ bool WorldManagement::draw_page(const State &state, const Page &page, Extent ext
         return false;
     }
     return true;
+}
+void WorldManagement::draw_build_background(const State &state, const Page &page, Extent extent,
+                                              const ui::Skin &skin) const {
+    for (const auto &parent : state.scripts.pages) {
+        if (parent.id == page.id)
+            break;
+        if (!ui::world_build_menu_page(parent) || parent.lifecycle == 0 || parent.lifecycle == 4)
+            continue;
+        auto view = ui::world_build_menu_view(state, parent);
+        ui::prepare_world_build_menu(view, skin);
+        ui::draw_world_build_menu(view, extent, skin, false, false);
+        build_pages_drawn_.push_back({parent.id, generation_, presentation_epoch_});
+    }
+}
+void WorldManagement::presented(const app::WorldFrame &frame, bool blocked,
+                                 app::WorldSession &session) {
+    if (blocked || build_draw_pending_ || frame.failed || !frame.state ||
+        frame.state->scene.framework_paused)
+        return;
+    for (const auto &drawn : build_pages_drawn_) {
+        const bool submitted = std::any_of(build_draw_submitted_.begin(), build_draw_submitted_.end(),
+                                           [&](const auto &old) { return old.same(drawn); });
+        if (drawn.generation != frame.generation || drawn.epoch != frame.presentation_epoch || submitted)
+            continue;
+        build_draw_ready_.reset();
+        build_draw_submitted_.push_back(drawn);
+        build_draw_inflight_ = drawn;
+        build_draw_pending_ = session.draw_build_menu(drawn.page, drawn.epoch, drawn.generation);
+        return; // At most one in-flight request; ordinary page input remains independent.
+    }
 }
 bool WorldManagement::input_scene(const State &state, const WorldCameraView &view, Extent extent,
                                   std::optional<Vector2> mouse, bool click, float zoom, bool back,

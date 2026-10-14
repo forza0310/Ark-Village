@@ -46,6 +46,12 @@ struct StartupTitleApplyResult {
     bool confirm_consumed{}, menu_confirm_ready{};
     std::size_t random_draws{};
 };
+// 一次已准入的根标题更新：同轮确认同时供动画门槛和菜单消费，不接受两份脉冲。
+// 只作命令DTO；背景沿既有APK轨迹，不新增持久字段或冒称Steam演员寿命已接。
+struct StartupTitleFrameInput {
+    StartupTitleAdmission admission{StartupTitleAdmission::top_lifecycle_ready};
+    StartupTitleMenuKeys keys;
+};
 // 命令回执，不属于存档字段。error表示事务未提交；denial是原业务拒绝，
 // 可能已经提交不足资金提示等合法页面，调用者不能据此自动重试付款。
 struct StartupApplicationBuildResult {
@@ -85,6 +91,10 @@ class StartupApplication {
                                    const StartupTitleMenuRequest &request);
     // 明确的一次背景更新请求，不从Draw/FPS推导，不代替h/j/o菜单路由。
     StartupTitleApplyResult advance_title_background(StartupTitleUpdateRequest request);
+    // 根页无未退休子页：背景→门槛→菜单/读档在同一候选提交；失败全部回滚。
+    // random_draws含本轮背景和开纪录；touch回调/子页返回仍走具名独立消费者。
+    StartupTitleApplyResult input_title_frame(std::uint64_t expected_page_id,
+                                             const StartupTitleFrameInput &input);
     std::string request_new_game(int slot);
     std::string answer_overwrite(bool yes);
     std::string edit_village(std::string name);
@@ -110,6 +120,8 @@ class StartupApplication {
     // 首星/住宅/二星管理命令：复用Session资格与唯一应用提交点，不开放可写world。
     std::string open_build_menu();
     StartupApplicationBuildResult select_build_menu(std::uint64_t page, int definition);
+    StartupApplicationBuildResult input_build_menu(std::uint64_t page, const StartupBuildMenuInput &input);
+    std::string draw_build_menu(std::uint64_t page);
     std::string cancel_build_menu(std::uint64_t page);
     StartupApplicationBuildResult confirm_build(ref::Position anchor,
                                                 ref::FacilityOrientation orientation);
@@ -185,6 +197,8 @@ class StartupApplication {
     std::string start_game_candidate();
     std::string open_records_candidate();
     StartupTitleMenuContext title_menu_context() const;
+    // 仅供外层事务的私有候选调用，失败可能改该候选，不能直接施于真实Owner。
+    std::string apply_title_request_candidate(std::uint64_t id, const StartupTitleMenuRequest &request);
     void sync_title_page();
     std::string commit_world(StartupWorldRuntimeSession candidate, bool save_system = false);
     std::string world_action_error() const;

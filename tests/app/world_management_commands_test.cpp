@@ -606,8 +606,10 @@ void editing_command_transactions() {
     const auto refused = input_frame(locked_session, locked_session.set_paused(true));
     check(!refused->failed && task_top(*refused->state).id == locked_page &&
               input_result(*refused, denied).outcome == Outcome::rejected &&
-              input_result(*refused, denied).build_denial == sim::StartupBuildDenial::unavailable,
-          "Moving entitlement refusal keeps21 and is a usable recoverable transport result");
+              input_result(*refused, denied).runtime_error ==
+                  sim::StartupWorldRuntimeError::invalid_page &&
+              input_result(*refused, denied).build_denial == sim::StartupBuildDenial::none,
+          "Unlisted moving tool rejects at the complete21 catalogue and keeps the source page");
     edit_source_clock(*refused, locked);
     locked_session.stop();
 

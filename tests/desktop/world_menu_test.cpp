@@ -6,6 +6,7 @@
 #include "../../src/desktop/ui/system/world_manual.hpp"
 #include "../../src/desktop/ui/system/world_menu.hpp"
 #include "../../src/desktop/ui/system/world_new_game.hpp"
+#include "../../src/desktop/ui/system/world_startup.hpp"
 #include "../support/checks.hpp"
 #include "../support/world_fixture.hpp"
 #include "ark/simulation/world/startup_world_save.hpp"
@@ -14,6 +15,7 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
+#include <limits>
 
 namespace ark::test {
 namespace {
@@ -281,6 +283,72 @@ void manual_ui(Checks &check) {
                   sim::StartupWorldRuntimeError::none,
           "Manual back uses its typed close and returns to the real scene");
 }
+// Resolve only resource geometry; fixtures do not duplicate record Init, clocks or selection.
+std::array<simulation::SteamManualArrowPlan, 2>
+record_arrows(const simulation::SteamRecordSkinPlan &source, desktop::Sprites &sprites) {
+    std::array<simulation::SteamManualArrowPlan, 2> result;
+    int count{};
+    for (const auto &operation : source.draws)
+        if (const auto *arrow = std::get_if<simulation::SteamManualArrowRequest>(&operation)) {
+            const auto bounds = sprites.frame_bounds("arrow02.seb", arrow->bounds_frame);
+            const auto plan = simulation::steam_manual_arrow_skin(
+                *arrow, {int(bounds.x), int(bounds.y), int(bounds.width), int(bounds.height)}, 128);
+            if (!plan || count >= int(result.size()))
+                throw std::runtime_error("Record fixture cannot resolve the published arrow");
+            result[count++] = *plan;
+        }
+    if (count != int(result.size()))
+        throw std::runtime_error("Record fixture lacks two source arrows");
+    return result;
+}
+void static_records_ui(Checks &check, desktop::Sprites &sprites) {
+    namespace ui = desktop::ui;
+    namespace sim = simulation;
+    sim::StartupSystemRecords records;
+    records.high_score = 1234;
+    records.cash_peak = 987654321;
+    records.score_village = "积分纪录村";
+    records.cash_village = "资金纪录村";
+    for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{541, 361}})
+        for (int page = 0; page < 2; ++page) {
+            const auto source = ui::world_records_plan(records, page, extent, {84, 70, 45.5F});
+            check(source.has_value(), "Record pages project system2 fields through the shared adapter");
+            std::vector<sim::SteamRecordText> texts;
+            int windows{}, actors{};
+            for (const auto &operation : source->draws) {
+                if (const auto *text = std::get_if<sim::SteamRecordText>(&operation))
+                    texts.push_back(*text);
+                windows += std::holds_alternative<sim::SteamRecordWindow>(operation);
+                actors += std::holds_alternative<sim::SteamManualActorRequest>(operation);
+            }
+            check(windows == 2 && actors == 0 && texts.size() == 4 &&
+                      texts[1].value ==
+                          (page == 0 ? records.score_village : records.cash_village) &&
+                      texts[1].position[0] == 97.25F &&
+                      texts.back().value == (page == 0 ? "1,234" : "987,654,321Ｇ"),
+                  "Static record projection keeps system value/village pairing, float width and no "
+                  "invented Init list");
+            const auto layout =
+                ui::world_records_layout(*source, page, extent, record_arrows(*source, sprites));
+            check(layout.origin.x == (extent.width - 240) / 2 &&
+                      layout.origin.y == (extent.height - 240) / 2 + 13,
+                  "Record helper translates source geometry once, including odd viewports");
+            for (const auto &arrow : layout.arrows) {
+                const Vector2 click{arrow.x + 1, arrow.y + 1};
+                check(ui::world_records_input(&layout, click, false, false, false) ==
+                          ui::WorldRecordsAction::turn,
+                      "Each actual arrow registration rectangle turns the record page");
+            }
+            const Vector2 gap{layout.origin.x + 120, layout.arrows[0].y + 1};
+            check(ui::world_records_input(&layout, gap, false, false, false) ==
+                          ui::WorldRecordsAction::none &&
+                      ui::world_records_input(nullptr, gap, false, false, false) ==
+                          ui::WorldRecordsAction::none &&
+                      ui::world_records_input(&layout, {}, true, true, true) ==
+                          ui::WorldRecordsAction::turn,
+                  "Record arrows exclude the old full-width band and direction wins over return");
+        }
+}
 } // namespace
 void world_menu() {
     Checks check{"world_menu"};
@@ -290,6 +358,7 @@ void world_menu() {
     namespace ui = desktop::ui;
     const auto middle = [](Rectangle r) { return Vector2{r.x + r.width / 2, r.y + r.height / 2}; };
     desktop::Sprites sprites(ARK_TEST_ASSETS); // SEB metadata only, without a window/texture.
+    static_records_ui(check, sprites);
     // Title/slot navigation shares this menu suite. Rule and codec combinations remain in
     // world_save; this verifies the new cold-entry boundary and its actual file re-read.
     for (const auto extent :
@@ -324,6 +393,12 @@ void world_menu() {
                   "New-game arrow margins stay inside the current viewport");
         std::array<app::WorldSaveSlotInfo, 2> slots{};
         desktop::WorldTitleInput input;
+        const auto records = ui::world_records_plan({}, 0, extent, {84, 70, 45.5F});
+        check(records.has_value(), "Title fixture uses the shared static record plan");
+        const auto record_layout =
+            ui::world_records_layout(*records, 0, extent, record_arrows(*records, sprites));
+        boxes.previous = record_layout.arrows[0];
+        boxes.next = record_layout.arrows[1];
         check(boxes.background.width == 600 && boxes.background.height == 380 &&
                   boxes.background.y + boxes.background.height == extent.height &&
                   boxes.background.x == (extent.width - 240) / 2 - 180 && boxes.book.width == 98 &&
@@ -353,16 +428,32 @@ void world_menu() {
                       edge_selection.page == Page::title,
                   "A click outside the source title touch region leaves navigation unchanged");
         }
+        input.up = input.down = input.confirm = true;
+        check(!desktop::world_title_input(selection, boxes, slots, input) &&
+                  selection.title_selection == 0 && selection.page == Page::slots,
+              "Title applies up then down independently before the same confirmation");
+        selection = {};
+        input = {};
         input.click = middle(boxes.records);
         check(!desktop::world_title_input(selection, boxes, slots, input) &&
                   selection.page == Page::records,
               "One record click enters records without starting the world");
+        input.click = middle(boxes.previous);
+        desktop::world_title_input(selection, boxes, slots, input);
+        check(selection.record_page == 1, "Title record left uses the actual source helper bounds");
+        input.click = middle(boxes.next);
+        desktop::world_title_input(selection, boxes, slots, input);
+        check(selection.record_page == 0, "Title record right uses the same shared geometry");
         input = {};
         input.right = true;
         desktop::world_title_input(selection, boxes, slots, input);
         check(selection.record_page == 1, "Record arrow changes to cash page");
         desktop::world_title_input(selection, boxes, slots, input);
         check(selection.record_page == 0, "Record pages cycle");
+        input.left = input.back = true;
+        desktop::world_title_input(selection, boxes, slots, input);
+        check(selection.page == Page::records && selection.record_page == 1,
+              "Record left/right/back in one input turns once and preserves the parent");
         input = {};
         input.back = true;
         desktop::world_title_input(selection, boxes, slots, input);
@@ -627,8 +718,16 @@ void world_menu() {
     click.click = middle(slots.records);
     menu.input(frame, extent, click, session);
     desktop::WorldSaveMenuInput record_arrow;
-    record_arrow.right = true;
+    record_arrow.left = record_arrow.right = record_arrow.escape = true;
     menu.input(frame, extent, record_arrow, session);
+    click.click = middle(slots.save[0]);
+    menu.input(frame, extent, click, session);
+    desktop::WorldSaveMenuInput record_confirm;
+    record_confirm.enter = true;
+    menu.input(frame, extent, record_confirm, session);
+    check(!menu.pending() && session.frame()->last_command_serial == 0,
+          "Record direction wins over simultaneous back; unpainted clicks cannot reach save "
+          "confirmation");
     desktop::WorldSaveMenuInput record_back;
     record_back.escape = true;
     menu.input(frame, extent, record_back, session);
@@ -677,6 +776,68 @@ void world_menu() {
     session.stop();
     std::cout << "World menu: " << check.count() << " checks\n";
 }
+// Optional record-window samples; no record Init list, clock, world or save writes.
+void world_records_render_fixture() {
+    namespace ui = desktop::ui;
+    Checks check{"world_records_render_fixture"};
+    const auto output = std::filesystem::path(ARK_TEST_OUTPUT) / "records";
+    std::filesystem::create_directories(output);
+    struct Window {
+        Window() {
+            InitWindow(720, 600, "Ark-Village UI fixture / static records");
+            if (!IsWindowReady())
+                throw std::runtime_error("Record fixture could not create a window");
+            SetTargetFPS(60);
+        }
+        ~Window() { CloseWindow(); }
+    } window;
+    desktop::Sprites sprites(ARK_TEST_ASSETS);
+    desktop::Text text(ARK_TEST_FONT, "UI测试城镇名称比较长ハイスコアＧ");
+    ui::Skin skin(sprites, text);
+    for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{720, 600}}) {
+        SetWindowSize(extent.width, extent.height);
+        for (int page = 0; page < 2; ++page) {
+            simulation::StartupSystemRecords records;
+            records.cash_peak = std::numeric_limits<std::int64_t>::max();
+            records.cash_village = "UI测试城镇名称比较长UI测试城镇名称比较长";
+            const auto paint = ui::prepare_world_records(records, page, extent, skin);
+            for (const auto &arrow : paint.layout.arrows)
+                check(arrow.width > 0 && arrow.height > 0 && arrow.x >= 0 && arrow.y >= 0 &&
+                          arrow.x + arrow.width <= extent.width &&
+                          arrow.y + arrow.height <= extent.height,
+                      "Actual source record arrow Touch fits the displayed viewport");
+            int text_index{};
+            for (const auto &operation : paint.source.draws)
+                if (const auto *label = std::get_if<simulation::SteamRecordText>(&operation)) {
+                    const auto size = paint.text_sizes.at(text_index++);
+                    check(size > 0 && label->position[0] >= 20 &&
+                              label->position[0] + text.width(label->value, size) <= 220,
+                          "Full record village/value text fits its source window after PC fitting");
+                }
+            for (int frame = 0; frame < 8; ++frame) {
+                check(!WindowShouldClose(), "Record fixture remains open until capture");
+                BeginDrawing();
+                ClearBackground({145, 211, 247, 255});
+                ui::draw_world_records(paint, skin);
+                skin.button(paint.layout.back, "返回");
+                text.flush(1, {});
+                EndDrawing();
+            }
+            const auto file = output / ("records-" + std::to_string(extent.width) +
+                                        (page == 0 ? "-zero-score.png" : "-long-cash.png"));
+            auto image = LoadImageFromScreen();
+            const bool exported = image.data && ExportImage(image, file.string().c_str());
+            UnloadImage(image);
+            check(exported && std::filesystem::file_size(file) > 0,
+                  "Actual static record rendering exports a nonempty PNG");
+            std::cout << "UI fixture / conditional static records page=" << page
+                      << " extent=" << extent.width << "x" << extent.height
+                      << " frames=8 screenshot=" << file.string() << '\n';
+        }
+    }
+    std::cout << "Static record rendering: " << check.count() << " checks\n";
+}
+
 // Optional actual-window raw91 snapshots; no new world, save, original OS input or page clock.
 void world_new_game_render_fixture() {
     namespace ui = desktop::ui;

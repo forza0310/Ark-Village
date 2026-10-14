@@ -45,47 +45,52 @@ std::string StartupApplication::apply_title_request(std::uint64_t id, const Requ
     if (!error_.empty()) return error_;
     if (page_ == Page::world || clear_) return "活动世界不能消费标题输入";
     try {
-        auto prepared = prepare_startup_title_menu(title_menu_, title_menu_context(), id, request);
-        if (!prepared.candidate) return prepared.error.empty() ? "标题控制器缺候选" : prepared.error;
         auto candidate = *this;
-        candidate.title_menu_ = std::move(prepared.candidate->state);
-        candidate.draft_.slot = prepared.candidate->slot;
-        std::string error;
-        if (prepared.candidate->intent) {
-            const auto &intent = *prepared.candidate->intent;
-            switch (intent.kind) {
-            case StartupTitleIntentKind::open_records:
-                error = candidate.open_records_candidate(); break;
-            case StartupTitleIntentKind::open_configuration:
-                candidate.page_ = Page::configure; break;
-            case StartupTitleIntentKind::load_record:
-                candidate.page_ = Page::title;
-                error = candidate.load_world(intent.slot, static_cast<StartupSaveKind>(intent.row)); break;
-            case StartupTitleIntentKind::hide_record: {
-                auto committed = hide_startup_application_slot(candidate.paths_.root, candidate.storage_,
-                    candidate.storage_.records, intent.slot, static_cast<StartupSaveKind>(intent.row));
-                if (!committed.snapshot) error = committed.error;
-                else {
-                    // 下游没有可能失败的业务；真正系统成功后仅移动已分配候选。
-                    auto installed = std::move(*committed.snapshot);
-                    candidate.storage_ = std::move(installed);
-                    candidate.cleanup_pending_ = committed.cleanup_pending;
-                }
-                break;
-            }
-            case StartupTitleIntentKind::start_game:
-                error = candidate.start_game_candidate(); break;
-            }
-        }
+        const auto error = candidate.apply_title_request_candidate(id, request);
         if (!error.empty()) return error;
-        if (candidate.page_ != Page::world) {
-            candidate.sync_title_page();
-            if (candidate.page_ != Page::records) candidate.decorations_.clear();
-        }
         static_assert(std::is_nothrow_move_assignable_v<StartupApplication>);
         *this = std::move(candidate);
         return {};
     } catch (const std::exception &e) { return e.what(); }
+}
+std::string StartupApplication::apply_title_request_candidate(std::uint64_t id, const Request &request) {
+    auto prepared = prepare_startup_title_menu(title_menu_, title_menu_context(), id, request);
+    if (!prepared.candidate) return prepared.error.empty() ? "标题控制器缺候选" : prepared.error;
+    title_menu_ = std::move(prepared.candidate->state);
+    draft_.slot = prepared.candidate->slot;
+    std::string error;
+    if (prepared.candidate->intent) {
+        const auto &intent = *prepared.candidate->intent;
+        switch (intent.kind) {
+        case StartupTitleIntentKind::open_records:
+            error = open_records_candidate(); break;
+        case StartupTitleIntentKind::open_configuration:
+            page_ = Page::configure; break;
+        case StartupTitleIntentKind::load_record:
+            page_ = Page::title;
+            error = load_world(intent.slot, static_cast<StartupSaveKind>(intent.row)); break;
+        case StartupTitleIntentKind::hide_record: {
+            auto committed = hide_startup_application_slot(paths_.root, storage_,
+                storage_.records, intent.slot, static_cast<StartupSaveKind>(intent.row));
+            if (!committed.snapshot) error = committed.error;
+            else {
+                // 下游没有可能失败的业务；真正系统成功后仅移动已分配候选。
+                auto installed = std::move(*committed.snapshot);
+                storage_ = std::move(installed);
+                cleanup_pending_ = committed.cleanup_pending;
+            }
+            break;
+        }
+        case StartupTitleIntentKind::start_game:
+            error = start_game_candidate(); break;
+        }
+    }
+    if (!error.empty()) return error;
+    if (page_ != Page::world) {
+        sync_title_page();
+        if (page_ != Page::records) decorations_.clear();
+    }
+    return {};
 }
 std::string StartupApplication::request_new_game(int slot) {
     if (!error_.empty()) return error_;

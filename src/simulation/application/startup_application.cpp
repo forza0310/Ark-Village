@@ -318,6 +318,19 @@ StartupApplicationBuildResult StartupApplication::select_build_menu(std::uint64_
 std::string StartupApplication::cancel_build_menu(std::uint64_t page) {
     return apply_world_action([&](auto &world) { return world.cancel_build_menu(page); });
 }
+StartupApplicationBuildResult StartupApplication::input_build_menu(std::uint64_t page,
+                                                                  const StartupBuildMenuInput &input) {
+    StartupApplicationBuildResult result;
+    result.error = apply_world_action([&](auto &world) {
+        const auto r = world.input_build_menu(page, input);
+        result.denial = r.denial; result.created = r.created; return r.error;
+    });
+    if (!result.error.empty()) { result.denial = StartupBuildDenial::none; result.created.reset(); }
+    return result;
+}
+std::string StartupApplication::draw_build_menu(std::uint64_t page) {
+    return apply_world_action([&](auto &world) { return world.draw_build_menu(page); });
+}
 StartupApplicationBuildResult StartupApplication::confirm_build(ref::Position anchor,
                                                                 ref::FacilityOrientation orientation) {
     StartupApplicationBuildResult result;

@@ -144,6 +144,11 @@ class WorldSession::Impl {
         bool await_menu{};
     };
     std::optional<SaveRequest> save_request;
+    // Worker-only deduplication for completed GPU facts. It holds no business world state.
+    struct BuildDrawSeen {
+        std::uint64_t generation{}, epoch{};
+        std::vector<std::uint64_t> pages;
+    } build_draw_seen;
 
     void take_sound_outputs(WorldState &candidate, WorldFrame &frame) {
         if (candidate.sound_requests.empty())
@@ -205,6 +210,21 @@ class WorldSession::Impl {
         } else if (save_request && command.kind != WorldCommandKind::acknowledge_page &&
                    command.kind != WorldCommandKind::cancel_page) {
             result.runtime_error = RuntimeError::invalid_page;
+        } else if (command.kind == WorldCommandKind::build_menu_draw) {
+            const bool duplicate =
+                build_draw_seen.generation == current.generation &&
+                build_draw_seen.epoch == command.presentation_epoch &&
+                std::find(build_draw_seen.pages.begin(), build_draw_seen.pages.end(),
+                          command.page) != build_draw_seen.pages.end();
+            // The caller reports an actual completed paint, not a logical Update or a query.
+            // Parent21 may be covered, but must still be a live, drawable source page.
+            if (!command.presentation_epoch ||
+                command.presentation_epoch != current.presentation_epoch || duplicate ||
+                current.save_menu_open || current.state->scene.framework_paused)
+                result.runtime_error = RuntimeError::invalid_page;
+            else
+                result.runtime_error =
+                    simulation::draw_startup_world_build_menu(*candidate, command.page);
         } else if (command.kind == WorldCommandKind::page_confirm_held) {
             if (!command.held) {
                 // A late release may clear only its own old press, never a newer page's press.
@@ -250,10 +270,24 @@ class WorldSession::Impl {
         next.previous = next.state;
         next.last_command_serial = input.serial;
         ++next.revision;
-        return publish(std::move(next));
+        const bool draw = command.kind == WorldCommandKind::build_menu_draw;
+        // Prepare bookkeeping before publication too: allocation failure cannot leave
+        // a committed Draw whose token was never recorded for duplicate rejection.
+        auto seen = build_draw_seen;
+        if (draw && result.outcome == WorldCommandOutcome::applied) {
+            if (seen.generation != current.generation || seen.epoch != command.presentation_epoch)
+                seen = {current.generation, command.presentation_epoch, {}};
+            seen.pages.push_back(command.page);
+        }
+        auto published_frame = publish(std::move(next), false, draw);
+        if (draw && result.outcome == WorldCommandOutcome::applied &&
+            published_frame->system_error.empty() && !published_frame->failed)
+            build_draw_seen = std::move(seen);
+        return published_frame;
     }
 
-    std::shared_ptr<const WorldFrame> publish(WorldFrame next, bool force_system = false) {
+    std::shared_ptr<const WorldFrame> publish(WorldFrame next, bool force_system = false,
+                                              bool source_draw = false) {
         const auto *visible = top_page(*next.state);
         next.main_menu_open = visible &&
                               visible->kind == simulation::rules::WorldScriptPageKind::raw_page &&
@@ -263,6 +297,12 @@ class WorldSession::Impl {
         next.published = Clock::now();
         auto result = std::make_shared<WorldFrame>(std::move(next));
         const auto before = frame();
+        // A Draw acknowledgement must not create the next presentation opportunity.
+        // Otherwise 60FPS painting and snapshot publication would drive one another forever.
+        result->presentation_epoch = before->presentation_epoch;
+        if (!source_draw &&
+            (result->state != before->state || result->save_menu_open != before->save_menu_open))
+            ++result->presentation_epoch;
         if ((result->state != before->state && result->generation == before->generation) ||
             force_system) {
             const auto error = commit_world_system(
@@ -367,6 +407,8 @@ class WorldSession::Impl {
             kind == WorldCommandKind::close_save_menu || kind == WorldCommandKind::save_slot ||
             kind == WorldCommandKind::load_slot)
             return apply_save(current, input);
+        if (kind == WorldCommandKind::build_menu_draw)
+            return apply_decision(current, input); // Overlay hiding is an explicit rejection.
         if (current.save_menu_open) {
             auto next = current;
             next.last_command_serial = input.serial;
@@ -711,6 +753,7 @@ class WorldSession::Impl {
             result->published = Clock::now();
             ++result->revision;
             ++result->outer_updates;
+            ++result->presentation_epoch;
             return result;
         };
         auto good = make_result(std::move(*success), true);

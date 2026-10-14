@@ -1,6 +1,7 @@
 #include "ark/simulation/presentation/steam_startup_skin.hpp"
 #include "ark/simulation/presentation/steam_main_menu_skin.hpp"
 #include "ark/simulation/presentation/steam_manual_skin.hpp"
+#include "ark/simulation/presentation/steam_record_skin.hpp"
 #include "ark/assets/sprite.hpp"
 #include <raylib.h>
 #include <algorithm>
@@ -29,6 +30,155 @@ auto sprite(const std::filesystem::path &p) {
     std::ifstream input(p,std::ios::binary);
     if(!input) throw std::runtime_error("Steam皮肤公共资源缺失："+p.string());
     return ark::assets::parse_legacy_seb({std::istreambuf_iterator<char>(input),{}});
+}
+// RankForm独立页面合同；共用窗框和人物SEB继续由各自主责套件验证。
+void record_page(Checks &check) {
+    SteamRecordSkinInput input;
+    input.view_width=479;input.view_height=481;input.page=0;input.frame=19;
+    input.english=true;input.value=1234;input.village="纪录村";
+    input.labels={"High Score","已翻译纪录","最高点数","点数"};
+    input.topic_width=65;input.value_width=23;input.village_width=65.5F;
+    input.arrow_selected={true,false};input.definition_count=12;
+    input.frozen_definitions={9,2,7,0,11,4};
+    const auto plan=steam_record_skin(input);
+    check(plan&&plan->origin==std::array<int,2>{119,133}&&plan->final_origin==std::array<int,2>{0,0}&&
+          plan->soft_labels==std::array<int,2>{0,2}&&plan->draws.size()==17,
+          "Rank奇数尺寸分别向零居中再加13，末清零而非恢复入口，六人保留17请求");
+    const auto windows=parts<SteamRecordWindow>(*plan);
+    check(windows.size()==2&&windows[0].title=="High Score 1/2"&&windows[1].title=="已翻译纪录 1/2"&&
+          std::holds_alternative<SteamRecordWindow>(plan->draws[0])&&
+          std::holds_alternative<SteamRecordWindow>(plan->draws[1]),
+          "两次窗口标题的翻译来源不同，原序连续保留而非去重为一次");
+    for(const auto &window:windows)
+        check(window.source.width==200&&window.source.height==170&&window.source.vertical==0&&window.source.style==-12,
+              "Rank两次200x170窗口均使用原offset与v实参，不重复验证底层木纹");
+    const auto &left=std::get<SteamManualArrowRequest>(plan->draws[2]);
+    const auto &left_touch=std::get<SteamStartupTouch>(plan->draws[3]);
+    const auto &right=std::get<SteamManualArrowRequest>(plan->draws[4]);
+    const auto &right_touch=std::get<SteamStartupTouch>(plan->draws[5]);
+    check(left.position==std::array<int,2>{41,42}&&left.bounds_frame==3&&left.selected&&
+          right.position==std::array<int,2>{196,42}&&right.bounds_frame==0&&!right.selected&&
+          left_touch.component==1&&left_touch.value==16&&left_touch.image_draw==2&&!left_touch.rectangle&&
+          right_touch.component==1&&right_touch.value==18&&right_touch.image_draw==4&&!right_touch.rectangle&&
+          left_touch.option==0&&right_touch.option==0,
+          "每箭头之后紧接对应touch索引，selected独立传递，不用资源frame造最终箭头贴图");
+    const auto texts=parts<SteamRecordText>(*plan);
+    check(texts.size()==4&&texts[0].value=="最高点数"&&texts[0].position==std::array<float,2>{88.F,59.F}&&
+          texts[1].value=="纪录村"&&texts[1].position==std::array<float,2>{87.25F,166.F}&&
+          texts[2].position==std::array<float,2>{46.F,186.F}&&texts[3].value=="1,234"&&
+          texts[3].position==std::array<float,2>{175.F,186.F}&&
+          texts[0].rgb==std::array<int,3>{60,100,200}&&texts[1].rgb==std::array<int,3>{0,0,60}&&
+          texts[2].rgb==texts[0].rgb&&texts[3].rgb==std::array<int,3>{200,100,60},
+          "主题宽先整数除2、村名保持float半宽，非JP底值独立右齐且P不补入");
+    const auto images=parts<StartupSkinDraw>(*plan);
+    const auto actors=parts<SteamManualActorRequest>(*plan);
+    check(images.size()==1&&images[0].package==StartupSkinPackage::event&&images[0].image==9&&
+          images[0].crop==std::array<int,4>{0,0,180,80}&&images[0].offset==std::array<int,2>{30,78}&&
+          std::holds_alternative<SteamRecordText>(plan->draws[6])&&
+          std::holds_alternative<StartupSkinDraw>(plan->draws[7])&&actors.size()==6,
+          "主题→event9整图→人物助手原序，不另插标题阴影或将新局裁片冒充纪录背景");
+    constexpr std::array<int,6> actor_ids{9,2,7,0,11,4};
+    constexpr std::array<int,6> actor_x{68,94,120,146,172,198};
+    for(std::size_t i=0;i<actors.size();++i)
+        check(actors[i].definition==actor_ids[i]&&actors[i].position==std::array<int,2>{actor_x[i],153}&&
+              actors[i].seb==0&&actors[i].anime_index==0&&actors[i].direction==1&&actors[i].update_counter==19,
+              "冻结名单不重排，六人fallback不截五；仅中心计算夹五，原action0/dir1/纪录钟独立");
+
+    struct FormatCase {std::int64_t value;const char *number;const char *points;const char *gold;};
+    for(const auto &sample:std::array<FormatCase,3>{{
+        {0,"0","0P","0Ｇ"},{1234,"1,234","1,234P","1,234Ｇ"},
+        {std::numeric_limits<std::int64_t>::max(),"9,223,372,036,854,775,807","9,223,372,036,854,775,807P","9,223,372,036,854,775,807Ｇ"}}}) {
+        for(int page=0;page<2;++page)for(bool japanese:{false,true}) {
+            const auto formatted=steam_record_value_text(page,sample.value,japanese);
+            check(formatted&&*formatted==(page?sample.gold:japanese?sample.points:sample.number),
+                  "两页非负long独立格式oracle：P只限JP，Ｇ两语言保留，零与最大值不缩写");
+        }
+    }
+    check(!steam_record_value_text(-1,0,false)&&!steam_record_value_text(2,0,true)&&
+          !steam_record_value_text(0,-1,false)&&!steam_record_value_text(1,std::numeric_limits<std::int64_t>::min(),true),
+          "坏页及负纪录拒绝，不用绝对值或当前钱包补造");
+    input.page=1;input.japanese=true;input.english=false;
+    const auto japanese=steam_record_skin(input);
+    check(bool(japanese),"JP资金纪录合法候选可绘制");
+    const auto jptexts=parts<SteamRecordText>(*japanese);
+    check(parts<SteamRecordWindow>(*japanese)[0].title=="ハイスコア 2/2"&&
+          parts<SteamRecordWindow>(*japanese)[1].title=="已翻译纪录 2/2"&&
+          jptexts[2].value=="ﾊｲｽｺｱ"&&jptexts[2].position==std::array<float,2>{58.F,186.F}&&
+          jptexts[3].position==std::array<float,2>{163.F,186.F}&&jptexts[3].value=="1,234Ｇ",
+          "JP第一遍标题保留固定日文，第二遍仍LT；底签固定半角原串，资金页不改单位或两底锚");
+    auto unused_text=input;
+    unused_text.labels.english_title=std::string(4097,'x');unused_text.labels.bottom=std::string(4097,'y');
+    check(bool(steam_record_skin(unused_text)),"JP不消费English专用标题或非JP底签，不能让未使用文本阻止画面");
+    struct FrameCase {int frame,step,left,right;};
+    for(const auto sample:std::array<FrameCase,6>{{{0,0,44,193},{15,3,41,196},{16,0,41,196},
+            {19,0,41,196},{20,1,44,193},{std::numeric_limits<int>::max()-1,3,43,194}}}) {
+        input.frame=sample.frame;
+        const auto p=steam_record_skin(input);
+        check(p&&parts<SteamManualActorRequest>(*p)[0].anime_index==sample.step&&
+              parts<SteamManualActorRequest>(*p)[0].update_counter==sample.frame&&
+              parts<SteamManualArrowRequest>(*p)[0].position[0]==sample.left&&
+              parts<SteamManualArrowRequest>(*p)[1].position[0]==sample.right&&input.frozen_definitions==
+                  std::vector<int>({9,2,7,0,11,4}),
+              "人物16槽和箭头20槽独立oracle，最大合法钟不溢出且查询不改名单");
+    }
+    input.view_width=239;input.view_height=237;input.definition_count=0;input.frozen_definitions.clear();
+    input.village.clear();input.village_width=0.F;input.value=0;
+    const auto empty=steam_record_skin(input);
+    check(empty&&empty->origin==std::array<int,2>{0,12}&&empty->final_origin==std::array<int,2>{0,0}&&
+          empty->draws.size()==11&&parts<SteamManualActorRequest>(*empty).empty()&&
+          parts<SteamRecordText>(*empty)[1].value.empty()&&parts<SteamRecordText>(*empty)[3].value=="0Ｇ",
+          "小于240的负奇数偏移向零，空名单/空村名/零纪录均保留，不补默认人名村名");
+    input.view_width=65536;input.view_height=65536;input.definition_count=4096;
+    for(int id=0;id<4096;++id)input.frozen_definitions.push_back(id);
+    const auto maximum=steam_record_skin(input),repeat=steam_record_skin(input);
+    check(maximum&&repeat&&maximum->draws.size()==4107&&repeat->draws.size()==4107&&
+          parts<SteamManualActorRequest>(*maximum).back().position==std::array<int,2>{106538,153},
+          "最多definition_count加11请求，合法长fallback保留原排列而不因超窗截人或积累输出");
+    input.definition_count=12;input.frozen_definitions={9,2,7,0,11,4};
+    for(int fault=0;fault<28;++fault) {
+        auto bad=input;
+        if(fault==0)bad.page=-1;if(fault==1)bad.page=2;if(fault==2)bad.value=-1;
+        if(fault==3)bad.frame=-1;if(fault==4)bad.frame=std::numeric_limits<int>::max();
+        if(fault==5)bad.view_width=0;if(fault==6)bad.view_height=65537;
+        if(fault==7)bad.topic_width.reset();if(fault==8)bad.value_width.reset();if(fault==9)bad.village_width.reset();
+        if(fault==10)bad.village_width=std::numeric_limits<float>::quiet_NaN();
+        if(fault==11)bad.village_width=std::numeric_limits<float>::infinity();
+        if(fault==12)bad.topic_width=-1;if(fault==13)bad.value_width=4097;
+        if(fault==14)bad.village_width=-0.5F;if(fault==15)bad.village_width=4096.5F;
+        if(fault==16)bad.definition_count=-1;if(fault==17)bad.definition_count=4097;
+        if(fault==18)bad.frozen_definitions[0]=-1;if(fault==19)bad.frozen_definitions[0]=12;
+        if(fault==20)bad.frozen_definitions[1]=9;if(fault==21)bad.definition_count=5;
+        if(fault==22)bad.village=std::string(4097,'x');if(fault==23)bad.english=true;
+        if(fault==24)bad.labels.translated_title=std::string(4097,'x');
+        if(fault==25)bad.labels.topic=std::string(4097,'x');
+        if(fault==26){bad.japanese=false;bad.labels.bottom=std::string(4097,'x');}
+        if(fault==27){bad.japanese=false;bad.english=true;bad.labels.english_title=std::string(4097,'x');}
+        check(!steam_record_skin(bad),"坏纪录页/钟/测宽/目录及重复引用整体拒绝，不返回部分画面");
+    }
+}
+void record_update(Checks &check) {
+    struct Case {bool left,right,back;int page;std::array<bool,3> checked;bool pop;};
+    for(const auto c:std::array<Case,6>{{
+        {false,false,false,0,{true,true,true},false},
+        {true,false,false,1,{true,false,false},false},
+        {false,true,false,1,{true,true,false},false},
+        {true,true,true,1,{true,false,false},false},
+        {false,true,true,1,{true,true,false},false},
+        {false,false,true,0,{true,true,true},true}}}) {
+        const SteamRecordUpdateInput in{0,19,true,c.left,c.right,c.back};
+        const auto out=steam_record_update(in);
+        check(out&&out->page==c.page&&out->frame==20&&out->checked_keys==c.checked&&out->request_pop==c.pop&&
+              in.page==0&&in.frame==19,"Rank先钟后Left/Right短路，翻页压过返回且只翻一次；候选不写输入");
+    }
+    const auto wrap=steam_record_update({1,std::numeric_limits<int>::max()-1,true,false,true,true});
+    check(wrap&&wrap->page==0&&wrap->frame==0&&!wrap->request_pop,
+          "独立页钟到INT_MAX回0、第二页方向回第一页；不在翻页另清钟或同时请求Pop");
+    const auto inactive=steam_record_update({1,7,false,true,true,true});
+    check(inactive&&inactive->page==1&&inactive->frame==8&&!inactive->request_pop&&
+          inactive->checked_keys==std::array<bool,3>{false,false,false},
+          "非state0仍先加纪录钟，但不检查方向/soft2；不是由绘制推进");
+    for(const auto bad:std::array<SteamRecordUpdateInput,4>{{{-1,0},{2,0},{0,-1},{0,std::numeric_limits<int>::max()}}})
+        check(!steam_record_update(bad),"非法页或不可达独立钟拒绝，不补0或借标题钟");
 }
 void manual_page(Checks &check,const std::filesystem::path &root) {
     SteamManualSkinInput input;
@@ -513,6 +663,69 @@ int check_steam_startup_skin(const std::filesystem::path &root) {
     Checks check;
     using Asset=SteamStartupAsset;
     using Role=SteamStartupTextRole;
+    SteamTitleBackdropInput backdrop{479,481,301,277,9,{600,380},{}};
+    const auto early=steam_title_backdrop_skin(backdrop);
+    check(early&&early->operations.size()==12&&early->final_origin==std::array<int,2>{119,0},
+          "标题前段按W/Wv独立使用，frame9无Logo也留下中心原点");
+    const auto &sky=std::get<SteamStartupFill>(early->operations[0]);
+    check(sky.rectangle==std::array<double,4>{0,0,301,277}&&sky.rgb==std::array<int,3>{41,198,255},
+          "首操作直接填view尺寸继承入口原点，不能先补Set0");
+    check(std::get<SteamTitleSetOrigin>(early->operations[1]).value==std::array<int,2>{30,0}&&
+          std::get<SteamTitleWholeImage>(early->operations[2]).position==std::array<int,2>{-180,101}&&
+          std::get<SteamTitleSetOrigin>(early->operations[3]).value==std::array<int,2>{0,0}&&
+          std::get<SteamTitleWholeImage>(early->operations[4]).image==6&&
+          std::get<SteamTitleWholeImage>(early->operations[5]).position==std::array<int,2>{240,0}&&
+          std::get<SteamTitleSetOrigin>(early->operations[6]).value==std::array<int,2>{119,0}&&
+          std::holds_alternative<SteamTitleActors>(early->operations[7])&&
+          std::get<SteamTitleSetOrigin>(early->operations[8]).value==std::array<int,2>{0,0}&&
+          std::get<SteamTitleWholeImage>(early->operations[9]).position==std::array<int,2>{0,450}&&
+          std::get<SteamTitleWholeImage>(early->operations[10]).position==std::array<int,2>{240,450}&&
+          std::get<SteamTitleSetOrigin>(early->operations[11]).value==early->final_origin,
+          "整图背景→upper→实际演员插入点→草→无条件中心原点，尾片不裁短或拉伸");
+    backdrop.logo=SteamTitleLogoVariant::original;
+    for(const auto [frame,y]:std::array<std::array<int,2>,9>{{
+        {10,-61},{73,117},{74,120},{100,120},{101,118},{105,114},{106,114},{112,120},
+        {2147483646,117}}}) {
+        backdrop.title_frame=frame;
+        const auto plan=steam_title_backdrop_skin(backdrop);
+        check(plan&&plan->operations.size()==14,"Logo门槛后增加恰一幅原图与独立无矩形确认注册");
+        const auto &logo=std::get<SteamTitleWholeImage>(plan->operations[12]);
+        const auto &touch=std::get<SteamTitleConfirmRegistration>(plan->operations[13]);
+        check(logo.image==2&&logo.position==std::array<int,2>{2,y}&&touch.component==2&&touch.flags==2&&
+              std::string(logo.published_image)=="steam-startup/original/title/title_logo.png",
+              "Logo入场/负余数/弹跳/饱和钟的独立整数oracle，不附加APK英语偏移");
+    }
+    backdrop.title_frame=100;backdrop.logo=SteamTitleLogoVariant::english;
+    const auto english=steam_title_backdrop_skin(backdrop);
+    check(english&&std::string(std::get<SteamTitleWholeImage>(english->operations[12]).published_image)==
+          "steam-startup/original/title/English.lproj/title_logo.png"&&
+          std::get<SteamTitleWholeImage>(english->operations[12]).position==std::array<int,2>{2,120},
+          "实际Logo选择显式传入，英语变体不改变本体锚也不从中文UI猜资源");
+    struct BackdropAsset {const char *name;int width,height;};
+    for(const auto &asset:std::array<BackdropAsset,5>{{{"title00.png",600,380},{"upper.png",240,9},
+        {"title_grass.png",240,18},{"title_logo.png",236,115},{"English.lproj/title_logo.png",236,132}}}) {
+        const auto path=root/"steam_title"/asset.name;
+        const auto image=LoadImage(path.string().c_str());
+        const bool valid=image.data&&image.width==asset.width&&image.height==asset.height;
+        if(image.data)UnloadImage(image);
+        check(valid,"背景/顶部/草边/两Logo消费真正Steam出版整图，不借APK同名图");
+    }
+    auto narrow=backdrop;narrow.width=239;narrow.view_width=239;narrow.background_size={599,379};
+    const auto odd=steam_title_backdrop_skin(narrow);
+    check(odd&&odd->final_origin==std::array<int,2>{0,0}&&
+          std::get<SteamTitleWholeImage>(odd->operations[2]).position==std::array<int,2>{-179,102},
+          "纯几何条件覆盖负奇数向零除2，背景坐标来自实际Image尺寸而非固定600假设");
+    auto wide=backdrop;wide.width=65536;
+    const auto bounded=steam_title_backdrop_skin(wide);
+    check(bounded&&bounded->operations.size()==558&&steam_title_backdrop_skin(wide)->operations.size()==558,
+          "维护最大宽度的平铺输出有界，重复查询不累计图元或推进演员");
+    for(int fault=0;fault<6;++fault) {
+        auto bad=backdrop;
+        if(fault==0)bad.width=0;if(fault==1)bad.view_height=65537;if(fault==2)bad.background_size[0]=-1;
+        if(fault==3)bad.title_frame=std::numeric_limits<int>::max();if(fault==4)bad.logo.reset();
+        if(fault==5)bad.logo=static_cast<SteamTitleLogoVariant>(-1);
+        check(!steam_title_backdrop_skin(bad),"已消费标题尺寸/钟/Logo身份错误明确拒绝");
+    }
     // Steam窗口helper独立oracle：变换前几何，不以真实字体或物理像素认证代替。
     SteamStartupWindow frame{198,146,70,-12,Role::slot_title,2};
     const auto expanded=steam_startup_window_skin(frame,0,std::array<int,2>{41,44});
@@ -744,5 +957,7 @@ int check_steam_startup_skin(const std::filesystem::path &root) {
     main_menu(check,root);
     save_page(check);
     manual_page(check,root);
+    record_page(check);
+    record_update(check);
     return check.count;
 }

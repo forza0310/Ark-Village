@@ -13,6 +13,8 @@
 
 验收复用冻结building/pages/restore/codec/skin、现world_building/world_building_commands/world_menu/world_session及绘制夹具，不新增target。主责检查完整目录/空行/双向键顺序、原子拒绝、资金反馈、父返回、模态冷清和Draw的重复/迟到/暂停/覆盖父/generation；产品只补FIFO、已画几何与真实字体接线。阶段执行两Debug标准（仅排三个月），修后两Debug及Release受影响检查通过；两尺寸/长文本/工具/住宅/滚动裁剪条件图与真实目录、月107冷载已验，结果见[B1](stages/B1-playable-prototype.md#research-9cee27a-build-record)。便携包另记录；CI/OS物理输入、动态标题与全经营覆盖分别记，不据静态图宣称已闭合。
 
+经营诊断沿已批准主线接续：仅在现steam-observe显式开启--trace-activity，比较唯一真实prepare成功后的输入/候选，不重跑决策或随机；记录控制/绑定/访问/消费变化、独立kind3销售与新增账本，单纯移动静默。既有点数目标保持19→缺64图纸，再保留已开放未举办21的正式报价；源目录/季度/支付资格保持，举办后释放，sidecar格式不变。三配置短合同、1500轮观察及107→108分段存读已验；现状与限界见[B1](stages/B1-playable-prototype.md#campaign-month107-activity-trace)和[经营计划](stages/ACTIVE_VILLAGE_PLAN.md)，继续实际消费，不将预算或候选查询登记为已达成效果。
+
 <a id="research-613f45c-tax-introduction"></a>
 ## 税收页与正常怪物介绍（沿持续goal）
 

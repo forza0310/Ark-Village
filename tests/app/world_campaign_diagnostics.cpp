@@ -7,7 +7,10 @@
 #include <algorithm>
 #include <chrono>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
+#include <limits>
+#include <set>
 #include <sstream>
 #include <stdexcept>
 
@@ -62,7 +65,173 @@ const char *stage_name(sim::rules::WorldScheduleStage stage) {
     }
     return "unknown";
 }
+template <class Values> void list(std::ostream &out, const Values &values) {
+    out << '[';
+    bool first = true;
+    for (const auto value : values) {
+        if (!first)
+            out << ',';
+        out << value;
+        first = false;
+    }
+    out << ']';
+}
+bool activity_actor(const app::WorldState &s, sim::rules::CharacterId id) {
+    const auto &actors = s.scene.world.world.ai.battle.actors;
+    const auto found = actors.find(id);
+    if (found == actors.end() || found->second.kind != sim::rules::ActorKind::human)
+        return false;
+    const auto &control = found->second.control;
+    return control.state == 0 || control.state == 8 ||
+           (!control.queue.empty() && !control.queue.front().empty() &&
+            (control.queue.front().front() == 0 || control.queue.front().front() == 8));
+}
+// The short form is the event key. Movement and waypoint changes are context only, so an
+// otherwise unchanged travelling actor cannot flood the bounded observation log every tick.
+std::string activity_actor_fields(const app::WorldState &s, sim::rules::CharacterId id,
+                                  bool context) {
+    const auto &world = s.scene.world.world;
+    const auto found = world.ai.battle.actors.find(id);
+    if (found == world.ai.battle.actors.end())
+        return "live=0";
+    const auto &actor = found->second;
+    std::ostringstream out;
+    out << std::setprecision(std::numeric_limits<float>::max_digits10)
+        << "live=1 definition=" << actor.definition << " state=" << actor.control.state
+        << " action=" << actor.control.action << " flags=" << actor.control.flags
+        << " queue_size=" << actor.control.queue.size() << " head=";
+    if (actor.control.queue.empty())
+        out << "none";
+    else
+        list(out, actor.control.queue.front());
+    const auto spending = world.human_spending.find(actor.definition);
+    out << " spending=";
+    if (spending == world.human_spending.end())
+        out << "missing";
+    else
+        out << spending->second;
+    const auto route = world.actors.find(id);
+    if (route != world.actors.end()) {
+        const auto &r = route->second;
+        if (r.binding)
+            out << " binding_instance=" << r.binding->instance_id.value
+                << " binding_definition=" << r.binding->definition_id
+                << " binding_goal=" << r.binding->goal.x << ',' << r.binding->goal.y;
+        else
+            out << " binding=none";
+        out << " destination=";
+        if (r.destination)
+            out << r.destination->x << ',' << r.destination->y;
+        else
+            out << "none";
+        out << " path_pending=" << r.path_pending << " visits=";
+        list(out, r.visits.legacy_visit_counts);
+        out << " category_one_count=" << r.visits.legacy_category_one_count
+            << " category_six_counter=" << r.visits.legacy_category_six_counter
+            << " last_visit="
+            << r.visits.last_visited_instance.value_or(sim::rules::BuildingId{}).value
+            << " actor_total=" << r.visits.legacy_actor_total;
+        if (context) {
+            out << " waypoint=" << r.waypoint << " route_kind=";
+            const auto *path = r.journey ? &r.journey->route
+                                        : r.unbound_route ? &*r.unbound_route : nullptr;
+            out << (r.journey ? "facility" : r.unbound_route ? "ground" : "none");
+            if (path) {
+                out << " route_error=" << int(path->error) << " route_cost=" << path->cost
+                    << " route_steps=[";
+                for (std::size_t n = 0; n < path->steps.size(); ++n) {
+                    if (n)
+                        out << ';';
+                    out << path->steps[n].x << ',' << path->steps[n].y;
+                }
+                out << ']';
+            }
+        }
+    } else
+        out << " route_context=missing";
+    if (context) {
+        out << " position=" << actor.position.x << ',' << actor.position.height << ','
+            << actor.position.z << " state_counter=" << actor.state_counter
+            << " action_counter=" << actor.control.action_counter;
+        const auto cached = world.ai.contexts.find(id);
+        if (cached != world.ai.contexts.end())
+            out << " cached_cell=" << cached->second.cell.x << ',' << cached->second.cell.y;
+    }
+    return out.str();
+}
+void activity_facility_fields(std::ostream &out, const sim::rules::RescueFacility *facility) {
+    if (!facility) {
+        out << "live=0";
+        return;
+    }
+    out << "live=1 definition=" << facility->placement.definition_id
+        << " sales=" << facility->sales << " occupants=[";
+    for (std::size_t n = 0; n < facility->occupants.size(); ++n) {
+        if (n)
+            out << ',';
+        out << facility->occupants[n].value;
+    }
+    out << ']';
+}
 } // namespace
+
+void inspect_campaign_activity(const app::WorldState &before, const app::WorldState &after,
+                               std::uint64_t successful_rounds, std::ostream &out) {
+    const auto &old_world = before.scene.world.world;
+    const auto &new_world = after.scene.world.world;
+    const auto prefix = [&](const char *kind) {
+        out << kind << " view=actual_update_boundary round=" << successful_rounds + 1
+            << " world_steps=" << before.simulation_steps << "->" << after.simulation_steps;
+    };
+    std::vector<sim::rules::CharacterId> humans = old_world.ai.human_order;
+    for (const auto id : new_world.ai.human_order)
+        if (std::find(humans.begin(), humans.end(), id) == humans.end())
+            humans.push_back(id);
+    for (const auto id : humans) {
+        if ((!activity_actor(before, id) && !activity_actor(after, id)) ||
+            activity_actor_fields(before, id, false) == activity_actor_fields(after, id, false))
+            continue;
+        for (const bool previous : {true, false}) {
+            prefix("ACTOR_ACTIVITY");
+            out << " actor=" << id.value << " phase=" << (previous ? "before" : "after") << ' '
+                << activity_actor_fields(previous ? before : after, id, true) << '\n';
+        }
+    }
+    // Shop occupancy and billing are independent of the actor filter: an intervening arrival
+    // can leave neither boundary in state8/0, yet its committed sale must still be visible.
+    std::set<std::uint64_t> facilities;
+    for (const auto &[id, facility] : old_world.facilities)
+        if (facility.kind == 3)
+            facilities.insert(id);
+    for (const auto &[id, facility] : new_world.facilities)
+        if (facility.kind == 3)
+            facilities.insert(id);
+    for (const auto id : facilities) {
+        const auto old = old_world.facilities.find(id);
+        const auto next = new_world.facilities.find(id);
+        const auto *old_facility = old == old_world.facilities.end() ? nullptr : &old->second;
+        const auto *new_facility = next == new_world.facilities.end() ? nullptr : &next->second;
+        if (old_facility && new_facility && old_facility->sales == new_facility->sales &&
+            old_facility->occupants == new_facility->occupants)
+            continue;
+        for (const bool previous : {true, false}) {
+            prefix("SHOP_ACTIVITY");
+            out << " instance=" << id << " phase=" << (previous ? "before" : "after") << ' ';
+            activity_facility_fields(out, previous ? old_facility : new_facility);
+            out << '\n';
+        }
+    }
+    const auto &old_entries = old_world.ai.accounting.entries();
+    for (const auto &[id, entry] : new_world.ai.accounting.entries()) {
+        if (old_entries.count(id))
+            continue;
+        prefix("ACTIVITY_LEDGER_ADDED");
+        out << " event=" << entry.event_id << " period=" << entry.period
+            << " category=" << int(entry.category) << " direction=" << int(entry.direction)
+            << " amount=" << entry.amount << " cash_before=" << old_world.ai.accounting.funds()
+            << " cash_after=" << new_world.ai.accounting.funds() << '\n';
+    }
+}
 
 void inspect_campaign_progress(const app::WorldState &s, std::ostream &out) {
     require(s.rules != nullptr, "progress inspection needs source definitions");
@@ -271,6 +440,73 @@ void campaign_diagnostic_contract(const std::filesystem::path &build) {
     require(progress.str().find("RANK_REQUIREMENT target=1 index=0") != std::string::npos &&
                 sim::startup_world_state_digest(state) == progress_digest,
             "progress inspection must query real rank terms without mutating Owner/random");
+    // Prepare a live record through the real arrival producer and its unchanged initial
+    // countdown. These arrival-only calls are a formatting fixture, not natural campaign
+    // progression; the original new-world Owner and every downstream assertion stay intact.
+    auto activity_before = state;
+    const auto arrival = sim::startup_world_runtime_adapter().arrival;
+    require(bool(arrival), "activity fixture needs the production arrival consumer");
+    const int arrival_calls = activity_before.arrival_counter;
+    for (int n = 0; n < arrival_calls && activity_before.scene.world.world.ai.human_order.empty();
+         ++n) {
+        auto arrived = arrival(activity_before);
+        require(arrived.has_value(), "activity fixture source arrival preparation rejected");
+        activity_before = std::move(*arrived);
+    }
+    require(sim::startup_world_state_digest(state) == progress_digest,
+            "activity fixture preparation must preserve the original new-world Owner/random");
+    auto &world = activity_before.scene.world.world;
+    require(!world.ai.human_order.empty(), "activity fixture needs the real initial visitor");
+    const auto actor = world.ai.human_order.front();
+    world.ai.battle.actors.at(actor).control.state = 8;
+    auto movement = activity_before;
+    movement.scene.world.world.ai.battle.actors.at(actor).position.x += .25F;
+    ++movement.scene.world.world.actors.at(actor).waypoint;
+    const auto input_digest = sim::startup_world_state_digest(activity_before);
+    const auto movement_digest = sim::startup_world_state_digest(movement);
+    std::ostringstream quiet;
+    inspect_campaign_activity(activity_before, activity_before, 7, quiet);
+    inspect_campaign_activity(activity_before, movement, 7, quiet);
+    require(quiet.str().empty() && sim::startup_world_state_digest(activity_before) == input_digest &&
+                sim::startup_world_state_digest(movement) == movement_digest,
+            "unchanged or movement-only activity inspection stays quiet and preserves both Owners");
+    auto changed = movement;
+    auto &next_world = changed.scene.world.world;
+    next_world.ai.battle.actors.at(actor).control.state = 0;
+    const auto shop = std::find_if(next_world.facilities.begin(), next_world.facilities.end(),
+                                   [](const auto &entry) { return entry.second.kind == 3; });
+    require(shop != next_world.facilities.end(), "activity fixture needs an initial shop");
+    shop->second.sales += 11;
+    shop->second.occupants.push_back(actor);
+    require(next_world.ai.accounting.post_cash(
+                {next_world.ai.next_cash_id, next_world.ai.period,
+                 sim::rules::CashCategory::facilities, sim::rules::CashDirection::income, 11}) ==
+                sim::rules::AccountingError::none,
+            "activity fixture records one explicit ledger entry");
+    const auto output_digest = sim::startup_world_state_digest(changed);
+    std::ostringstream activity;
+    inspect_campaign_activity(activity_before, changed, 7, activity);
+    require(activity.str().find("ACTOR_ACTIVITY view=actual_update_boundary round=8") !=
+                std::string::npos &&
+                activity.str().find("phase=before live=1") != std::string::npos &&
+                activity.str().find("phase=after live=1") != std::string::npos &&
+                activity.str().find("SHOP_ACTIVITY view=actual_update_boundary") != std::string::npos &&
+                activity.str().find("ACTIVITY_LEDGER_ADDED view=actual_update_boundary") !=
+                    std::string::npos &&
+                sim::startup_world_state_digest(activity_before) == input_digest &&
+                sim::startup_world_state_digest(changed) == output_digest,
+            "actual-boundary format labels both sides, independent shops and ledger without mutation");
+    // Billing visibility must not depend on the two boundary actors qualifying as state8/0.
+    activity_before.scene.world.world.ai.battle.actors.at(actor).control = {};
+    activity_before.scene.world.world.ai.battle.actors.at(actor).control.state = 1;
+    changed.scene.world.world.ai.battle.actors.at(actor).control = {};
+    changed.scene.world.world.ai.battle.actors.at(actor).control.state = 1;
+    std::ostringstream shop_only;
+    inspect_campaign_activity(activity_before, changed, 7, shop_only);
+    require(shop_only.str().find("ACTOR_ACTIVITY") == std::string::npos &&
+                shop_only.str().find("SHOP_ACTIVITY") != std::string::npos &&
+                shop_only.str().find("ACTIVITY_LEDGER_ADDED") != std::string::npos,
+            "shop occupancy and ledger remain visible outside the actor filter");
     capture_campaign_observation(directory, state);
     require(sim::startup_world_state_digest(read_campaign_observation(directory)) ==
                 sim::startup_world_state_digest(state),

@@ -115,6 +115,11 @@ std::optional<SteamProgressPointGoal> steam_progress_point_goal(const State &s) 
         facility && s.facility_presence.at(*facility) == 0)
         return SteamProgressPointGoal{SteamProgressPurchase::blueprint, *facility,
                                       s.rules->facility_initial.at(*facility).capacity};
+    // Museum completion opens activity21 through the source event75. Reserve its
+    // first real quote; catalogue, quarter slots and payment remain source gates.
+    if (s.scripts.activities.at(21).status == 1 && s.activity_counts.at(21) == 0)
+        return SteamProgressPointGoal{SteamProgressPurchase::activity, 21,
+                                      s.rules->activities.at(21).parameters[4]};
     return {};
 }
 int steam_task_recovery_month(const State &s) { return month(s) + 2; }
@@ -145,6 +150,7 @@ void steam_budget_contract() {
     auto progression = s;
     progression.rank = 4;
     progression.scripts.activities.at(19).status = 1;
+    progression.scripts.activities.at(21).status = 1; // Qualification fixture for goal priority.
     const auto fireworks = steam_progress_point_goal(progression);
     require(fireworks && fireworks->kind == SteamProgressPurchase::activity &&
                 fireworks->definition == 19 && fireworks->points == 150,
@@ -156,8 +162,19 @@ void steam_budget_contract() {
                 museum->points == 200,
             "after fireworks the next rank's actual museum blueprint requires200 points");
     progression.facility_presence.at(64) = 2;
+    progression.scripts.activities.at(21).status = 0;
     require(!steam_progress_point_goal(progression) && steam_required_facility(progression) == 64,
             "an acquired blueprint reserves no second purchase but still needs actual construction");
+    progression.scripts.activities.at(21).status = 1;
+    progression.village_points = 75;
+    const auto museum_activity = steam_progress_point_goal(progression);
+    require(museum_activity && museum_activity->kind == SteamProgressPurchase::activity &&
+                museum_activity->definition == 21 && museum_activity->points == 160 &&
+                progression.village_points < museum_activity->points,
+            "the open unheld museum activity must preserve its real160-point budget while unaffordable");
+    progression.activity_counts.at(21) = 1;
+    require(!steam_progress_point_goal(progression),
+            "a held museum activity must release its reserved points");
     progression.rank = 3;
     require(!steam_progress_point_goal(progression), "rank4 input goals must not be injected into a rank3 town");
     // Cached raw27 quotes and strength are explicit player-choice qualifications.

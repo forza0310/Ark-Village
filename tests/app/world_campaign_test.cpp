@@ -187,6 +187,7 @@ template <class PlayerStrategy> struct CampaignRun {
     int steam_checkpoint_interval{3}; // Normal campaign retains quarterly recovery points.
     int saved_steam_month{-1};
     int steam_prefix_month{-1};
+    bool activity_trace{}; // Optional bounded steam-observe diagnostics; normal long runs stay quiet.
 
     void command(const app::WorldCommand &input) {
         auto candidate = state;
@@ -296,6 +297,8 @@ template <class PlayerStrategy> struct CampaignRun {
             throw std::runtime_error("Runtime update rejected: " +
                                      ark::test::describe_campaign_failure(update));
         }
+        if (activity_trace)
+            ark::test::inspect_campaign_activity(state, *update.candidate, rounds, std::cout);
         require(sim::update_startup_world_render_cache(*update.candidate), "Render cache rejected");
         auto next = system;
         good(app::commit_world_system(directory, state, *update.candidate, next));
@@ -875,8 +878,12 @@ int main(int argc, char **argv) {
             coverage.write(std::cout, ark::test::initial_world());
             return 0;
         }
-        require(argc == 3, "Expected campaign phase and runner-created isolated directory");
+        require(argc == 3 || argc == 4,
+                "Expected campaign phase, isolated directory and optional --trace-activity");
         const std::string mode = argv[1];
+        require(argc == 3 || (mode == "steam-observe" &&
+                             std::string(argv[3]) == "--trace-activity"),
+                "--trace-activity is supported only by bounded steam-observe");
         if (mode == "steam-new" || mode == "steam-resume" || mode == "steam-verify" ||
             mode == "steam-inspect" || mode == "steam-quarter" || mode == "steam-month" ||
             mode == "steam-observe" || mode == "steam-withdraw") {
@@ -916,6 +923,11 @@ int main(int argc, char **argv) {
                 // Keep the player/strategy files as input; this is not a milestone certificate.
                 steam_campaign.emplace(load<ark::test::SteamVillageStrategy>(directory, 0));
                 auto &run = *steam_campaign;
+                run.activity_trace = argc == 4;
+                if (run.activity_trace)
+                    std::cout << "ACTIVITY_TRACE view=actual_update_boundary enabled=1 "
+                                 "intermediate_decisions=unobserved random_tickets=unobserved "
+                                 "priority_order=unobserved\n";
                 run.strategy.continue_campaign();
                 const bool withdraw = mode == "steam-withdraw";
                 const auto deadline =

@@ -257,6 +257,29 @@ steam_layout_access_repair(const State &s) {
     return {};
 }
 
+bool steam_reference_layout_complete(const State &s) {
+    if (s.rank < 4)
+        return false;
+    for (const auto &goal : layout) {
+        const auto id = steam_layout_match(s, goal);
+        if (!id || s.scene.world.world.facilities.at(*id).status != 1 ||
+            (s.facility_flags.at(*id) & 1U) ||
+            (goal.role == Role::residence && s.facility_residents.at(*id) < 0))
+            return false;
+    }
+    return true;
+}
+
+bool steam_shop_expansion_ready(const State &s) {
+    if (!steam_reference_layout_complete(s))
+        return false;
+    for (const auto &[id, facility] : s.scene.world.world.facilities)
+        if (facility.kind == 3 && !steam_layout_slot(s, id) &&
+            (facility.status != 1 || facility.sales <= 0))
+            return false;
+    return true;
+}
+
 void steam_layout_contract() {
     const auto require = [](bool value, const char *message) {
         if (!value)
@@ -396,5 +419,79 @@ void steam_layout_contract() {
     require(repair && repair->first == *inserted.created &&
                 extension_candidate(corner, repair->second, repair->first),
             "repair must move the external shop and restore all retained source targets");
+
+    // Minimal read-only placement qualification, not a valid full Owner or a
+    // naturally built village. Only fields consumed by readiness are populated.
+    auto readiness = original;
+    readiness.rank = 4;
+    const auto prototype = readiness.scene.world.world.facilities.begin()->second;
+    readiness.scene.world.world.facilities.clear();
+    readiness.facility_flags.clear();
+    readiness.facility_residents.clear();
+    std::uint64_t readiness_id = 1;
+    std::uint64_t readiness_home{};
+    for (const auto &goal : layout) {
+        auto facility = prototype;
+        facility.placement.instance_id.value = readiness_id;
+        facility.placement.definition_id = goal.definition;
+        facility.placement.shape =
+            static_cast<ref::FacilityShape>(readiness.rules->facilities.at(goal.definition).shape);
+        facility.placement.anchor = goal.anchor;
+        facility.placement.orientation = goal.orientation;
+        facility.kind = readiness.rules->facilities.at(goal.definition).kind;
+        facility.status = 1;
+        facility.sales = 1;
+        readiness.scene.world.world.facilities.emplace(readiness_id, facility);
+        readiness.facility_flags[readiness_id] = 0;
+        readiness.facility_residents[readiness_id] = goal.role == Role::residence ? 0 : -1;
+        if (goal.role == Role::residence)
+            readiness_home = readiness_id;
+        ++readiness_id;
+    }
+    require(steam_shop_expansion_ready(readiness),
+            "complete, connected and occupied reference placements must permit expansion");
+    const auto complete_projection = readiness;
+    const std::array<const char *, 5> readiness_denials{{
+        "rank3 must not extend a four-star reference layout",
+        "a missing reference placement must prevent expansion",
+        "an unfinished reference shop must prevent expansion",
+        "a disconnected reference shop must prevent expansion",
+        "an unoccupied reference residence must prevent expansion",
+    }};
+    for (int scenario = 0; scenario < 5; ++scenario) {
+        auto denied = complete_projection;
+        if (scenario == 0)
+            denied.rank = 3;
+        else if (scenario == 1)
+            denied.scene.world.world.facilities.erase(1);
+        else if (scenario == 2)
+            denied.scene.world.world.facilities.at(1).status = 0;
+        else if (scenario == 3)
+            denied.facility_flags.at(1) = 1U;
+        else
+            denied.facility_residents.at(readiness_home) = -1;
+        require(!steam_shop_expansion_ready(denied), readiness_denials.at(scenario));
+    }
+    auto external_shop = prototype;
+    external_shop.placement.instance_id.value = readiness_id;
+    external_shop.placement.definition_id = 54;
+    external_shop.placement.shape =
+        static_cast<ref::FacilityShape>(readiness.rules->facilities.at(54).shape);
+    external_shop.placement.anchor = {1, 1};
+    external_shop.placement.orientation = first;
+    external_shop.kind = 3;
+    external_shop.status = 0;
+    external_shop.sales = 0;
+    readiness.scene.world.world.facilities.emplace(readiness_id, external_shop);
+    require(!steam_shop_expansion_ready(readiness),
+            "external shop construction must prevent buying the next expansion");
+    readiness.scene.world.world.facilities.at(readiness_id).status = 1;
+    require(!steam_shop_expansion_ready(readiness) && steam_reference_layout_complete(readiness),
+            "a zero-sales shop blocks the next purchase but must retain the blueprint budget gate");
+    const auto waiting_projection = readiness;
+    readiness.scene.world.world.facilities.at(readiness_id).sales = 1;
+    require(steam_shop_expansion_ready(readiness) &&
+                !steam_shop_expansion_ready(waiting_projection),
+            "readiness must follow durable sales in each independent projection, not controller history");
 }
 } // namespace ark::test

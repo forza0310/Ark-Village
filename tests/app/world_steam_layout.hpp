@@ -43,5 +43,9 @@ steam_connected_extension(const simulation::StartupWorldRuntimeState &state, int
 // Move a non-blueprint shop bordering a disconnected target; never move a retained residence.
 std::optional<std::pair<std::uint64_t, SteamLayoutTarget>>
 steam_layout_access_repair(const simulation::StartupWorldRuntimeState &state);
+// Keep the reference layout/residents complete; the separate next-shop gate also
+// waits for external shops to open and trade. Both use durable state after cold load.
+bool steam_reference_layout_complete(const simulation::StartupWorldRuntimeState &state);
+bool steam_shop_expansion_ready(const simulation::StartupWorldRuntimeState &state);
 void steam_layout_contract();
 } // namespace ark::test

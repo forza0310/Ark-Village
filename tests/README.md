@@ -2,6 +2,8 @@
 
 用户已批准的`steam-month`单月分段复用季度路线的真实输入、稳定场景、策略checkpoint及玩家保存桥，每段仍限6分钟/10000轮。保存月份必须严格晚于冷载月份，另建`checkpoints/month-N`后由独立进程`steam-inspect`逐字节核耐久载荷及玩家随机政策；不改默认季度间隔，不把失败观察Owner转成玩家档或把单月结果冒称全链通过。
 
+显式`steam-natural-month`复用同一经营驱动，遇真实raw17才交生产计分分支，稳定后保存第二栏及测试专属`lifecycle1.txt`；`steam-natural-verify`独立冷载。`steam-continue`要求计分后完整营业月、实际输入及效果；`steam-inherit`释放旧Owner，以同一系统纪录和冷新局/空首星策略建设营业，`steam-inherit-verify`冷载。观察/分段实现归`world_campaign_clear`，短边界资格归`world_campaign_clear_test`，同一campaign套件；短合同的近日期夹具不认证自然经营。旧入口的raw17拒绝、775分母及玩家存档政策保持。运行范围与尚未通过的真实长链见[计划](../docs/MILESTONES.md#campaign-natural-lifecycle)。
+
 现有长跑的实际玩家输入、成功判据与注册范围见[长测审计与建设方案](../docs/stages/ACTIVE_VILLAGE_PLAN.md)。3月/年度持续基线与短回放仍保留原oracle，但不能称为完整经营验收；产品主长测应有建设、活动/培养、任务胜利、逐星条件和新内容消费。被动日期campaign已停止，不计通关/继承通过。
 
 周期扣费允许负金币，经营观察和策略记录保留有符号最低值；主动付款仍按源资格拒绝。现campaign短合同用真实月报验证跨零、建设拒绝及五种策略配置往返，复用账本/月报规则套件的费用、幂等与回滚oracle；负余额不是即时失败，也不能直接认证经营健康。

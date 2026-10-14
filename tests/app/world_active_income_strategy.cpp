@@ -1,6 +1,8 @@
 #include "world_active_income_strategy.hpp"
 #include "../support/world_fixture.hpp"
 #include "ark/simulation/facilities/rules/facility_items.hpp"
+#include "ark/simulation/facilities/startup_world_building.hpp"
+#include "ark/simulation/facilities/startup_world_facility_items.hpp"
 #include "ark/simulation/village/startup_information.hpp"
 #include <algorithm>
 #include <iostream>
@@ -476,13 +478,17 @@ void ActiveIncomeStrategy::observe_tick(const State &before, const State &after,
     if (before.scripts.facilities.at(v.definition).improvements ==
         after.scripts.facilities.at(v.definition).improvements)
         return;
-    const auto delta = after.scene.world.world.facilities.at(v.facility).price -
-                       before.scene.world.world.facilities.at(v.facility).price;
-    require(delta == v.price_delta && (delta > 0 || v.introduction || v.amenities),
-            "committed facility price differs from selected forecast");
     const auto old_values = sim::startup_world_facility_values(before, v.facility);
     const auto new_values = sim::startup_world_facility_values(after, v.facility);
     require(old_values && new_values, "investment target lost its economy projection");
+    // raw76 derives current inputs and refreshes the arrival-price cache. Its previous
+    // cached price can predate those inputs; cache refresh is not an item increment.
+    const auto delta = new_values->instance_attributes[0] - old_values->instance_attributes[0];
+    require(delta == v.price_delta && (delta > 0 || v.introduction || v.amenities),
+            "committed facility price differs from selected forecast");
+    require(after.scene.world.world.facilities.at(v.facility).price ==
+                new_values->instance_attributes[0],
+            "committed arrival-price cache differs from the current source economy");
     for (std::size_t slot = 0; slot < v.visible_deltas.size(); ++slot)
         require(new_values->instance_attributes[slot] - old_values->instance_attributes[slot] ==
                     v.visible_deltas[slot],
@@ -510,7 +516,10 @@ void ActiveIncomeStrategy::observe_tick(const State &before, const State &after,
     improved_ = true;
     std::cout << "INVEST improved facility=" << v.facility << " item=" << v.item
               << " actual_price_delta=" << delta << " actual_quality_delta=" << v.visible_deltas[1]
-              << " actual_charm_delta=" << v.visible_deltas[2] << " uses=" << uses_ << std::endl;
+              << " actual_charm_delta=" << v.visible_deltas[2]
+              << " cached_price_before=" << before.scene.world.world.facilities.at(v.facility).price
+              << " cached_price_after=" << after.scene.world.world.facilities.at(v.facility).price
+              << " uses=" << uses_ << std::endl;
     if (receipts)
         receipts({CampaignReceiptKind::facility_item_improved,
                   v.definition,
@@ -614,6 +623,60 @@ void income_strategy_contract() {
                 introductions.items.at(attraction_item).inventory == 1,
             "held loot must first select the zero-sales new shop using shared charm, without use "
             "or purchase");
+
+    // A bounded cache qualification, not natural acquisition. The actual75/76 consumers
+    // keep the old arrival cache through inventory use, then refresh it at improvement Init.
+    auto cache_flow = empty_inventory;
+    cache_flow.items.at(attraction_item).inventory = 1;
+    cache_flow.catalog.at({0, attraction_item}).inventory = 1;
+    const auto current = sim::startup_world_facility_values(cache_flow, older);
+    require(current && current->instance_attributes[0] > 48, "source shop cache qualification");
+    cache_flow.scene.world.world.facilities.at(older).price =
+        static_cast<int>(current->instance_attributes[0] - 48);
+    ActiveIncomeStrategy observer(3600, true);
+    observer.register_new_shop(older);
+    const auto selected = observer.next(cache_flow, 0, true);
+    require(selected.command && selected.command->facility == older &&
+                sim::open_startup_world_facility_page(cache_flow, older) ==
+                    sim::StartupWorldRuntimeError::none,
+            "cache qualification must select and open a real source shop");
+    const auto detail_page = cache_flow.scripts.pages.back().id;
+    require(sim::open_startup_world_facility_items(cache_flow, detail_page) ==
+                sim::StartupWorldRuntimeError::none &&
+                sim::initialize_startup_world_facility_item_pages(cache_flow),
+            "cache qualification must initialize the real75 inventory");
+    const auto inventory_page = cache_flow.scripts.pages.back().id;
+    auto use_command = item(inventory_page, Item::confirm, 0);
+    const auto before_use = cache_flow;
+    require(sim::act_startup_world_facility_item_page(cache_flow, inventory_page, Item::confirm, 0) ==
+                sim::StartupWorldRuntimeError::none,
+            "cache qualification must consume its held item through75");
+    observer.observe(before_use, use_command, cache_flow);
+    const auto before_improvement = cache_flow;
+    require(sim::initialize_startup_world_facility_item_pages(cache_flow),
+            "cache qualification must commit the actual76 improvement");
+    auto invalid_cache = cache_flow;
+    ++invalid_cache.scene.world.world.facilities.at(older).price;
+    auto rejecting_observer = observer;
+    bool cache_rejected{};
+    try {
+        rejecting_observer.observe_tick(before_improvement, invalid_cache);
+    } catch (const std::runtime_error &) {
+        cache_rejected = true;
+    }
+    int improvements{};
+    observer.observe_tick(before_improvement, cache_flow, [&](const CampaignReceipt &receipt) {
+        require(receipt.kind == CampaignReceiptKind::facility_item_improved &&
+                    receipt.subject == older && receipt.before[0] == current->instance_attributes[0] &&
+                    receipt.after[0] == cache_flow.scene.world.world.facilities.at(older).price,
+                "improvement receipt must separate source values from the old arrival cache");
+        ++improvements;
+    });
+    require(cache_rejected && improvements == 1 && observer.uses() == 1 &&
+                before_improvement.scene.world.world.facilities.at(older).price ==
+                    current->instance_attributes[0] - 48,
+            "a stale old cache is valid, but a wrong refreshed cache must still be rejected");
+
     // Source item0 has price/quality/charm increments 0/2/0. This isolated
     // selection fixture gives one held unit, without inventing past business.
     auto quality = empty_inventory;

@@ -25,7 +25,15 @@ struct SteamProgressPointGoal {
 // rank4 event, then the next rank's required facility. This is no unlock rule.
 std::optional<SteamProgressPointGoal> steam_progress_point_goal(const app::WorldState &state);
 std::optional<int> steam_required_facility(const app::WorldState &state);
-// One shared player reserve for pending layout blueprints, offered expansion and progression.
+struct SteamShopExpansion {
+    int definition{}, points{};
+    std::int64_t price{}, construction{}, maintenance{};
+};
+// Entries must come from the actual85 or21 catalogue. Quoted unit price is a
+// player priority, never a guaranteed return or a replacement source catalogue.
+std::optional<SteamShopExpansion> steam_select_shop_expansion(
+    const app::WorldState &state, const std::vector<int> &entries, std::int64_t cash_budget);
+// One shared reserve for pending layout blueprints, expansion, progression and the next shop.
 // Passing raw51's frozen entries preserves its exact catalogue; other callers query the source.
 int steam_point_reserve(const app::WorldState &state,
                         const std::vector<int> *offered_activities = nullptr);

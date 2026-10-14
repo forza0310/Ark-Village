@@ -9,6 +9,7 @@
 #include "world_active_pot_strategy.hpp"
 #include "world_active_strategy.hpp"
 #include "world_campaign_coverage.hpp"
+#include "world_campaign_clear.hpp"
 #include "world_campaign_diagnostics.hpp"
 #include "world_campaign_receipts_test.hpp"
 #include "world_steam_budget.hpp"
@@ -188,6 +189,10 @@ template <class PlayerStrategy> struct CampaignRun {
     int saved_steam_month{-1};
     int steam_prefix_month{-1};
     bool activity_trace{}; // Optional bounded steam-observe diagnostics; normal long runs stay quiet.
+    // Only explicitly selected lifecycle routes may consume the application's raw17 branch.
+    // Historical business-only phases retain their original date-clear refusal below.
+    std::optional<ark::test::CampaignClearEvidence> lifecycle{};
+    std::uint64_t input_effects{}; // Successful command-bound receipts in this process only.
 
     void command(const app::WorldCommand &input) {
         auto candidate = state;
@@ -267,6 +272,7 @@ template <class PlayerStrategy> struct CampaignRun {
             }
             for (const auto &receipt : pending_receipts)
                 coverage.record(receipt, std::cout);
+            input_effects += pending_receipts.size();
             coverage.observe(state, candidate);
             if constexpr (std::is_same_v<PlayerStrategy, ark::test::SteamVillageStrategy>)
                 ark::test::inspect_steam_expenses(state, candidate, "command", std::cout);
@@ -279,6 +285,19 @@ template <class PlayerStrategy> struct CampaignRun {
     void step(std::optional<app::WorldCommand> manual = {}, bool automatic = true) {
         const int before_month = month(state);
         const auto before_random = state.scene.random.draws();
+        if (lifecycle && app::world_clear_page(state)) {
+            const bool confirm = lifecycle->confirm_due(system);
+            if (confirm)
+                ark::test::advance_campaign_clear(state, system, *lifecycle, true, directory,
+                                                  std::cout);
+            // A source confirmation is its own transaction, then the scheduled Update follows,
+            // just as in WorldSession. Score retirement is automatic in stage6, never early input.
+            if (app::world_clear_page(state))
+                ark::test::advance_campaign_clear(state, system, *lifecycle, false, directory,
+                                                  std::cout);
+            ++rounds;
+            return;
+        }
         require(!app::world_clear_page(state),
                 "Active acceptance cannot substitute date-clear for business goals");
         // Manual input replaces only the test player's decision. Source admission,
@@ -302,6 +321,8 @@ template <class PlayerStrategy> struct CampaignRun {
         require(sim::update_startup_world_render_cache(*update.candidate), "Render cache rejected");
         auto next = system;
         good(app::commit_world_system(directory, state, *update.candidate, next));
+        if (lifecycle)
+            lifecycle->observe_world(state, *update.candidate, next);
         update.candidate->sound_requests.clear();
         std::vector<ark::test::CampaignReceipt> pending_receipts;
         try {
@@ -353,7 +374,7 @@ template <class PlayerStrategy> struct CampaignRun {
             std::cout << "MONTH " << strategy.diagnose(state) << std::endl;
         if constexpr (std::is_same_v<PlayerStrategy, ark::test::SteamVillageStrategy>) {
             const int current_month = month(state);
-            if (current_month % steam_checkpoint_interval == 0 &&
+            if (!lifecycle && current_month % steam_checkpoint_interval == 0 &&
                 current_month > steam_prefix_month && current_month != saved_steam_month &&
                 strategy.checkpoint(state) && app::world_save_eligible(state)) {
                 // Save only after a later complete business month at a stable source scene.
@@ -412,6 +433,8 @@ template <class PlayerStrategy> struct CampaignRun {
     }
     void save(int slot) {
         coverage.save(directory, state);
+        if (lifecycle)
+            lifecycle->verify(state, system);
         require(!std::filesystem::exists(app::world_save_slot_path(directory, slot)),
                 "Campaign never overwrites an existing player slot");
         const auto captured = app::capture_world_save(state);
@@ -427,6 +450,8 @@ template <class PlayerStrategy> struct CampaignRun {
         strategy.encode(output);
         output.close();
         require(bool(output), "Could not write strategy evidence");
+        if (lifecycle)
+            ark::test::write_campaign_clear_evidence(directory, slot, *lifecycle);
         std::cout << "SAVE slot=" << slot << " bytes=" << captured.image->bytes.size() << " "
                   << strategy.diagnose(state) << std::endl;
     }
@@ -434,6 +459,16 @@ template <class PlayerStrategy> struct CampaignRun {
 using Campaign = CampaignRun<Strategy>;
 using LateCampaign = CampaignRun<LateStrategy>;
 using PotCampaign = CampaignRun<PotStrategy>;
+template <class PlayerStrategy>
+ark::test::CampaignClearDriver lifecycle_driver(CampaignRun<PlayerStrategy> &run) {
+    require(run.lifecycle.has_value(), "Lifecycle hooks require their explicit route");
+    return {run.state, run.system, *run.lifecycle, run.strategy.stats().trade,
+            [&run] { run.step(); }, [&run](int slot) { run.save(slot); },
+            [&run] { return Route<PlayerStrategy>::checkpoint(run.strategy, run.state); },
+            [&run] { return run.input_effects; },
+            [&run] { return run.strategy.stats().commands; },
+            [&run] { return run.strategy.diagnose(run.state); }};
+}
 
 template <class PlayerStrategy = Strategy>
 CampaignRun<PlayerStrategy> load(const std::filesystem::path &directory, int slot = 0) {
@@ -871,6 +906,8 @@ int main(int argc, char **argv) {
             ark::test::income_strategy_contract();
             ark::test::campaign_coverage_contract();
             ark::test::steam_strategy_contract();
+            std::cout << "PASS Steam layout, budget, people and expansion contract" << std::endl;
+            ark::test::campaign_clear_contract();
             return 0;
         }
         if (argc == 2 && std::string(argv[1]) == "--coverage-inventory") {
@@ -884,6 +921,61 @@ int main(int argc, char **argv) {
         require(argc == 3 || (mode == "steam-observe" &&
                              std::string(argv[3]) == "--trace-activity"),
                 "--trace-activity is supported only by bounded steam-observe");
+        if (mode == "steam-natural-month" || mode == "steam-continue" ||
+            mode == "steam-natural-verify" || mode == "steam-inherit" ||
+            mode == "steam-inherit-verify") {
+            const auto directory = isolated_directory(argv[0], argv[2], "ark-steam-village-v1\n");
+            if (mode == "steam-inherit") {
+                // Qualify the real completed parent, then release its Owner before creating the
+                // new source cold world. Its strategy, victories and trade history are discarded.
+                auto ancestry = [&] {
+                    auto parent = load<ark::test::SteamVillageStrategy>(directory, 0);
+                    auto evidence = ark::test::read_campaign_clear_evidence(
+                        directory, 0, parent.state, parent.system);
+                    require(evidence.finished() && evidence.continued(),
+                            "Inheritance requires completed score and continued real business");
+                    return std::make_pair(std::move(parent.system), std::move(evidence));
+                }();
+                campaign.emplace(Campaign{ark::test::initial_world(),
+                                           std::move(ancestry.first), directory, {}});
+                app::WorldNewGameDraft draft;
+                draft.slot = 1;
+                draft.human = {"经营验收主角", 0, true};
+                good(app::start_world_draft(campaign->state, campaign->system, draft, directory));
+                campaign->lifecycle = std::move(ancestry.second);
+                campaign->lifecycle->verify_cold_inheritance(campaign->state, campaign->system);
+                campaign->strategy.reconcile(campaign->state);
+                ark::test::run_campaign_inherited_segment(lifecycle_driver(*campaign));
+            } else if (mode == "steam-inherit-verify") {
+                campaign.emplace(load<Strategy>(directory, 1));
+                campaign->lifecycle = ark::test::read_campaign_clear_evidence(
+                    directory, 1, campaign->state, campaign->system);
+                require(campaign->lifecycle->inherited() &&
+                            campaign->strategy.construction_checkpoint(campaign->state) &&
+                            app::world_save_eligible(campaign->state),
+                        "Inherited endpoint lost real construction/completion/trade qualification");
+                std::cout << "PASS inherited player cold-load; "
+                          << campaign->lifecycle->diagnose() << "; not all-content completion"
+                          << std::endl;
+            } else {
+                const int slot = mode == "steam-natural-verify" ? 1 : 0;
+                steam_campaign.emplace(load<ark::test::SteamVillageStrategy>(directory, slot));
+                auto &run = *steam_campaign;
+                run.lifecycle = ark::test::read_campaign_clear_evidence(
+                    directory, slot, run.state, run.system, mode == "steam-natural-month");
+                if (mode == "steam-natural-verify") {
+                    require(app::world_save_eligible(run.state),
+                            "Natural route cold endpoint is not a stable player world");
+                    std::cout << "PASS lifecycle player cold-load; " << run.lifecycle->diagnose()
+                              << "; not all-content completion" << std::endl;
+                } else {
+                    run.strategy.continue_campaign();
+                    ark::test::run_campaign_clear_segment(lifecycle_driver(run),
+                                                          mode == "steam-continue");
+                }
+            }
+            return 0;
+        }
         if (mode == "steam-new" || mode == "steam-resume" || mode == "steam-verify" ||
             mode == "steam-inspect" || mode == "steam-quarter" || mode == "steam-month" ||
             mode == "steam-observe" || mode == "steam-withdraw") {

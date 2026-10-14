@@ -45,6 +45,8 @@ ark_test_executable(ark_world_campaign_tests SOURCES tests/app/world_campaign_te
     tests/app/world_active_strategy.cpp tests/app/world_active_late_strategy.cpp
     tests/app/world_active_pot_strategy.cpp
     tests/app/world_campaign_diagnostics.cpp
+    tests/app/world_campaign_clear.cpp
+    tests/app/world_campaign_clear_test.cpp
     tests/app/world_campaign_coverage.cpp
     tests/app/world_campaign_task_receipts.cpp
     tests/app/world_campaign_battle_receipts.cpp

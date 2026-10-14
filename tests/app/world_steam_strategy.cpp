@@ -103,7 +103,7 @@ void SteamVillageStrategy::reconcile(const State &s) {
     require(validate_steam_village_layout(s) == ref::GeometryError::none,
             "Steam blueprint conflicts with current product footprint geometry");
     require(!s.build_definition && s.build_mode == 0, "cannot reload a partial layout transaction");
-    require(operation_ == Operation::none && !people_.active() && !income_.active(),
+    require(operation_ == Operation::none && !discover_shop_ && !people_.active() && !income_.active(),
             "controller has unfinished actions at player restore");
     if (stats_.initial_month < 0) {
         stats_.initial_month = month(s);
@@ -208,6 +208,27 @@ std::optional<Command> SteamVillageStrategy::layout(const State &s) {
                 s.village_points < points)
                 continue;
             unlock_ = t.definition;
+            return cmd(Kind::open_commerce);
+        }
+    }
+    if (!steam_progress_point_goal(s) && steam_shop_expansion_ready(s)) {
+        const auto catalog = sim::startup_world_build_catalog(s);
+        require(catalog.has_value(), "income extension needs the source construction catalogue");
+        std::vector<int> available;
+        for (const auto &group : *catalog)
+            available.insert(available.end(), group.begin(), group.end());
+        if (const auto shop = steam_select_shop_expansion(s, available, funds)) {
+            if (const auto target = steam_connected_extension(s, shop->definition)) {
+                operation_ = Operation::build;
+                target_ = *target;
+                operation_committed_ = false;
+                return cmd(Kind::open_build_menu);
+            }
+            return {}; // Keep the owned blueprint; diagnose space instead of buying another.
+        }
+        const int points = steam_point_reserve(s);
+        if ((s.scripts.user_flags & 16U) && points > 0 && s.village_points >= points) {
+            discover_shop_ = true;
             return cmd(Kind::open_commerce);
         }
     }
@@ -400,6 +421,17 @@ std::optional<Command> SteamVillageStrategy::next(const State &s) {
         if (raw == 93) {
             require(unlock_ >= 0 && v->binding == unlock_, "chamber reward binding changed");
             return commerce(p.id, Commerce::confirm);
+        }
+        if (discover_shop_) {
+            if (raw == 83)
+                return commerce(p.id, v->selection == 2 ? Commerce::confirm : Commerce::select, 2);
+            const auto shop = steam_select_shop_expansion(s, v->entries, cash(s) - reserve(s));
+            discover_shop_ = false;
+            if (!shop || s.village_points < shop->points) {
+                unlock_ = -1;
+                return commerce(p.id, Commerce::cancel);
+            }
+            unlock_ = shop->definition;
         }
         if (unlock_ < 0 || buildable(s, unlock_)) {
             if (raw == 83)
@@ -782,12 +814,14 @@ void SteamVillageStrategy::observe_tick(const State &before, const State &after,
 bool SteamVillageStrategy::checkpoint(const State &s) const {
     return stats_.initial_month >= 0 && month(s) > stats_.initial_month &&
            stats_.builds + stats_.moves > 0 && income_.uses() > 0 && stats_.victories > 0 &&
-           operation_ == Operation::none && unlock_ < 0 && !people_.active() && !income_.active();
+           operation_ == Operation::none && unlock_ < 0 && !discover_shop_ && !people_.active() &&
+           !income_.active();
 }
 bool SteamVillageStrategy::complete(const State &s) const {
     return s.rank >= 4 && matching(s, true) == 50 && traded_slots_.size() == 25 &&
            stats_.trade.full_month_after(stats_.completed_month, month(s)) &&
-           operation_ == Operation::none && unlock_ < 0 && !people_.active() && !income_.active();
+           operation_ == Operation::none && unlock_ < 0 && !discover_shop_ && !people_.active() &&
+           !income_.active();
 }
 std::string SteamVillageStrategy::diagnose(const State &s) const {
     std::ostringstream out;
@@ -806,14 +840,16 @@ std::string SteamVillageStrategy::diagnose(const State &s) const {
         << " activities=" << stats_.activities << " residents=" << stats_.admissions
         << " medals=" << people_.medals() << " equipment=" << people_.gifts();
     const auto points = steam_progress_point_goal(s);
-    out << " point_goal=" << (points ? points->points : 0)
+    out << " point_reserve=" << steam_point_reserve(s)
+        << " point_goal=" << (points ? points->points : 0)
         << " point_goal_definition=" << (points ? points->definition : -1)
         << " fireworks_count=" << held(s, 19)
         << " required_facility=" << steam_required_facility(s).value_or(-1);
     return out.str();
 }
 void SteamVillageStrategy::encode(std::ostream &out) const {
-    require(operation_ == Operation::none && unlock_ < 0 && !people_.active() && !income_.active(),
+    require(operation_ == Operation::none && unlock_ < 0 && !discover_shop_ && !people_.active() &&
+                !income_.active(),
             "only stable Steam decisions can be saved");
     const auto &v = stats_;
     out << "ARK_STEAM_PLAYER_1\n"

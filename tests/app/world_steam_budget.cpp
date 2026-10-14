@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <sstream>
 #include <stdexcept>
+#include <tuple>
 
 namespace ark::test {
 namespace {
@@ -125,6 +126,38 @@ std::optional<SteamProgressPointGoal> steam_progress_point_goal(const State &s) 
                                       s.rules->activities.at(21).parameters[4]};
     return {};
 }
+std::optional<SteamShopExpansion> steam_select_shop_expansion(
+    const State &s, const std::vector<int> &entries, std::int64_t cash_budget) {
+    std::optional<SteamShopExpansion> best;
+    for (const int id : entries) {
+        if (id == -1 || id == -2)
+            continue; // Source21's demolition/move tools have no facility definition.
+        require(id >= 0 && static_cast<std::size_t>(id) < s.rules->facilities.size(),
+                "expansion catalogue contains an unknown definition");
+        const auto &d = s.rules->facilities.at(id);
+        if (d.kind != 3 || d.detail == 1 || d.detail == 4 || d.detail == 5 || d.detail == 6 ||
+            std::any_of(s.scene.world.world.facilities.begin(),
+                        s.scene.world.world.facilities.end(), [&](const auto &f) {
+                            return f.second.placement.definition_id == id;
+                        }))
+            continue;
+        const auto quote = sim::startup_world_build_quote(s, id);
+        if (!quote || quote->definition_attributes[0] <= 0 ||
+            cash_budget < quote->construction_cost + 2 * quote->definition_attributes[3])
+            continue;
+        const SteamShopExpansion choice{id, s.rules->facility_initial.at(id).capacity,
+                                        quote->definition_attributes[0], quote->construction_cost,
+                                        quote->definition_attributes[3]};
+        // Stable ties prefer the lower recurring/point cost, then source identity.
+        if (!best || std::make_tuple(choice.price, -choice.maintenance, -choice.points,
+                                     -choice.definition) >
+                         std::make_tuple(best->price, -best->maintenance, -best->points,
+                                         -best->definition))
+            best = choice;
+    }
+    return best;
+}
+
 int steam_point_reserve(const State &s, const std::vector<int> *offered_activities) {
     const auto buildings = sim::startup_world_build_catalog(s);
     require(buildings.has_value(), "point reserve needs the real construction catalogue");
@@ -165,6 +198,19 @@ int steam_point_reserve(const State &s, const std::vector<int> *offered_activiti
     }
     if (const auto goal = steam_progress_point_goal(s))
         reserve = std::max(reserve, goal->points);
+    else if ((s.scripts.user_flags & 16U) && steam_reference_layout_complete(s)) {
+        // This is an upper point budget from known table offers, not an85 list.
+        // Keep that reserve while an owned shop is under construction or waiting
+        // for its first sale. Discovery/payment still waits for expansion readiness.
+        // Discover the actual frozen85 entries before choosing or buying a shop.
+        std::vector<int> prospective;
+        for (const auto &d : s.rules->facilities)
+            if (s.facility_presence.at(d.id) == 0 && d.unlock_rank >= 0 && d.unlock_rank <= s.rank)
+                prospective.push_back(d.id);
+        if (const auto shop = steam_select_shop_expansion(
+                s, prospective, cash(s) - steam_operating_reserve(s)))
+            reserve = std::max(reserve, shop->points);
+    }
     return reserve;
 }
 int steam_task_recovery_month(const State &s) { return month(s) + 2; }
@@ -291,5 +337,75 @@ void steam_budget_contract() {
     inspect_steam_expenses(s, after, "update", log);
     require(log.str().find("month=72 category=0 amount=150") != std::string::npos,
             "expense diagnostic must handle the annual bucket reset");
+
+    // Explicit rank qualification freezes the source85 offer; no natural unlock,
+    // payment or revenue is claimed by this test-player selection query.
+    auto offers = initial_world();
+    offers.rank = 4;
+    ref::WorldScriptPage commerce_page;
+    commerce_page.kind = ref::WorldScriptPageKind::raw_page;
+    commerce_page.legacy_page = 85;
+    const auto commerce_inserted =
+        ref::prepare_world_script_page(sim::startup_world_runtime_scripts(offers), commerce_page);
+    require(commerce_inserted.candidate &&
+                sim::write_startup_world_runtime_scripts(offers, commerce_inserted.candidate->state) &&
+                sim::initialize_startup_world_commerce_pages(offers),
+            "shop expansion qualification needs the real frozen85 entries");
+    const auto offer_page = offers.scripts.pages.back().id;
+    const auto &shop_offers = offers.commerce_page_lists.at(offer_page);
+    const auto expansion = steam_select_shop_expansion(offers, shop_offers, 10000);
+    require(expansion && expansion->definition == 54 && expansion->points == 250,
+            "actual rank4 offers must prioritize the highest quoted ordinary shop");
+    const auto quote = sim::startup_world_build_quote(offers, 54);
+    require(quote && expansion->price == quote->definition_attributes[0] &&
+                expansion->construction == quote->construction_cost &&
+                expansion->maintenance == quote->definition_attributes[3],
+            "shop choice must retain the current source quote, not a revenue forecast");
+    const auto exact_budget = expansion->construction + 2 * expansion->maintenance;
+    for (const int spare : {-1, 0}) {
+        const auto selected = steam_select_shop_expansion(offers, {54}, exact_budget + spare);
+        require(selected.has_value() == (spare == 0),
+                "a shop must preserve construction and two months of its maintenance exactly");
+    }
+
+    // The higher-priced definition remains known, but an owned blueprint no
+    // longer belongs to the source85 offer. The selector cannot add its own row.
+    auto restricted = initial_world();
+    restricted.rank = 4;
+    restricted.facility_presence.at(54) = 2;
+    const auto restricted_inserted = ref::prepare_world_script_page(
+        sim::startup_world_runtime_scripts(restricted), commerce_page);
+    require(restricted_inserted.candidate &&
+                sim::write_startup_world_runtime_scripts(restricted,
+                                                        restricted_inserted.candidate->state) &&
+                sim::initialize_startup_world_commerce_pages(restricted),
+            "restricted expansion qualification needs a newly frozen source85 offer");
+    const auto &restricted_entries =
+        restricted.commerce_page_lists.at(restricted.scripts.pages.back().id);
+    const auto restricted_choice = steam_select_shop_expansion(restricted, restricted_entries, 10000);
+    require(std::find(restricted_entries.begin(), restricted_entries.end(), 54) ==
+                    restricted_entries.end() &&
+                restricted_choice && restricted_choice->definition != 54,
+            "a known higher quote outside the actual85 entries cannot be selected");
+    restricted.village_points = 0;
+    const auto construction = sim::startup_world_build_catalog(restricted);
+    require(construction.has_value(), "owned blueprint needs the real21 catalogue");
+    std::vector<int> construction_entries;
+    for (const auto &group : *construction)
+        construction_entries.insert(construction_entries.end(), group.begin(), group.end());
+    const auto owned = steam_select_shop_expansion(restricted, construction_entries, exact_budget);
+    require(owned && owned->definition == 54 && restricted.village_points == 0,
+            "an owned real21 blueprint can be selected without reserving a second point payment");
+
+    // Only instance presence is qualified here; source construction/payment and
+    // catalogue filtering retain their existing rule-suite ownership.
+    const auto instance = restricted.scene.world.world.facilities.begin()->second;
+    auto installed = instance;
+    installed.placement.definition_id = 54;
+    const auto instance_id = restricted.next_facility_identity++;
+    installed.placement.instance_id.value = instance_id;
+    restricted.scene.world.world.facilities.emplace(instance_id, installed);
+    require(!steam_select_shop_expansion(restricted, {54}, exact_budget),
+            "an existing shop instance must prevent another expansion of the same definition");
 }
 } // namespace ark::test

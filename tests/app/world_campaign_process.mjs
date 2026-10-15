@@ -219,7 +219,7 @@ function report(rows) {
 const receiptStages = {
   points_paid: ['village_activity', 'profession'], effect_queued: 'village_activity', pot_opened: 'village_activity',
   satisfaction_applied: 'village_activity', attribute_applied_to_human: 'village_activity', bound_use: 'item',
-  attribute_applied: 'item', obtained: 'item', hp_restored: 'item', discovered: 'magic_recipe',
+  attribute_applied: 'item', obtained: 'item', hp_restored: 'item', permanent_spell_learned: 'item', discovered: 'magic_recipe',
   elements_paid_and_crafted: 'magic_recipe', blueprint_points_paid: 'facility',
   blueprint_claimed: 'facility', construction_paid: 'facility',
   reward_equipped: ['weapon', 'armour', 'accessory'],
@@ -242,6 +242,12 @@ function* receipts(text, phase) {
       [].concat(receiptStages[stage] ?? []).includes(category) &&
       (catalogue.has(key) || (category === 'spell' && id >= 0 && id < 4)), 'receipt identity/binding');
     if (['bound_use', 'attribute_applied', 'hp_restored'].includes(stage)) need(numbers[2] >= 0, 'receipt human binding');
+    if (stage === 'permanent_spell_learned')
+      need(id >= 32 && id <= 35 && numbers[2] >= 0 && numbers[2] < 25 && numbers[3] > 0 &&
+        numbers[4] === 1 && numbers[8] === 0 && numbers[5] === 0 && numbers[9] === 1 &&
+        [numbers[6], numbers[10]].every(v => v === 0 || v === 1) &&
+        numbers[7] === id - 32 && numbers[11] === numbers[7],
+      'receipt permanent book learning/inventory/source slot; Q is separate');
     if (['reward_equipped', 'combat_attributes_applied', 'medal_awarded', 'home_admitted', 'home_tax_collected'].includes(stage))
       need(numbers[2] >= 0 && numbers[2] < 25, 'receipt source human binding');
     if (['hp_restored', 'construction_paid', 'reward_equipped', 'combat_attributes_applied', 'home_admitted', 'victory_committed', 'facility_bound_use', 'item_improvement_applied', 'task_loot_claimed', 'retirement_cash_committed', 'retirement_cash_month_reset'].includes(stage))
@@ -434,6 +440,17 @@ function coverageContract(rows) {
   expectReject(() => inventory(header + '\nitem\t29\tmedicine\t0\t0\tUNOBSERVED\tUNVERIFIED\tuse'));
   const queued = [...receipts('COVERAGE_RECEIPT\tactivity\t16\teffect_queued\t0\t1\t-1\t0\t0\t0\t0\t0\t10\t20\t1\t1', 'contract')];
   need(queued.length === 1 && queued[0].stage === 'effect_queued', 'queued effect promoted to actual effect');
+  for (const slot of [0, 1, 2, 3]) {
+    const learned = ['COVERAGE_RECEIPT', 'item', String(32 + slot), 'permanent_spell_learned',
+      '2', '1', '24', '9', '1', '0', '0', String(slot), '0', '1', '0', String(slot)];
+    const parsed = [...receipts(learned.join('\t'), 'contract')];
+    need(parsed.length === 1 && parsed[0].stage === 'permanent_spell_learned',
+      'permanent learning with still-stale Q rejected');
+    for (const [field, value] of [[2,'31'],[6,'25'],[7,'0'],[8,'0'],[13,'0'],[10,'2'],[15,'4']]) {
+      const invalid = [...learned]; invalid[field] = value;
+      expectReject(() => [...receipts(invalid.join('\t'), 'contract')]);
+    }
+  }
   for (const [category, stage, id, limit, subject, recipient] of [
     ['facility', 'blueprint_points_paid', 40, 85, 0, -1], ['facility', 'blueprint_claimed', 40, 85, 0, -1],
     ['facility', 'construction_paid', 40, 85, 1, -1], ['activity', 'pot_opened', 30, 31, 0, -1],

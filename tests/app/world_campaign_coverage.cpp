@@ -43,6 +43,8 @@ ReceiptIdentity receipt_identity(CampaignReceiptKind kind) {
         return {"activity", "popularity_queued", 31, false};
     case Kind::item_consumed:
         return {"item", "bound_use", 36, true};
+    case Kind::item_spell_learned:
+        return {"item", "permanent_spell_learned", 36, true, true, 25};
     case Kind::item_attribute_applied:
         return {"item", "attribute_applied", 36, true};
     case Kind::item_obtained:

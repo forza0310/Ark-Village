@@ -1,5 +1,7 @@
 #include "world_steam_magic_pot.hpp"
 #include "../support/world_fixture.hpp"
+#include "world_steam_people.hpp"
+#include "world_steam_pot_operations.hpp"
 #include <algorithm>
 #include <iostream>
 #include <limits>
@@ -168,19 +170,16 @@ void SteamPotEquipmentPlayer::reconcile(const State &s) {
     leaving_market_ = false;
 }
 
-IncomeDecision SteamPotEquipmentPlayer::next(const State &s, std::int64_t budget,
-                                             bool controller_ready,
-                                             const ActiveTradeEvidence &trade) {
+IncomeDecision next_steam_pot_command(const State &s, const ref::WorldMagicPotRecipeDefinition &r,
+                                      bool crafted, std::int64_t budget,
+                                      std::uint64_t &next_market_step, bool &leaving_market) {
     const auto &p = top(s);
     if (p.lifecycle == 0)
         return {true, {}};
-    const auto &r = source_recipe(s, recipe_);
     if (p.kind == ref::WorldScriptPageKind::scene) {
         if (s.scene.scene_state != 0)
             return {};
-        if (equipped_)
-            return {controller_ready && !complete(s, trade), {}};
-        if (crafted_)
+        if (crafted)
             return {}; // Existing People owns fairness, payment and equipment effects.
         if (deficit(s, r) == 0)
             return {true, command(Kind::open_magic_pot)};
@@ -196,10 +195,10 @@ IncomeDecision SteamPotEquipmentPlayer::next(const State &s, std::int64_t budget
             return {true, command(Kind::open_magic_pot)};
         // An empty/unaffordable84 visit must return to real world updates so
         // income/restocking can recover. This is a player retry, not a source timer.
-        if (s.simulation_steps < next_market_step_)
+        if (s.simulation_steps < next_market_step)
             return {true, {}};
-        next_market_step_ = s.simulation_steps + 300;
-        leaving_market_ = false;
+        next_market_step = s.simulation_steps + 300;
+        leaving_market = false;
         return {true, command(Kind::open_commerce)};
     }
     if (p.legacy_page >= 41 && p.legacy_page <= 47) {
@@ -207,7 +206,7 @@ IncomeDecision SteamPotEquipmentPlayer::next(const State &s, std::int64_t budget
         if (!v)
             return {true, {}};
         if (v->raw == 41) {
-            if (crafted_)
+            if (crafted)
                 return pot(p.id, Pot::cancel);
             const auto capacity = ref::world_magic_pot_capacity(s.legacy_n[11]);
             require(capacity.has_value(), "invalid source pot capacity");
@@ -226,9 +225,9 @@ IncomeDecision SteamPotEquipmentPlayer::next(const State &s, std::int64_t budget
             return pot(p.id, v->selection == index ? Pot::confirm : Pot::select, index);
         }
         if (v->raw == 43) {
-            if (crafted_)
+            if (crafted)
                 return pot(p.id, Pot::cancel);
-            const auto found = std::find(v->entries.begin(), v->entries.end(), recipe_);
+            const auto found = std::find(v->entries.begin(), v->entries.end(), r.identity);
             require(found != v->entries.end(), "known recipe missing from initialized43");
             const int index = int(found - v->entries.begin());
             return pot(p.id, v->selection == index ? Pot::confirm : Pot::select, index);
@@ -239,16 +238,16 @@ IncomeDecision SteamPotEquipmentPlayer::next(const State &s, std::int64_t budget
             return {true, {}};
         return pot(p.id, Pot::confirm);
     }
-    if (!crafted_ && (p.legacy_page == 83 || p.legacy_page == 84)) {
+    if (!crafted && (p.legacy_page == 83 || p.legacy_page == 84)) {
         const auto v = sim::inspect_startup_world_commerce_page(s, p.id);
         if (!v)
             return {true, {}};
         if (v->raw == 83) {
-            if (leaving_market_)
+            if (leaving_market)
                 return commerce(p.id, Commerce::cancel);
             if (v->selection != 0)
                 return commerce(p.id, Commerce::select, 0);
-            leaving_market_ = true;
+            leaving_market = true;
             return commerce(p.id, Commerce::confirm);
         }
         const int id = material(s, r, v->entries, true, budget);
@@ -263,12 +262,25 @@ IncomeDecision SteamPotEquipmentPlayer::next(const State &s, std::int64_t budget
     return {}; // Original dialogs, gift/reward and tax consumers remain in the primary player.
 }
 
-void SteamPotEquipmentPlayer::observe(const State &before, const app::WorldCommand &c,
-                                      const app::WorldCommandResult &result, const State &after,
-                                      const CampaignReceiptSink &receipts) {
+IncomeDecision SteamPotEquipmentPlayer::next(const State &s, std::int64_t budget,
+                                             bool controller_ready,
+                                             const ActiveTradeEvidence &trade) {
+    const auto &p = top(s);
+    if (p.lifecycle == 0)
+        return {true, {}};
+    if (p.kind == ref::WorldScriptPageKind::scene && s.scene.scene_state == 0 && equipped_)
+        return {controller_ready && !complete(s, trade), {}};
+    return next_steam_pot_command(s, source_recipe(s, recipe_), crafted_, budget, next_market_step_,
+                                  leaving_market_);
+}
+
+SteamPotCommit observe_steam_pot_command(const State &before, const app::WorldCommand &c,
+                                         const app::WorldCommandResult &result, const State &after,
+                                         const ref::WorldMagicPotRecipeDefinition &r,
+                                         bool already_crafted,
+                                         const CampaignReceiptSink &receipts) {
     require(result.outcome == app::WorldCommandOutcome::applied, "intervention command rejected");
-    const bool already_crafted = crafted_ != 0;
-    const auto &r = source_recipe(before, recipe_);
+    SteamPotCommit commit;
     const int raw = top(before).legacy_page;
     if (raw == 46) {
         const int id = top(before).legacy_g;
@@ -296,8 +308,8 @@ void SteamPotEquipmentPlayer::observe(const State &before, const app::WorldComma
                            after.magic_pot_recipes.at(id).pending_notice}});
         }
     }
-    if (!crafted_ && c.kind == Kind::commerce_action && c.commerce_action == Commerce::confirm &&
-        raw == 84 && result.commerce_amount) {
+    if (!already_crafted && c.kind == Kind::commerce_action &&
+        c.commerce_action == Commerce::confirm && raw == 84 && result.commerce_amount) {
         const auto v = sim::inspect_startup_world_commerce_page(before, c.page);
         require(v && v->mode == 0, "purchase lacks actual material catalogue");
         const int id = v->entries.at(v->selection), cost = item(before, id).commerce_price;
@@ -306,7 +318,7 @@ void SteamPotEquipmentPlayer::observe(const State &before, const app::WorldComma
                         before.shop_item_stock.at(id).quantity &&
                     cash(before) - cash(after) == cost && *result.commerce_amount == cost,
                 "material purchase lost stock or its source cash quote");
-        ++purchases_;
+        ++commit.purchases;
         if (receipts)
             receipts({CampaignReceiptKind::item_commerce_bought,
                       id,
@@ -319,51 +331,87 @@ void SteamPotEquipmentPlayer::observe(const State &before, const app::WorldComma
                       {after.items.at(id).inventory, after.shop_item_stock.at(id).quantity,
                        cash(after)}});
     }
-    if (!crafted_ && c.kind == Kind::magic_pot_action && c.magic_pot_action == Pot::confirm &&
-        raw == 42) {
+    if (!already_crafted && c.kind == Kind::magic_pot_action &&
+        c.magic_pot_action == Pot::confirm && raw == 42) {
         const auto v = sim::inspect_startup_world_magic_pot_page(before, c.page);
         require(v && !v->entries.empty(), "deposit lost source42 inventory");
         const int id = v->entries.at(v->selection);
         require(before.items.at(id).inventory == after.items.at(id).inventory + 1 &&
                     after.legacy_n[1] == before.legacy_n[1] + 1 && cash(before) == cash(after),
                 "deposit did not consume one actual item");
-        ++deposits_;
+        ++commit.deposits;
         std::cout << "POT_MATERIAL item=" << id << " inventory=" << before.items.at(id).inventory
                   << "->" << after.items.at(id).inventory << " pending=" << after.legacy_n[1]
                   << '\n';
     }
-    if (!crafted_ && c.kind == Kind::magic_pot_action && c.magic_pot_action == Pot::confirm &&
-        raw == 47) {
-        const auto key = std::make_pair(kind_, definition_);
-        require(top(before).legacy_g == recipe_ &&
-                    before.magic_pot_recipes.at(recipe_).status == 1 &&
-                    before.catalog.at(key).status == 0 && after.catalog.at(key).status == 1 &&
-                    before.catalog.at(key).free_purchases == 0 &&
-                    after.catalog.at(key).free_purchases == 1 && cash(before) == cash(after) &&
-                    before.legacy_n[0] == after.legacy_n[0],
-                "craft must use known recipe and grant exactly one first free equipment");
-        for (int n = 0; n < 4; ++n) {
-            paid_[n] = before.legacy_n[3 + n] - after.legacy_n[3 + n];
-            require(paid_[n] == r.costs[n], "craft did not pay exact published elements");
+    if (!already_crafted && c.kind == Kind::magic_pot_action &&
+        c.magic_pot_action == Pot::confirm && raw == 47) {
+        const auto key = std::make_pair(r.reward_kind, r.reward_definition);
+        require(top(before).legacy_g == r.identity &&
+                    before.magic_pot_recipes.at(r.identity).status == 1 &&
+                    cash(before) == cash(after) && before.legacy_n[0] == after.legacy_n[0],
+                "craft must use its known recipe without cash or experience changes");
+        if (r.reward_kind == 0) {
+            require(before.items.at(r.reward_definition).inventory < 999 &&
+                        after.items.at(r.reward_definition).inventory ==
+                            before.items.at(r.reward_definition).inventory + 1 &&
+                        after.catalog.at(key).inventory ==
+                            after.items.at(r.reward_definition).inventory &&
+                        after.items.at(r.reward_definition).status == 1,
+                    "item craft must grant exactly one actual published reward");
+        } else {
+            require(before.catalog.at(key).status == 0 && after.catalog.at(key).status == 1 &&
+                        before.catalog.at(key).free_purchases == 0 &&
+                        after.catalog.at(key).free_purchases == 1,
+                    "equipment craft must grant exactly one first free equipment");
         }
-        crafted_ = 1;
-        craft_experience_ = before.legacy_n[0];
+        for (int n = 0; n < 4; ++n) {
+            commit.paid[n] = before.legacy_n[3 + n] - after.legacy_n[3 + n];
+            require(commit.paid[n] == r.costs[n], "craft did not pay exact published elements");
+        }
+        commit.crafted = true;
+        commit.experience = before.legacy_n[0];
         if (receipts)
             receipts(
                 {CampaignReceiptKind::recipe_crafted,
-                 recipe_,
+                 r.identity,
                  after.simulation_steps,
                  c.page,
-                 std::uint64_t(definition_),
+                 std::uint64_t(r.reward_definition),
                  -1,
                  {before.legacy_n[3], before.legacy_n[4], before.legacy_n[5], before.legacy_n[6]},
                  {after.legacy_n[3], after.legacy_n[4], after.legacy_n[5], after.legacy_n[6]}});
+        if (r.reward_kind == 0 && receipts)
+            receipts({CampaignReceiptKind::item_obtained,
+                      r.reward_definition,
+                      after.simulation_steps,
+                      c.page,
+                      std::uint64_t(r.identity),
+                      -1,
+                      {before.items.at(r.reward_definition).inventory},
+                      {after.items.at(r.reward_definition).inventory}});
     }
-    // The first0->1 grant belongs to47; a later1->0 gift belongs to the primary
-    // People consumer. Never classify the grant itself as equipment consumption.
+    return commit;
+}
+
+void SteamPotEquipmentPlayer::observe(const State &before, const app::WorldCommand &c,
+                                      const app::WorldCommandResult &result, const State &after,
+                                      const CampaignReceiptSink &receipts) {
+    const bool already_crafted = crafted_ != 0;
+    const auto commit = observe_steam_pot_command(
+        before, c, result, after, source_recipe(before, recipe_), already_crafted, receipts);
+    purchases_ += commit.purchases;
+    deposits_ += commit.deposits;
+    if (commit.crafted) {
+        crafted_ = 1;
+        paid_ = commit.paid;
+        craft_experience_ = commit.experience;
+    }
+    // A grant belongs to47; only a subsequent1->0 gift is consumption.
     if (already_crafted)
         observe_equipment(before, after);
 }
+
 void SteamPotEquipmentPlayer::observe_equipment(const State &before, const State &after) {
     if (!crafted_ || equipped_)
         return;

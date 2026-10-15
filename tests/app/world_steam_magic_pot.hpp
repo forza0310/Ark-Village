@@ -1,7 +1,7 @@
 #pragma once
 
+#include "world_active_income_strategy.hpp"
 #include "world_active_trade_evidence.hpp"
-#include "world_steam_people.hpp"
 
 namespace ark::test {
 // A temporary player of the existing pot/commerce pages. The normal Steam player

@@ -13,6 +13,7 @@
 #include "world_campaign_diagnostics.hpp"
 #include "world_campaign_receipts_test.hpp"
 #include "world_steam_budget.hpp"
+#include "world_steam_magic_books.hpp"
 #include "world_steam_magic_pot.hpp"
 #include "world_steam_strategy.hpp"
 #include <chrono>
@@ -237,6 +238,7 @@ template <class PlayerStrategy> struct CampaignRun {
     // committed transitions. It never calls next() or owns another world.
     std::optional<ark::test::SteamVillageStrategy> steam_observer{};
     std::optional<ark::test::SteamPotEquipmentPlayer> pot_equipment{};
+    std::optional<ark::test::SteamPotSpellBookPlayer> pot_book{}; // Never serialized mid-flow.
 
     void command(const app::WorldCommand &input) {
         auto candidate = state;
@@ -273,7 +275,12 @@ template <class PlayerStrategy> struct CampaignRun {
                                  });
                 if (steam_observer)
                     steam_observer->observe(state, input, result, candidate);
-                if (pot_equipment)
+                if (pot_book && pot_book->active())
+                    pot_book->observe(state, input, result, candidate,
+                                      [&](const ark::test::CampaignReceipt &receipt) {
+                                          pending_receipts.push_back(receipt);
+                                      });
+                else if (pot_equipment)
                     pot_equipment->observe(state, input, result, candidate,
                                            [&](const ark::test::CampaignReceipt &receipt) {
                                                pending_receipts.push_back(receipt);
@@ -356,6 +363,14 @@ template <class PlayerStrategy> struct CampaignRun {
         const auto selected = [&] {
             if (!automatic)
                 return manual;
+            if (pot_book) {
+                const auto input = pot_book->next(
+                    state,
+                    std::max<std::int64_t>(0, state.scene.world.world.ai.accounting.funds() -
+                                                  ark::test::steam_operating_reserve(state)));
+                if (input.handled)
+                    return input.command;
+            }
             if (pot_equipment) {
                 const auto input = pot_equipment->next(
                     state,
@@ -508,6 +523,8 @@ template <class PlayerStrategy> struct CampaignRun {
                   << std::endl;
     }
     void save(int slot) {
+        if (pot_book)
+            require(pot_book->complete(state), "Cannot save an incomplete spell book flow");
         coverage.save(directory, state);
         if (lifecycle)
             lifecycle->verify(state, system);
@@ -524,6 +541,8 @@ template <class PlayerStrategy> struct CampaignRun {
             write_strategy(directory, slot, *pot_equipment, "pot-equipment");
             std::cout << "POT_EQUIPMENT " << pot_equipment->diagnose() << std::endl;
         }
+        if (pot_book)
+            std::cout << "POT_BOOK_ENDPOINT " << pot_book->diagnose() << std::endl;
         if (lifecycle)
             ark::test::write_campaign_clear_evidence(directory, slot, *lifecycle);
         std::cout << "SAVE slot=" << slot << " bytes=" << captured.image->bytes.size() << " "
@@ -542,7 +561,10 @@ ark::test::CampaignClearDriver lifecycle_driver(CampaignRun<PlayerStrategy> &run
             run.strategy.stats().trade,
             [&run] { run.step(); },
             [&run](int slot) { run.save(slot); },
-            [&run] { return Route<PlayerStrategy>::checkpoint(run.strategy, run.state); },
+            [&run] {
+                return Route<PlayerStrategy>::checkpoint(run.strategy, run.state) &&
+                       (!run.pot_book || run.pot_book->complete(run.state));
+            },
             [&run] { return run.input_effects; },
             [&run] { return run.strategy.stats().commands; },
             [&run] { return run.strategy.diagnose(run.state); }};
@@ -1021,6 +1043,7 @@ int main(int argc, char **argv) {
             ark::test::campaign_coverage_contract();
             ark::test::steam_strategy_contract();
             ark::test::steam_pot_equipment_contract();
+            ark::test::steam_magic_book_contract();
             std::cout << "PASS Steam layout, budget, people and expansion contract" << std::endl;
             ark::test::campaign_clear_contract();
             return 0;
@@ -1037,8 +1060,8 @@ int main(int argc, char **argv) {
                     (mode == "steam-observe" && std::string(argv[3]) == "--trace-activity"),
                 "--trace-activity is supported only by bounded steam-observe");
         if (mode == "steam-natural-month" || mode == "steam-pot-equipment-month" ||
-            mode == "steam-pot-equipment-verify" || mode == "steam-continue" ||
-            mode == "steam-natural-verify" || mode == "steam-inherit" ||
+            mode == "steam-pot-spell-month" || mode == "steam-pot-equipment-verify" ||
+            mode == "steam-continue" || mode == "steam-natural-verify" || mode == "steam-inherit" ||
             mode == "steam-inherit-verify") {
             const auto directory = isolated_directory(argv[0], argv[2], "ark-steam-village-v1\n");
             if (mode == "steam-inherit") {
@@ -1080,7 +1103,14 @@ int main(int argc, char **argv) {
                 auto &run = *steam_campaign;
                 run.lifecycle = ark::test::read_campaign_clear_evidence(
                     directory, slot, run.state, run.system,
-                    mode == "steam-natural-month" || mode == "steam-pot-equipment-month");
+                    mode == "steam-natural-month" || mode == "steam-pot-equipment-month" ||
+                        mode == "steam-pot-spell-month");
+                if (mode == "steam-pot-spell-month") {
+                    if (run.pot_equipment)
+                        run.pot_equipment->verify(run.state, run.strategy.stats().trade);
+                    run.pot_book.emplace();
+                    run.pot_book->reconcile(run.state);
+                }
                 if (mode == "steam-pot-equipment-month") {
                     if (!run.pot_equipment) {
                         run.pot_equipment.emplace();

@@ -1,8 +1,8 @@
 # 主动经营验收与建设收益方案
 
-当前有效Steam前缀已至月165，运行冻结5708375、503来源/81适配；50/50参考布局、25目标营业及全部22住户的绑定/连通保持。四星562451G/两月预算70460G、84点，人气5644、最高月收入64874G；五星收入仍差5126G。配方35实际付元素30/0/30/5、经93领取设施44，再按2000G报价建设；H0→1后不因普通建设消耗。点心铺161完工/可达、任务道具17强化及两次冷载通过，完整后继月164全村收入28446G，但该店仍sales0，营业未认证。源只读候选查询能列出该店，低共享魅力权重及有限动态观察的边界见B1。壶经验33/等级2/容量20、待料2件；5/8/11/16/35已发现，其余新产物及活动29待消费；书11学习已验但实际施法未验。焰火店50营业仍待核。累计建设64/库存强化177/装备260/胜利46/活动56/授勋34，无当前任务；收入变化不单归因于某项投入。
+当前有效Steam前缀已至月168，运行冻结5708375、503来源/81适配；50/50参考布局、25目标营业及全部22住户的绑定/连通保持。四星613991G/两月预算76100G、92点，人气5856、最高月收入64874G；五星仍差5126G。配方35/点心铺44的领取、2000G建设、强化、首次实际营业1870G及后继冷载通过；H不是普通建筑免费券。原待料处理使经验33→35并发现治愈书13，再真实炼制/赠送给人物4，永久学习及完整后继月/冷载通过，Q仍0；火/冰Q已可用，实际施法均待。壶经验35/等级2/容量20、待料1件，下一发现门槛36对应3/17。全月167设施销售69435G与源月报K2快照58499G分开，晋级用源最高收入，不能据销售合计改写差额。焰火店50营业仍待核；累计建设64/库存强化184/装备269/胜利47/活动59/授勋39，无当前任务，收入变化不单归因于某项投入。
 
-当前设施配方、引流及22住户前缀见[本批B1](B1-playable-prototype.md#campaign-pot-facility)，壶扩容见[前批](B1-playable-prototype.md#campaign-pot-upgrade-budget)；逐配方/装备端点见[发现批次](B1-playable-prototype.md#campaign-pot-discovery)，月130配方7及主线交接见[药品接续](B1-playable-prototype.md#campaign-pot-current-prefix)，围栏2见[住房批次](B1-playable-prototype.md#campaign-residence-successors)。每段仍6分钟/10000轮，新增冷载沿玩家随机政策分别认证，未倒造历史或改写正常玩家档。生命周期仍phase0，真实通关/继续/继承、其余可达配方及全775未完成，下文保留历史来源资格。
+当前治愈书、点心铺营业及22住户前缀见[本批B1](B1-playable-prototype.md#campaign-healing-shop)，设施领取/建设见[前批](B1-playable-prototype.md#campaign-pot-facility)；壶扩容见[升级批次](B1-playable-prototype.md#campaign-pot-upgrade-budget)，逐配方/装备端点见[发现批次](B1-playable-prototype.md#campaign-pot-discovery)，月130配方7及主线交接见[药品接续](B1-playable-prototype.md#campaign-pot-current-prefix)，围栏2见[住房批次](B1-playable-prototype.md#campaign-residence-successors)。每段仍6分钟/10000轮，新增冷载沿玩家随机政策分别认证，未倒造历史或改写正常玩家档。生命周期仍phase0，真实通关/继续/继承、其余可达配方及全775未完成，下文保留历史来源资格。
 
 历史来源资格、失败和经营回执统一见B1：[月100系统身份与后继](B1-playable-prototype.md#research-80d8b8d-score-startup)、[月107购物选择诊断](B1-playable-prototype.md#campaign-month107-activity-trace)、[月110博物馆首次营业与活动21](B1-playable-prototype.md#campaign-month110-museum)。旧身份组合及失败观察不作为当前输入，不重签历史结果；下文覆盖数字仍是其注明版本的历史审计。
 

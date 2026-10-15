@@ -1,5 +1,16 @@
 # B1：持续世界产品接入
 
+<a id="campaign-healing-shop"></a>
+## 2026-10-16：治愈魔法书13与点心铺首次营业
+
+正式研究仍为5708375，本批复用已有Release玩家和分月编排，无运行代码或存储政策变化。165→166耗169.25秒，真实处理原档两件待料，经验33→35，经46确认发现配方13；保存/独立冷载后配方与待料结果保留。点心铺161累计收入0→1870G，完工/flags0/可达保持，补齐[前批](#campaign-pot-facility)尚未认证的营业；不由金额推断顾客数或随机票号。同次冷载人物5/17分别learned=0100/1000、Q=0100/1000，已观察到原后继重算后的可用状态，具体触发和实际施法未归因。证据在`build/validation/business-liquidity/steam-pot-discover-month-month166-goal-5d8064b7d58d41a989e8413a91f8048c/`，healing-discovery-and-shop-trade及经营/冷载日志保留原资格。
+
+166→167耗175.96秒，实际1000G购买道具20并投入；配方13准确支付20/20/20/1元素，28/52/37/1→8/32/17/0。治愈书35库存0→1→0，由人物4/实例2330永久学习slot3；64提交后Q0，冷载learned=0001/Q=0000。制造、实际库存消费、永久学习和当前可用分开，未强制重算或注入施法。该段`build/validation/business-liquidity/steam-pot-spell-month-month167-goal-07ec402b7eb5410f89c8e75b65fd64ae/`的healing-book-effect、month/cold-load/cold-inspect保留精确费用和受赠者。
+
+167→168完整后继经营167.96秒，任务实例63/定义32胜利，5枚勋章按原公平策略实际授予23、24、5、12、16；两次库存强化和2次付费装备有原回执。后继保存/独立冷载后人物4学习位保持、Q仍0000；22名住户完工/可达、50/50布局及25目标营业保持。当前有效前缀为`build/validation/business-liquidity/steam-natural-month-month168-goal-2cc0bdbfd0a14c8ba519d062c2505aa7/checkpoints/month-168`，同根healing-following-effect及冷载/住宅/报表检查保留。终四星613991G/两月预算76100G、92点、人气5856，累计建设64/强化184/装备269/胜利47/活动59/授勋39，无当前任务，生命周期phase0。全月167设施销售69435G与源月报K2快照58499G口径不同：月报准备早于日历跨月；最高收入仍64874G，五星仍差5126G，不能用销售合计替代晋级字段。
+
+三段均通过既有实际输入、玩家保存、独立冷载和栏1→0字节复制，原前缀/正常玩家档和research在途保持；本轮进程已收齐。仅经营及文档，无代码变化，不重复已通过的57f2e56两Debug标准/Release合同，完整Release标准/三个月、CI及窗口另记待验。补查同来源标记的135—165共31个连续通过分段，回执盘点留`build/validation/business-liquidity/through-month165-receipt-inventory.json`，更早证据布局另列；至少一条回执不等于某定义完整覆盖。后继优先下一门槛36的配方3/17、未举办活动预算及新内容实际消费；雷书、实际施法、五星、自然通关/继续/继承及全775仍未完成。
+
 <a id="campaign-pot-facility"></a>
 ## 2026-10-16：设施配方领取、金币建设及客流诊断
 

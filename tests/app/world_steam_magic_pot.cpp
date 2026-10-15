@@ -53,15 +53,14 @@ int contribution(const State &s, const ref::WorldMagicPotRecipeDefinition &r,
     if (i.recovery > 0 || i.effect == 9)
         return 0; // Keep medicine and books for their consumers.
     if (experience_goal > 0) {
-        // Discovery needs actual processed pieces, even when recipe elements are
-        // already sufficient. A positive element guarantees useful source input.
+        // Pieces advance knowledge; preserve their source half-elements as well.
+        // The buyer compares pending half-elements per gold, not just piece price.
         const int pending_goal = std::max(1, experience_goal - s.legacy_n[0]);
-        return s.legacy_n[1] < pending_goal &&
-                       std::any_of(
-                           i.magic_pot_elements.begin(), i.magic_pot_elements.end(),
-                           [](int value) { return value >= 2; })
-                   ? 1
-                   : 0;
+        if (s.legacy_n[1] >= pending_goal)
+            return 0;
+        return std::max(
+            0, std::accumulate(i.magic_pot_elements.begin(), i.magic_pot_elements.end(), 0,
+                               [](int total, int element) { return total + element / 2; }));
     }
     int value{};
     for (int n = 0; n < 4; ++n)
@@ -707,6 +706,41 @@ void steam_pot_equipment_contract() {
                 leave_empty.command->kind == Kind::magic_pot_action &&
                 leave_empty.command->magic_pot_action == Pot::cancel,
             "a material deficit with empty inventory must exit41 instead of looping empty42");
+    // Initialized purchase-page projection only. Fixed item0 costs400G for one
+    // pending element; item25 costs1000G for63. Decisions neither buy nor draw.
+    auto shopping = empty;
+    auto &shop_page = shopping.scripts.pages.front();
+    shop_page.legacy_page = 84;
+    shop_page.legacy_f = 0;
+    shopping.commerce_pages_initialized.insert(shop_page.id);
+    shopping.commerce_page_data[shop_page.id] = {0, 0, 0, 0, -1, 0};
+    shopping.commerce_page_lists[shop_page.id] = {0, 25};
+    shopping.shop_item_stock.at(0).quantity = 1;
+    shopping.shop_item_stock.at(25).quantity = 1;
+    const auto shopping_random = shopping.scene.random.draws();
+    for (const int budget : {1000, 999, 399}) {
+        std::uint64_t retry_at{};
+        bool leaving{};
+        const auto chosen = next_steam_pot_command(shopping, source_recipe(shopping, 1), false,
+                                                   budget, retry_at, leaving, 60);
+        const auto expected = budget == 1000  ? Commerce::select
+                              : budget == 999 ? Commerce::confirm
+                                              : Commerce::cancel;
+        if (!chosen.command || chosen.command->kind != Kind::commerce_action ||
+            chosen.command->commerce_action != expected ||
+            chosen.command->selection != (budget == 1000 ? 1 : 0))
+            throw std::runtime_error(
+                "Material choice budget=" + std::to_string(budget) + " view=" +
+                std::to_string(
+                    bool(sim::inspect_startup_world_commerce_page(shopping, shop_page.id))) +
+                " action=" +
+                std::to_string(chosen.command ? int(chosen.command->commerce_action) : -1) +
+                " selection=" + std::to_string(chosen.command ? chosen.command->selection : -1));
+    }
+    require(shopping.scene.random.draws() == shopping_random &&
+                shopping.shop_item_stock.at(25).quantity == 1 &&
+                shopping.items.at(25).inventory == 0 && cash(shopping) == cash(empty),
+            "material planning cannot buy, consume or change the world/random stream");
     // Partial observation fixture only; actual payment/grant/gift remains covered
     // independently by the real business-prefix acceptance.
     auto &p = s.scripts.pages.front();

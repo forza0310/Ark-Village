@@ -36,8 +36,9 @@ std::optional<std::size_t> steam_layout_slot(const simulation::StartupWorldRunti
 std::vector<std::uint64_t> steam_layout_blockers(const simulation::StartupWorldRuntimeState &state,
                                                  const SteamLayoutTarget &target);
 // Discard complete source build/move candidates after checking every existing blueprint
-// instance, occupied home, connected external business and the new shop. Prefer
-// fewer covered road cells; no preview is a paid receipt.
+// instance, occupied home, connected external business and the new shop. Plants
+// prefer actual neighbour price/quality/charm gains; other targets prefer fewer
+// covered road cells. No preview is a paid receipt.
 std::optional<SteamLayoutTarget>
 steam_connected_extension(const simulation::StartupWorldRuntimeState &state, int definition,
                           std::optional<std::uint64_t> moving = {});

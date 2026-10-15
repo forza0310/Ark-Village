@@ -120,8 +120,9 @@ std::vector<std::uint64_t> steam_layout_blockers(const State &s, const SteamLayo
 }
 
 namespace {
+using ExtensionGain = std::array<std::int64_t, 3>;
 bool extension_candidate(const State &s, const SteamLayoutTarget &target,
-                         std::optional<std::uint64_t> moving) {
+                         std::optional<std::uint64_t> moving, ExtensionGain *gain = nullptr) {
     auto candidate = s; // Original references, route caches, residents and random stay independent.
     simulation::StartupBuildResult built;
     if (moving) {
@@ -151,8 +152,7 @@ bool extension_candidate(const State &s, const SteamLayoutTarget &target,
         built.denial != simulation::StartupBuildDenial::none || !built.created ||
         (candidate.facility_flags.at(*built.created) & 1U))
         return false;
-    // The source warning flag covers shops/houses, while recruitment also needs a reachable
-    // tile. Plants are blocked decorations rather than destinations; do not invent an entrance.
+    // Keep the delivered distance-field admission; plant neighbour effects are scored separately.
     const auto paths = ref::search_legacy_map(candidate.scene.world.world.map,
                                               simulation::startup_evidence().spawn_points.at(0));
     if (!paths.field)
@@ -169,6 +169,7 @@ bool extension_candidate(const State &s, const SteamLayoutTarget &target,
                          [id](const auto &entry) { return entry.instance_id.value == id; });
         return status != access.facilities.end() && !status->cells.empty();
     };
+    const bool plant = candidate.scene.world.world.facilities.at(*built.created).kind == 2;
     if (!reachable(*built.created))
         return false;
     for (const auto &goal : layout) {
@@ -206,6 +207,21 @@ bool extension_candidate(const State &s, const SteamLayoutTarget &target,
             (candidate.facility_flags.at(id) & 1U) || !reachable(id))
             return false;
     }
+    if (plant && gain) {
+        ExtensionGain actual{};
+        for (const auto &[id, shop] : s.scene.world.world.facilities) {
+            if (shop.kind != 3)
+                continue;
+            const auto before = simulation::startup_world_facility_values(s, id);
+            const auto after = simulation::startup_world_facility_values(candidate, id);
+            if (!before || !after)
+                return false;
+            for (std::size_t n = 0; n < actual.size(); ++n)
+                actual[n] +=
+                    std::int64_t(after->instance_attributes[n]) - before->instance_attributes[n];
+        }
+        *gain = actual; // Player planning only; the source consumer owns all adjacency arithmetic.
+    }
     return true;
 }
 } // namespace
@@ -225,7 +241,11 @@ std::optional<SteamLayoutTarget> steam_connected_extension(const State &s, int d
     for (int y = 4; y < map.height; ++y)
         for (int x = 1; x < map.width; ++x)
             for (const auto orientation : {first, second}) {
-                const SteamLayoutTarget target{definition, {x, y}, orientation, Role::shop};
+                const SteamLayoutTarget target{
+                    definition,
+                    {x, y},
+                    orientation,
+                    s.rules->facilities.at(definition).kind == 2 ? Role::plant : Role::shop};
                 const auto footprint = steam_layout_footprint(s, target);
                 if (!steam_layout_inside_fence(s, target) ||
                     !steam_layout_blockers(s, target).empty())
@@ -244,12 +264,21 @@ std::optional<SteamLayoutTarget> steam_connected_extension(const State &s, int d
             }
     std::stable_sort(candidates.begin(), candidates.end(),
                      [](const auto &a, const auto &b) { return a.first < b.first; });
+    std::optional<SteamLayoutTarget> plant;
+    ExtensionGain best_gain{};
     for (const auto &[roads, target] : candidates) {
         (void)roads;
-        if (extension_candidate(s, target, moving))
-            return target;
+        ExtensionGain gain{};
+        if (extension_candidate(s, target, moving, &gain)) {
+            if (target.role != Role::plant)
+                return target;
+            if (gain > best_gain) {
+                plant = target;
+                best_gain = gain;
+            }
+        }
     }
-    return {};
+    return plant;
 }
 
 std::optional<std::pair<std::uint64_t, SteamLayoutTarget>>
@@ -479,7 +508,8 @@ void steam_layout_contract() {
             "external-shop fixture must replace its unneeded house");
     const auto retained_shop =
         simulation::install_startup_world_facility(external_business, 50, {4, 5}, first);
-    require(retained_shop.created && !steam_layout_slot(external_business, *retained_shop.created) &&
+    require(retained_shop.created &&
+                !steam_layout_slot(external_business, *retained_shop.created) &&
                 !(external_business.facility_flags.at(*retained_shop.created) & 1U),
             "a real connected non-reference shop must precede the new placement");
     external_business.scene.world.world.facilities.at(*retained_shop.created).status = 1;
@@ -497,7 +527,8 @@ void steam_layout_contract() {
     require(business_repair && business_repair->first == *retained_shop.created &&
                 extension_candidate(disconnected_business, business_repair->second,
                                     business_repair->first) &&
-                simulation::startup_world_state_digest(disconnected_business) == disconnected_digest,
+                simulation::startup_world_state_digest(disconnected_business) ==
+                    disconnected_digest,
             "repair must find a paid source move without changing its disconnected Owner");
     const auto unchanged = corner;
     require(!extension_candidate(corner, obstructing, {}),
@@ -514,6 +545,46 @@ void steam_layout_contract() {
             "connected extension query must discard every private paid candidate");
     require(!steam_connected_extension(corner, 25, protected_home),
             "repair planning must never relocate a protected blueprint residence");
+
+    // Plant qualification: source placement/adjacency, with an explicit unlocked
+    // definition and cash. This is not a natural recipe, claim or village build.
+    auto garden = initial_world();
+    garden.scene.world.world.ai.accounting = ref::PeriodAccounting(100000);
+    garden.facility_presence.at(74) = 2;
+    garden.facility_free_builds.at(74) = 1;
+    garden.scripts.event_calls[115] = 1;
+    const auto shop = simulation::install_startup_world_facility(garden, 35, {12, 6}, first);
+    require(shop.created.has_value(), "plant fixture needs a real source shop placement");
+    const auto garden_digest = simulation::startup_world_state_digest(garden);
+    const auto tree = steam_connected_extension(garden, 74);
+    require(tree && tree->role == Role::plant &&
+                simulation::startup_world_state_digest(garden) == garden_digest,
+            "plant planning must find source economic gain without modifying its Owner");
+    auto planted = garden;
+    require(simulation::begin_startup_world_build(planted, 74).error ==
+                simulation::StartupWorldRuntimeError::none,
+            "plant choice must use the original paid build entry");
+    const auto built_tree =
+        simulation::confirm_startup_world_build(planted, tree->anchor, tree->orientation);
+    require(built_tree.created.has_value(), "plant choice must actually build through the source");
+    require(simulation::cancel_startup_world_build(planted) ==
+                simulation::StartupWorldRuntimeError::none,
+            "source plant placement must leave build mode normally");
+    bool improved{};
+    for (const auto &[id, business] : garden.scene.world.world.facilities) {
+        if (business.kind != 3)
+            continue;
+        const auto before = simulation::startup_world_facility_values(garden, id);
+        const auto after = simulation::startup_world_facility_values(planted, id);
+        require(before && after, "planted source economy must remain queryable");
+        if (after->instance_attributes[0] > before->instance_attributes[0]) {
+            require(after->instance_attributes[0] - before->instance_attributes[0] == 70 &&
+                        after->instance_attributes[1] - before->instance_attributes[1] == 20,
+                    "tree choice must apply the fixed source70/20 to an actual neighbouring shop");
+            improved = true;
+        }
+    }
+    require(improved, "the chosen plant must benefit a real existing shop");
     const auto inserted = simulation::install_startup_world_facility(corner, 64, {5, 4}, first);
     require(inserted.created.has_value(), "obstructing-shop qualification failed");
     corner.scene.world.world.facilities.at(*inserted.created).status = 1;

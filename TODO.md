@@ -15,12 +15,12 @@
 - [x] 设施配方的47扣元素/93领取和原金币建设测试玩家已接；配方35/点心铺44真实制造、领取、2000G建设/完工、强化、实际营业1870G及后继存读通过，H不是普通建筑免费券，见[本批](docs/stages/B1-playable-prototype.md#campaign-healing-shop)。
 
 - [ ] 按[全解锁合同](docs/stages/ACTIVE_VILLAGE_PLAN.md#full-unlock-campaign)逐定义覆盖取得、消费、实际效果与后继，保留775分母；代表样例、仅解锁或日期推进不算全覆盖。
-- [x] 未举办常规活动预算已接：保留图纸/扩张点数、按源报价/ID安排首次消费；活动22/9/11实际付款、9/11的25人属性效果及后继月/冷载通过，见[本批](docs/stages/B1-playable-prototype.md#campaign-unheld-activities)。
+- [x] 未举办常规活动预算已接：保留图纸/扩张点数、按源报价/ID安排首次消费；22/9/11实际付款、9/11的25人属性效果及后继月/冷载通过，见[活动批次](docs/stages/B1-playable-prototype.md#campaign-unheld-activities)。20已真实付200点并排队50人气、冷载次数1；排队不当实际人气归因，见[后继](docs/stages/B1-playable-prototype.md#campaign-material-plant-planning)。
 - [x] 后建商店入口保护/修复已接：原付费搬迁300G，焰火店50实际营业598G，恢复设施46的40点图纸/600G建设及库存强化；活动13的25人效果/冷载通过，见[本批](docs/stages/B1-playable-prototype.md#campaign-external-shop-access)。
 - [x] 四项条件及真实五星晋级/庆典/冷载已验，源收入73374G；配方36准确制造、领取、占卜屋2000G建设及任务库存强化已验，见[本批](docs/stages/B1-playable-prototype.md#campaign-fifth-star-pot36)。
 - [x] 配方26/防具24主角实际装配、完整后继及冷载通过；四本魔法书永久学习和当前Q均已取得，雷书12由人物8实际消费；自然到月183计分154750、系统纪录提交及玩家冷载通过，见[本批](docs/stages/B1-playable-prototype.md#campaign-natural-clear-books)。
 - [x] 完整月184真实营业30258G、付费装备/强化/任务胜利，月185保存/独立冷载已认证；另进程继承新局，5000G起步/600G建设面包店/实际营业545G及再次冷载通过，见[继续与继承](docs/stages/B1-playable-prototype.md#campaign-continued-months)。自然生命周期闭合不等于全775。
-- [ ] 从有效父世界月188接续：新店52已200点买图纸/1200G建设/完工可达及库存强化，仍待实际营业；药店46/占卜屋56已取得营业并冷载保持。活动20差5点（195/200，图纸预留0），29仍未开放；继续2/3/17/39等产物，17保留合法较早前缀分支。预留两月现金及图纸点数，实际施法不以学习/Q替代；40配方与775分母保留，见[经营现状](docs/stages/ACTIVE_VILLAGE_PLAN.md)。
+- [ ] 从有效父世界月190接续：52已买图纸/建设/完工可达及强化，仍待实际营业；46/56营业已冷载保持。已由原46发现1/18/32/33/37，后续实际制造/消费仍待；继续2/3/17/39等产物，39尚缺四元素0/0/10/7，17保留合法较早前缀分支。29未开放，20已付款排队；预留两月现金及图纸点数，实际施法不以学习/Q替代，40配方与775分母保持，见[经营现状](docs/stages/ACTIVE_VILLAGE_PLAN.md)。
 - [ ] 4魔法实际施放、投射/延迟伤害归因及全23职业后继等待真实局部消费事实；Q可用不等于学习/施法，见[研究请求](docs/reference/RESEARCH_REQUESTS.md#spell-consumption-receipts)。
 
 ## 表现与研究边界

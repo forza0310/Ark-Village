@@ -1,5 +1,10 @@
 # 研究交接需求
 
+<a id="plant-route-projection-gap"></a>
+## 新建植物的路径格投影差异（2026-10-16）
+
+正式5708375的`prototype/src/startup_world_building.cpp`中install_facility对普通新建统一写legacy_state1/terminal；同闭包`example/src/map_access.cpp`的facility_cell(kind2)写state2/blocked。产品种类2/定义74的源建设与完整施工消费者后，路径距离仍可存在。FACILITIES的植物邻接70/20已证，这两条格投影不能据植物名称合并成“距离必为空”或“人物可以进入”。请核原创建/完工/刷新/加载分别何时写state与category，交付一致的维护投影及定向新建→完工→更新/存读边界；保留已确认的路径/随机次序，不因修这一项重跑研究世界长链。最小产品夹具已放现steam_layout_contract，纯来源70/20及规划不改Owner断言保留；未证的“植物距离为空”断言已撤回，产品未改地图规则，真实74尚未领取建设。过程与失败日志留build/validation/business-liquidity/plant-material-*。
+
 <a id="residence-detail-retirement"></a>
 ## 入住后旧设施详情退休（2026-10-15）
 

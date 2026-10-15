@@ -14,7 +14,7 @@
 - [x] 已知配方22/24/31实际购料/投入、扣元素炼制、防具/饰品公平赠送及属性生效，各自完整后继营业月与独立冷载通过；继续真实入住至20住户，不把初始已知算作本轮发现，见[装备接续](docs/stages/B1-playable-prototype.md#campaign-pot-equipment-successors)。
 
 - [ ] 按[全解锁合同](docs/stages/ACTIVE_VILLAGE_PLAN.md#full-unlock-campaign)逐定义覆盖取得、消费、实际效果与后继，保留775分母；代表样例、仅解锁或日期推进不算全覆盖。
-- [ ] 从有效月145接续健康经营与逐定义消费：预留两月现金及下一图纸预算；风车53已购/建/强化但sales0，先补营业证据。五星收入仍差12968G；配方15目前只有状态变化观察，其余配方按40项目录及可达/排除分类核对，不把0/38等无正常产生路径项静默删去。资金与来源资格见[经营现状](docs/stages/ACTIVE_VILLAGE_PLAN.md)。
+- [ ] 从有效月146接续健康经营与逐定义消费：预留两月现金及下一图纸预算；风车53已购/建/强化但sales0，先补营业证据。五星收入仍差12968G；配方15另支已验首次发现，制造及产物消费仍待。其余配方按40项目录及可达/排除分类核对，不把0/38等无正常产生路径项静默删去。资金与来源资格见[经营现状](docs/stages/ACTIVE_VILLAGE_PLAN.md)。
 - [ ] 主动计分/继续/继承driver和短合同已接，实际生命周期仍phase0；继续自然经营到真实计分，再验完整继续/继承，不以临近日期夹具称自然通关，见[生命周期方案](docs/MILESTONES.md#campaign-natural-lifecycle)。
 - [ ] 4魔法实际施放、投射/延迟伤害归因及全23职业后继等待真实局部消费事实；Q可用不等于学习/施法，见[研究请求](docs/reference/RESEARCH_REQUESTS.md#spell-consumption-receipts)。
 

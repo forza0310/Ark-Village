@@ -270,6 +270,32 @@ void SteamPotEquipmentPlayer::observe(const State &before, const app::WorldComma
     const bool already_crafted = crafted_ != 0;
     const auto &r = source_recipe(before, recipe_);
     const int raw = top(before).legacy_page;
+    if (raw == 46) {
+        const int id = top(before).legacy_g;
+        if (before.magic_pot_recipes.at(id).status == 0 &&
+            after.magic_pot_recipes.at(id).status == 1) {
+            const auto &discovered = source_recipe(before, id);
+            require(c.kind == Kind::magic_pot_action && c.magic_pot_action == Pot::confirm &&
+                        c.page == top(before).id && before.page_counters.at(c.page) > 6 &&
+                        (discovered.flags & 2U) &&
+                        before.legacy_n[0] >= discovered.experience_required &&
+                        after.magic_pot_recipes.at(id).pending_notice &&
+                        before.legacy_n == after.legacy_n && cash(before) == cash(after) &&
+                        before.scene.random.draws() == after.scene.random.draws(),
+                    "discovery lacks its bound source46 confirmation or changes resources");
+            if (receipts)
+                receipts({CampaignReceiptKind::recipe_discovered,
+                          id,
+                          after.simulation_steps,
+                          c.page,
+                          0,
+                          -1,
+                          {before.magic_pot_recipes.at(id).status, before.legacy_n[0],
+                           before.magic_pot_recipes.at(id).pending_notice},
+                          {after.magic_pot_recipes.at(id).status, after.legacy_n[0],
+                           after.magic_pot_recipes.at(id).pending_notice}});
+        }
+    }
     if (!crafted_ && c.kind == Kind::commerce_action && c.commerce_action == Commerce::confirm &&
         raw == 84 && result.commerce_amount) {
         const auto v = sim::inspect_startup_world_commerce_page(before, c.page);
@@ -563,5 +589,51 @@ void steam_pot_equipment_contract() {
     copy.observe(s, craft, result, granted);
     require(copy.diagnose().find("crafted=1 equipped=0") != std::string::npos,
             "a free grant must not pretend its equipment was already consumed");
+    // Partial observer fixtures: the source consumer has its own page/rollback
+    // suite. A real-prefix rerun separately verifies acquisition and read-only observation.
+    auto discovery = s;
+    auto &notice = discovery.scripts.pages.front();
+    notice.legacy_page = 46;
+    notice.legacy_g = 15;
+    discovery.page_counters[notice.id] = 7;
+    discovery.legacy_n[0] = 14;
+    auto found = discovery;
+    found.magic_pot_recipes.at(15).status = 1;
+    found.magic_pot_recipes.at(15).pending_notice = true;
+    auto confirm = command(Kind::magic_pot_action, notice.id);
+    confirm.magic_pot_action = Pot::confirm;
+    std::vector<CampaignReceipt> discoveries;
+    const CampaignReceiptSink collect = [&](const auto &receipt) {
+        discoveries.push_back(receipt);
+    };
+    player.observe(discovery, confirm, result, found, collect);
+    require(discoveries.size() == 1 &&
+                discoveries.front().kind == CampaignReceiptKind::recipe_discovered &&
+                discoveries.front().definition == 15 && discoveries.front().before[0] == 0 &&
+                discoveries.front().after[0] == 1,
+            "source46 must bind its actual discovered definition, not the current craft target");
+    player.observe(found, confirm, result, found, collect);
+    require(discoveries.size() == 1, "already-known recipes must not produce a discovery receipt");
+    for (const int invalid : {0, 1, 2, 3}) {
+        auto old = discovery;
+        auto changed = found;
+        if (invalid == 0)
+            old.page_counters[notice.id] = 6;
+        else if (invalid == 1)
+            old.legacy_n[0] = changed.legacy_n[0] = 13;
+        else if (invalid == 2)
+            ++changed.legacy_n[3];
+        else
+            changed.magic_pot_recipes.at(15).pending_notice = false;
+        bool refused{};
+        try {
+            player.observe(old, confirm, result, changed, collect);
+        } catch (const std::runtime_error &) {
+            refused = true;
+        }
+        require(refused && discoveries.size() == 1,
+                "early/under-experience/resource-changing or missing-NEW discoveries must not "
+                "publish success");
+    }
 }
 } // namespace ark::test

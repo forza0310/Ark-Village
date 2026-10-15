@@ -17,6 +17,9 @@ class SteamPotEquipmentPlayer {
     void observe_tick(const app::WorldState &before, const app::WorldState &after);
     bool complete(const app::WorldState &state, const ActiveTradeEvidence &trade) const;
     void verify(const app::WorldState &state, const ActiveTradeEvidence &trade) const;
+    // Archive the strict live endpoint before ordinary play may replace this gift.
+    void certify(const app::WorldState &state, const ActiveTradeEvidence &trade);
+    bool certified() const { return certified_; }
     // A new isolated segment retains the prior sidecar as its input. Replace the
     // controller only after certifying that input's gift and following business.
     bool begin_next(const app::WorldState &state, const ActiveTradeEvidence &trade);
@@ -32,6 +35,7 @@ class SteamPotEquipmentPlayer {
     std::array<int, 4> paid_{};
     std::uint64_t actor_{}, next_market_step_{};
     bool leaving_market_{}; // Only an initialized83/84 visit; never persisted mid-page.
+    bool certified_{};      // Test-sidecar history; never a player-world field.
     void observe_equipment(const app::WorldState &before, const app::WorldState &after);
 };
 void steam_pot_equipment_contract();

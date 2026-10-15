@@ -14,6 +14,7 @@
 #include "world_campaign_receipts_test.hpp"
 #include "world_steam_budget.hpp"
 #include "world_steam_magic_books.hpp"
+#include "world_steam_magic_discovery.hpp"
 #include "world_steam_magic_pot.hpp"
 #include "world_steam_strategy.hpp"
 #include <chrono>
@@ -238,7 +239,8 @@ template <class PlayerStrategy> struct CampaignRun {
     // committed transitions. It never calls next() or owns another world.
     std::optional<ark::test::SteamVillageStrategy> steam_observer{};
     std::optional<ark::test::SteamPotEquipmentPlayer> pot_equipment{};
-    std::optional<ark::test::SteamPotSpellBookPlayer> pot_book{}; // Never serialized mid-flow.
+    std::optional<ark::test::SteamPotSpellBookPlayer> pot_book{};      // Never serialized mid-flow.
+    std::optional<ark::test::SteamPotDiscoveryPlayer> pot_discovery{}; // Source pending work saves.
 
     void command(const app::WorldCommand &input) {
         auto candidate = state;
@@ -275,7 +277,12 @@ template <class PlayerStrategy> struct CampaignRun {
                                  });
                 if (steam_observer)
                     steam_observer->observe(state, input, result, candidate);
-                if (pot_book && pot_book->active())
+                if (pot_discovery && pot_discovery->active())
+                    pot_discovery->observe(state, input, result, candidate,
+                                           [&](const ark::test::CampaignReceipt &receipt) {
+                                               pending_receipts.push_back(receipt);
+                                           });
+                else if (pot_book && pot_book->active())
                     pot_book->observe(state, input, result, candidate,
                                       [&](const ark::test::CampaignReceipt &receipt) {
                                           pending_receipts.push_back(receipt);
@@ -363,6 +370,14 @@ template <class PlayerStrategy> struct CampaignRun {
         const auto selected = [&] {
             if (!automatic)
                 return manual;
+            if (pot_discovery) {
+                const auto input = pot_discovery->next(
+                    state,
+                    std::max<std::int64_t>(0, state.scene.world.world.ai.accounting.funds() -
+                                                  ark::test::steam_operating_reserve(state)));
+                if (input.handled)
+                    return input.command;
+            }
             if (pot_book) {
                 const auto input = pot_book->next(
                     state,
@@ -538,11 +553,14 @@ template <class PlayerStrategy> struct CampaignRun {
         if (steam_observer)
             write_strategy(directory, slot, *steam_observer, "steam-strategy");
         if (pot_equipment) {
+            pot_equipment->certify(state, strategy.stats().trade);
             write_strategy(directory, slot, *pot_equipment, "pot-equipment");
             std::cout << "POT_EQUIPMENT " << pot_equipment->diagnose() << std::endl;
         }
         if (pot_book)
             std::cout << "POT_BOOK_ENDPOINT " << pot_book->diagnose() << std::endl;
+        if (pot_discovery)
+            std::cout << "POT_DISCOVERY_ENDPOINT " << pot_discovery->diagnose(state) << std::endl;
         if (lifecycle)
             ark::test::write_campaign_clear_evidence(directory, slot, *lifecycle);
         std::cout << "SAVE slot=" << slot << " bytes=" << captured.image->bytes.size() << " "
@@ -611,6 +629,7 @@ CampaignRun<PlayerStrategy> load(const std::filesystem::path &directory, int slo
             result.pot_equipment =
                 read_strategy<ark::test::SteamPotEquipmentPlayer>(directory, slot, "pot-equipment");
             result.pot_equipment->reconcile(result.state);
+            result.pot_equipment->certify(result.state, result.strategy.stats().trade);
         }
     }
     if constexpr (std::is_same_v<PlayerStrategy, PotStrategy>) {
@@ -1044,6 +1063,7 @@ int main(int argc, char **argv) {
             ark::test::steam_strategy_contract();
             ark::test::steam_pot_equipment_contract();
             ark::test::steam_magic_book_contract();
+            ark::test::steam_magic_discovery_contract();
             std::cout << "PASS Steam layout, budget, people and expansion contract" << std::endl;
             ark::test::campaign_clear_contract();
             return 0;
@@ -1060,8 +1080,9 @@ int main(int argc, char **argv) {
                     (mode == "steam-observe" && std::string(argv[3]) == "--trace-activity"),
                 "--trace-activity is supported only by bounded steam-observe");
         if (mode == "steam-natural-month" || mode == "steam-pot-equipment-month" ||
-            mode == "steam-pot-spell-month" || mode == "steam-pot-equipment-verify" ||
-            mode == "steam-continue" || mode == "steam-natural-verify" || mode == "steam-inherit" ||
+            mode == "steam-pot-spell-month" || mode == "steam-pot-discover-month" ||
+            mode == "steam-pot-equipment-verify" || mode == "steam-continue" ||
+            mode == "steam-natural-verify" || mode == "steam-inherit" ||
             mode == "steam-inherit-verify") {
             const auto directory = isolated_directory(argv[0], argv[2], "ark-steam-village-v1\n");
             if (mode == "steam-inherit") {
@@ -1104,10 +1125,18 @@ int main(int argc, char **argv) {
                 run.lifecycle = ark::test::read_campaign_clear_evidence(
                     directory, slot, run.state, run.system,
                     mode == "steam-natural-month" || mode == "steam-pot-equipment-month" ||
-                        mode == "steam-pot-spell-month");
+                        mode == "steam-pot-spell-month" || mode == "steam-pot-discover-month");
+                if (mode == "steam-pot-discover-month") {
+                    if (run.pot_equipment)
+                        require(run.pot_equipment->certified(),
+                                "Discovery follows the prior strict equipment endpoint");
+                    run.pot_discovery.emplace();
+                    run.pot_discovery->reconcile(run.state);
+                }
                 if (mode == "steam-pot-spell-month") {
                     if (run.pot_equipment)
-                        run.pot_equipment->verify(run.state, run.strategy.stats().trade);
+                        require(run.pot_equipment->certified(),
+                                "Book learning follows the prior strict equipment endpoint");
                     run.pot_book.emplace();
                     run.pot_book->reconcile(run.state);
                 }

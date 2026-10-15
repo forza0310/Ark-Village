@@ -49,20 +49,32 @@ int deficit(const State &s, const ref::WorldMagicPotRecipeDefinition &r) {
     return total;
 }
 int contribution(const State &s, const ref::WorldMagicPotRecipeDefinition &r,
-                 const sim::StartupWorldItem &i) {
+                 const sim::StartupWorldItem &i, int experience_goal) {
     if (i.recovery > 0 || i.effect == 9)
         return 0; // Keep medicine and books for their consumers.
+    if (experience_goal > 0) {
+        // Discovery needs actual processed pieces, even when recipe elements are
+        // already sufficient. A positive element guarantees useful source input.
+        const int pending_goal = std::max(1, experience_goal - s.legacy_n[0]);
+        return s.legacy_n[1] < pending_goal &&
+                       std::any_of(
+                           i.magic_pot_elements.begin(), i.magic_pot_elements.end(),
+                           [](int value) { return value >= 2; })
+                   ? 1
+                   : 0;
+    }
     int value{};
     for (int n = 0; n < 4; ++n)
         value += std::min(std::max(0, r.costs[n] - s.legacy_n[3 + n]), i.magic_pot_elements[n]);
     return value;
 }
 int material(const State &s, const ref::WorldMagicPotRecipeDefinition &r,
-             const std::vector<int> &entries, bool purchase, std::int64_t budget) {
+             const std::vector<int> &entries, bool purchase, std::int64_t budget,
+             int experience_goal = 0) {
     int best = -1, best_value{}, best_cost{};
     for (int id : entries) {
         const auto &i = item(s, id);
-        const auto value = contribution(s, r, i);
+        const auto value = contribution(s, r, i, experience_goal);
         const int cost = purchase ? i.commerce_price : 0;
         if (value <= 0 || (purchase ? s.shop_item_stock.at(id).quantity <= 0 || cost > budget
                                     : s.items.at(id).inventory <= 0))
@@ -172,26 +184,36 @@ void SteamPotEquipmentPlayer::reconcile(const State &s) {
 
 IncomeDecision next_steam_pot_command(const State &s, const ref::WorldMagicPotRecipeDefinition &r,
                                       bool crafted, std::int64_t budget,
-                                      std::uint64_t &next_market_step, bool &leaving_market) {
+                                      std::uint64_t &next_market_step, bool &leaving_market,
+                                      int experience_goal) {
     const auto &p = top(s);
     if (p.lifecycle == 0)
         return {true, {}};
+    const bool discovery = experience_goal > 0;
+    const bool done = crafted || (discovery && s.magic_pot_recipes.at(r.identity).status == 1);
+    const bool ready_to_craft = !discovery && deficit(s, r) == 0;
+    const bool enough_pending =
+        discovery && s.legacy_n[1] >= std::max(1, experience_goal - s.legacy_n[0]);
+    const auto held_material = [&] {
+        return material(s, r, item_ids(s), false, 0, experience_goal);
+    };
     if (p.kind == ref::WorldScriptPageKind::scene) {
         if (s.scene.scene_state != 0)
             return {};
-        if (crafted)
+        if (done)
             return {}; // Existing People owns fairness, payment and equipment effects.
-        if (deficit(s, r) == 0)
+        if (ready_to_craft)
             return {true, command(Kind::open_magic_pot)};
         const auto capacity = ref::world_magic_pot_capacity(s.legacy_n[11]);
         require(capacity.has_value(), "invalid source pot capacity");
-        if (s.legacy_n[1] >= *capacity) {
+        if (s.legacy_n[1] >= *capacity || enough_pending || (discovery && s.legacy_n[1] > 0)) {
             const int week = month(s) * 4 + s.scene.calendar.subperiod;
-            return {true, week > s.legacy_n[12]
-                              ? std::optional<app::WorldCommand>{command(Kind::open_magic_pot)}
-                              : std::nullopt};
+            if (week > s.legacy_n[12])
+                return {true, command(Kind::open_magic_pot)};
+            if (s.legacy_n[1] >= *capacity || enough_pending)
+                return {true, {}};
         }
-        if (material(s, r, item_ids(s), false, 0) >= 0)
+        if (held_material() >= 0)
             return {true, command(Kind::open_magic_pot)};
         // An empty/unaffordable84 visit must return to real world updates so
         // income/restocking can recover. This is a player retry, not a source timer.
@@ -206,26 +228,26 @@ IncomeDecision next_steam_pot_command(const State &s, const ref::WorldMagicPotRe
         if (!v)
             return {true, {}};
         if (v->raw == 41) {
-            if (crafted)
+            if (done)
                 return pot(p.id, Pot::cancel);
             const auto capacity = ref::world_magic_pot_capacity(s.legacy_n[11]);
             require(capacity.has_value(), "invalid source pot capacity");
-            if (deficit(s, r) > 0 &&
-                (s.legacy_n[1] >= *capacity || material(s, r, item_ids(s), false, 0) < 0))
+            if (!ready_to_craft &&
+                (enough_pending || s.legacy_n[1] >= *capacity || held_material() < 0))
                 return pot(p.id, Pot::cancel);
-            const int choice = deficit(s, r) == 0 ? 1 : 0;
+            const int choice = ready_to_craft ? 1 : 0;
             return pot(p.id, v->selection == choice ? Pot::confirm : Pot::select, choice);
         }
         if (v->raw == 42) {
-            const int id = material(s, r, v->entries, false, 0);
-            if (id < 0 || deficit(s, r) == 0)
+            const int id = material(s, r, v->entries, false, 0, experience_goal);
+            if (id < 0 || ready_to_craft || done)
                 return pot(p.id, Pot::cancel);
             const int index =
                 int(std::find(v->entries.begin(), v->entries.end(), id) - v->entries.begin());
             return pot(p.id, v->selection == index ? Pot::confirm : Pot::select, index);
         }
         if (v->raw == 43) {
-            if (crafted)
+            if (done || discovery)
                 return pot(p.id, Pot::cancel);
             const auto found = std::find(v->entries.begin(), v->entries.end(), r.identity);
             require(found != v->entries.end(), "known recipe missing from initialized43");
@@ -238,7 +260,7 @@ IncomeDecision next_steam_pot_command(const State &s, const ref::WorldMagicPotRe
             return {true, {}};
         return pot(p.id, Pot::confirm);
     }
-    if (!crafted && (p.legacy_page == 83 || p.legacy_page == 84)) {
+    if (!done && (p.legacy_page == 83 || p.legacy_page == 84)) {
         const auto v = sim::inspect_startup_world_commerce_page(s, p.id);
         if (!v)
             return {true, {}};
@@ -250,8 +272,8 @@ IncomeDecision next_steam_pot_command(const State &s, const ref::WorldMagicPotRe
             leaving_market = true;
             return commerce(p.id, Commerce::confirm);
         }
-        const int id = material(s, r, v->entries, true, budget);
-        if (material(s, r, item_ids(s), false, 0) >= 0 || deficit(s, r) == 0 || id < 0)
+        const int id = material(s, r, v->entries, true, budget, experience_goal);
+        if (held_material() >= 0 || ready_to_craft || enough_pending || id < 0)
             return commerce(p.id, Commerce::cancel);
         if (v->feedback_counter > 0)
             return {true, {}};
@@ -268,8 +290,10 @@ IncomeDecision SteamPotEquipmentPlayer::next(const State &s, std::int64_t budget
     const auto &p = top(s);
     if (p.lifecycle == 0)
         return {true, {}};
-    if (p.kind == ref::WorldScriptPageKind::scene && s.scene.scene_state == 0 && equipped_)
+    if (p.kind == ref::WorldScriptPageKind::scene && s.scene.scene_state == 0 && equipped_) {
+        certify(s, trade);
         return {controller_ready && !complete(s, trade), {}};
+    }
     return next_steam_pot_command(s, source_recipe(s, recipe_), crafted_, budget, next_market_step_,
                                   leaving_market_);
 }
@@ -282,6 +306,15 @@ SteamPotCommit observe_steam_pot_command(const State &before, const app::WorldCo
     require(result.outcome == app::WorldCommandOutcome::applied, "intervention command rejected");
     SteamPotCommit commit;
     const int raw = top(before).legacy_page;
+    if (c.kind == Kind::open_magic_pot && after.legacy_n[0] > before.legacy_n[0]) {
+        commit.processed = before.legacy_n[1] - after.legacy_n[1];
+        require(commit.processed > 0 && after.legacy_n[2] == commit.processed &&
+                    after.legacy_n[0] == std::min(999, before.legacy_n[0] + commit.processed) &&
+                    cash(before) == cash(after),
+                "processing must consume real pending pieces and preserve cash");
+        std::cout << "POT_PROCESS experience=" << before.legacy_n[0] << "->" << after.legacy_n[0]
+                  << " processed=" << commit.processed << " pending=" << after.legacy_n[1] << '\n';
+    }
     if (raw == 46) {
         const int id = top(before).legacy_g;
         if (before.magic_pot_recipes.at(id).status == 0 &&
@@ -452,10 +485,21 @@ void SteamPotEquipmentPlayer::verify(const State &s, const ActiveTradeEvidence &
                 reward_attributes_applied(s, human_, kind_, definition_, slot_),
             "cold endpoint lost equipment or full following trade");
 }
+void SteamPotEquipmentPlayer::certify(const State &s, const ActiveTradeEvidence &trade) {
+    if (certified_) {
+        require(complete(s, trade) && paid_ == source_recipe(s, recipe_).costs &&
+                    s.catalog.at({kind_, definition_}).status == 1 &&
+                    s.catalog.at({kind_, definition_}).free_purchases == 0,
+                "certified history lost its source payment, reward or following trade");
+    } else if (complete(s, trade)) {
+        verify(s, trade); // Keep every original live-equipment/attribute assertion.
+        certified_ = true;
+    }
+}
 bool SteamPotEquipmentPlayer::begin_next(const State &s, const ActiveTradeEvidence &trade) {
     if (!complete(s, trade))
         return false;
-    verify(s, trade);
+    certify(s, trade);
     if (!next_equipment_recipe(s))
         return false;
     SteamPotEquipmentPlayer candidate;
@@ -469,18 +513,19 @@ std::string SteamPotEquipmentPlayer::diagnose() const {
         << " slot=" << slot_ << " initial_exp=" << initial_experience_
         << " craft_exp=" << craft_experience_ << " purchases=" << purchases_
         << " deposits=" << deposits_ << " crafted=" << crafted_ << " equipped=" << equipped_
-        << " human=" << human_ << " actor=" << actor_ << " equipped_month=" << equipped_month_;
+        << " human=" << human_ << " actor=" << actor_ << " equipped_month=" << equipped_month_
+        << " certified=" << certified_;
     return out.str();
 }
 void SteamPotEquipmentPlayer::encode(std::ostream &out) const {
-    out << "STEAM_POT_EQUIPMENT_1\n"
+    out << "STEAM_POT_EQUIPMENT_2\n"
         << recipe_ << ' ' << kind_ << ' ' << definition_ << ' ' << slot_ << ' ' << initial_month_
         << ' ' << initial_experience_ << ' ' << purchases_ << ' ' << deposits_ << ' ' << crafted_
         << ' ' << equipped_ << ' ' << human_ << ' ' << actor_ << ' ' << equipped_month_ << ' '
         << craft_experience_ << ' ' << next_market_step_;
     for (int value : paid_)
         out << ' ' << value;
-    out << '\n';
+    out << ' ' << certified_ << '\n';
     require(bool(out), "equipment controller write failed");
 }
 SteamPotEquipmentPlayer SteamPotEquipmentPlayer::decode(std::istream &in) {
@@ -491,11 +536,15 @@ SteamPotEquipmentPlayer SteamPotEquipmentPlayer::decode(std::istream &in) {
         v.human_ >> v.actor_ >> v.equipped_month_ >> v.craft_experience_ >> v.next_market_step_;
     for (int &value : v.paid_)
         in >> value;
-    require(bool(in) && magic == "STEAM_POT_EQUIPMENT_1" && v.recipe_ >= 0 && v.recipe_ < 40 &&
-                v.kind_ >= 1 && v.kind_ <= 3 && v.definition_ >= 0 && v.slot_ >= 0 && v.slot_ < 4 &&
-                v.initial_month_ >= 0 && v.initial_experience_ >= 0 &&
-                v.initial_experience_ <= 999 && v.purchases_ >= 0 && v.deposits_ >= 0 &&
-                v.crafted_ >= 0 && v.crafted_ <= 1 && v.equipped_ >= 0 &&
+    int certified{};
+    if (magic == "STEAM_POT_EQUIPMENT_2")
+        in >> certified;
+    require(bool(in) && (magic == "STEAM_POT_EQUIPMENT_1" || magic == "STEAM_POT_EQUIPMENT_2") &&
+                certified >= 0 && certified <= 1 && (!certified || v.equipped_) && v.recipe_ >= 0 &&
+                v.recipe_ < 40 && v.kind_ >= 1 && v.kind_ <= 3 && v.definition_ >= 0 &&
+                v.slot_ >= 0 && v.slot_ < 4 && v.initial_month_ >= 0 &&
+                v.initial_experience_ >= 0 && v.initial_experience_ <= 999 && v.purchases_ >= 0 &&
+                v.deposits_ >= 0 && v.crafted_ >= 0 && v.crafted_ <= 1 && v.equipped_ >= 0 &&
                 v.equipped_ <= v.crafted_ &&
                 (v.equipped_ ? v.human_ >= 0 && v.human_ < 25 && v.actor_ &&
                                    v.equipped_month_ >= v.initial_month_
@@ -503,6 +552,7 @@ SteamPotEquipmentPlayer SteamPotEquipmentPlayer::decode(std::istream &in) {
                 (v.crafted_ ? v.craft_experience_ >= 0 && v.craft_experience_ <= 999
                             : v.craft_experience_ == -1 && v.paid_ == std::array<int, 4>{}),
             "invalid equipment controller evidence");
+    v.certified_ = certified != 0;
     in >> std::ws;
     require(in.eof(), "trailing equipment controller evidence");
     return v;
@@ -564,8 +614,17 @@ void steam_pot_equipment_contract() {
     std::istringstream tokens(encoded.str());
     for (std::string value; tokens >> value;)
         fields.push_back(value);
+    auto legacy_fields = fields;
+    legacy_fields.front() = "STEAM_POT_EQUIPMENT_1";
+    legacy_fields.pop_back();
+    std::ostringstream legacy_wire;
+    for (const auto &value : legacy_fields)
+        legacy_wire << value << ' ';
+    std::istringstream legacy_input(legacy_wire.str());
+    auto legacy = SteamPotEquipmentPlayer::decode(legacy_input);
+    require(!legacy.certified(), "legacy evidence must not invent a historical certification");
     for (const auto &invalid : std::vector<std::pair<int, std::string>>{
-             {2, "4"}, {4, "4"}, {4, "1"}, {9, "1"}, {10, "1"}}) {
+             {2, "4"}, {4, "4"}, {4, "1"}, {9, "1"}, {10, "1"}, {20, "1"}, {20, "2"}}) {
         auto changed = fields;
         changed.at(invalid.first) = invalid.second;
         std::ostringstream wire;
@@ -637,6 +696,55 @@ void steam_pot_equipment_contract() {
     copy.observe(s, craft, result, granted);
     require(copy.diagnose().find("crafted=1 equipped=0") != std::string::npos,
             "a free grant must not pretend its equipment was already consumed");
+    // Qualification fixture for a historical endpoint, not a natural gift/trade
+    // claim. The ordinary source gift and real following month are checked above
+    // by separate suites and by the isolated business route.
+    auto equipped = granted;
+    const auto actor = equipped.scene.world.world.ai.human_order.front();
+    const int human = equipped.scene.world.world.ai.battle.actors.at(actor).definition;
+    const auto wear = [&](State &state, int definition) {
+        const auto source = std::find_if(
+            state.rules->equipment.begin(), state.rules->equipment.end(),
+            [&](const auto &e) { return e.shop.kind == 2 && e.shop.id == definition; });
+        require(source != state.rules->equipment.end(),
+                "historical fixture lost its source armour");
+        auto &growth = state.scene.world.world.ai.growth.at(human);
+        growth.definition.equipment[2] = source->shop.combat;
+        const auto derived =
+            ref::derive_human_stats(growth.definition, state.scene.world.world.ai.professions);
+        require(derived.candidate.has_value(), "historical fixture source stats failed");
+        growth.derived = *derived.candidate;
+        state.shop_humans.at(human).equipment[2] = definition;
+        state.scene.world.world.ai.battle.actors.at(actor).capacity = growth.derived.combat[0];
+    };
+    wear(equipped, 13);
+    equipped.catalog.at({2, 13}).free_purchases = 0;
+    copy.observe(granted, craft, result, equipped);
+    ActiveTradeEvidence trade;
+    trade.revenue[month(equipped) + 1] = 100;
+    copy.certify(equipped, trade);
+    require(!copy.certified(), "a gift cannot archive an unfinished following month");
+    equipped.scene.calendar.month += 2;
+    copy.certify(equipped, trade);
+    require(copy.certified(), "strict live endpoint must archive its successful checks");
+    std::ostringstream certificate;
+    copy.encode(certificate);
+    std::istringstream archived_input(certificate.str());
+    auto archived = SteamPotEquipmentPlayer::decode(archived_input);
+    auto replaced = equipped;
+    wear(replaced, 15);
+    archived.reconcile(replaced);
+    archived.certify(replaced, trade);
+    bool live_refused{};
+    try {
+        archived.verify(replaced, trade);
+    } catch (const std::runtime_error &) {
+        live_refused = true;
+    }
+    require(live_refused && archived.certified(),
+            "later replacement retains history but must not pass the original live endpoint");
+    require(archived.begin_next(replaced, trade) && !archived.certified(),
+            "an explicit new objective must reset the prior archived certification");
     // Partial observer fixtures: the source consumer has its own page/rollback
     // suite. A real-prefix rerun separately verifies acquisition and read-only observation.
     auto discovery = s;

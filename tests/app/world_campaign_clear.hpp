@@ -71,5 +71,8 @@ CampaignClearEvidence read_campaign_clear_evidence(const std::filesystem::path &
                                                    const app::WorldState &state,
                                                    const app::WorldSystemState &system,
                                                    bool allow_business_without_evidence = false);
-void campaign_clear_contract();
+using CampaignClearInputCheck =
+    std::function<void(const app::WorldState &, const app::WorldSystemState &,
+                       const CampaignClearEvidence &, const std::filesystem::path &)>;
+void campaign_clear_contract(const CampaignClearInputCheck &input_handoff);
 } // namespace ark::test

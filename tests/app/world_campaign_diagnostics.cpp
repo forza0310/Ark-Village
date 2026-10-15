@@ -235,16 +235,23 @@ void inspect_campaign_activity(const app::WorldState &before, const app::WorldSt
 
 void inspect_campaign_progress(const app::WorldState &s, std::ostream &out) {
     require(s.rules != nullptr, "progress inspection needs source definitions");
-    auto rank = s;
-    require(sim::refresh_startup_world_runtime_rank(rank), "rank query rejected prefix");
     const auto table = sim::rules::fixed_calendar_task_rank_terms();
     const auto found = table.find(s.rank);
-    if (found != table.end())
+    if (found == table.end()) {
+        // The source has no next-rank query at its final star. A valid terminal
+        // rank must still expose the actor, spell and adventure diagnostics.
+        require(!table.empty() && s.rank == table.rbegin()->first + 1,
+                "rank outside the source progression table");
+        out << "RANK_TERMINAL rank=" << s.rank << '\n';
+    } else {
+        auto rank = s;
+        require(sim::refresh_startup_world_runtime_rank(rank), "rank query rejected prefix");
         for (std::size_t n = 0; n < found->second.size(); ++n)
             out << "RANK_REQUIREMENT target=" << s.rank + 1 << " index=" << n
                 << " type=" << found->second[n].type << " value=" << rank.rank_values.at(n)
                 << " threshold=" << found->second[n].threshold << " met=" << rank.rank_met.at(n)
                 << '\n';
+    }
     if (s.active_task) {
         const auto &task = s.tasks.at(*s.active_task);
         out << "ACTIVE_ADVENTURE instance=" << *s.active_task << " definition=" << task.definition
@@ -476,6 +483,25 @@ void campaign_diagnostic_contract(const std::filesystem::path &build) {
     auto &world = activity_before.scene.world.world;
     require(!world.ai.human_order.empty(), "activity fixture needs the real initial visitor");
     const auto actor = world.ai.human_order.front();
+    auto terminal = activity_before;
+    terminal.rank = sim::rules::fixed_calendar_task_rank_terms().rbegin()->first + 1;
+    const auto terminal_digest = sim::startup_world_state_digest(terminal);
+    std::ostringstream terminal_output;
+    inspect_campaign_progress(terminal, terminal_output);
+    require(terminal_output.str().find("RANK_TERMINAL rank=5") != std::string::npos &&
+                terminal_output.str().find("RANK_REQUIREMENT") == std::string::npos &&
+                terminal_output.str().find("HUMAN_PROFESSION human=") != std::string::npos &&
+                sim::startup_world_state_digest(terminal) == terminal_digest,
+            "terminal-rank qualification must retain human diagnostics and leave Owner unchanged");
+    ++terminal.rank;
+    bool invalid_rank_rejected{};
+    try {
+        std::ostringstream rejected;
+        inspect_campaign_progress(terminal, rejected);
+    } catch (const std::runtime_error &) {
+        invalid_rank_rejected = true;
+    }
+    require(invalid_rank_rejected, "unknown ranks must not be mistaken for the terminal source rank");
     world.ai.battle.actors.at(actor).control.state = 8;
     auto movement = activity_before;
     movement.scene.world.world.ai.battle.actors.at(actor).position.x += .25F;

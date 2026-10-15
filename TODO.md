@@ -18,8 +18,9 @@
 - [x] 未举办常规活动预算已接：保留图纸/扩张点数、按源报价/ID安排首次消费；活动22/9/11实际付款、9/11的25人属性效果及后继月/冷载通过，见[本批](docs/stages/B1-playable-prototype.md#campaign-unheld-activities)。
 - [x] 后建商店入口保护/修复已接：原付费搬迁300G，焰火店50实际营业598G，恢复设施46的40点图纸/600G建设及库存强化；活动13的25人效果/冷载通过，见[本批](docs/stages/B1-playable-prototype.md#campaign-external-shop-access)。
 - [x] 四项条件及真实五星晋级/庆典/冷载已验，源收入73374G；配方36准确制造、领取、占卜屋2000G建设及任务库存强化已验，见[本批](docs/stages/B1-playable-prototype.md#campaign-fifth-star-pot36)。
-- [ ] 从有效月179接续：药店46/占卜屋56完工可达、具备普通候选资格，仍待实际营业；继续任务库存与新解锁消费。壶经验48/等级2/待料4，26/27已有元素和不降属性受赠者，优先真实制造/装配及后继；雷书发现/学习、活动15/29、3/17等未完项保持，17另用合法前缀分支。预留两月现金及图纸点数，实际施法不以学习/Q替代；40配方与775分母保留，见[经营现状](docs/stages/ACTIVE_VILLAGE_PLAN.md)。
-- [ ] 主动计分/继续/继承driver和短合同已接，实际生命周期仍phase0；继续自然经营到真实计分，再验完整继续/继承，不以临近日期夹具称自然通关，见[生命周期方案](docs/MILESTONES.md#campaign-natural-lifecycle)。
+- [x] 配方26/防具24主角实际装配、完整后继及冷载通过；四本魔法书永久学习和当前Q均已取得，雷书12由人物8实际消费；自然到月183计分154750、系统纪录提交及玩家冷载通过，见[本批](docs/stages/B1-playable-prototype.md#campaign-natural-clear-books)。
+- [ ] 从有效月183接续：使用继续经营入口认证完整后继营业，再验继承新局建设/营业/冷载；当前phase2，尚无continued/inherited认证。药店46/占卜屋56仍待实际营业；继续27等新配方产物、活动20/29、3/17等未完项，17保留合法前缀分支。预留两月现金及图纸点数，实际施法不以学习/Q替代；40配方与775分母保留，见[经营现状](docs/stages/ACTIVE_VILLAGE_PLAN.md)。
+- [ ] 继续/继承仍按[生命周期方案](docs/MILESTONES.md#campaign-natural-lifecycle)独立认证；不得以五星、自然计分或普通月度存读代替通关后实际经营与继承消费。
 - [ ] 4魔法实际施放、投射/延迟伤害归因及全23职业后继等待真实局部消费事实；Q可用不等于学习/施法，见[研究请求](docs/reference/RESEARCH_REQUESTS.md#spell-consumption-receipts)。
 
 ## 表现与研究边界

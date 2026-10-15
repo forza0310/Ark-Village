@@ -70,7 +70,7 @@ void SteamPotSpellBookPlayer::reconcile(const State &s) {
     require(s.rules && s.rank >= 2 && (s.scripts.user_flags & 1U), "requires the real pot");
     if (recipe_ >= 0)
         return;
-    int best = 4000;
+    std::optional<std::tuple<bool, int, int>> best;
     for (const auto &r : s.rules->magic_pot_recipes) {
         if (!(r.flags & 2U) || r.reward_kind != 0 || s.magic_pot_recipes.at(r.identity).status != 1)
             continue;
@@ -84,11 +84,15 @@ void SteamPotSpellBookPlayer::reconcile(const State &s) {
         int missing{};
         for (int n = 0; n < 4; ++n)
             missing += std::max(0, r.costs[n] - s.legacy_n[3 + n]);
-        if (missing < best) {
+        // Cover a new book definition before repeating a cheap book for another
+        // recipient. Definition status is a choice hint, not a crafting receipt.
+        const auto priority = std::make_tuple(s.items.at(item->identity).status != 0,
+                                              missing, r.identity);
+        if (!best || priority < *best) {
             recipe_ = r.identity;
             item_ = item->identity;
             spell_ = item->spell;
-            best = missing;
+            best = priority;
         }
     }
     require(recipe_ >= 0, "no known book recipe with an unlearned recipient and empty inventory");
@@ -231,6 +235,24 @@ void steam_magic_book_contract() {
     s.scripts.user_flags |= 1U;
     s.magic_pot_recipes.at(10).status = 1;
     s.legacy_n[3] = 50;
+    auto choices = s; // Selection qualification, not a naturally obtained recipe or reward.
+    for (auto &[id, value] : choices.magic_pot_recipes)
+        value.status = 0;
+    for (const int id : {10, 11, 12})
+        choices.magic_pot_recipes.at(id).status = 1;
+    choices.legacy_n[4] = 50;
+    for (const int id : {32, 33})
+        choices.items.at(id).status = choices.catalog.at({0, id}).status = 1;
+    choices.items.at(34).status = choices.catalog.at({0, 34}).status = 0;
+    SteamPotSpellBookPlayer first_definition;
+    first_definition.reconcile(choices);
+    require(first_definition.diagnose().find("recipe=12 item=34 ") == 0,
+            "an unobtained known book must precede cheaper repeats with valid recipients");
+    choices.items.at(34).status = choices.catalog.at({0, 34}).status = 1;
+    SteamPotSpellBookPlayer repeated_gift;
+    repeated_gift.reconcile(choices);
+    require(repeated_gift.diagnose().find("recipe=10 item=32 ") == 0,
+            "after new definitions, repeated gifts retain source deficits and stable ID order");
     s.scripts.pages.resize(1);
     auto &p = s.scripts.pages.front();
     p.kind = ref::WorldScriptPageKind::raw_page;

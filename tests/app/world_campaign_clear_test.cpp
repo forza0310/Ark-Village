@@ -36,7 +36,7 @@ std::string file_bytes(const std::filesystem::path &path) {
 } // namespace
 
 // Fast source-boundary and durable-bridge qualifications; no natural campaign claim.
-void campaign_clear_contract() {
+void campaign_clear_contract(const CampaignClearInputCheck &input_handoff) {
     const char *contract_phase = "empty-sidecar";
     try {
         CampaignClearEvidence empty;
@@ -230,12 +230,20 @@ void campaign_clear_contract() {
                             trigger_file.records->profession_status == world.system_unlock_data[1],
                         "trigger G/p must be durable before score Init" + diagnostic());
                 // A month change can also stack other pages above the published pending17.
+                bool input_handoff_checked{};
                 for (int n = 0; n < 500 && !app::world_clear_page(world); ++n) {
+                    const auto before_input = world;
+                    const auto before_system = system;
+                    const auto before_evidence = evidence;
                     consume_source_page();
+                    if (app::world_clear_page(world)) {
+                        input_handoff(before_input, before_system, before_evidence, directory);
+                        input_handoff_checked = true;
+                    }
                     if (!app::world_clear_page(world))
                         source_update();
                 }
-                require(app::world_clear_page(world) && !system.clear,
+                require(app::world_clear_page(world) && !system.clear && input_handoff_checked,
                         "normal covering-page consumers must reveal pending17 before score Init" +
                             diagnostic());
                 const auto entry_steps = world.simulation_steps;

@@ -354,9 +354,7 @@ template <class PlayerStrategy> struct CampaignRun {
             strategy.observe(state, input, result, state); // Rejected candidate is not installed.
         }
     }
-    void step(std::optional<app::WorldCommand> manual = {}, bool automatic = true) {
-        const int before_month = month(state);
-        const auto before_random = state.scene.random.draws();
+    bool advance_clear() {
         if (lifecycle && app::world_clear_page(state)) {
             const bool confirm = lifecycle->confirm_due(system);
             if (confirm)
@@ -368,8 +366,15 @@ template <class PlayerStrategy> struct CampaignRun {
                 ark::test::advance_campaign_clear(state, system, *lifecycle, false, directory,
                                                   std::cout);
             ++rounds;
-            return;
+            return true;
         }
+        return false;
+    }
+    void step(std::optional<app::WorldCommand> manual = {}, bool automatic = true) {
+        const int before_month = month(state);
+        const auto before_random = state.scene.random.draws();
+        if (advance_clear())
+            return;
         require(!app::world_clear_page(state),
                 "Active acceptance cannot substitute date-clear for business goals");
         // Manual input replaces only the test player's decision. Source admission,
@@ -414,6 +419,12 @@ template <class PlayerStrategy> struct CampaignRun {
         }();
         if (const auto input = selected)
             command(*input);
+        // Closing a source dialogue can reveal queued17 within this same round.
+        // WorldSession dispatches its Update from the committed page stack too.
+        if (advance_clear())
+            return;
+        require(!app::world_clear_page(state),
+                "Active acceptance cannot substitute date-clear for business goals");
         auto update = sim::prepare_startup_world_runtime(state);
         if (!update.candidate) {
             try {
@@ -1086,7 +1097,36 @@ int main(int argc, char **argv) {
             ark::test::steam_magic_discovery_contract();
             ark::test::steam_magic_facility_contract(apply);
             std::cout << "PASS Steam layout, budget, people and expansion contract" << std::endl;
-            ark::test::campaign_clear_contract();
+            ark::test::campaign_clear_contract(
+                [](const State &before, const app::WorldSystemState &system,
+                   const ark::test::CampaignClearEvidence &evidence,
+                   const std::filesystem::path &directory) {
+                    const auto *page = top(before);
+                    require(page && page->lifecycle == 2 &&
+                                (page->kind == ref::WorldScriptPageKind::dialogue ||
+                                 (page->kind == ref::WorldScriptPageKind::raw_page &&
+                                  page->legacy_page == 0)),
+                            "score handoff needs its real acknowledgement source page");
+                    app::WorldCommand input;
+                    input.kind = app::WorldCommandKind::acknowledge_page;
+                    input.page = page->id;
+                    CampaignRun<Strategy> run{before, system, directory, {}};
+                    run.lifecycle = evidence;
+                    run.step(input, false);
+                    require(app::world_clear_page(run.state) && run.system.clear &&
+                                run.system.clear->score.counter == 1 && run.rounds == 1 &&
+                                run.state.simulation_steps == before.simulation_steps,
+                            "acknowledgement must initialize score, never update the world as17");
+                    CampaignRun<Strategy> legacy{before, system, directory, {}};
+                    bool rejected{};
+                    try {
+                        legacy.step(input, false);
+                    } catch (const std::runtime_error &) {
+                        rejected = true;
+                    }
+                    require(rejected && !legacy.system.clear,
+                            "business-only routes must retain date-clear refusal at the handoff");
+                });
             return 0;
         }
         if (argc == 2 && std::string(argv[1]) == "--coverage-inventory") {

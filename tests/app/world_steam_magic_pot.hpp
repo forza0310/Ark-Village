@@ -17,6 +17,9 @@ class SteamPotEquipmentPlayer {
     void observe_tick(const app::WorldState &before, const app::WorldState &after);
     bool complete(const app::WorldState &state, const ActiveTradeEvidence &trade) const;
     void verify(const app::WorldState &state, const ActiveTradeEvidence &trade) const;
+    // A new isolated segment retains the prior sidecar as its input. Replace the
+    // controller only after certifying that input's gift and following business.
+    bool begin_next(const app::WorldState &state, const ActiveTradeEvidence &trade);
     std::string diagnose() const;
     void encode(std::ostream &out) const;
     static SteamPotEquipmentPlayer decode(std::istream &in);

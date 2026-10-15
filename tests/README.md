@@ -4,6 +4,8 @@
 
 显式`steam-natural-month`复用同一经营驱动，遇真实raw17才交生产计分分支，稳定后保存第二栏及测试专属`lifecycle1.txt`；`steam-natural-verify`独立冷载。`steam-continue`要求计分后完整营业月、实际输入及效果；`steam-inherit`释放旧Owner，以同一系统纪录和冷新局/空首星策略建设营业，`steam-inherit-verify`冷载。观察/分段实现归`world_campaign_clear`，短边界资格归`world_campaign_clear_test`，同一campaign套件；短合同的近日期夹具不认证自然经营。旧入口的raw17拒绝、775分母及玩家存档政策保持。运行范围与尚未通过的真实长链见[计划](../docs/MILESTONES.md#campaign-natural-lifecycle)。
 
+`steam-pot-equipment-month`从栏0及绑定侧车接续真实购料/投入/炼制，由原People公平赠送；仅在上一目标完整验证后选择下一已知、未拥有且可用的配方，原输入保留。`steam-pot-equipment-verify`读取输出栏1，另核元素费用、实际装配属性及完整后继营业月；仅制造/赠送不通过。`world_steam_magic_pot`仅负责壶决策与观察，`pot-equipmentN.txt`是隔离验收侧车；普通经营入口可接续它，但不换目标，不改变正常玩家档格式。
+
 现有长跑的实际玩家输入、成功判据与注册范围见[长测审计与建设方案](../docs/stages/ACTIVE_VILLAGE_PLAN.md)。3月/年度持续基线与短回放仍保留原oracle，但不能称为完整经营验收；产品主长测应有建设、活动/培养、任务胜利、逐星条件和新内容消费。被动日期campaign已停止，不计通关/继承通过。
 
 周期扣费允许负金币，经营观察和策略记录保留有符号最低值；主动付款仍按源资格拒绝。现campaign短合同用真实月报验证跨零、建设拒绝及五种策略配置往返，复用账本/月报规则套件的费用、幂等与回滚oracle；负余额不是即时失败，也不能直接认证经营健康。

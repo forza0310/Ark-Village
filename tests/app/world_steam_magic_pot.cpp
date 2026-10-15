@@ -111,26 +111,32 @@ bool reward_attributes_applied(const State &s, int human, int kind, int definiti
             s.scene.world.world.ai.battle.actors.at(*details->live_actor).capacity ==
                 details->combat[0]);
 }
+std::optional<int> next_equipment_recipe(const State &s) {
+    std::optional<int> selected;
+    int best = std::numeric_limits<int>::max();
+    for (const auto &r : s.rules->magic_pot_recipes) {
+        if (!(r.flags & 2U) || r.reward_kind < 1 || r.reward_kind > 3 ||
+            s.magic_pot_recipes.at(r.identity).status != 1 ||
+            s.catalog.at({r.reward_kind, r.reward_definition}).status != 0 ||
+            !steam_equipment_reward_usable(s, r.reward_kind, r.reward_definition))
+            continue;
+        const auto missing = deficit(s, r);
+        if (missing < best) {
+            selected = r.identity;
+            best = missing;
+        }
+    }
+    return selected;
+}
 } // namespace
 
 void SteamPotEquipmentPlayer::reconcile(const State &s) {
     require(s.rules && s.rank >= 2 && (s.scripts.user_flags & 1U),
             "requires the real imported pot");
     if (recipe_ < 0) {
-        int best = std::numeric_limits<int>::max();
-        for (const auto &r : s.rules->magic_pot_recipes) {
-            if (!(r.flags & 2U) || r.reward_kind < 1 || r.reward_kind > 3 ||
-                s.magic_pot_recipes.at(r.identity).status != 1 ||
-                s.catalog.at({r.reward_kind, r.reward_definition}).status != 0 ||
-                !steam_equipment_reward_usable(s, r.reward_kind, r.reward_definition))
-                continue;
-            const auto missing = deficit(s, r);
-            if (missing < best) {
-                recipe_ = r.identity;
-                best = missing;
-            }
-        }
-        require(recipe_ >= 0, "no known unowned equipment recipe with a useful recipient");
+        const auto selected = next_equipment_recipe(s);
+        require(selected.has_value(), "no known unowned equipment recipe with a useful recipient");
+        recipe_ = *selected;
         const auto &r = source_recipe(s, recipe_);
         kind_ = r.reward_kind;
         definition_ = r.reward_definition;
@@ -205,7 +211,8 @@ IncomeDecision SteamPotEquipmentPlayer::next(const State &s, std::int64_t budget
                 return pot(p.id, Pot::cancel);
             const auto capacity = ref::world_magic_pot_capacity(s.legacy_n[11]);
             require(capacity.has_value(), "invalid source pot capacity");
-            if (deficit(s, r) > 0 && s.legacy_n[1] >= *capacity)
+            if (deficit(s, r) > 0 &&
+                (s.legacy_n[1] >= *capacity || material(s, r, item_ids(s), false, 0) < 0))
                 return pot(p.id, Pot::cancel);
             const int choice = deficit(s, r) == 0 ? 1 : 0;
             return pot(p.id, v->selection == choice ? Pot::confirm : Pot::select, choice);
@@ -371,6 +378,17 @@ void SteamPotEquipmentPlayer::verify(const State &s, const ActiveTradeEvidence &
                 reward_attributes_applied(s, human_, kind_, definition_, slot_),
             "cold endpoint lost equipment or full following trade");
 }
+bool SteamPotEquipmentPlayer::begin_next(const State &s, const ActiveTradeEvidence &trade) {
+    if (!complete(s, trade))
+        return false;
+    verify(s, trade);
+    if (!next_equipment_recipe(s))
+        return false;
+    SteamPotEquipmentPlayer candidate;
+    candidate.reconcile(s);
+    *this = std::move(candidate);
+    return true;
+}
 std::string SteamPotEquipmentPlayer::diagnose() const {
     std::ostringstream out;
     out << "recipe=" << recipe_ << " kind=" << kind_ << " reward=" << definition_
@@ -455,6 +473,19 @@ void steam_pot_equipment_contract() {
     require(encoded.str() == again.str() && !copy.complete(s, {}) && cash(s) == funds &&
                 s.scene.random.draws() == random && s.catalog.at({2, 13}).status == 0,
             "prospective qualification must roundtrip without granting equipment or trade");
+    require(!copy.begin_next(s, {}), "an unfinished recipe must retain its original controller");
+    again.str({});
+    copy.encode(again);
+    require(again.str() == encoded.str(), "unfinished advancement changed the recorded objective");
+    auto owned = s;
+    owned.catalog.at({2, 13}).status = 1; // Selection fixture only, not observed crafting.
+    SteamPotEquipmentPlayer successor;
+    successor.reconcile(owned);
+    const auto &next = source_recipe(owned, successor.recipe());
+    require(successor.recipe() != 22 &&
+                owned.catalog.at({next.reward_kind, next.reward_definition}).status == 0 &&
+                (next.flags & 2U) && owned.magic_pot_recipes.at(next.identity).status == 1,
+            "a successor must use a known unowned recipe, never recraft the recorded reward");
     std::vector<std::string> fields;
     std::istringstream tokens(encoded.str());
     for (std::string value; tokens >> value;)
@@ -492,6 +523,27 @@ void steam_pot_equipment_contract() {
     require(full.handled && !full.command && process.handled && process.command &&
                 process.command->kind == Kind::open_magic_pot,
             "a full pot must allow natural date progress before trying source processing");
+    auto empty = initial_world(); // Initialized-page decision fixture, not an acquired item.
+    empty.scripts.pages.resize(1);
+    auto &empty_page = empty.scripts.pages.front();
+    empty_page.kind = ref::WorldScriptPageKind::raw_page;
+    empty_page.legacy_page = 41;
+    empty_page.lifecycle = 3;
+    empty.legacy_n[1] = 0;
+    for (auto &[id, i] : empty.items) {
+        i.inventory = 0;
+        empty.catalog.at({0, id}).inventory = 0;
+    }
+    empty.magic_pot_pages_initialized.insert(empty_page.id);
+    empty.magic_pot_page_data[empty_page.id] = {0, 0, -1};
+    empty.magic_pot_page_lists[empty_page.id] = {};
+    empty.page_counters[empty_page.id] = 0;
+    empty.page_phases[empty_page.id] = 0;
+    const auto leave_empty = copy.next(empty, 0, true, {});
+    require(leave_empty.handled && leave_empty.command &&
+                leave_empty.command->kind == Kind::magic_pot_action &&
+                leave_empty.command->magic_pot_action == Pot::cancel,
+            "a material deficit with empty inventory must exit41 instead of looping empty42");
     // Partial observation fixture only; actual payment/grant/gift remains covered
     // independently by the real business-prefix acceptance.
     auto &p = s.scripts.pages.front();

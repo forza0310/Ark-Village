@@ -1081,9 +1081,14 @@ int main(int argc, char **argv) {
                 run.lifecycle = ark::test::read_campaign_clear_evidence(
                     directory, slot, run.state, run.system,
                     mode == "steam-natural-month" || mode == "steam-pot-equipment-month");
-                if (mode == "steam-pot-equipment-month" && !run.pot_equipment) {
-                    run.pot_equipment.emplace();
-                    run.pot_equipment->reconcile(run.state);
+                if (mode == "steam-pot-equipment-month") {
+                    if (!run.pot_equipment) {
+                        run.pot_equipment.emplace();
+                        run.pot_equipment->reconcile(run.state);
+                    } else if (run.pot_equipment->begin_next(run.state,
+                                                             run.strategy.stats().trade)) {
+                        std::cout << "POT_NEXT " << run.pot_equipment->diagnose() << std::endl;
+                    }
                 }
                 if (mode == "steam-pot-equipment-verify") {
                     require(run.pot_equipment.has_value(),

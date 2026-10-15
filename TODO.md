@@ -11,10 +11,10 @@
 - [x] 玩家两栏schema5/独立系统2、正常保存桥及维护回放已接；旧身份拒绝，月度真实经营独立冷载和字节复制持续验证。周期扣费可负、主动支付仍核余额，见[B1](docs/stages/B1-playable-prototype.md#campaign-negative-balance)。
 - [x] 真实转职、任务库存强化、额外募集/入住及预算接续已接；修复入住后父74退休与世界恢复，实际扩张至围栏2、18住户冷载后均可达，见[本批](docs/stages/B1-playable-prototype.md#campaign-residence-successors)。
 - [x] 当前身份配方7实际购料/投入/处理/发现→冷载→扣元素炼制/自然伤者治疗→完整营业月及独立冷载通过；保留实时Steam观察接回主线，真实购买/建设/营业新店至月135并冷载，见[药品接续](docs/stages/B1-playable-prototype.md#campaign-pot-current-prefix)。
-- [x] 已知配方22实际购料/投入、扣元素炼制防具13、公平赠送及属性生效，完整后继营业月至138并独立冷载通过；仅认证本配方，不把初始已知算作本轮发现，见[装备炼制](docs/stages/B1-playable-prototype.md#campaign-pot-equipment)。
+- [x] 已知配方22/24/31实际购料/投入、扣元素炼制、防具/饰品公平赠送及属性生效，各自完整后继营业月与独立冷载通过；继续真实入住至20住户，不把初始已知算作本轮发现，见[装备接续](docs/stages/B1-playable-prototype.md#campaign-pot-equipment-successors)。
 
 - [ ] 按[全解锁合同](docs/stages/ACTIVE_VILLAGE_PLAN.md#full-unlock-campaign)逐定义覆盖取得、消费、实际效果与后继，保留775分母；代表样例、仅解锁或日期推进不算全覆盖。
-- [ ] 从有效月138接续健康经营与逐定义消费：预留两月现金及下一蓝图200点（当前189），人物18/19入住还差12/17满意度；五星收入仍差12968G。其余配方按40项目录及可达/排除分类逐项核对，不把0/38等无正常产生路径项静默删去。资金与来源资格见[经营现状](docs/stages/ACTIVE_VILLAGE_PLAN.md)。
+- [ ] 从有效月145接续健康经营与逐定义消费：预留两月现金及下一图纸预算；风车53已购/建/强化但sales0，先补营业证据。五星收入仍差12968G；配方15目前只有状态变化观察，其余配方按40项目录及可达/排除分类核对，不把0/38等无正常产生路径项静默删去。资金与来源资格见[经营现状](docs/stages/ACTIVE_VILLAGE_PLAN.md)。
 - [ ] 主动计分/继续/继承driver和短合同已接，实际生命周期仍phase0；继续自然经营到真实计分，再验完整继续/继承，不以临近日期夹具称自然通关，见[生命周期方案](docs/MILESTONES.md#campaign-natural-lifecycle)。
 - [ ] 4魔法实际施放、投射/延迟伤害归因及全23职业后继等待真实局部消费事实；Q可用不等于学习/施法，见[研究请求](docs/reference/RESEARCH_REQUESTS.md#spell-consumption-receipts)。
 

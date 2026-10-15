@@ -44,6 +44,7 @@ ark_test_case(world_save ark_world_save_tests LABELS runtime TIMEOUT 300)
 ark_test_executable(ark_world_campaign_tests SOURCES tests/app/world_campaign_test.cpp
     tests/app/world_active_strategy.cpp tests/app/world_active_late_strategy.cpp
     tests/app/world_active_pot_strategy.cpp
+    tests/app/world_steam_magic_pot.cpp
     tests/app/world_campaign_diagnostics.cpp
     tests/app/world_campaign_clear.cpp
     tests/app/world_campaign_clear_test.cpp

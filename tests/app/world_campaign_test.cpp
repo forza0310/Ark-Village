@@ -13,6 +13,7 @@
 #include "world_campaign_diagnostics.hpp"
 #include "world_campaign_receipts_test.hpp"
 #include "world_steam_budget.hpp"
+#include "world_steam_magic_pot.hpp"
 #include "world_steam_strategy.hpp"
 #include <chrono>
 #include <filesystem>
@@ -175,6 +176,11 @@ template <> struct Route<ark::test::SteamVillageStrategy> {
     }
 };
 
+// Evidence-only helper of the primary Steam player, not another world route.
+template <> struct Route<ark::test::SteamPotEquipmentPlayer> {
+    static constexpr const char *magic = "ARK_STEAM_POT_EQUIPMENT_CHECKPOINT_1";
+};
+
 template <class PlayerStrategy>
 PlayerStrategy read_strategy(const std::filesystem::path &directory, int slot,
                              const std::string &name = "strategy") {
@@ -230,6 +236,7 @@ template <class PlayerStrategy> struct CampaignRun {
     // A temporary player may make pot decisions while the original controller observes
     // committed transitions. It never calls next() or owns another world.
     std::optional<ark::test::SteamVillageStrategy> steam_observer{};
+    std::optional<ark::test::SteamPotEquipmentPlayer> pot_equipment{};
 
     void command(const app::WorldCommand &input) {
         auto candidate = state;
@@ -266,6 +273,11 @@ template <class PlayerStrategy> struct CampaignRun {
                                  });
                 if (steam_observer)
                     steam_observer->observe(state, input, result, candidate);
+                if (pot_equipment)
+                    pot_equipment->observe(state, input, result, candidate,
+                                           [&](const ark::test::CampaignReceipt &receipt) {
+                                               pending_receipts.push_back(receipt);
+                                           });
                 if (input.kind == Kind::village_activity_action &&
                     input.village_activity_action == sim::StartupVillageActivityAction::confirm &&
                     result.outcome == app::WorldCommandOutcome::applied) {
@@ -341,7 +353,21 @@ template <class PlayerStrategy> struct CampaignRun {
                 "Active acceptance cannot substitute date-clear for business goals");
         // Manual input replaces only the test player's decision. Source admission,
         // candidate rollback, observations and normal world updates remain shared.
-        if (const auto input = automatic ? strategy.next(state) : manual)
+        const auto selected = [&] {
+            if (!automatic)
+                return manual;
+            if (pot_equipment) {
+                const auto input = pot_equipment->next(
+                    state,
+                    std::max<std::int64_t>(0, state.scene.world.world.ai.accounting.funds() -
+                                                  ark::test::steam_operating_reserve(state)),
+                    Route<PlayerStrategy>::checkpoint(strategy, state), strategy.stats().trade);
+                if (input.handled)
+                    return input.command;
+            }
+            return strategy.next(state);
+        }();
+        if (const auto input = selected)
             command(*input);
         auto update = sim::prepare_startup_world_runtime(state);
         if (!update.candidate) {
@@ -371,6 +397,8 @@ template <class PlayerStrategy> struct CampaignRun {
                                   });
             if (steam_observer)
                 steam_observer->observe_tick(state, *update.candidate);
+            if (pot_equipment)
+                pot_equipment->observe_tick(state, *update.candidate);
             const auto loot = ark::test::task_loot_receipts(state, *update.candidate);
             if (loot.gap)
                 std::cout << "COVERAGE_LOOT_GAP\t" << state.active_task.value_or(0) << '\t'
@@ -492,6 +520,10 @@ template <class PlayerStrategy> struct CampaignRun {
         write_strategy(directory, slot, strategy);
         if (steam_observer)
             write_strategy(directory, slot, *steam_observer, "steam-strategy");
+        if (pot_equipment) {
+            write_strategy(directory, slot, *pot_equipment, "pot-equipment");
+            std::cout << "POT_EQUIPMENT " << pot_equipment->diagnose() << std::endl;
+        }
         if (lifecycle)
             ark::test::write_campaign_clear_evidence(directory, slot, *lifecycle);
         std::cout << "SAVE slot=" << slot << " bytes=" << captured.image->bytes.size() << " "
@@ -550,8 +582,15 @@ CampaignRun<PlayerStrategy> load(const std::filesystem::path &directory, int slo
         std::move(*saved.state), {*records.records, {}}, directory, std::move(strategy)};
     // A cold business prefix must advance to a later complete month; otherwise repeated
     // segmented runs could each save a few ticks into the same month forever.
-    if constexpr (std::is_same_v<PlayerStrategy, ark::test::SteamVillageStrategy>)
+    if constexpr (std::is_same_v<PlayerStrategy, ark::test::SteamVillageStrategy>) {
         result.steam_prefix_month = month(result.state);
+        if (std::filesystem::exists(directory /
+                                    ("pot-equipment" + std::to_string(slot) + ".txt"))) {
+            result.pot_equipment =
+                read_strategy<ark::test::SteamPotEquipmentPlayer>(directory, slot, "pot-equipment");
+            result.pot_equipment->reconcile(result.state);
+        }
+    }
     if constexpr (std::is_same_v<PlayerStrategy, PotStrategy>) {
         if (std::filesystem::exists(directory /
                                     ("steam-strategy" + std::to_string(slot) + ".txt"))) {
@@ -981,6 +1020,7 @@ int main(int argc, char **argv) {
             ark::test::income_strategy_contract();
             ark::test::campaign_coverage_contract();
             ark::test::steam_strategy_contract();
+            ark::test::steam_pot_equipment_contract();
             std::cout << "PASS Steam layout, budget, people and expansion contract" << std::endl;
             ark::test::campaign_clear_contract();
             return 0;
@@ -996,7 +1036,8 @@ int main(int argc, char **argv) {
         require(argc == 3 ||
                     (mode == "steam-observe" && std::string(argv[3]) == "--trace-activity"),
                 "--trace-activity is supported only by bounded steam-observe");
-        if (mode == "steam-natural-month" || mode == "steam-continue" ||
+        if (mode == "steam-natural-month" || mode == "steam-pot-equipment-month" ||
+            mode == "steam-pot-equipment-verify" || mode == "steam-continue" ||
             mode == "steam-natural-verify" || mode == "steam-inherit" ||
             mode == "steam-inherit-verify") {
             const auto directory = isolated_directory(argv[0], argv[2], "ark-steam-village-v1\n");
@@ -1032,12 +1073,27 @@ int main(int argc, char **argv) {
                 std::cout << "PASS inherited player cold-load; " << campaign->lifecycle->diagnose()
                           << "; not all-content completion" << std::endl;
             } else {
-                const int slot = mode == "steam-natural-verify" ? 1 : 0;
+                const bool verify =
+                    mode == "steam-natural-verify" || mode == "steam-pot-equipment-verify";
+                const int slot = verify ? 1 : 0;
                 steam_campaign.emplace(load<ark::test::SteamVillageStrategy>(directory, slot));
                 auto &run = *steam_campaign;
                 run.lifecycle = ark::test::read_campaign_clear_evidence(
-                    directory, slot, run.state, run.system, mode == "steam-natural-month");
-                if (mode == "steam-natural-verify") {
+                    directory, slot, run.state, run.system,
+                    mode == "steam-natural-month" || mode == "steam-pot-equipment-month");
+                if (mode == "steam-pot-equipment-month" && !run.pot_equipment) {
+                    run.pot_equipment.emplace();
+                    run.pot_equipment->reconcile(run.state);
+                }
+                if (mode == "steam-pot-equipment-verify") {
+                    require(run.pot_equipment.has_value(),
+                            "Missing recorded equipment pot controller");
+                    require(app::world_save_eligible(run.state),
+                            "Equipment cold endpoint is not stable");
+                    run.pot_equipment->verify(run.state, run.strategy.stats().trade);
+                    std::cout << "PASS equipment pot cold endpoint; "
+                              << run.pot_equipment->diagnose() << std::endl;
+                } else if (mode == "steam-natural-verify") {
                     require(app::world_save_eligible(run.state),
                             "Natural route cold endpoint is not a stable player world");
                     std::cout << "PASS lifecycle player cold-load; " << run.lifecycle->diagnose()

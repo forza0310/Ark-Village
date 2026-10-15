@@ -8,6 +8,10 @@
 #include <vector>
 
 namespace ark::test {
+// Prospective test-player eligibility only: reuse the gift policy for an equipment
+// recipe's possible free grant. This neither grants stock nor certifies consumption.
+bool steam_equipment_reward_usable(const app::WorldState &state, int kind, int definition);
+
 // Player policy only. Commands consume real award pages, reward qualifications and quotes;
 // this controller never changes character, inventory or random state itself.
 class SteamPeopleStrategy {

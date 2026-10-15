@@ -21,6 +21,16 @@ void require(bool condition, const char *message) {
     if (!condition)
         throw std::runtime_error(std::string("Steam budget: ") + message);
 }
+std::vector<int> activity_catalogue(const State &s) {
+    std::vector<ref::WorldVillageActivityDefinition> definitions;
+    for (const auto &a : s.rules->activities)
+        definitions.push_back({a.identity, s.scripts.activities.at(a.identity).status,
+                               s.activity_flags.at(a.identity), s.activity_counts.at(a.identity),
+                               a.parameters[2], a.parameters[3], a.parameters[4], a.parameters[5]});
+    const auto available = ref::catalogue_world_village_activities(definitions);
+    require(available.has_value(), "point budget needs the source activity qualifications");
+    return *available;
+}
 } // namespace
 
 std::int64_t steam_operating_reserve(const State &s) {
@@ -151,6 +161,18 @@ std::optional<SteamProgressPointGoal> steam_progress_point_goal(const State &s) 
                                           s.rules->activities.at(id).parameters[4]};
     return {};
 }
+std::optional<SteamProgressPointGoal> steam_unheld_activity_goal(const State &s) {
+    std::optional<SteamProgressPointGoal> selected;
+    for (const int id : activity_catalogue(s)) {
+        const auto &a = s.rules->activities.at(id);
+        if (a.parameters[2] < 0 || a.parameters[2] > 2 || s.activity_counts.at(id) != 0)
+            continue;
+        if (!selected || std::make_pair(a.parameters[4], id) <
+                             std::make_pair(selected->points, selected->definition))
+            selected = SteamProgressPointGoal{SteamProgressPurchase::activity, id, a.parameters[4]};
+    }
+    return selected;
+}
 std::optional<SteamShopExpansion> steam_select_shop_expansion(const State &s,
                                                               const std::vector<int> &entries,
                                                               std::int64_t cash_budget) {
@@ -202,16 +224,7 @@ int steam_point_reserve(const State &s, const std::vector<int> *offered_activiti
     std::vector<int> queried;
     if (needs_expansion) {
         if (!offered_activities) {
-            std::vector<ref::WorldVillageActivityDefinition> definitions;
-            for (const auto &a : s.rules->activities)
-                definitions.push_back({a.identity, s.scripts.activities.at(a.identity).status,
-                                       s.activity_flags.at(a.identity),
-                                       s.activity_counts.at(a.identity), a.parameters[2],
-                                       a.parameters[3], a.parameters[4], a.parameters[5]});
-            const auto available = ref::catalogue_world_village_activities(definitions);
-            require(available.has_value(),
-                    "point reserve needs the source activity qualifications");
-            queried = *available;
+            queried = activity_catalogue(s);
             offered_activities = &queried;
         }
         std::optional<int> cost;
@@ -359,6 +372,36 @@ void steam_budget_contract() {
     progression.rank = 3;
     require(!steam_progress_point_goal(progression),
             "rank4 input goals must not be injected into a rank3 town");
+    auto unheld = s;
+    // Source eligibility only. The actual layout gate and spending are exercised
+    // by the primary player from its verified business prefix.
+    for (auto &[id, a] : unheld.scripts.activities) {
+        a.status = 0;
+        unheld.activity_counts.at(id) = 0;
+        unheld.activity_flags.at(id) = 0;
+    }
+    for (const int id : {0, 6, 8, 25, 27, 28})
+        unheld.scripts.activities.at(id).status = 1;
+    unheld.activity_counts.at(0) = 1;
+    const auto first = steam_unheld_activity_goal(unheld);
+    require(
+        first && first->kind == SteamProgressPurchase::activity && first->definition == 6 &&
+            first->points == 60,
+        "unheld regular goals need the source quote and stable ID tie-break, not cheap repeats");
+    unheld.activity_counts.at(6) = 1;
+    const auto second = steam_unheld_activity_goal(unheld);
+    require(second && second->definition == 8 && second->points == 60,
+            "source payment releases the first goal for the next unheld definition");
+    unheld.activity_flags.at(8) = 4U;
+    require(!steam_unheld_activity_goal(unheld),
+            "source-excluded regular rows or special consumers must not create coverage goals");
+    unheld.activity_flags.at(8) = 0;
+    unheld.scripts.activities.at(8).status = 0;
+    require(!steam_unheld_activity_goal(unheld), "unopened activities must stay unavailable");
+    unheld.scripts.activities.at(8).status = 1;
+    unheld.activity_counts.at(8) = 1;
+    require(!steam_unheld_activity_goal(unheld),
+            "an already paid activity is not a first-use goal");
     // Cached raw27 quotes and strength are explicit player-choice qualifications.
     // Frozen task rules own the fee formula, reset effects and full-party rejection.
     auto extras = s;

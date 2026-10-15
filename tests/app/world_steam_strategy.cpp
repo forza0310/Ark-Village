@@ -461,14 +461,21 @@ std::optional<Command> SteamVillageStrategy::next(const State &s) {
                 return activity(p.id, Activity::cancel);
             int selected = -1, best = std::numeric_limits<int>::min();
             const int points_reserve = steam_point_reserve(s, &v->entries);
-            const auto progress = steam_progress_point_goal(s);
+            auto progress = steam_progress_point_goal(s);
+            bool coverage{};
+            if (!progress && steam_reference_layout_complete(s)) {
+                progress = steam_unheld_activity_goal(s);
+                coverage = progress.has_value();
+            }
             if (progress) {
                 // Optional inexpensive events must not drain a pending unlock budget.
                 // Missing this quarter's target means waiting for its real source offer.
                 if (progress->kind == SteamProgressPurchase::activity) {
                     const auto target =
                         std::find(v->entries.begin(), v->entries.end(), progress->definition);
-                    if (target == v->entries.end() || s.village_points < progress->points ||
+                    const int available =
+                        coverage ? s.village_points - points_reserve : s.village_points;
+                    if (target == v->entries.end() || available < progress->points ||
                         !steam_optional_activity_affordable(s))
                         return activity(p.id, Activity::cancel);
                     const int index = static_cast<int>(target - v->entries.begin());
@@ -871,9 +878,14 @@ std::string SteamVillageStrategy::diagnose(const State &s) const {
         << " activities=" << stats_.activities << " residents=" << stats_.admissions
         << " medals=" << people_.medals() << " equipment=" << people_.gifts();
     const auto points = steam_progress_point_goal(s);
+    const auto unheld = !points && steam_reference_layout_complete(s)
+                            ? steam_unheld_activity_goal(s)
+                            : std::optional<SteamProgressPointGoal>{};
     out << " point_reserve=" << steam_point_reserve(s)
         << " point_goal=" << (points ? points->points : 0)
         << " point_goal_definition=" << (points ? points->definition : -1)
+        << " unheld_activity=" << (unheld ? unheld->definition : -1)
+        << " unheld_activity_cost=" << (unheld ? unheld->points : 0)
         << " fireworks_count=" << held(s, 19)
         << " required_facility=" << steam_required_facility(s).value_or(-1);
     return out.str();

@@ -392,6 +392,13 @@ SteamPotCommit observe_steam_pot_command(const State &before, const app::WorldCo
                             after.items.at(r.reward_definition).inventory &&
                         after.items.at(r.reward_definition).status == 1,
                     "item craft must grant exactly one actual published reward");
+        } else if (r.reward_kind == 4) {
+            require(before.facility_presence.at(r.reward_definition) == 0 &&
+                        after.facility_presence.at(r.reward_definition) == 0 &&
+                        before.facility_free_builds == after.facility_free_builds &&
+                        before.scene.world.world.facilities.size() ==
+                            after.scene.world.world.facilities.size(),
+                    "facility craft must queue93 without opening or constructing its reward");
         } else {
             require(before.catalog.at(key).status == 0 && after.catalog.at(key).status == 1 &&
                         before.catalog.at(key).free_purchases == 0 &&
@@ -401,6 +408,18 @@ SteamPotCommit observe_steam_pot_command(const State &before, const app::WorldCo
         for (int n = 0; n < 4; ++n) {
             commit.paid[n] = before.legacy_n[3 + n] - after.legacy_n[3 + n];
             require(commit.paid[n] == r.costs[n], "craft did not pay exact published elements");
+        }
+        std::uint64_t reward_page{};
+        if (r.reward_kind == 4) {
+            for (const auto &p : after.scripts.pages)
+                if (p.legacy_page == 93 && p.legacy_r == 3 &&
+                    p.legacy_s == r.reward_definition &&
+                    std::none_of(before.scripts.pages.begin(), before.scripts.pages.end(),
+                                 [&](const auto &old) { return old.id == p.id; })) {
+                    require(!reward_page, "facility recipe queued multiple rewards");
+                    reward_page = p.id;
+                }
+            require(reward_page != 0, "facility recipe paid without its bound93 request");
         }
         commit.crafted = true;
         commit.experience = before.legacy_n[0];
@@ -414,6 +433,18 @@ SteamPotCommit observe_steam_pot_command(const State &before, const app::WorldCo
                  -1,
                  {before.legacy_n[3], before.legacy_n[4], before.legacy_n[5], before.legacy_n[6]},
                  {after.legacy_n[3], after.legacy_n[4], after.legacy_n[5], after.legacy_n[6]}});
+        if (r.reward_kind == 4 && receipts)
+            receipts({CampaignReceiptKind::facility_pot_queued,
+                      r.reward_definition,
+                      after.simulation_steps,
+                      c.page,
+                      reward_page,
+                      -1,
+                      {r.identity, before.facility_presence.at(r.reward_definition),
+                       before.facility_free_builds.at(r.reward_definition), 0},
+                      {r.identity, after.facility_presence.at(r.reward_definition),
+                       after.facility_free_builds.at(r.reward_definition),
+                       static_cast<std::int64_t>(reward_page)}});
         if (r.reward_kind == 0 && receipts)
             receipts({CampaignReceiptKind::item_obtained,
                       r.reward_definition,

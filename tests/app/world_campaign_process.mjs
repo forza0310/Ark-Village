@@ -221,7 +221,7 @@ const receiptStages = {
   satisfaction_applied: 'village_activity', attribute_applied_to_human: 'village_activity', bound_use: 'item',
   attribute_applied: 'item', obtained: 'item', hp_restored: 'item', permanent_spell_learned: 'item', discovered: 'magic_recipe',
   elements_paid_and_crafted: 'magic_recipe', blueprint_points_paid: 'facility',
-  blueprint_claimed: 'facility', construction_paid: 'facility',
+  blueprint_claimed: 'facility', construction_paid: 'facility', pot_blueprint_queued: 'facility',
   reward_equipped: ['weapon', 'armour', 'accessory'],
   combat_attributes_applied: ['weapon', 'armour', 'accessory'], medal_awarded: 'human', home_admitted: 'human',
   home_tax_collected: 'human', retirement_cash_committed: 'monster', retirement_cash_month_reset: 'monster',
@@ -248,6 +248,14 @@ function* receipts(text, phase) {
         [numbers[6], numbers[10]].every(v => v === 0 || v === 1) &&
         numbers[7] === id - 32 && numbers[11] === numbers[7],
       'receipt permanent book learning/inventory/source slot; Q is separate');
+    if (stage === 'pot_blueprint_queued') {
+      const recipe = catalogue.get(sourceKey('recipe', numbers[4]))?.record;
+      need(recipe?.normal_catalogue && recipe.reward?.kind === 4 && recipe.reward.definition === id &&
+        numbers[2] === -1 && numbers[3] > 0 && numbers[8] === numbers[4] &&
+        numbers[5] === 0 && numbers[9] === 0 && numbers[6] >= 0 && numbers[6] <= 99 &&
+        numbers[10] === numbers[6] && numbers[7] === 0 && numbers[11] === numbers[3],
+      'receipt pot facility queues its bound93 without granting or building');
+    }
     if (stage === 'pot_expanded')
       need([28,29].includes(id) && numbers[2] === -1 && numbers[3] === 0 &&
         numbers[4] >= 1 && numbers[4] < 3 && numbers[8] === numbers[4] + 1 &&
@@ -458,6 +466,13 @@ function coverageContract(rows) {
       const invalid = [...learned]; invalid[field] = value;
       expectReject(() => [...receipts(invalid.join('\t'), 'contract')]);
     }
+  }
+  const potBlueprint = ['COVERAGE_RECEIPT','facility','44','pot_blueprint_queued',
+    '2','1','-1','3','35','0','0','0','35','0','0','3'];
+  need([...receipts(potBlueprint.join('\t'),'contract')].length === 1, 'pot queued blueprint rejected');
+  for (const [field,value] of [[2,'56'],[7,'0'],[8,'38'],[9,'2'],[14,'1'],[15,'4']]) {
+    const invalid=[...potBlueprint];invalid[field]=value;
+    expectReject(()=>[...receipts(invalid.join('\t'),'contract')]);
   }
   for (const [id,level] of [28,29].flatMap(id => [1,2].map(level => [id,level]))) {
     const expanded = ['COVERAGE_RECEIPT', 'activity', String(id), 'pot_expanded',

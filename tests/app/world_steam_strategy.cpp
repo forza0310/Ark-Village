@@ -213,6 +213,28 @@ std::optional<Command> SteamVillageStrategy::layout(const State &s) {
             return cmd(Kind::open_commerce);
         }
     }
+    // A pot claim is durable source state. Build its first instance at the actual
+    // gold quote while other shops await customers; normal purchase gates stay intact.
+    if (steam_reference_layout_complete(s))
+        for (const auto &r : s.rules->magic_pot_recipes) {
+            if (!(r.flags & 2U) || r.reward_kind != 4 ||
+                s.magic_pot_recipes.at(r.identity).status != 1 ||
+                s.facility_presence.at(r.reward_definition) != 2 ||
+                s.facility_free_builds.at(r.reward_definition) <= 0 ||
+                std::any_of(s.scene.world.world.facilities.begin(),
+                            s.scene.world.world.facilities.end(), [&](const auto &f) {
+                                return f.second.placement.definition_id == r.reward_definition;
+                            }) || !buildable(s, r.reward_definition))
+                continue;
+            const auto quote = sim::startup_world_build_quote(s, r.reward_definition);
+            if (quote && funds >= quote->construction_cost + 2 * quote->definition_attributes[3])
+                if (const auto target = steam_connected_extension(s, r.reward_definition)) {
+                    operation_ = Operation::build;
+                    target_ = *target;
+                    operation_committed_ = false;
+                    return cmd(Kind::open_build_menu);
+                }
+        }
     if (!steam_progress_point_goal(s) && steam_shop_expansion_ready(s)) {
         const auto catalog = sim::startup_world_build_catalog(s);
         require(catalog.has_value(), "income extension needs the source construction catalogue");
@@ -729,7 +751,7 @@ void SteamVillageStrategy::observe(const State &before, const Command &c,
             pending.push_back(facility_transaction_receipt(
                 CampaignReceiptKind::facility_blueprint_paid, definition, before, after, c.page));
         }
-        if (view->raw == 93 && view->counter >= 40) {
+        if (view->raw == 93 && view->counter >= 40 && unlock_ >= 0) {
             const int definition = view->binding;
             require(definition == unlock_ && before.facility_presence.at(definition) == 0 &&
                         after.facility_presence.at(definition) == 2 &&

@@ -15,6 +15,7 @@
 #include "world_steam_budget.hpp"
 #include "world_steam_magic_books.hpp"
 #include "world_steam_magic_discovery.hpp"
+#include "world_steam_magic_facilities.hpp"
 #include "world_steam_magic_pot.hpp"
 #include "world_steam_strategy.hpp"
 #include <chrono>
@@ -241,6 +242,7 @@ template <class PlayerStrategy> struct CampaignRun {
     std::optional<ark::test::SteamPotEquipmentPlayer> pot_equipment{};
     std::optional<ark::test::SteamPotSpellBookPlayer> pot_book{};      // Never serialized mid-flow.
     std::optional<ark::test::SteamPotDiscoveryPlayer> pot_discovery{}; // Source pending work saves.
+    std::optional<ark::test::SteamPotFacilityPlayer> pot_facility{}; // Claim before saving.
 
     void command(const app::WorldCommand &input) {
         auto candidate = state;
@@ -277,7 +279,12 @@ template <class PlayerStrategy> struct CampaignRun {
                                  });
                 if (steam_observer)
                     steam_observer->observe(state, input, result, candidate);
-                if (pot_discovery && pot_discovery->active())
+                if (pot_facility && pot_facility->active())
+                    pot_facility->observe(state, input, result, candidate,
+                                          [&](const ark::test::CampaignReceipt &receipt) {
+                                              pending_receipts.push_back(receipt);
+                                          });
+                else if (pot_discovery && pot_discovery->active())
                     pot_discovery->observe(state, input, result, candidate,
                                            [&](const ark::test::CampaignReceipt &receipt) {
                                                pending_receipts.push_back(receipt);
@@ -370,6 +377,14 @@ template <class PlayerStrategy> struct CampaignRun {
         const auto selected = [&] {
             if (!automatic)
                 return manual;
+            if (pot_facility) {
+                const auto input = pot_facility->next(
+                    state,
+                    std::max<std::int64_t>(0, state.scene.world.world.ai.accounting.funds() -
+                                                  ark::test::steam_operating_reserve(state)));
+                if (input.handled)
+                    return input.command;
+            }
             if (pot_discovery) {
                 const auto input = pot_discovery->next(
                     state,
@@ -538,6 +553,8 @@ template <class PlayerStrategy> struct CampaignRun {
                   << std::endl;
     }
     void save(int slot) {
+        if (pot_facility)
+            require(pot_facility->complete(state), "Cannot save an incomplete facility claim");
         if (pot_book)
             require(pot_book->complete(state), "Cannot save an incomplete spell book flow");
         coverage.save(directory, state);
@@ -561,6 +578,8 @@ template <class PlayerStrategy> struct CampaignRun {
             std::cout << "POT_BOOK_ENDPOINT " << pot_book->diagnose() << std::endl;
         if (pot_discovery)
             std::cout << "POT_DISCOVERY_ENDPOINT " << pot_discovery->diagnose(state) << std::endl;
+        if (pot_facility)
+            std::cout << "POT_FACILITY_ENDPOINT " << pot_facility->diagnose() << std::endl;
         if (lifecycle)
             ark::test::write_campaign_clear_evidence(directory, slot, *lifecycle);
         std::cout << "SAVE slot=" << slot << " bytes=" << captured.image->bytes.size() << " "
@@ -581,7 +600,8 @@ ark::test::CampaignClearDriver lifecycle_driver(CampaignRun<PlayerStrategy> &run
             [&run](int slot) { run.save(slot); },
             [&run] {
                 return Route<PlayerStrategy>::checkpoint(run.strategy, run.state) &&
-                       (!run.pot_book || run.pot_book->complete(run.state));
+                       (!run.pot_book || run.pot_book->complete(run.state)) &&
+                       (!run.pot_facility || run.pot_facility->complete(run.state));
             },
             [&run] { return run.input_effects; },
             [&run] { return run.strategy.stats().commands; },
@@ -1064,6 +1084,7 @@ int main(int argc, char **argv) {
             ark::test::steam_pot_equipment_contract();
             ark::test::steam_magic_book_contract();
             ark::test::steam_magic_discovery_contract();
+            ark::test::steam_magic_facility_contract(apply);
             std::cout << "PASS Steam layout, budget, people and expansion contract" << std::endl;
             ark::test::campaign_clear_contract();
             return 0;
@@ -1081,6 +1102,7 @@ int main(int argc, char **argv) {
                 "--trace-activity is supported only by bounded steam-observe");
         if (mode == "steam-natural-month" || mode == "steam-pot-equipment-month" ||
             mode == "steam-pot-spell-month" || mode == "steam-pot-discover-month" ||
+            mode == "steam-pot-facility-month" ||
             mode == "steam-pot-equipment-verify" || mode == "steam-continue" ||
             mode == "steam-natural-verify" || mode == "steam-inherit" ||
             mode == "steam-inherit-verify") {
@@ -1125,7 +1147,15 @@ int main(int argc, char **argv) {
                 run.lifecycle = ark::test::read_campaign_clear_evidence(
                     directory, slot, run.state, run.system,
                     mode == "steam-natural-month" || mode == "steam-pot-equipment-month" ||
-                        mode == "steam-pot-spell-month" || mode == "steam-pot-discover-month");
+                        mode == "steam-pot-spell-month" || mode == "steam-pot-discover-month" ||
+                        mode == "steam-pot-facility-month");
+                if (mode == "steam-pot-facility-month") {
+                    if (run.pot_equipment)
+                        require(run.pot_equipment->certified(),
+                                "Facility follows the prior strict equipment endpoint");
+                    run.pot_facility.emplace();
+                    run.pot_facility->reconcile(run.state);
+                }
                 if (mode == "steam-pot-discover-month") {
                     if (run.pot_equipment)
                         require(run.pot_equipment->certified(),

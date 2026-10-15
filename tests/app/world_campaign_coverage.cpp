@@ -25,7 +25,7 @@ struct ReceiptIdentity {
     const char *category, *stage;
     int definitions;
     bool bound_human;
-    bool bound_instance{};
+    bool bound_subject{}; // Instance identity, or a queued source page for pot blueprints.
     int recipient_limit{};
 };
 ReceiptIdentity receipt_identity(CampaignReceiptKind kind) {
@@ -61,6 +61,8 @@ ReceiptIdentity receipt_identity(CampaignReceiptKind kind) {
         return {"facility", "blueprint_claimed", 85, false};
     case Kind::facility_construction_paid:
         return {"facility", "construction_paid", 85, false, true};
+    case Kind::facility_pot_queued:
+        return {"facility", "pot_blueprint_queued", 85, false, true};
     case Kind::activity_pot_opened:
         return {"activity", "pot_opened", 31, false};
     case Kind::activity_pot_expanded:
@@ -175,7 +177,7 @@ void CampaignCoverage::record(const CampaignReceipt &receipt, std::ostream &log)
         (identity.bound_human &&
          (receipt.recipient < 0 ||
           (identity.recipient_limit && receipt.recipient >= identity.recipient_limit))) ||
-        (identity.bound_instance && !receipt.subject) ||
+        (identity.bound_subject && !receipt.subject) ||
         ((receipt.kind == CampaignReceiptKind::human_medal_awarded ||
           receipt.kind == CampaignReceiptKind::human_home_admitted ||
           receipt.kind == CampaignReceiptKind::human_home_tax_collected) &&
@@ -634,6 +636,7 @@ void campaign_coverage_contract() {
         {CampaignReceiptKind::facility_blueprint_paid, "facility", "blueprint_points_paid", 85, 0},
         {CampaignReceiptKind::facility_blueprint_claimed, "facility", "blueprint_claimed", 85, 0},
         {CampaignReceiptKind::facility_construction_paid, "facility", "construction_paid", 85, 1},
+        {CampaignReceiptKind::facility_pot_queued, "facility", "pot_blueprint_queued", 85, 1},
         {CampaignReceiptKind::activity_pot_opened, "activity", "pot_opened", 31, 0},
         {CampaignReceiptKind::activity_pot_expanded, "activity", "pot_expanded", 31, 0},
         {CampaignReceiptKind::activity_popularity_queued, "activity", "popularity_queued", 31, 0},

@@ -1,5 +1,18 @@
 # B1：持续世界产品接入
 
+<a id="campaign-pot-facility"></a>
+## 2026-10-16：设施配方领取、金币建设及客流诊断
+
+正式研究仍为5708375。沿[既定方案](../MILESTONES.md#campaign-pot-facility)复用壶操作、原commerce93及Steam建设；进程内设施玩家分离47扣元素/创建93、107对话、早确认与最终领取，退回稳定世界后交还原建设策略。领取计数H不是普通建筑免费券：建设按真实金币报价、不消耗H。新模块及合同归原campaign target，Node新增绑定正式配方/设施/93的排队阶段，保留商会有计划购买的原断言；无玩家字段、侧车、生产规则或存档身份变化。初次新回执未登记必需的排队页身份，触发原零subject拒绝测试；补齐绑定、保留该断言后通过。
+
+163→164真实经营169.06秒，商会实际购材料25一件、20两件共3000G并投入，原处理使经验30→33；配方35已在输入档发现，本批不倒填发现。47实际元素51/39/56/5→21/39/26/0，准确扣30/0/30/5；创建93/页25时设施44仍p0/H0，经107及93满40确认后才p2/H1。随后按2000G报价建设实例161于(6,11)，H保持1；冷载完工、flags0且源路径可达，sales0。证据在`build/validation/business-liquidity/steam-pot-facility-month-month164-goal-c977176c2dbf43b6b42fa9f280e91a1d/`，RESULT、pot-facility-effect及经营/冷载/住宅日志区分领取、建设与待营业。
+
+164→165真实经营166.52秒并再次保存/独立冷载，完整营业月164全村收入28446G；任务实例62/定义27胜利、人物23转职及库存强化有原回执。任务道具17实际用于点心铺，价格825→935、品质11→14、实例魅力15→17；冷载后该店仍sales0，因此尚未通过实际营业，不能把全村收入或强化当成该店消费。当前有效前缀为`build/validation/business-liquidity/steam-natural-month-month165-goal-d1bcc0f557d84a469763c6adfd9cfcd1/checkpoints/month-165`，同根pot-facility-following-effect标partial，facility-cold-inspect/candidate-query/housing-inspect保留独立状态。终四星562451G/两月预算70460G、84点、人气5644、收入纪录64874G；50/50布局、25目标营业及22名住户完工/可达保持，累计建设64/强化177/装备260/胜利46/活动56/授勋34，无当前任务，生命周期phase0。
+
+从165另建隔离诊断分支`build/validation/business-liquidity/pot-facility-observe-8c5bb34066b2468298f9baf2b46d2edd/`，原--trace-activity在1342轮触及两分钟上限并失败，未产生合格玩家checkpoint；原前缀未改，不延长时限重签。已取得的实际边界日志未见161绑定/占用，不能推断内部票号或完整决策次序。对165原档调用源输入构造器/候选收集器的只读查询：20名活跃人物均有161候选，同类别权重1160中该店11（共享魅力11，实例17）；这是当前普通候选资格，不能据约0.95%权重证明实际选择或认定无bug。后继继续合法任务道具引流并核实际到访/收费，同时推进其他已知内容；不盲跑日期或改源抽取。
+
+desktop-debug标准140/140（39.42秒）、headless-debug标准119/119（27.74秒）通过，均仅排simulation.startup_world_continuous_test；Release最终campaign合同1/1（2.56秒）。本批无DLL/窗口/资源/ZIP变化，未运行完整Release标准/三个月或CI；研究在途和正常玩家档未动，过程文件仅留build。首次制造/领取/建设及后继存读已验，目标店营业、其余配方、五星及自然通关/继续/继承和全775仍未闭合。
+
 <a id="campaign-pot-upgrade-budget"></a>
 ## 2026-10-16：壶升级预算、真实扩容与后继营业
 

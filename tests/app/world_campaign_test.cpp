@@ -177,6 +177,10 @@ template <> struct Route<ark::test::SteamVillageStrategy> {
 
 // All routes share the exact production transaction/update/player-save driver. Only
 // player decisions, evidence serialization and business milestones vary by route.
+struct CampaignRunBudget {
+    std::uint64_t rounds{};
+    std::chrono::minutes duration{};
+};
 template <class PlayerStrategy> struct CampaignRun {
     State state;
     app::WorldSystemState system;
@@ -397,12 +401,17 @@ template <class PlayerStrategy> struct CampaignRun {
             }
         }
     }
-    void run(bool resume, Prefix prefix = Prefix::complete) {
+    void run(bool resume, Prefix prefix = Prefix::complete,
+             std::optional<CampaignRunBudget> limit = {}) {
         const bool prefix_only = prefix != Prefix::complete;
         steam_checkpoint_interval = prefix == Prefix::month ? 1 : 3;
         const auto start = std::chrono::steady_clock::now();
         auto report = start;
-        const std::uint64_t budget = prefix_only ? 10000 : Route<PlayerStrategy>::budget(resume);
+        const auto budget = limit.value_or(CampaignRunBudget{
+            prefix_only ? 10000 : Route<PlayerStrategy>::budget(resume),
+            std::chrono::minutes{prefix_only ? 6 : Route<PlayerStrategy>::minutes}});
+        require(budget.rounds > 0 && budget.duration.count() > 0,
+                "Invalid campaign execution budget");
         for (;;) {
             if (prefix_only && saved_steam_month >= 0)
                 break;
@@ -410,15 +419,14 @@ template <class PlayerStrategy> struct CampaignRun {
                                          : Route<PlayerStrategy>::checkpoint(strategy, state);
             if (!prefix_only && achieved && app::world_save_eligible(state))
                 break;
-            if (rounds >= budget) {
+            if (rounds >= budget.rounds) {
                 ark::test::capture_campaign_observation(directory, state);
                 throw std::runtime_error("Active business step budget exhausted at round=" +
                                          std::to_string(rounds));
             }
             step();
             const auto now = std::chrono::steady_clock::now();
-            if (now - start >=
-                std::chrono::minutes(prefix_only ? 6 : Route<PlayerStrategy>::minutes)) {
+            if (now - start >= budget.duration) {
                 ark::test::capture_campaign_observation(directory, state);
                 throw std::runtime_error("Active business time budget exhausted at round=" +
                                          std::to_string(rounds));
@@ -1229,27 +1237,40 @@ int main(int argc, char **argv) {
                       << std::endl;
             return 0;
         }
-        const bool pot = mode == "pot-new" || mode == "pot-resume" || mode == "verify-pot";
+        const bool steam_pot = mode == "steam-pot-new" || mode == "steam-pot-resume";
+        const bool pot =
+            steam_pot || mode == "pot-new" || mode == "pot-resume" || mode == "verify-pot";
         if (pot) {
             const auto directory =
                 isolated_directory(argv[0], argv[2], "ark-active-magic-pot-v1\n");
-            if (mode == "pot-new") {
+            const auto limit =
+                steam_pot ? std::optional<CampaignRunBudget>{{10000, std::chrono::minutes{6}}}
+                          : std::nullopt;
+            if (mode == "pot-new" || mode == "steam-pot-new") {
                 require(!std::filesystem::exists(app::world_save_slot_path(directory, 0)) &&
                             !std::filesystem::exists(app::world_save_slot_path(directory, 1)),
                         "New pot route cannot overwrite previous player slots");
                 const auto input = std::filesystem::canonical(directory / "input");
                 require(input.parent_path() == directory && input.filename() == "input",
                         "Second-star input directory must be an isolated local copy");
-                const auto before = checkpoint(load<LateStrategy>(input, 0));
-                auto prefix = load<LateStrategy>(input, 1);
-                verify_late_endpoint(prefix, before);
+                if (steam_pot) {
+                    require(bytes(input / "ACTIVE_CAMPAIGN") == "ark-steam-village-v1\n",
+                            "Pot input must be a verified Steam business checkpoint");
+                    auto prefix = load<ark::test::SteamVillageStrategy>(input, 0);
+                    pot_campaign.emplace(PotCampaign{
+                        std::move(prefix.state), std::move(prefix.system), directory, {}});
+                } else {
+                    const auto before = checkpoint(load<LateStrategy>(input, 0));
+                    auto prefix = load<LateStrategy>(input, 1);
+                    verify_late_endpoint(prefix, before);
+                    pot_campaign.emplace(PotCampaign{
+                        std::move(prefix.state), std::move(prefix.system), directory, {}});
+                }
                 require(bytes(app::world_system_path(directory)) ==
                             bytes(app::world_system_path(input)),
                         "Pot route system record differs from the verified prefix");
-                pot_campaign.emplace(
-                    PotCampaign{std::move(prefix.state), std::move(prefix.system), directory, {}});
                 pot_campaign->strategy.reconcile(pot_campaign->state);
-                pot_campaign->run(false);
+                pot_campaign->run(false, PotCampaign::Prefix::complete, limit);
                 require(pot_campaign->strategy.stats().crafted == 0 &&
                             pot_campaign->strategy.stats().used == 0,
                         "Pot business checkpoint must precede crafting and item use");
@@ -1270,7 +1291,7 @@ int main(int argc, char **argv) {
                     pot_campaign.emplace(load<PotStrategy>(directory, 0));
                     const auto first_slot = bytes(app::world_save_slot_path(directory, 0));
                     const auto first_strategy = bytes(directory / "strategy0.txt");
-                    pot_campaign->run(true);
+                    pot_campaign->run(true, PotCampaign::Prefix::complete, limit);
                     verify_pot_endpoint(*pot_campaign, before);
                     pot_campaign->save(1);
                     require(bytes(app::world_save_slot_path(directory, 0)) == first_slot &&

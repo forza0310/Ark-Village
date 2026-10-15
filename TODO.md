@@ -10,9 +10,10 @@
 - [x] 用户指定的preview.mjs及小窗示例已纳入本goal，复用正式合同与套件；预览服务、CSS和夹具数值不进游戏，见[对照入口](docs/reference/REFERENCE_CHECKLIST.md#ui-small-window-goal)。
 - [x] 玩家两栏schema5/独立系统2、正常保存桥及维护回放已接；旧身份拒绝，月度真实经营独立冷载和字节复制持续验证。周期扣费可负、主动支付仍核余额，见[B1](docs/stages/B1-playable-prototype.md#campaign-negative-balance)。
 - [x] 真实转职、任务库存强化、额外募集/入住及预算接续已接；修复入住后父74退休与世界恢复，实际扩张至围栏2、18住户冷载后均可达，见[本批](docs/stages/B1-playable-prototype.md#campaign-residence-successors)。
+- [x] 当前身份配方7实际购料/投入/处理/发现→冷载→扣元素炼制/自然伤者治疗→完整营业月及独立冷载通过，复用原断言，见[药品接续](docs/stages/B1-playable-prototype.md#campaign-pot-current-prefix)。
 
 - [ ] 按[全解锁合同](docs/stages/ACTIVE_VILLAGE_PLAN.md#full-unlock-campaign)逐定义覆盖取得、消费、实际效果与后继，保留775分母；代表样例、仅解锁或日期推进不算全覆盖。
-- [ ] 从有效月129继续健康经营：先留现金，验证魔法研究所62首次营业，继续真实任务/奖励强化、培养人物18/19及新图纸消费；五星仍差27378G最高月收入。资金与当前来源资格见[经营现状](docs/stages/ACTIVE_VILLAGE_PLAN.md)。
+- [ ] 从有效月130接续健康经营，并将已验月134壶后继接回持续主线；保留实际控制器/营业/消费证据，继续其余39配方和其他逐定义消费。先留现金、完成图书馆61营业与人物18/19培养；五星主线收入仍差27378G，资金与来源资格见[经营现状](docs/stages/ACTIVE_VILLAGE_PLAN.md)。
 - [ ] 主动计分/继续/继承driver和短合同已接，实际生命周期仍phase0；继续自然经营到真实计分，再验完整继续/继承，不以临近日期夹具称自然通关，见[生命周期方案](docs/MILESTONES.md#campaign-natural-lifecycle)。
 - [ ] 4魔法实际施放、投射/延迟伤害归因及全23职业后继等待真实局部消费事实；Q可用不等于学习/施法，见[研究请求](docs/reference/RESEARCH_REQUESTS.md#spell-consumption-receipts)。
 

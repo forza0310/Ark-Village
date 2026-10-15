@@ -1,4 +1,5 @@
 #include "world_active_pot_strategy.hpp"
+#include "world_steam_budget.hpp"
 
 #include <algorithm>
 #include <istream>
@@ -102,29 +103,13 @@ int owned_material(const State &s) {
         }
     return best;
 }
-std::int64_t reserve(const State &s) {
-    std::int64_t fee{};
-    for (const auto &[id, f] : s.scene.world.world.facilities) {
-        (void)f;
-        const auto q = sim::startup_world_facility_values(s, id);
-        require(q.has_value(), "missing maintenance quote");
-        fee += std::max<std::int64_t>(0, q->definition_attributes[3]);
-    }
-    for (const auto &[id, present] : s.human_presence)
-        if (present) {
-            const auto job = s.scene.world.world.ai.growth.at(id).definition.current_profession;
-            const auto &j = s.rules->jobs.at(job);
-            fee += std::max({0, j.fee[0], j.fee[1]});
-        }
-    return fee * 2;
-}
 int purchase_material(const State &s, const std::vector<int> &entries) {
     int best = -1, best_score{}, best_price{};
     for (int id : entries) {
         const auto &d = item(s, id);
         const auto score = material_score(s, d);
         if (score <= 0 || s.shop_item_stock.at(id).quantity <= 0 ||
-            d.commerce_price > cash(s) - reserve(s))
+            d.commerce_price > cash(s) - steam_operating_reserve(s))
             continue;
         if (best < 0 || std::int64_t(score) * std::max(1, best_price) >
                             std::int64_t(best_score) * std::max(1, d.commerce_price)) {
@@ -477,12 +462,13 @@ bool ActivePotVillageStrategy::complete(const State &s) const {
 std::string ActivePotVillageStrategy::diagnose(const State &s) const {
     std::ostringstream out;
     out << "raw=" << top(s).legacy_page << " month=" << month(s) << " week=" << week(s)
-        << " ticks=" << stats_.ticks << " cash=" << cash(s) << " reserve=" << reserve(s)
-        << " exp=" << s.legacy_n[0] << "/9 pending=" << s.legacy_n[1]
-        << " elements=" << s.legacy_n[3] << ',' << s.legacy_n[4] << ',' << s.legacy_n[5]
-        << " purchases=" << stats_.purchases << " deposits=" << stats_.deposits
-        << " processed=" << stats_.processed << " discovered=" << stats_.discoveries
-        << " crafted=" << stats_.crafted << " used=" << stats_.used << " healed=" << stats_.healed
+        << " ticks=" << stats_.ticks << " cash=" << cash(s)
+        << " reserve=" << steam_operating_reserve(s) << " exp=" << s.legacy_n[0]
+        << "/9 pending=" << s.legacy_n[1] << " elements=" << s.legacy_n[3] << ',' << s.legacy_n[4]
+        << ',' << s.legacy_n[5] << " purchases=" << stats_.purchases
+        << " deposits=" << stats_.deposits << " processed=" << stats_.processed
+        << " discovered=" << stats_.discoveries << " crafted=" << stats_.crafted
+        << " used=" << stats_.used << " healed=" << stats_.healed
         << " recipient=" << stats_.recipient << " owned_material=" << owned_material(s);
     return out.str();
 }

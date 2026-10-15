@@ -3,6 +3,7 @@
 #include "ark/simulation/facilities/startup_world_building.hpp"
 #include "ark/simulation/facilities/startup_world_editing.hpp"
 #include "ark/simulation/map/startup_world_expansion.hpp"
+#include "ark/simulation/persistence/startup_world_persistence.hpp"
 
 #include <algorithm>
 #include <set>
@@ -193,6 +194,18 @@ bool extension_candidate(const State &s, const SteamLayoutTarget &target,
             (candidate.facility_flags.at(id) & 1U) || !reachable(id))
             return false;
     }
+    // A later plot or shop must also preserve businesses outside the reference
+    // layout. Already disconnected shops are repaired separately, one paid move
+    // at a time; moving replaces its old instance through the source consumer.
+    for (const auto &[id, shop] : s.scene.world.world.facilities) {
+        if (shop.kind != 3 || moving == id || (s.facility_flags.at(id) & 1U))
+            continue;
+        const auto kept = candidate.scene.world.world.facilities.find(id);
+        if (kept == candidate.scene.world.world.facilities.end() ||
+            kept->second.placement.definition_id != shop.placement.definition_id ||
+            (candidate.facility_flags.at(id) & 1U) || !reachable(id))
+            return false;
+    }
     return true;
 }
 } // namespace
@@ -241,6 +254,11 @@ std::optional<SteamLayoutTarget> steam_connected_extension(const State &s, int d
 
 std::optional<std::pair<std::uint64_t, SteamLayoutTarget>>
 steam_layout_access_repair(const State &s) {
+    for (const auto &[id, shop] : s.scene.world.world.facilities)
+        if (shop.kind == 3 && shop.status == 1 && !steam_layout_slot(s, id) &&
+            (s.facility_flags.at(id) & 1U))
+            if (const auto target = steam_connected_extension(s, shop.placement.definition_id, id))
+                return std::pair{id, *target};
     std::set<std::uint64_t> blockers;
     const auto &map = s.scene.world.world.map;
     for (const auto &goal : layout) {
@@ -287,7 +305,7 @@ bool steam_shop_expansion_ready(const State &s) {
         return false;
     for (const auto &[id, facility] : s.scene.world.world.facilities)
         if (facility.kind == 3 && !steam_layout_slot(s, id) &&
-            (facility.status != 1 || facility.sales <= 0))
+            (facility.status != 1 || facility.sales <= 0 || (s.facility_flags.at(id) & 1U)))
             return false;
     return true;
 }
@@ -456,6 +474,31 @@ void steam_layout_contract() {
             "external-home blocker must actually close the occupied home's entrance");
     require(!extension_candidate(external_only, obstructing, {}),
             "a connected shop cannot certify disconnecting a later occupied home");
+    auto external_business = external_only;
+    require(simulation::retire_startup_world_facility(external_business, extra_id),
+            "external-shop fixture must replace its unneeded house");
+    const auto retained_shop =
+        simulation::install_startup_world_facility(external_business, 50, {4, 5}, first);
+    require(retained_shop.created && !steam_layout_slot(external_business, *retained_shop.created) &&
+                !(external_business.facility_flags.at(*retained_shop.created) & 1U),
+            "a real connected non-reference shop must precede the new placement");
+    external_business.scene.world.world.facilities.at(*retained_shop.created).status = 1;
+    auto disconnected_business = external_business;
+    const auto later_shop = simulation::install_startup_world_facility(
+        disconnected_business, 64, obstructing.anchor, obstructing.orientation);
+    require(later_shop.created &&
+                (disconnected_business.facility_flags.at(*retained_shop.created) & 1U) &&
+                !(disconnected_business.facility_flags.at(*later_shop.created) & 1U),
+            "the new shop must actually block only the earlier non-reference business");
+    require(!extension_candidate(external_business, obstructing, {}),
+            "a new connected placement must not disconnect an earlier external business");
+    const auto disconnected_digest = simulation::startup_world_state_digest(disconnected_business);
+    const auto business_repair = steam_layout_access_repair(disconnected_business);
+    require(business_repair && business_repair->first == *retained_shop.created &&
+                extension_candidate(disconnected_business, business_repair->second,
+                                    business_repair->first) &&
+                simulation::startup_world_state_digest(disconnected_business) == disconnected_digest,
+            "repair must find a paid source move without changing its disconnected Owner");
     const auto unchanged = corner;
     require(!extension_candidate(corner, obstructing, {}),
             "an empty legal footprint must not certify a build that disconnects a retained home");
@@ -544,6 +587,7 @@ void steam_layout_contract() {
     external_shop.status = 0;
     external_shop.sales = 0;
     readiness.scene.world.world.facilities.emplace(readiness_id, external_shop);
+    readiness.facility_flags.emplace(readiness_id, 0U);
     require(!steam_shop_expansion_ready(readiness),
             "external shop construction must prevent buying the next expansion");
     readiness.scene.world.world.facilities.at(readiness_id).status = 1;
@@ -555,6 +599,9 @@ void steam_layout_contract() {
                 !steam_shop_expansion_ready(waiting_projection),
             "readiness must follow durable sales in each independent projection, not controller "
             "history");
+    readiness.facility_flags.at(readiness_id) = 1U;
+    require(!steam_shop_expansion_ready(readiness),
+            "historical sales cannot certify a currently disconnected external shop");
 
     require(!steam_extra_recruitment_plot(complete_projection),
             "the permanent reference plot must not block later admissions");

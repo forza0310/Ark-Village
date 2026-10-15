@@ -36,11 +36,13 @@ std::optional<std::size_t> steam_layout_slot(const simulation::StartupWorldRunti
 std::vector<std::uint64_t> steam_layout_blockers(const simulation::StartupWorldRuntimeState &state,
                                                  const SteamLayoutTarget &target);
 // Discard complete source build/move candidates after checking every existing blueprint
-// instance and the new shop. Prefer fewer covered road cells; no preview is a paid receipt.
+// instance, occupied home, connected external business and the new shop. Prefer
+// fewer covered road cells; no preview is a paid receipt.
 std::optional<SteamLayoutTarget>
 steam_connected_extension(const simulation::StartupWorldRuntimeState &state, int definition,
                           std::optional<std::uint64_t> moving = {});
-// Move a non-blueprint shop bordering a disconnected target; never move a retained residence.
+// Move a disconnected external shop or one blocking a reference target through
+// the same paid source operation; never move a retained residence.
 std::optional<std::pair<std::uint64_t, SteamLayoutTarget>>
 steam_layout_access_repair(const simulation::StartupWorldRuntimeState &state);
 // Keep the reference layout/residents complete; the separate next-shop gate also

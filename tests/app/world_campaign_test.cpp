@@ -8,8 +8,8 @@
 #include "world_active_late_strategy.hpp"
 #include "world_active_pot_strategy.hpp"
 #include "world_active_strategy.hpp"
-#include "world_campaign_coverage.hpp"
 #include "world_campaign_clear.hpp"
+#include "world_campaign_coverage.hpp"
 #include "world_campaign_diagnostics.hpp"
 #include "world_campaign_receipts_test.hpp"
 #include "world_steam_budget.hpp"
@@ -175,6 +175,35 @@ template <> struct Route<ark::test::SteamVillageStrategy> {
     }
 };
 
+template <class PlayerStrategy>
+PlayerStrategy read_strategy(const std::filesystem::path &directory, int slot,
+                             const std::string &name = "strategy") {
+    std::ifstream input(directory / (name + std::to_string(slot) + ".txt"), std::ios::binary);
+    std::string magic, digest;
+    require(bool(std::getline(input, magic)) && magic == Route<PlayerStrategy>::magic &&
+                bool(std::getline(input, digest)) &&
+                digest ==
+                    ark::assets::sha256_hex(bytes(app::world_save_slot_path(directory, slot))),
+            "Strategy sidecar does not match this exact player file: " + name);
+    return PlayerStrategy::decode(input);
+}
+
+template <class PlayerStrategy>
+void write_strategy(const std::filesystem::path &directory, int slot,
+                    const PlayerStrategy &strategy, const std::string &name = "strategy") {
+    const auto sidecar = directory / (name + std::to_string(slot) + ".txt");
+    require(!std::filesystem::exists(sidecar), "Existing strategy evidence must be preserved");
+    // Encode before creating the sidecar: an unfinished controller must not leave evidence.
+    std::ostringstream encoded;
+    strategy.encode(encoded);
+    std::ofstream output(sidecar, std::ios::binary);
+    output << Route<PlayerStrategy>::magic << '\n'
+           << ark::assets::sha256_hex(bytes(app::world_save_slot_path(directory, slot))) << '\n'
+           << encoded.str();
+    output.close();
+    require(bool(output), "Could not write strategy evidence: " + name);
+}
+
 // All routes share the exact production transaction/update/player-save driver. Only
 // player decisions, evidence serialization and business milestones vary by route.
 struct CampaignRunBudget {
@@ -192,11 +221,15 @@ template <class PlayerStrategy> struct CampaignRun {
     int steam_checkpoint_interval{3}; // Normal campaign retains quarterly recovery points.
     int saved_steam_month{-1};
     int steam_prefix_month{-1};
-    bool activity_trace{}; // Optional bounded steam-observe diagnostics; normal long runs stay quiet.
+    bool activity_trace{}; // Optional bounded steam-observe diagnostics; normal long runs stay
+                           // quiet.
     // Only explicitly selected lifecycle routes may consume the application's raw17 branch.
     // Historical business-only phases retain their original date-clear refusal below.
     std::optional<ark::test::CampaignClearEvidence> lifecycle{};
     std::uint64_t input_effects{}; // Successful command-bound receipts in this process only.
+    // A temporary player may make pot decisions while the original controller observes
+    // committed transitions. It never calls next() or owns another world.
+    std::optional<ark::test::SteamVillageStrategy> steam_observer{};
 
     void command(const app::WorldCommand &input) {
         auto candidate = state;
@@ -231,6 +264,8 @@ template <class PlayerStrategy> struct CampaignRun {
                                  [&](const ark::test::CampaignReceipt &receipt) {
                                      pending_receipts.push_back(receipt);
                                  });
+                if (steam_observer)
+                    steam_observer->observe(state, input, result, candidate);
                 if (input.kind == Kind::village_activity_action &&
                     input.village_activity_action == sim::StartupVillageActivityAction::confirm &&
                     result.outcome == app::WorldCommandOutcome::applied) {
@@ -334,6 +369,8 @@ template <class PlayerStrategy> struct CampaignRun {
                                   [&](const ark::test::CampaignReceipt &receipt) {
                                       pending_receipts.push_back(receipt);
                                   });
+            if (steam_observer)
+                steam_observer->observe_tick(state, *update.candidate);
             const auto loot = ark::test::task_loot_receipts(state, *update.candidate);
             if (loot.gap)
                 std::cout << "COVERAGE_LOOT_GAP\t" << state.active_task.value_or(0) << '\t'
@@ -402,7 +439,7 @@ template <class PlayerStrategy> struct CampaignRun {
         }
     }
     void run(bool resume, Prefix prefix = Prefix::complete,
-             std::optional<CampaignRunBudget> limit = {}) {
+             std::optional<CampaignRunBudget> limit = {}, std::optional<int> stop_month = {}) {
         const bool prefix_only = prefix != Prefix::complete;
         steam_checkpoint_interval = prefix == Prefix::month ? 1 : 3;
         const auto start = std::chrono::steady_clock::now();
@@ -415,8 +452,11 @@ template <class PlayerStrategy> struct CampaignRun {
         for (;;) {
             if (prefix_only && saved_steam_month >= 0)
                 break;
-            const bool achieved = resume ? strategy.complete(state)
-                                         : Route<PlayerStrategy>::checkpoint(strategy, state);
+            const bool achieved = stop_month
+                                      ? month(state) >= *stop_month &&
+                                            Route<PlayerStrategy>::checkpoint(strategy, state)
+                                  : resume ? strategy.complete(state)
+                                           : Route<PlayerStrategy>::checkpoint(strategy, state);
             if (!prefix_only && achieved && app::world_save_eligible(state))
                 break;
             if (rounds >= budget.rounds) {
@@ -449,15 +489,9 @@ template <class PlayerStrategy> struct CampaignRun {
         require(captured.image.has_value(), captured.message);
         const auto saved = app::write_world_save_slot(directory, slot, *captured.image);
         require(saved.error == app::WorldSaveError::none, saved.message);
-        const auto sidecar = directory / ("strategy" + std::to_string(slot) + ".txt");
-        require(!std::filesystem::exists(sidecar), "Existing strategy evidence must be preserved");
-        std::ofstream output(sidecar, std::ios::binary);
-        output << Route<PlayerStrategy>::magic << '\n'
-               << ark::assets::sha256_hex(bytes(app::world_save_slot_path(directory, slot)))
-               << '\n';
-        strategy.encode(output);
-        output.close();
-        require(bool(output), "Could not write strategy evidence");
+        write_strategy(directory, slot, strategy);
+        if (steam_observer)
+            write_strategy(directory, slot, *steam_observer, "steam-strategy");
         if (lifecycle)
             ark::test::write_campaign_clear_evidence(directory, slot, *lifecycle);
         std::cout << "SAVE slot=" << slot << " bytes=" << captured.image->bytes.size() << " "
@@ -470,8 +504,12 @@ using PotCampaign = CampaignRun<PotStrategy>;
 template <class PlayerStrategy>
 ark::test::CampaignClearDriver lifecycle_driver(CampaignRun<PlayerStrategy> &run) {
     require(run.lifecycle.has_value(), "Lifecycle hooks require their explicit route");
-    return {run.state, run.system, *run.lifecycle, run.strategy.stats().trade,
-            [&run] { run.step(); }, [&run](int slot) { run.save(slot); },
+    return {run.state,
+            run.system,
+            *run.lifecycle,
+            run.strategy.stats().trade,
+            [&run] { run.step(); },
+            [&run](int slot) { run.save(slot); },
             [&run] { return Route<PlayerStrategy>::checkpoint(run.strategy, run.state); },
             [&run] { return run.input_effects; },
             [&run] { return run.strategy.stats().commands; },
@@ -481,13 +519,7 @@ ark::test::CampaignClearDriver lifecycle_driver(CampaignRun<PlayerStrategy> &run
 template <class PlayerStrategy = Strategy>
 CampaignRun<PlayerStrategy> load(const std::filesystem::path &directory, int slot = 0) {
     const auto old_slot = bytes(app::world_save_slot_path(directory, slot));
-    std::ifstream metadata(directory / ("strategy" + std::to_string(slot) + ".txt"),
-                           std::ios::binary);
-    std::string magic, digest;
-    require(bool(std::getline(metadata, magic)) && magic == Route<PlayerStrategy>::magic &&
-                bool(std::getline(metadata, digest)) && digest == ark::assets::sha256_hex(old_slot),
-            "Strategy sidecar does not match this exact player file");
-    auto strategy = PlayerStrategy::decode(metadata);
+    auto strategy = read_strategy<PlayerStrategy>(directory, slot);
     auto fresh = ark::test::initial_world(20261009);
     const auto records = app::read_world_system(directory);
     require(records.records.has_value(), records.error);
@@ -520,6 +552,18 @@ CampaignRun<PlayerStrategy> load(const std::filesystem::path &directory, int slo
     // segmented runs could each save a few ticks into the same month forever.
     if constexpr (std::is_same_v<PlayerStrategy, ark::test::SteamVillageStrategy>)
         result.steam_prefix_month = month(result.state);
+    if constexpr (std::is_same_v<PlayerStrategy, PotStrategy>) {
+        if (std::filesystem::exists(directory /
+                                    ("steam-strategy" + std::to_string(slot) + ".txt"))) {
+            result.steam_observer =
+                read_strategy<ark::test::SteamVillageStrategy>(directory, slot, "steam-strategy");
+            result.steam_observer->reconcile(result.state);
+            require(result.steam_observer->checkpoint(result.state),
+                    "Observed Steam business milestone lost at pot restart");
+            result.lifecycle = ark::test::read_campaign_clear_evidence(directory, slot,
+                                                                       result.state, result.system);
+        }
+    }
     return result;
 }
 
@@ -662,6 +706,29 @@ void verify_pot_endpoint(const PotCampaign &campaign, const BusinessCheckpoint &
               << " discoveries=" << stats.discoveries << " crafted=" << stats.crafted
               << " used=" << stats.used << " healed=" << stats.healed << " hp=" << stats.hp_before
               << "->" << stats.hp_after << std::endl;
+}
+
+// Two independent observers must account for exactly the same interval. Never
+// reconstruct a missing Steam controller from the final world or the pot counters.
+void verify_steam_pot_observer(const PotCampaign &campaign) {
+    require(campaign.steam_observer && campaign.lifecycle,
+            "Steam pot handoff requires its recorded controller and lifecycle sidecars");
+    const auto original =
+        read_strategy<ark::test::SteamVillageStrategy>(campaign.directory / "input", 0);
+    const auto &a = original.stats(), &b = campaign.steam_observer->stats();
+    const auto &interval = campaign.strategy.stats();
+    require(b.ticks >= a.ticks && b.ticks - a.ticks == interval.ticks && b.commands >= a.commands &&
+                b.commands - a.commands == interval.commands &&
+                b.minimum_cash == std::min(a.minimum_cash, interval.minimum_cash),
+            "Recorded Steam controller skipped or duplicated the pot interval");
+    auto expected = a.trade.revenue;
+    for (const auto &[month, sales] : interval.trade.revenue)
+        expected[month] += sales;
+    require(b.trade.revenue == expected && campaign.steam_observer->checkpoint(campaign.state),
+            "Recorded Steam controller lost real monthly revenue or business qualification");
+    campaign.lifecycle->verify(campaign.state, campaign.system);
+    std::cout << "STEAM_OBSERVER " << campaign.steam_observer->diagnose(campaign.state) << ' '
+              << campaign.lifecycle->diagnose() << std::endl;
 }
 
 void verify_third_endpoint(const LateCampaign &campaign, const BusinessCheckpoint &before) {
@@ -926,8 +993,8 @@ int main(int argc, char **argv) {
         require(argc == 3 || argc == 4,
                 "Expected campaign phase, isolated directory and optional --trace-activity");
         const std::string mode = argv[1];
-        require(argc == 3 || (mode == "steam-observe" &&
-                             std::string(argv[3]) == "--trace-activity"),
+        require(argc == 3 ||
+                    (mode == "steam-observe" && std::string(argv[3]) == "--trace-activity"),
                 "--trace-activity is supported only by bounded steam-observe");
         if (mode == "steam-natural-month" || mode == "steam-continue" ||
             mode == "steam-natural-verify" || mode == "steam-inherit" ||
@@ -944,8 +1011,8 @@ int main(int argc, char **argv) {
                             "Inheritance requires completed score and continued real business");
                     return std::make_pair(std::move(parent.system), std::move(evidence));
                 }();
-                campaign.emplace(Campaign{ark::test::initial_world(),
-                                           std::move(ancestry.first), directory, {}});
+                campaign.emplace(
+                    Campaign{ark::test::initial_world(), std::move(ancestry.first), directory, {}});
                 app::WorldNewGameDraft draft;
                 draft.slot = 1;
                 draft.human = {"经营验收主角", 0, true};
@@ -962,9 +1029,8 @@ int main(int argc, char **argv) {
                             campaign->strategy.construction_checkpoint(campaign->state) &&
                             app::world_save_eligible(campaign->state),
                         "Inherited endpoint lost real construction/completion/trade qualification");
-                std::cout << "PASS inherited player cold-load; "
-                          << campaign->lifecycle->diagnose() << "; not all-content completion"
-                          << std::endl;
+                std::cout << "PASS inherited player cold-load; " << campaign->lifecycle->diagnose()
+                          << "; not all-content completion" << std::endl;
             } else {
                 const int slot = mode == "steam-natural-verify" ? 1 : 0;
                 steam_campaign.emplace(load<ark::test::SteamVillageStrategy>(directory, slot));
@@ -1237,7 +1303,8 @@ int main(int argc, char **argv) {
                       << std::endl;
             return 0;
         }
-        const bool steam_pot = mode == "steam-pot-new" || mode == "steam-pot-resume";
+        const bool steam_pot = mode == "steam-pot-new" || mode == "steam-pot-resume" ||
+                               mode == "steam-pot-verify" || mode == "steam-pot-month";
         const bool pot =
             steam_pot || mode == "pot-new" || mode == "pot-resume" || mode == "verify-pot";
         if (pot) {
@@ -1257,8 +1324,12 @@ int main(int argc, char **argv) {
                     require(bytes(input / "ACTIVE_CAMPAIGN") == "ark-steam-village-v1\n",
                             "Pot input must be a verified Steam business checkpoint");
                     auto prefix = load<ark::test::SteamVillageStrategy>(input, 0);
+                    auto lifecycle = ark::test::read_campaign_clear_evidence(input, 0, prefix.state,
+                                                                             prefix.system);
                     pot_campaign.emplace(PotCampaign{
                         std::move(prefix.state), std::move(prefix.system), directory, {}});
+                    pot_campaign->steam_observer = std::move(prefix.strategy);
+                    pot_campaign->lifecycle = std::move(lifecycle);
                 } else {
                     const auto before = checkpoint(load<LateStrategy>(input, 0));
                     auto prefix = load<LateStrategy>(input, 1);
@@ -1274,33 +1345,57 @@ int main(int argc, char **argv) {
                 require(pot_campaign->strategy.stats().crafted == 0 &&
                             pot_campaign->strategy.stats().used == 0,
                         "Pot business checkpoint must precede crafting and item use");
+                if (steam_pot)
+                    verify_steam_pot_observer(*pot_campaign);
                 pot_campaign->save(0);
             } else {
                 const auto before = [&] {
-                    const auto saved = load<PotStrategy>(directory, 0);
+                    // A monthly continuation retains the genuine discovery milestone apart
+                    // from its latest player slot. It is never rebuilt from a later Owner.
+                    const auto origin = directory / "discovery";
+                    const auto saved =
+                        load<PotStrategy>(std::filesystem::exists(origin) ? origin : directory, 0);
                     require(saved.strategy.stats().crafted == 0 && saved.strategy.stats().used == 0,
                             "Cold pot checkpoint must precede crafting and item use");
                     return checkpoint(saved);
                 }();
-                if (mode == "verify-pot") {
+                if (mode == "verify-pot" || mode == "steam-pot-verify") {
                     pot_campaign.emplace(load<PotStrategy>(directory, 1));
                     verify_pot_endpoint(*pot_campaign, before);
+                    if (steam_pot)
+                        verify_steam_pot_observer(*pot_campaign);
                     std::cout << "PASS read-only magic-pot cold-file endpoint verification"
                               << std::endl;
                 } else {
                     pot_campaign.emplace(load<PotStrategy>(directory, 0));
                     const auto first_slot = bytes(app::world_save_slot_path(directory, 0));
                     const auto first_strategy = bytes(directory / "strategy0.txt");
-                    pot_campaign->run(true, PotCampaign::Prefix::complete, limit);
-                    verify_pot_endpoint(*pot_campaign, before);
+                    if (steam_pot)
+                        verify_steam_pot_observer(*pot_campaign);
+                    const auto stop = mode == "steam-pot-month"
+                                          ? std::optional<int>{month(pot_campaign->state) + 1}
+                                          : std::nullopt;
+                    pot_campaign->run(true, PotCampaign::Prefix::complete, limit, stop);
+                    const bool complete = pot_campaign->strategy.complete(pot_campaign->state);
+                    require(complete || (stop && month(pot_campaign->state) == *stop),
+                            "Incomplete pot segment must reach its next stable business month");
+                    if (complete)
+                        verify_pot_endpoint(*pot_campaign, before);
+                    if (steam_pot)
+                        verify_steam_pot_observer(*pot_campaign);
                     pot_campaign->save(1);
                     require(bytes(app::world_save_slot_path(directory, 0)) == first_slot &&
                                 bytes(directory / "strategy0.txt") == first_strategy,
                             "Pot restart must preserve its first player checkpoint and evidence");
-                    std::cout << "PASS active magic-pot campaign: deposit, date processing, "
-                                 "discovery, cold restart, paid craft, item consumption, healing, "
-                                 "continued trade"
-                              << std::endl;
+                    if (complete)
+                        std::cout << "PASS active magic-pot campaign: deposit, date processing, "
+                                     "discovery, cold restart, paid craft, item consumption, "
+                                     "healing, continued trade"
+                                  << std::endl;
+                    else
+                        std::cout << "PASS bounded magic-pot business month; final endpoint "
+                                     "remains unverified"
+                                  << std::endl;
                 }
             }
             return 0;

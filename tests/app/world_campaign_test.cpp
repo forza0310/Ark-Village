@@ -1140,9 +1140,9 @@ int main(int argc, char **argv) {
         require(argc == 3 ||
                     (mode == "steam-observe" && std::string(argv[3]) == "--trace-activity"),
                 "--trace-activity is supported only by bounded steam-observe");
-        if (mode == "steam-natural-month" || mode == "steam-pot-equipment-month" ||
-            mode == "steam-pot-spell-month" || mode == "steam-pot-discover-month" ||
-            mode == "steam-pot-facility-month" ||
+        if (mode == "steam-natural-month" || mode == "steam-continue-month" ||
+            mode == "steam-pot-equipment-month" || mode == "steam-pot-spell-month" ||
+            mode == "steam-pot-discover-month" || mode == "steam-pot-facility-month" ||
             mode == "steam-pot-equipment-verify" || mode == "steam-continue" ||
             mode == "steam-natural-verify" || mode == "steam-inherit" ||
             mode == "steam-inherit-verify") {
@@ -1234,8 +1234,13 @@ int main(int argc, char **argv) {
                               << "; not all-content completion" << std::endl;
                 } else {
                     run.strategy.continue_campaign();
-                    ark::test::run_campaign_clear_segment(lifecycle_driver(run),
-                                                          mode == "steam-continue");
+                    const auto segment =
+                        mode == "steam-continue"
+                            ? ark::test::CampaignClearSegment::continue_whole_month
+                        : mode == "steam-continue-month"
+                            ? ark::test::CampaignClearSegment::continue_month_prefix
+                            : ark::test::CampaignClearSegment::natural_month;
+                    ark::test::run_campaign_clear_segment(lifecycle_driver(run), segment);
                 }
             }
             return 0;

@@ -322,7 +322,8 @@ void advance_campaign_clear(State &state, app::WorldSystemState &system,
     evidence = std::move(observation);
 }
 
-void run_campaign_clear_segment(CampaignClearDriver driver, bool continuation) {
+void run_campaign_clear_segment(CampaignClearDriver driver, CampaignClearSegment segment) {
+    const bool continuation = segment != CampaignClearSegment::natural_month;
     driver.evidence.verify(driver.state, driver.system);
     require(!driver.evidence.inherited() &&
                 (continuation ? driver.evidence.finished() : !driver.evidence.finished()),
@@ -336,7 +337,8 @@ void run_campaign_clear_segment(CampaignClearDriver driver, bool continuation) {
         if (ready && !continuation &&
             (driver.evidence.finished() || month(driver.state) > start_month))
             break;
-        if (ready && continuation && month(driver.state) > start_month + 1) {
+        if (ready && segment == CampaignClearSegment::continue_whole_month &&
+            month(driver.state) > start_month + 1) {
             const auto whole = driver.trade.revenue.find(start_month + 1);
             if (whole != driver.trade.revenue.end() && whole->second > 0 &&
                 driver.commands() > start_commands && driver.input_effects() > start_effects) {
@@ -346,12 +348,30 @@ void run_campaign_clear_segment(CampaignClearDriver driver, bool continuation) {
                 break;
             }
         }
+        if (ready && segment == CampaignClearSegment::continue_month_prefix &&
+            month(driver.state) > start_month) {
+            const int whole_month = month(driver.state) - 1;
+            if (whole_month > 183) {
+                const auto whole = driver.trade.revenue.find(whole_month);
+                require(
+                    whole != driver.trade.revenue.end() && whole->second > 0 &&
+                        driver.commands() > start_commands &&
+                        driver.input_effects() > start_effects,
+                    "continued monthly certification needs actual income, commands and effects");
+                driver.evidence.certify_continuation(whole_month, whole->second,
+                                                     driver.commands() - start_commands,
+                                                     driver.input_effects() - start_effects);
+            }
+            break; // The first post-clear month is a stable prefix, never premature certification.
+        }
         bounded_step(driver, rounds, start);
     }
     driver.evidence.verify(driver.state, driver.system);
     driver.save(1);
     std::cout << "PASS "
-              << (continuation                 ? "continued whole-month business"
+              << (segment == CampaignClearSegment::continue_month_prefix
+                      ? "continued monthly player prefix"
+                  : continuation               ? "continued whole-month business"
                   : driver.evidence.finished() ? "natural score and stable player save"
                                                : "natural route business month prefix")
               << "; " << driver.evidence.diagnose() << "; not all-content completion" << std::endl;

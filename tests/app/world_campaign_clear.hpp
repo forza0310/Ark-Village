@@ -63,7 +63,8 @@ struct CampaignClearDriver {
 void advance_campaign_clear(app::WorldState &state, app::WorldSystemState &system,
                             CampaignClearEvidence &evidence, bool confirm,
                             const std::filesystem::path &directory, std::ostream &log);
-void run_campaign_clear_segment(CampaignClearDriver driver, bool continuation);
+enum class CampaignClearSegment { natural_month, continue_whole_month, continue_month_prefix };
+void run_campaign_clear_segment(CampaignClearDriver driver, CampaignClearSegment segment);
 void run_campaign_inherited_segment(CampaignClearDriver driver);
 void write_campaign_clear_evidence(const std::filesystem::path &directory, int slot,
                                    const CampaignClearEvidence &evidence);

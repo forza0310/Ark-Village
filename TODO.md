@@ -19,8 +19,8 @@
 - [x] 后建商店入口保护/修复已接：原付费搬迁300G，焰火店50实际营业598G，恢复设施46的40点图纸/600G建设及库存强化；活动13的25人效果/冷载通过，见[本批](docs/stages/B1-playable-prototype.md#campaign-external-shop-access)。
 - [x] 四项条件及真实五星晋级/庆典/冷载已验，源收入73374G；配方36准确制造、领取、占卜屋2000G建设及任务库存强化已验，见[本批](docs/stages/B1-playable-prototype.md#campaign-fifth-star-pot36)。
 - [x] 配方26/防具24主角实际装配、完整后继及冷载通过；四本魔法书永久学习和当前Q均已取得，雷书12由人物8实际消费；自然到月183计分154750、系统纪录提交及玩家冷载通过，见[本批](docs/stages/B1-playable-prototype.md#campaign-natural-clear-books)。
-- [ ] 从有效月183接续：使用继续经营入口认证完整后继营业，再验继承新局建设/营业/冷载；当前phase2，尚无continued/inherited认证。药店46/占卜屋56仍待实际营业；继续27等新配方产物、活动20/29、3/17等未完项，17保留合法前缀分支。预留两月现金及图纸点数，实际施法不以学习/Q替代；40配方与775分母保留，见[经营现状](docs/stages/ACTIVE_VILLAGE_PLAN.md)。
-- [ ] 继续/继承仍按[生命周期方案](docs/MILESTONES.md#campaign-natural-lifecycle)独立认证；不得以五星、自然计分或普通月度存读代替通关后实际经营与继承消费。
+- [x] 完整月184真实营业30258G、付费装备/强化/任务胜利，月185保存/独立冷载已认证；另进程继承新局，5000G起步/600G建设面包店/实际营业545G及再次冷载通过，见[继续与继承](docs/stages/B1-playable-prototype.md#campaign-continued-months)。自然生命周期闭合不等于全775。
+- [ ] 从有效父世界月185接续：药店46仍待实际营业，占卜屋56已实际营业/后继冷载；继续27等新配方产物、活动20/29、3/17等未完项，17保留合法前缀分支。预留两月现金及图纸点数，实际施法不以学习/Q替代；40配方与775分母保留，见[经营现状](docs/stages/ACTIVE_VILLAGE_PLAN.md)。
 - [ ] 4魔法实际施放、投射/延迟伤害归因及全23职业后继等待真实局部消费事实；Q可用不等于学习/施法，见[研究请求](docs/reference/RESEARCH_REQUESTS.md#spell-consumption-receipts)。
 
 ## 表现与研究边界

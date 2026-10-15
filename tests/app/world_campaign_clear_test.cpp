@@ -33,6 +33,65 @@ std::string file_bytes(const std::filesystem::path &path) {
     require(bool(in), "cannot read " + path.u8string());
     return {std::istreambuf_iterator<char>(in), {}};
 }
+
+// Orchestration fixtures only: the source-qualified completed Owner below is reused,
+// while callbacks supply month boundaries and observations. These are not natural runs.
+void continuation_segments(const State &completed, const app::WorldSystemState &system,
+                           const CampaignClearEvidence &finished) {
+    const auto qualify = [&](CampaignClearSegment segment, int first_month, bool income, bool input,
+                             bool effect, bool accepted, int expected_steps, bool continued) {
+        auto state = completed;
+        state.scene.calendar.year = first_month / 12;
+        state.scene.calendar.month = first_month % 12;
+        auto application = system;
+        auto evidence = finished;
+        ActiveTradeEvidence trade;
+        std::uint64_t commands = 7, effects = 5;
+        int steps{}, saves{};
+        bool rejected{};
+        try {
+            run_campaign_clear_segment(
+                {state, application, evidence, trade,
+                 [&] {
+                     require(steps < 2, "continuation must stop at its qualified month boundary");
+                     if (income)
+                         trade.revenue[month(state)] += 123;
+                     commands += input ? 1 : 0;
+                     effects += effect ? 1 : 0;
+                     const auto next = month(state) + 1;
+                     state.scene.calendar.year = next / 12;
+                     state.scene.calendar.month = next % 12;
+                     ++steps;
+                 },
+                 [&](int slot) {
+                     require(slot == 1 && steps == expected_steps,
+                             "continuation saves only the expected stable output boundary");
+                     ++saves;
+                 },
+                 [] { return true; }, [&] { return effects; }, [&] { return commands; },
+                 [] { return std::string("orchestration fixture"); }},
+                segment);
+        } catch (const std::exception &) {
+            rejected = true;
+        }
+        require(rejected != accepted && saves == (accepted ? 1 : 0) &&
+                    evidence.continued() == continued && steps == expected_steps,
+                "continuation boundary must preserve income/input/effect qualifications");
+        if (!accepted)
+            require(evidence.diagnose() == finished.diagnose(),
+                    "rejected monthly segment cannot certify continuation");
+    };
+    using Segment = CampaignClearSegment;
+    qualify(Segment::continue_month_prefix, 183, false, false, false, true, 1, false);
+    qualify(Segment::continue_month_prefix, 184, true, true, true, true, 1, true);
+    for (int missing = 0; missing < 3; ++missing)
+        qualify(Segment::continue_month_prefix, 184, missing != 0, missing != 1, missing != 2,
+                false, 1, false);
+    qualify(Segment::continue_whole_month, 183, true, true, true, true, 2, true);
+    for (int missing = 0; missing < 3; ++missing)
+        qualify(Segment::continue_whole_month, 183, missing != 0, missing != 1, missing != 2, false,
+                2, false);
+}
 } // namespace
 
 // Fast source-boundary and durable-bridge qualifications; no natural campaign claim.
@@ -357,6 +416,8 @@ void campaign_clear_contract(const CampaignClearInputCheck &input_handoff) {
                             bound.diagnose() == evidence.diagnose(),
                         "positive bound sidecar cold-read retains only observed lifecycle "
                         "qualification");
+                phase = "continuation-orchestration";
+                continuation_segments(world, system, evidence);
                 auto wrong_system = cold_system;
                 wrong_system.records.facility_levels.front() ^= 1;
                 bool wrong_rejected{};

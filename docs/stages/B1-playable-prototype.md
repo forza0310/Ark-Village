@@ -1,5 +1,20 @@
 # B1：持续世界产品接入
 
+<a id="campaign-continued-months"></a>
+## 2026-10-16：通关后分月继续与占卜屋实际营业
+
+正式研究仍为5708375，五份研究在途未消费。原steam-continue从有效183需要跨至185才认证完整184月，实跑在184耗尽原360秒；失败目录`build/validation/business-liquidity/steam-continue-month184-goal-c5344e3f46504881960f6aa20c5965cf/`保留，不接纳观察档。沿已批准分月编排增加显式steam-continue-month：首次183→184只保存phase2准备前缀，后续整月必须有真实收入、命令和实际效果才能认证continued。原完整入口/断言、6分钟/10000轮及玩家schema5/独立系统2/lifecycle字段不变；复用现clear套件，以已由源消费者取得的通关Owner作明确编排夹具，覆盖不提前认证、三类缺失拒绝及完整入口仍跨两个月界，不当自然证据。
+
+三消费者目标编译通过；desktop-debug标准140/140（29.22秒，仅排simulation.startup_world_continuous_test）、headless-debug定向1/1（4.70秒）、Release定向1/1（2.84秒）通过，日志`build/validation/business-liquidity/continue-month-*`。核心DLL、CMake、资源及正常玩家档未改，完整Release标准/三个月、窗口及CI未执行，不重复无变化核心全套。
+
+183→184真实205.25秒，付费装备和库存强化后原稳定保存、独立natural-verify及栏1→0逐字节复制通过；前缀为`build/validation/business-liquidity/steam-continue-month-month184-goal-3a6107a5f6164a4eac09636b056ab994/checkpoints/month-184`。phase2/continued_month=-1保持，不能提前认证完整继续经营。冷载与183源查询对照：占卜屋56/实例166销售0→1209G，完工/flags0/入口可达保持，补齐实际营业；不由金额推顾客数或票号。药店46/实例165仍sales0。
+
+184→185真实253.21秒，完整月184营业30258G、112条命令/6次驱动实际效果；4次付费装备、6次库存强化及任务实例70胜利均有原回执。再次保存/独立冷载后continued_month=184，六行总分154750及系统继承快照保持。当前父世界前缀为`build/validation/business-liquidity/steam-continue-month-month185-goal-23b1bbe5973b4256826b5157cd601d64/checkpoints/month-185`：五星791971G/两月预算77780G、305点、人气6496、源最高月收入73374G，50/50布局/25目标营业、建设67/强化206/装备298/胜利53/活动65/授勋45。占卜屋冷载累计2418G，药店再次强化后价格663但仍sales0；强化不替代营业。各根RESULT、month/cold-load、lifecycle1与access-cold-inspect保留证据，原输入与正常玩家档保持。
+
+从有效185另进程继承，经真实start_world_draft核对通关触发时G/p；旧局资金、布局、人物成长/永久魔法、库存及策略累计不带入。新局由5000G起步，实际600G建设面包店35/实例9于(12,6)，完工后该店545G、全村1445G营业，原道具0对人物属性+4；原稳定门保存并独立inherit-verify通过，phase3/inherited_business=1。证据为`build/validation/business-liquidity/steam-inherit-month186-goal-440904d22d964ed88752ac9489af4d8d/`，实际端点month3/ticks1012/5845G、69命令；目录的month186是父前缀预标签，不是新局日期。1.81秒是小规模新局的墙钟，不能与旧村经营时长作性能比较。独立冷载和栏1→0字节复制成功，父185档保留，全部进程已终态。
+
+五星→自然计分/纪录→完整继续营业→合法继承新局建设/营业/冷载链已闭合；不代表40配方、全23职业、4魔法实际施放、全部任务/BOSS或775定义全覆盖。下一步从父185有效档推进27等配方产物、未举办活动及药店真实营业，17等装备保留合法较早前缀分支。无新代码后不重复本批已通过检查，不自动推送。
+
 <a id="campaign-natural-clear-books"></a>
 ## 2026-10-16：真实自然计分、第四本魔法书与输入交接修正
 

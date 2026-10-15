@@ -4,6 +4,7 @@
 #include "ark/simulation/village/startup_world_village_activity.hpp"
 #include "world_campaign_coverage.hpp"
 #include "world_campaign_receipts_test.hpp"
+#include "world_steam_strategy.hpp"
 #include <algorithm>
 #include <sstream>
 #include <stdexcept>
@@ -105,13 +106,20 @@ void applied_effect(const CampaignCommandConsumer &apply, int activity) {
              "delayed popularity request lost its separate queue-only stage");
         for (int fault = 0; fault < 4; ++fault) {
             auto old = *ready, bad = *completed;
-            if (fault == 0) ++bad.scene.world.popularity_queue.front()[1];
-            if (fault == 1) ++bad.quarter_counter;
-            if (fault == 2) ++bad.popularity;
-            if (fault == 3) old.page_counters.at(top(old).id) = 119;
+            if (fault == 0)
+                ++bad.scene.world.popularity_queue.front()[1];
+            if (fault == 1)
+                ++bad.quarter_counter;
+            if (fault == 2)
+                ++bad.popularity;
+            if (fault == 3)
+                old.page_counters.at(top(old).id) = 119;
             bool refused{};
-            try { (void)activity_popularity_queue_receipt(old, bad); }
-            catch (const std::exception &) { refused = true; }
+            try {
+                (void)activity_popularity_queue_receipt(old, bad);
+            } catch (const std::exception &) {
+                refused = true;
+            }
             need(refused, "corrupt/early delayed activity completion was certified");
         }
         return;
@@ -174,8 +182,7 @@ void applied_effect(const CampaignCommandConsumer &apply, int activity) {
     // Use raw54's source page consumer to initialize its display before transport input;
     // a full-world update would incorrectly require routing metadata for these probes.
     auto initialized = sim::update_startup_world_village_activity_page(display, top(display).id);
-    need(initialized.has_value(),
-         "raw54 first source update rejected");
+    need(initialized.has_value(), "raw54 first source update rejected");
     display = std::move(*initialized);
     app::WorldCommand close;
     close.kind = app::WorldCommandKind::village_activity_action;
@@ -187,9 +194,105 @@ void applied_effect(const CampaignCommandConsumer &apply, int activity) {
                  completed->scene.world.world.ai.growth.at(0).definition.extra,
          "raw54 repeated an effect or an applied receipt");
 }
+void pot_expansion_effect(const CampaignCommandConsumer &apply, int activity) {
+    auto state = initial_world();
+    state.rank = 2;
+    // Source-menu qualification only. Natural opening/payment is independently
+    // exercised from the month161 player prefix; no player save uses this setup.
+    state.scripts.user_flags |= 1U;
+    state.legacy_n[11] = activity - 27;
+    state.village_points = state.rules->activities.at(activity).parameters[4];
+    state.quarter_counter = 1;
+    for (auto &[id, definition] : state.scripts.activities)
+        definition.status = id == activity ? 1 : 0;
+    SteamVillageStrategy observer;
+    observer.reconcile(state);
+    std::vector<CampaignReceipt> receipts;
+    std::optional<State> ready, completed;
+    std::optional<SteamVillageStrategy> ready_observer;
+    app::WorldCommand finish;
+    bool early{};
+    for (int step = 0; step < 300 && !completed; ++step) {
+        app::WorldCommand command;
+        command.page = top(state).id;
+        bool send{};
+        if (top(state).kind == ref::WorldScriptPageKind::scene) {
+            command.kind = app::WorldCommandKind::open_village_activities;
+            send = true;
+        } else if (top(state).kind == ref::WorldScriptPageKind::dialogue) {
+            command.kind = app::WorldCommandKind::acknowledge_page;
+            send = true;
+        } else if (const auto view =
+                       sim::inspect_startup_world_village_activity_page(state, command.page)) {
+            command.kind = app::WorldCommandKind::village_activity_action;
+            command.village_activity_action = sim::StartupVillageActivityAction::confirm;
+            send = view->raw != 53 || view->counter >= 120 || !early;
+            if (view->raw == 53 && view->counter < 120)
+                early = true;
+            if (view->raw == 53 && view->counter >= 120) {
+                ready = state;
+                ready_observer = observer;
+                finish = command;
+            }
+        }
+        if (send) {
+            const auto before = state;
+            const auto result = apply(state, command);
+            need(result.outcome == app::WorldCommandOutcome::applied,
+                 "pot expansion input rejected");
+            observer.observe(before, command, result, state,
+                             [&](const auto &receipt) { receipts.push_back(receipt); });
+            if (ready)
+                completed = state;
+            else
+                need(state.legacy_n[11] == activity - 27,
+                     "payment/early confirmation expanded the pot");
+        }
+        if (!completed) {
+            auto update = sim::prepare_startup_world_runtime(state);
+            need(update.candidate && sim::update_startup_world_render_cache(*update.candidate),
+                 "pot expansion source update rejected");
+            state = std::move(*update.candidate);
+        }
+    }
+    need(ready && completed && ready_observer && early && receipts.size() == 2 &&
+             receipts[0].kind == CampaignReceiptKind::activity_points_paid &&
+             receipts[0].before[0] == 100 && receipts[0].after[0] == 0 &&
+             receipts[1].kind == CampaignReceiptKind::activity_pot_expanded &&
+             receipts[1].definition == activity && receipts[1].before[0] == activity - 27 &&
+             receipts[1].after[0] == activity - 26 &&
+             receipts[1].after[1] - receipts[1].before[1] == 10 &&
+             completed->quarter_counter == 0 && completed->village_points == 0,
+         "pot expansion needs separate payment and actual source53 capacity effect");
+    app::WorldCommandResult applied;
+    applied.outcome = app::WorldCommandOutcome::applied;
+    for (int fault = 0; fault < 4; ++fault) {
+        auto bad = *completed;
+        if (fault == 0)
+            bad.legacy_n[11] = ready->legacy_n[11];
+        if (fault == 1)
+            bad.village_points = ready->village_points + 1;
+        if (fault == 2)
+            bad.quarter_counter = ready->quarter_counter;
+        if (fault == 3)
+            ++bad.activity_counts.at(activity);
+        auto candidate_observer = *ready_observer;
+        std::vector<CampaignReceipt> rejected;
+        bool refused{};
+        try {
+            candidate_observer.observe(*ready, finish, applied, bad,
+                                       [&](const auto &receipt) { rejected.push_back(receipt); });
+        } catch (const std::exception &) {
+            refused = true;
+        }
+        need(refused && rejected.empty(), "invalid pot effect must not publish receipts");
+    }
+}
 } // namespace
 void campaign_village_effect_contract(const CampaignCommandConsumer &apply) {
     for (const int activity : {0, 4, 7, 19})
         applied_effect(apply, activity);
+    for (const int activity : {28, 29})
+        pot_expansion_effect(apply, activity);
 }
 } // namespace ark::test

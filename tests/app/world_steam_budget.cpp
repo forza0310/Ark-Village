@@ -1,10 +1,10 @@
 #include "world_steam_budget.hpp"
-#include "world_steam_layout.hpp"
-#include "world_steam_people.hpp"
 #include "../support/world_fixture.hpp"
 #include "ark/simulation/facilities/startup_world_building.hpp"
 #include "ark/simulation/village/rules/world_calendar_tasks.hpp"
 #include "ark/simulation/village/rules/world_village_activity.hpp"
+#include "world_steam_layout.hpp"
+#include "world_steam_people.hpp"
 #include <algorithm>
 #include <sstream>
 #include <stdexcept>
@@ -118,10 +118,10 @@ std::optional<int> steam_required_facility(const State &s) {
     if (terms == table.end())
         return {};
     for (const auto &term : terms->second)
-        if (term.type == 3 && std::none_of(s.scene.world.world.facilities.begin(),
-                                          s.scene.world.world.facilities.end(), [&](const auto &f) {
-                                              return f.second.placement.definition_id == term.threshold;
-                                          }))
+        if (term.type == 3 &&
+            std::none_of(
+                s.scene.world.world.facilities.begin(), s.scene.world.world.facilities.end(),
+                [&](const auto &f) { return f.second.placement.definition_id == term.threshold; }))
             return term.threshold;
     return {};
 }
@@ -142,10 +142,18 @@ std::optional<SteamProgressPointGoal> steam_progress_point_goal(const State &s) 
     if (s.scripts.activities.at(21).status == 1 && s.activity_counts.at(21) == 0)
         return SteamProgressPointGoal{SteamProgressPurchase::activity, 21,
                                       s.rules->activities.at(21).parameters[4]};
+    // Formal MAGIC_POT: 28/29 are separately opened type5 consumers. Protect
+    // their first actual quote from optional events; raw53 still owns the level.
+    for (const int id : {28, 29})
+        if (s.scripts.activities.at(id).status == 1 && s.activity_counts.at(id) == 0 &&
+            s.legacy_n[11] < id - 26)
+            return SteamProgressPointGoal{SteamProgressPurchase::activity, id,
+                                          s.rules->activities.at(id).parameters[4]};
     return {};
 }
-std::optional<SteamShopExpansion> steam_select_shop_expansion(
-    const State &s, const std::vector<int> &entries, std::int64_t cash_budget) {
+std::optional<SteamShopExpansion> steam_select_shop_expansion(const State &s,
+                                                              const std::vector<int> &entries,
+                                                              std::int64_t cash_budget) {
     std::optional<SteamShopExpansion> best;
     for (const int id : entries) {
         if (id == -1 || id == -2)
@@ -155,9 +163,8 @@ std::optional<SteamShopExpansion> steam_select_shop_expansion(
         const auto &d = s.rules->facilities.at(id);
         if (d.kind != 3 || d.detail == 1 || d.detail == 4 || d.detail == 5 || d.detail == 6 ||
             std::any_of(s.scene.world.world.facilities.begin(),
-                        s.scene.world.world.facilities.end(), [&](const auto &f) {
-                            return f.second.placement.definition_id == id;
-                        }))
+                        s.scene.world.world.facilities.end(),
+                        [&](const auto &f) { return f.second.placement.definition_id == id; }))
             continue;
         const auto quote = sim::startup_world_build_quote(s, id);
         if (!quote || quote->definition_attributes[0] <= 0 ||
@@ -167,10 +174,9 @@ std::optional<SteamShopExpansion> steam_select_shop_expansion(
                                         quote->definition_attributes[0], quote->construction_cost,
                                         quote->definition_attributes[3]};
         // Stable ties prefer the lower recurring/point cost, then source identity.
-        if (!best || std::make_tuple(choice.price, -choice.maintenance, -choice.points,
-                                     -choice.definition) >
-                         std::make_tuple(best->price, -best->maintenance, -best->points,
-                                         -best->definition))
+        if (!best ||
+            std::make_tuple(choice.price, -choice.maintenance, -choice.points, -choice.definition) >
+                std::make_tuple(best->price, -best->maintenance, -best->points, -best->definition))
             best = choice;
     }
     return best;
@@ -184,9 +190,10 @@ int steam_point_reserve(const State &s, const std::vector<int> *offered_activiti
     for (const auto &target : steam_village_layout()) {
         const bool inside = steam_layout_inside_fence(s, target);
         needs_expansion |= !inside;
-        const bool buildable = std::any_of(buildings->begin(), buildings->end(), [&](const auto &group) {
-            return std::find(group.begin(), group.end(), target.definition) != group.end();
-        });
+        const bool buildable =
+            std::any_of(buildings->begin(), buildings->end(), [&](const auto &group) {
+                return std::find(group.begin(), group.end(), target.definition) != group.end();
+            });
         const auto &definition = s.rules->facilities.at(target.definition);
         if (target.role != SteamLayoutRole::residence && inside && !buildable &&
             definition.unlock_rank >= 0 && definition.unlock_rank <= s.rank)
@@ -198,10 +205,12 @@ int steam_point_reserve(const State &s, const std::vector<int> *offered_activiti
             std::vector<ref::WorldVillageActivityDefinition> definitions;
             for (const auto &a : s.rules->activities)
                 definitions.push_back({a.identity, s.scripts.activities.at(a.identity).status,
-                                       s.activity_flags.at(a.identity), s.activity_counts.at(a.identity),
-                                       a.parameters[2], a.parameters[3], a.parameters[4], a.parameters[5]});
+                                       s.activity_flags.at(a.identity),
+                                       s.activity_counts.at(a.identity), a.parameters[2],
+                                       a.parameters[3], a.parameters[4], a.parameters[5]});
             const auto available = ref::catalogue_world_village_activities(definitions);
-            require(available.has_value(), "point reserve needs the source activity qualifications");
+            require(available.has_value(),
+                    "point reserve needs the source activity qualifications");
             queried = *available;
             offered_activities = &queried;
         }
@@ -225,8 +234,8 @@ int steam_point_reserve(const State &s, const std::vector<int> *offered_activiti
         for (const auto &d : s.rules->facilities)
             if (s.facility_presence.at(d.id) == 0 && d.unlock_rank >= 0 && d.unlock_rank <= s.rank)
                 prospective.push_back(d.id);
-        if (const auto shop = steam_select_shop_expansion(
-                s, prospective, cash(s) - steam_operating_reserve(s)))
+        if (const auto shop =
+                steam_select_shop_expansion(s, prospective, cash(s) - steam_operating_reserve(s)))
             reserve = std::max(reserve, shop->points);
     }
     return reserve;
@@ -321,12 +330,35 @@ void steam_budget_contract() {
     require(museum_activity && museum_activity->kind == SteamProgressPurchase::activity &&
                 museum_activity->definition == 21 && museum_activity->points == 160 &&
                 progression.village_points < museum_activity->points,
-            "the open unheld museum activity must preserve its real160-point budget while unaffordable");
+            "the open unheld museum activity must preserve its real160-point budget while "
+            "unaffordable");
     progression.activity_counts.at(21) = 1;
     require(!steam_progress_point_goal(progression),
             "a held museum activity must release its reserved points");
+    for (const int id : {28, 29}) {
+        progression.scripts.activities.at(id).status = 1;
+        progression.legacy_n[11] = id - 27;
+        const auto upgrade = steam_progress_point_goal(progression);
+        require(upgrade && upgrade->kind == SteamProgressPurchase::activity &&
+                    upgrade->definition == id && upgrade->points == 100 &&
+                    steam_point_reserve(progression) >= 100,
+                "an open unheld pot upgrade must protect its actual100-point quote");
+        progression.activity_counts.at(id) = 1;
+        require(!steam_progress_point_goal(progression),
+                "source payment releases the goal without pretending raw53 has expanded the pot");
+        progression.activity_counts.at(id) = 0;
+        ++progression.legacy_n[11];
+        require(!steam_progress_point_goal(progression),
+                "an already sufficient pot level must not reserve a repeated upgrade");
+        progression.scripts.activities.at(id).status = 0;
+        --progression.legacy_n[11];
+        require(!steam_progress_point_goal(progression),
+                "experience or prospective capacity must not invent an unopened activity");
+        progression.activity_counts.at(id) = 1;
+    }
     progression.rank = 3;
-    require(!steam_progress_point_goal(progression), "rank4 input goals must not be injected into a rank3 town");
+    require(!steam_progress_point_goal(progression),
+            "rank4 input goals must not be injected into a rank3 town");
     // Cached raw27 quotes and strength are explicit player-choice qualifications.
     // Frozen task rules own the fee formula, reset effects and full-party rejection.
     auto extras = s;
@@ -406,10 +438,11 @@ void steam_budget_contract() {
     commerce_page.legacy_page = 85;
     const auto commerce_inserted =
         ref::prepare_world_script_page(sim::startup_world_runtime_scripts(offers), commerce_page);
-    require(commerce_inserted.candidate &&
-                sim::write_startup_world_runtime_scripts(offers, commerce_inserted.candidate->state) &&
-                sim::initialize_startup_world_commerce_pages(offers),
-            "shop expansion qualification needs the real frozen85 entries");
+    require(
+        commerce_inserted.candidate &&
+            sim::write_startup_world_runtime_scripts(offers, commerce_inserted.candidate->state) &&
+            sim::initialize_startup_world_commerce_pages(offers),
+        "shop expansion qualification needs the real frozen85 entries");
     const auto offer_page = offers.scripts.pages.back().id;
     const auto &shop_offers = offers.commerce_page_lists.at(offer_page);
     const auto expansion = steam_select_shop_expansion(offers, shop_offers, 10000);
@@ -436,12 +469,13 @@ void steam_budget_contract() {
         sim::startup_world_runtime_scripts(restricted), commerce_page);
     require(restricted_inserted.candidate &&
                 sim::write_startup_world_runtime_scripts(restricted,
-                                                        restricted_inserted.candidate->state) &&
+                                                         restricted_inserted.candidate->state) &&
                 sim::initialize_startup_world_commerce_pages(restricted),
             "restricted expansion qualification needs a newly frozen source85 offer");
     const auto &restricted_entries =
         restricted.commerce_page_lists.at(restricted.scripts.pages.back().id);
-    const auto restricted_choice = steam_select_shop_expansion(restricted, restricted_entries, 10000);
+    const auto restricted_choice =
+        steam_select_shop_expansion(restricted, restricted_entries, 10000);
     require(std::find(restricted_entries.begin(), restricted_entries.end(), 54) ==
                     restricted_entries.end() &&
                 restricted_choice && restricted_choice->definition != 54,

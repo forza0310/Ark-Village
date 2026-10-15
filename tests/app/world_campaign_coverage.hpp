@@ -56,7 +56,8 @@ enum class CampaignReceiptKind {
     profession_set,
     profession_stats_applied,
     spell_available,
-    item_spell_learned
+    item_spell_learned,
+    activity_pot_expanded
 };
 struct CampaignReceipt {
     CampaignReceiptKind kind{};

@@ -217,7 +217,7 @@ function report(rows) {
 }
 // Receipt values describe the already-asserted observation; no business algorithm is run here.
 const receiptStages = {
-  points_paid: ['village_activity', 'profession'], effect_queued: 'village_activity', pot_opened: 'village_activity',
+  points_paid: ['village_activity', 'profession'], effect_queued: 'village_activity', pot_opened: 'village_activity', pot_expanded: 'village_activity',
   satisfaction_applied: 'village_activity', attribute_applied_to_human: 'village_activity', bound_use: 'item',
   attribute_applied: 'item', obtained: 'item', hp_restored: 'item', permanent_spell_learned: 'item', discovered: 'magic_recipe',
   elements_paid_and_crafted: 'magic_recipe', blueprint_points_paid: 'facility',
@@ -248,6 +248,14 @@ function* receipts(text, phase) {
         [numbers[6], numbers[10]].every(v => v === 0 || v === 1) &&
         numbers[7] === id - 32 && numbers[11] === numbers[7],
       'receipt permanent book learning/inventory/source slot; Q is separate');
+    if (stage === 'pot_expanded')
+      need([28,29].includes(id) && numbers[2] === -1 && numbers[3] === 0 &&
+        numbers[4] >= 1 && numbers[4] < 3 && numbers[8] === numbers[4] + 1 &&
+        numbers[5] === [10,10,20,30][numbers[4]] &&
+        numbers[9] === [10,10,20,30][numbers[8]] &&
+        numbers[6] > 0 && numbers[10] === numbers[6] - 1 &&
+        numbers[7] > 0 && numbers[11] === numbers[7],
+      'receipt pot expansion/source level/capacity/quarter binding');
     if (['reward_equipped', 'combat_attributes_applied', 'medal_awarded', 'home_admitted', 'home_tax_collected'].includes(stage))
       need(numbers[2] >= 0 && numbers[2] < 25, 'receipt source human binding');
     if (['hp_restored', 'construction_paid', 'reward_equipped', 'combat_attributes_applied', 'home_admitted', 'victory_committed', 'facility_bound_use', 'item_improvement_applied', 'task_loot_claimed', 'retirement_cash_committed', 'retirement_cash_month_reset'].includes(stage))
@@ -448,6 +456,16 @@ function coverageContract(rows) {
       'permanent learning with still-stale Q rejected');
     for (const [field, value] of [[2,'31'],[6,'25'],[7,'0'],[8,'0'],[13,'0'],[10,'2'],[15,'4']]) {
       const invalid = [...learned]; invalid[field] = value;
+      expectReject(() => [...receipts(invalid.join('\t'), 'contract')]);
+    }
+  }
+  for (const [id,level] of [28,29].flatMap(id => [1,2].map(level => [id,level]))) {
+    const expanded = ['COVERAGE_RECEIPT', 'activity', String(id), 'pot_expanded',
+      '2', '1', '-1', '0', String(level), String([10,10,20,30][level]), '2', '1',
+      String(level + 1), String([10,10,20,30][level + 1]), '1', '1'];
+    need([...receipts(expanded.join('\t'), 'contract')].length === 1, 'pot expansion rejected');
+    for (const [field,value] of [[2,'30'],[8,'0'],[8,'3'],[13,'999'],[14,'2'],[15,'2']]) {
+      const invalid = [...expanded]; invalid[field] = value;
       expectReject(() => [...receipts(invalid.join('\t'), 'contract')]);
     }
   }

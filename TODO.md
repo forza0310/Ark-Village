@@ -11,9 +11,10 @@
 - [x] 玩家两栏schema5/独立系统2、正常保存桥及维护回放已接；旧身份拒绝，月度真实经营独立冷载和字节复制持续验证。周期扣费可负、主动支付仍核余额，见[B1](docs/stages/B1-playable-prototype.md#campaign-negative-balance)。
 - [x] 真实转职、任务库存强化、额外募集/入住及预算接续已接；修复入住后父74退休与世界恢复，实际扩张至围栏2、18住户冷载后均可达，见[本批](docs/stages/B1-playable-prototype.md#campaign-residence-successors)。
 - [x] 魔法壶实际消费：药品7治疗、装备22/24/31/15/30/25装配/属性、书10/11永久学习及各自后继营业/冷载通过；已知不倒填发现。逐配方发现、未完待料冷载后继续处理和严格装备端点归档已接，见[本批及历史](docs/stages/B1-playable-prototype.md#campaign-pot-discovery)。
+- [x] 壶升级点数预算及独立效果回执已接；活动28真实付100点、壶级1→2/容量10→20、完整后继营业及两次保存冷载通过，见[本批](docs/stages/B1-playable-prototype.md#campaign-pot-upgrade-budget)。
 
 - [ ] 按[全解锁合同](docs/stages/ACTIVE_VILLAGE_PLAN.md#full-unlock-campaign)逐定义覆盖取得、消费、实际效果与后继，保留775分母；代表样例、仅解锁或日期推进不算全覆盖。
-- [ ] 从有效月161接续：壶经验30已实际发现5/8/11/16/35，除书11外的新产物消费仍待；核活动28/29点数保留及升级、设施配方35完整制造/建设链。冰书学习已持久但Q仍0000，等待原后继重算，不强制刷新。预留两月现金及图纸预算，焰火店50营业仍待，五星收入还差5126G；40配方与775分母均保留，见[经营现状](docs/stages/ACTIVE_VILLAGE_PLAN.md)。
+- [ ] 从有效月163接续：壶经验30/等级2，已发现5/8/11/16/35；除书11外的新产物消费、活动29及设施配方35完整制造/领取/建设链仍待。冰书此前冷载学习位已持久但Q仍0000，等待原后继重算，不强制刷新。预留两月现金及图纸预算，焰火店50营业仍待，五星收入还差5126G；40配方与775分母均保留，见[经营现状](docs/stages/ACTIVE_VILLAGE_PLAN.md)。
 - [ ] 主动计分/继续/继承driver和短合同已接，实际生命周期仍phase0；继续自然经营到真实计分，再验完整继续/继承，不以临近日期夹具称自然通关，见[生命周期方案](docs/MILESTONES.md#campaign-natural-lifecycle)。
 - [ ] 4魔法实际施放、投射/延迟伤害归因及全23职业后继等待真实局部消费事实；Q可用不等于学习/施法，见[研究请求](docs/reference/RESEARCH_REQUESTS.md#spell-consumption-receipts)。
 

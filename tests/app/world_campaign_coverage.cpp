@@ -63,6 +63,8 @@ ReceiptIdentity receipt_identity(CampaignReceiptKind kind) {
         return {"facility", "construction_paid", 85, false, true};
     case Kind::activity_pot_opened:
         return {"activity", "pot_opened", 31, false};
+    case Kind::activity_pot_expanded:
+        return {"activity", "pot_expanded", 31, false};
     case Kind::weapon_reward_equipped:
         return {"weapon", "reward_equipped", 33, true, true, 25};
     case Kind::armour_reward_equipped:
@@ -633,6 +635,7 @@ void campaign_coverage_contract() {
         {CampaignReceiptKind::facility_blueprint_claimed, "facility", "blueprint_claimed", 85, 0},
         {CampaignReceiptKind::facility_construction_paid, "facility", "construction_paid", 85, 1},
         {CampaignReceiptKind::activity_pot_opened, "activity", "pot_opened", 31, 0},
+        {CampaignReceiptKind::activity_pot_expanded, "activity", "pot_expanded", 31, 0},
         {CampaignReceiptKind::activity_popularity_queued, "activity", "popularity_queued", 31, 0},
         {CampaignReceiptKind::activity_satisfaction_applied, "activity", "satisfaction_applied", 31,
          0, 24},

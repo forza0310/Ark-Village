@@ -1,4 +1,5 @@
 #include "world_steam_strategy.hpp"
+#include "ark/simulation/facilities/rules/world_magic_pot.hpp"
 #include "ark/simulation/village/startup_world_village_activity.hpp"
 #include "support/world_fixture.hpp"
 #include "world_steam_budget.hpp"
@@ -103,7 +104,8 @@ void SteamVillageStrategy::reconcile(const State &s) {
     require(validate_steam_village_layout(s) == ref::GeometryError::none,
             "Steam blueprint conflicts with current product footprint geometry");
     require(!s.build_definition && s.build_mode == 0, "cannot reload a partial layout transaction");
-    require(operation_ == Operation::none && !discover_shop_ && !people_.active() && !income_.active(),
+    require(operation_ == Operation::none && !discover_shop_ && !people_.active() &&
+                !income_.active(),
             "controller has unfinished actions at player restore");
     if (stats_.initial_month < 0) {
         stats_.initial_month = month(s);
@@ -442,12 +444,14 @@ std::optional<Command> SteamVillageStrategy::next(const State &s) {
                 // Optional inexpensive events must not drain a pending unlock budget.
                 // Missing this quarter's target means waiting for its real source offer.
                 if (progress->kind == SteamProgressPurchase::activity) {
-                    const auto target = std::find(v->entries.begin(), v->entries.end(), progress->definition);
+                    const auto target =
+                        std::find(v->entries.begin(), v->entries.end(), progress->definition);
                     if (target == v->entries.end() || s.village_points < progress->points ||
                         !steam_optional_activity_affordable(s))
                         return activity(p.id, Activity::cancel);
                     const int index = static_cast<int>(target - v->entries.begin());
-                    return activity(p.id, v->selection == index ? Activity::confirm : Activity::select, index);
+                    return activity(
+                        p.id, v->selection == index ? Activity::confirm : Activity::select, index);
                 }
             }
             for (int n = 0; n < static_cast<int>(v->entries.size()); ++n) {
@@ -508,12 +512,11 @@ std::optional<Command> SteamVillageStrategy::next(const State &s) {
     if (raw == 25) {
         // The source allows nine members. Default recruits can be insufficient for
         // later encounters; buy actual extra places while retaining the cash buffer.
-        const bool candidate = std::any_of(s.human_presence.begin(), s.human_presence.end(),
-                                          [&](const auto &human) {
-            return human.second != 0 &&
-                   std::find(s.participants.begin(), s.participants.end(), human.first) ==
-                       s.participants.end();
-        });
+        const bool candidate =
+            std::any_of(s.human_presence.begin(), s.human_presence.end(), [&](const auto &human) {
+                return human.second != 0 && std::find(s.participants.begin(), s.participants.end(),
+                                                      human.first) == s.participants.end();
+            });
         return task(p.id, !party_budget_exhausted_ && s.participants.size() < 9 && candidate
                               ? Task::add_member
                               : Task::depart);
@@ -770,6 +773,30 @@ void SteamVillageStrategy::observe(const State &before, const Command &c,
                                {before.scripts.user_flags},
                                {after.scripts.user_flags}});
         }
+        if (view->raw == 53 && view->counter >= 120 && view->activity &&
+            before.rules->activities.at(*view->activity).parameters[2] == 5 &&
+            top(after).id != c.page && before.legacy_n[11] < 3) {
+            const int id = *view->activity;
+            const auto old_capacity = ref::world_magic_pot_capacity(before.legacy_n[11]);
+            const auto new_capacity = ref::world_magic_pot_capacity(after.legacy_n[11]);
+            auto expected = before.legacy_n;
+            ++expected[11];
+            require(old_capacity && new_capacity && after.legacy_n == expected &&
+                        after.quarter_counter == before.quarter_counter - 1 &&
+                        held(before, id) == held(after, id) &&
+                        before.village_points == after.village_points &&
+                        cash(before) == cash(after),
+                    "pot expansion must apply once at completed53, after its separate payment");
+            pending.push_back(
+                {CampaignReceiptKind::activity_pot_expanded,
+                 id,
+                 after.simulation_steps,
+                 c.page,
+                 0,
+                 -1,
+                 {before.legacy_n[11], *old_capacity, before.quarter_counter, held(before, id)},
+                 {after.legacy_n[11], *new_capacity, after.quarter_counter, held(after, id)}});
+        }
     }
     observe_world(before, after);
     if (const auto victory = task_victory_receipt(before, after, departed_task_))
@@ -972,8 +999,8 @@ void steam_strategy_contract() {
     budget.quarter_counter = 0; // Post-event menu qualification, not an effect grant.
     const auto exhausted = sim::startup_world_state_digest(budget);
     choice = player.next(budget);
-    require(choice && choice->kind == Kind::village_activity_action &&
-                choice->page == page && choice->village_activity_action == Activity::cancel &&
+    require(choice && choice->kind == Kind::village_activity_action && choice->page == page &&
+                choice->village_activity_action == Activity::cancel &&
                 sim::startup_world_state_digest(budget) == exhausted,
             "exhausted quarterly slots must close the catalogue without retrying denial50");
 
@@ -991,13 +1018,15 @@ void steam_strategy_contract() {
             "a held/catalogue-excluded target must not be confirmed through a fictitious row");
     budget.activity_page_lists.at(page).push_back(19); // Explicit initialized offer qualification.
     choice = player.next(budget);
-    require(choice && choice->village_activity_action == Activity::select && choice->selection == 2,
-            "the source-cached fireworks row must be selected once the actual150-point budget exists");
+    require(
+        choice && choice->village_activity_action == Activity::select && choice->selection == 2,
+        "the source-cached fireworks row must be selected once the actual150-point budget exists");
     budget.activity_counts.at(19) = 1;
     budget.fence_level = 2; // Museum-budget fixture: the copied layout already fits.
     choice = player.next(budget);
-    require(choice && choice->village_activity_action == Activity::cancel,
-            "after the first fireworks the museum blueprint budget must survive cheaper activities");
+    require(
+        choice && choice->village_activity_action == Activity::cancel,
+        "after the first fireworks the museum blueprint budget must survive cheaper activities");
 
     // Explicit page/quote qualifications test the player policy. The actual hire
     // transaction and nine-person source limit belong to the frozen task suite.

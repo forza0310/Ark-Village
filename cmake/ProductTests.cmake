@@ -54,6 +54,7 @@ ark_test_executable(ark_world_campaign_tests SOURCES tests/app/world_campaign_te
     tests/app/world_campaign_receipts_test.cpp
     tests/app/world_campaign_village_receipts_test.cpp
     tests/app/world_steam_layout.cpp tests/app/world_steam_people.cpp tests/app/world_steam_strategy.cpp
+    tests/app/world_steam_housing.cpp
     tests/app/world_steam_budget.cpp tests/app/world_steam_professions.cpp
     tests/app/world_active_income_strategy.cpp
     LIBRARIES ark_world_session ark_world_hash ark_world_persistence)

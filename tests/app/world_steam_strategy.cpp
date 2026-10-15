@@ -239,8 +239,14 @@ std::optional<Command> SteamVillageStrategy::layout(const State &s) {
     const auto paths = ref::search_legacy_map(m, sim::startup_evidence().spawn_points.at(0));
     require(paths.field.has_value(), "layout route field missing");
     const auto road_quote = sim::startup_world_build_quote(s, 18);
+    // The copied village ends at row10. Later eligible residents need a paid,
+    // connected frontier beyond it; keep the old extent until that demand exists.
+    const bool housing_frontier =
+        steam_reference_layout_complete(s) && !steam_extra_recruitment_plot(s) &&
+        SteamPeopleStrategy::eligible_homeless(s, steam_residence_plot_reserve(s)).has_value();
+    const int road_limit = housing_frontier ? bounds[0].y - 1 : std::min(bounds[0].y - 1, 10);
     if (road_quote && funds >= road_quote->construction_cost)
-        for (int y = std::max(bounds[1].y + 1, 3); y <= std::min(bounds[0].y - 1, 10); ++y)
+        for (int y = std::max(bounds[1].y + 1, 3); y <= road_limit; ++y)
             for (int x = std::max(bounds[0].x + 1, 3); x <= std::min(bounds[1].x - 1, 20); ++x) {
                 const Position cell{x, y};
                 const auto &tile = m.cells.at(y * m.width + x);
@@ -354,35 +360,8 @@ std::optional<Command> SteamVillageStrategy::next(const State &s) {
             }
         if (stats_.ticks >= next_management_) {
             next_management_ = stats_.ticks + 100;
-            if (const auto person =
-                    SteamPeopleStrategy::eligible_homeless(s, steam_residence_reserve(s))) {
-                const bool destination =
-                    std::any_of(steam_village_layout().begin(), steam_village_layout().end(),
-                                [&](const auto &t) {
-                                    return t.role == SteamLayoutRole::residence &&
-                                           steam_layout_inside_fence(s, t) &&
-                                           !steam_layout_match(s, t) &&
-                                           steam_layout_blockers(s, t).empty();
-                                });
-                for (const auto &[id, f] : s.scene.world.world.facilities) {
-                    if (!destination || f.placement.definition_id != 24 || f.status != 1)
-                        continue;
-                    const auto plot_anchor = f.placement.anchor;
-                    const bool home_goal =
-                        std::any_of(steam_village_layout().begin(), steam_village_layout().end(),
-                                    [&](const auto &t) {
-                                        return t.role == SteamLayoutRole::recruitment &&
-                                               t.anchor == plot_anchor;
-                                    });
-                    if (!home_goal)
-                        continue;
-                    recruitment_ = id;
-                    resident_ = *person;
-                    auto c = cmd(Kind::open_facility);
-                    c.facility = id;
-                    return c;
-                }
-            }
+            if (const auto home = housing(s, false))
+                return home;
             const auto value = people_.next(s, steam_point_reserve(s), reserve(s), true);
             if (value.handled)
                 return value.command;
@@ -392,6 +371,8 @@ std::optional<Command> SteamVillageStrategy::next(const State &s) {
         }
         if (stats_.ticks >= next_layout_) {
             next_layout_ = stats_.ticks + 40;
+            if (const auto home = housing(s, true))
+                return home;
             if (const auto value = layout(s))
                 return value;
         }
@@ -471,7 +452,8 @@ std::optional<Command> SteamVillageStrategy::next(const State &s) {
             }
             for (int n = 0; n < static_cast<int>(v->entries.size()); ++n) {
                 const auto &a = s.rules->activities.at(v->entries[n]);
-                const bool expansion = a.parameters[2] == 3 && outside_targets(s);
+                const bool expansion = a.parameters[2] == 3 &&
+                                       (outside_targets(s) || steam_housing_expansion_needed(s));
                 if (a.parameters[2] == 3 && !expansion)
                     continue;
                 if (!expansion && !steam_optional_activity_affordable(s))

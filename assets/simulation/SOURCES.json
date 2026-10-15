@@ -3008,8 +3008,12 @@
       "source": "research/dungeon_village_1/prototype/src/startup_world_building.cpp",
       "source_sha256": "3cace9f72afd0592acf83ab8cbdbd5740de8c755793b17a0e147f76cf4952795",
       "source_bytes": 82641,
-      "sha256": "d88c596fb3ba9a1478d9622fd29b074dcd498e45ed89e2914e89dccf92ed9844",
-      "bytes": 82724
+      "sha256": "703116a8fbae630c92d99b4935326543aa56d6027806785af483fc7ab7da81df",
+      "bytes": 84334,
+      "product_patch": {
+        "imported_sha256": "d88c596fb3ba9a1478d9622fd29b074dcd498e45ed89e2914e89dccf92ed9844",
+        "reason": "Legal residence admission validates the bound raw74 before consuming its recruitment plot, then atomically retires that closed detail and its transient payload. Preserve strict validation for corrupt live/closed pages, source fees, RNG, full candidate rollback and player schema5. Regression resumes the real world after admission and rejects damaged parents unchanged; see docs/reference/RESEARCH_REQUESTS.md#residence-detail-retirement."
+      }
     },
     {
       "file": "src/simulation/village/startup_world_clear_score.cpp",

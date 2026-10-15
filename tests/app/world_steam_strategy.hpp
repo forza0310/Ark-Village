@@ -46,6 +46,7 @@ class SteamVillageStrategy {
     ActiveIncomeStrategy income_{3600, true};
     std::set<std::uint64_t> won_tasks_;
     std::set<std::size_t> traded_slots_;
+    std::optional<app::WorldCommand> housing(const app::WorldState &state, bool may_build);
     std::optional<app::WorldCommand> layout(const app::WorldState &state);
     void observe_world(const app::WorldState &before, const app::WorldState &after);
 };

@@ -9,7 +9,13 @@
 namespace ark::test {
 // Test-player budgets read the real Owner and quotes; they never change source fees.
 std::int64_t steam_operating_reserve(const app::WorldState &state);
-std::int64_t steam_residence_reserve(const app::WorldState &state);
+// For an extra plot, remove its retiring upkeep from the post-admission budget.
+// The reference route keeps its original buffer because it rebuilds the fixed plot.
+std::int64_t steam_residence_reserve(const app::WorldState &state,
+                                     std::optional<std::uint64_t> replacing_plot = {});
+// Full source plot cost plus transitional/house maintenance; admission fee is
+// separately checked by the same eligible_homeless selector used at actual input.
+std::int64_t steam_residence_plot_reserve(const app::WorldState &state);
 bool steam_task_affordable(const app::WorldState &state, std::uint64_t task);
 bool steam_task_renewable(const app::WorldState &state, int displayed_fee);
 // raw27 has already cached the source quote; rank eligible, affordable definitions

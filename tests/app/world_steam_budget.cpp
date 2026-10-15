@@ -1,5 +1,6 @@
 #include "world_steam_budget.hpp"
 #include "world_steam_layout.hpp"
+#include "world_steam_people.hpp"
 #include "../support/world_fixture.hpp"
 #include "ark/simulation/facilities/startup_world_building.hpp"
 #include "ark/simulation/village/rules/world_calendar_tasks.hpp"
@@ -41,11 +42,28 @@ std::int64_t steam_operating_reserve(const State &s) {
     return total * 2;
 }
 
-std::int64_t steam_residence_reserve(const State &s) {
+std::int64_t steam_residence_reserve(const State &s, std::optional<std::uint64_t> replacing_plot) {
     const auto house = sim::startup_world_build_quote(s, 25);
     require(house.has_value(), "missing admission house maintenance quote");
-    return steam_operating_reserve(s) +
-           2 * std::max<std::int64_t>(0, house->definition_attributes[3]);
+    auto reserve =
+        steam_operating_reserve(s) + 2 * std::max<std::int64_t>(0, house->definition_attributes[3]);
+    if (replacing_plot) {
+        require(s.scene.world.world.facilities.at(*replacing_plot).kind == 13,
+                "admission budget must consume a real recruitment plot");
+        const auto plot = sim::startup_world_facility_values(s, *replacing_plot);
+        require(plot.has_value(), "missing retiring plot maintenance quote");
+        reserve -= 2 * std::max<std::int64_t>(0, plot->definition_attributes[3]);
+    }
+    return reserve;
+}
+
+std::int64_t steam_residence_plot_reserve(const State &s) {
+    const auto plot = sim::startup_world_build_quote(s, 24);
+    const auto house = sim::startup_world_build_quote(s, 25);
+    require(plot && house, "missing source plot or house quote");
+    return steam_operating_reserve(s) + plot->construction_cost +
+           2 * std::max({std::int64_t{0}, plot->definition_attributes[3],
+                         house->definition_attributes[3]});
 }
 
 bool steam_task_affordable(const State &s, std::uint64_t id) {
@@ -162,7 +180,7 @@ int steam_point_reserve(const State &s, const std::vector<int> *offered_activiti
     const auto buildings = sim::startup_world_build_catalog(s);
     require(buildings.has_value(), "point reserve needs the real construction catalogue");
     int reserve{};
-    bool needs_expansion{};
+    bool needs_expansion = steam_housing_expansion_needed(s);
     for (const auto &target : steam_village_layout()) {
         const bool inside = steam_layout_inside_fence(s, target);
         needs_expansion |= !inside;
@@ -238,6 +256,46 @@ void steam_budget_contract() {
     const auto buffer = steam_operating_reserve(s);
     require(buffer > 0 && steam_residence_reserve(s) >= buffer,
             "real new town must reserve its recurring costs");
+    const auto plot = sim::startup_world_build_quote(s, 24);
+    const auto house = sim::startup_world_build_quote(s, 25);
+    require(
+        plot && house && plot->construction_cost == 100 && plot->definition_attributes[3] == 120 &&
+            house->definition_attributes[3] == 180 &&
+            steam_residence_plot_reserve(s) == buffer + 460,
+        "source plot construction and transitional house upkeep must remain separately budgeted");
+    auto admission = s;
+    for (auto &[id, present] : admission.human_presence)
+        present = id == 1 ? 1 : 0;
+    admission.human_homes.at(1)[2] = 0;
+    admission.shop_humans.at(1).satisfaction = admission.rules->humans.at(1).residence_threshold;
+    const auto admission_buffer = steam_residence_plot_reserve(admission);
+    const auto admission_fee = admission.rules->humans.at(1).residence_fee;
+    for (const int spare : {-1, 0, 1}) {
+        admission.scene.world.world.ai.accounting =
+            ref::PeriodAccounting(admission_buffer + admission_fee + spare);
+        require(
+            SteamPeopleStrategy::eligible_homeless(admission, admission_buffer).has_value() ==
+                (spare >= 0),
+            "one extra plot must reserve its real construction, upkeep and candidate fee exactly");
+    }
+    const auto destination = steam_connected_extension(admission, 24);
+    require(destination.has_value(), "admission budget fixture needs a legal connected plot");
+    const auto started = sim::begin_startup_world_build(admission, 24);
+    const auto built =
+        sim::confirm_startup_world_build(admission, destination->anchor, destination->orientation);
+    require(started.error == sim::StartupWorldRuntimeError::none &&
+                built.error == sim::StartupWorldRuntimeError::none && built.created &&
+                steam_residence_reserve(admission, *built.created) ==
+                    admission_buffer - plot->construction_cost,
+            "paid plot-to-house replacement must preserve the preconstruction budget at admission");
+    for (const int spare : {-1, 0}) {
+        const auto reserve = steam_residence_reserve(admission, *built.created);
+        admission.scene.world.world.ai.accounting =
+            ref::PeriodAccounting(reserve + admission_fee + spare);
+        require(
+            SteamPeopleStrategy::eligible_homeless(admission, reserve).has_value() == (spare >= 0),
+            "retiring plot upkeep must not make an exactly funded admission wait for more cash");
+    }
     auto progression = s;
     progression.rank = 4;
     progression.scripts.activities.at(19).status = 1;
@@ -254,8 +312,9 @@ void steam_budget_contract() {
             "after fireworks the next rank's actual museum blueprint requires200 points");
     progression.facility_presence.at(64) = 2;
     progression.scripts.activities.at(21).status = 0;
-    require(!steam_progress_point_goal(progression) && steam_required_facility(progression) == 64,
-            "an acquired blueprint reserves no second purchase but still needs actual construction");
+    require(
+        !steam_progress_point_goal(progression) && steam_required_facility(progression) == 64,
+        "an acquired blueprint reserves no second purchase but still needs actual construction");
     progression.scripts.activities.at(21).status = 1;
     progression.village_points = 75;
     const auto museum_activity = steam_progress_point_goal(progression);

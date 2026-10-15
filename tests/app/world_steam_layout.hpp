@@ -47,5 +47,10 @@ steam_layout_access_repair(const simulation::StartupWorldRuntimeState &state);
 // waits for external shops to open and trade. Both use durable state after cold load.
 bool steam_reference_layout_complete(const simulation::StartupWorldRuntimeState &state);
 bool steam_shop_expansion_ready(const simulation::StartupWorldRuntimeState &state);
+// Both unfinished and ready plots reserve the next admission after a cold load.
+std::optional<std::uint64_t>
+steam_extra_recruitment_plot(const simulation::StartupWorldRuntimeState &state);
+// A remaining source fence level serves qualified residents beyond the fixed layout.
+bool steam_housing_expansion_needed(const simulation::StartupWorldRuntimeState &state);
 void steam_layout_contract();
 } // namespace ark::test

@@ -1,5 +1,14 @@
 # 研究交接需求
 
+<a id="residence-detail-retirement"></a>
+## 入住后旧设施详情退休（2026-10-15）
+
+产品冻结5708375，从有效月124档实际建设募集24（100G）、等待完工，再经74→80让人物16支付3000G入住；住宅124已正确绑定，但紧接着更新拒绝runtime=2／scene=2。现场在build/validation/business-liquidity/steam-natural-month-month125-goal-bf5315b348934ddd90a5f8f839cf5ac1，保留原输入、month.log及failure-state.bin/txt；无新玩家checkpoint，观察快照不作正常存档。
+
+原因是80成功消费者退休募集实例123，关闭父74，却仍保留父页绑定；prepare_startup_world_runtime先校验所有74，再清理关闭页，valid_startup_world_facility_page要求实例存在，故合法消费产生下一轮不能接受的状态。产品现有receipt短夹具追加入住后一次真实更新即复现，原测试止于付款/绑定成功，不能覆盖这一后继。
+
+产品按小型实现修正：同一candidate先核对该74完整性，成功入住后将它及专属瞬态载荷与募集实例一起退休；损坏父页仍拒绝且完整Owner/随机不变，其他关闭页继续严格校验。未改原表、金额、效果、随机顺序或玩家schema5，不迁移/修补已坏状态，SOURCES记录显式适配。请研究正式补交80消费与74退休的共同生命周期及维护恢复边界，并做成功后更新、缺载荷拒绝/回滚的短检查；无需重复产品世界长跑。80新UI Owner仍属另一项待交付，不能以此修正冒称已接。
+
 048b282普通定义预览、装备店/植物/募集已接并验收；d6b546c税收90完整计划/四键Init/整帧事务及正常89介绍、7fe54fa怪物92已获批落盘，本批验收见[B1](../stages/B1-playable-prototype.md#research-7fe54fa-tax-monsters)。80的纯入住资格查询不等于完整候选输入Owner，维护保存生命周期不改变玩家两栏政策。公共副钟/SEB、完整原字体、80/87动态Owner及84反馈金额map仍待正式交付。
 
 正式7fe54fa的92入口/生命周期/当前共享成长与统计皮肤、common2金币袋已迁入；当前实例稳定ID、名单重验与像素遮挡沿产品既定PC政策接线。92不再列研究缺口；原Camera、字体及公共副钟动态仍另待。方案见[产品计划](../MILESTONES.md#research-7fe54fa-monster-detail)。

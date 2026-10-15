@@ -4,55 +4,17 @@
 
 ## 当前接入与收口
 
-- [x] 正式4c7a490及前置已接人物四页、职业61–63、赠礼64–66、结果68/69及装备73；455来源/73适配、719素材保持，整帧FIFO/真实scroll及系统2独立身份已接，见[B1](docs/stages/B1-playable-prototype.md#research-4c7a490-human-catalogues)。
-- [x] 现actors UI执行raw60四页有序计划、实际字体测宽/恢复提示/比例条；保留PC页签/捷径与FIFO/pending，装备方向先走四槽、行点击选择、Enter进入对应赠礼槽，魔法Enter无操作。
-- [x] 用户指定的小窗preview.mjs及所引设施/道具/菜单/提示/人物示例已纳入本goal，复用各自正式合同及套件，对照入口见[清单](docs/reference/REFERENCE_CHECKLIST.md#ui-small-window-goal)。预览服务、CSS和夹具数值不进入游戏。
-- [x] 6a0f8e2／395fa0b职业预览、转职演出和赠礼结果计划已消费，真实转职/赠礼窗口通过；共享奖励人物帧已由755fdf2的entry_updates只读桥提供；手形仍静态0，原OS动态单列。
-- [x] 正式755fdf2商品72/79、强化75–77、口碑82双计数/联合恢复及共享人物帧已接；461来源/73适配、720素材，整帧FIFO、玩家冷清及两Debug/Release受影响检查通过，见[B1](docs/stages/B1-playable-prototype.md#research-755fdf2-facility-pages)。158条件图与两次真实新局图不认证OS输入或原字体。
-- [x] 正式fd69d44村办51–54、晋级48–50和七类95领取计划、严格恢复及整帧FIFO已接，467来源/76适配、722素材；窗口和检查见[B1](docs/stages/B1-playable-prototype.md#research-fd69d44-village-progress)。
-- [x] 正式e4dc38a魔法壶41–47目录/演出、同轮FIFO、副钟与严格恢复已接；472来源/77适配，玩家政策保持，见[B1](docs/stages/B1-playable-prototype.md#research-e4dc38a-magic-pot)。
-- [x] 正式57a31cb/48574b5任务选择22、费用23、完整募集24与地图追踪已接同轮FIFO/有序计划；477来源/78适配、723素材，见[B1](docs/stages/B1-playable-prototype.md#research-48574b5-task-pages)。
-- [x] 2112dd7信息桥/成果纯计划已冻结，scene4/raw29已接实际按钮/箭头与FIFO；文字重放生命周期分别登记，见[B1](docs/stages/B1-playable-prototype.md#research-2112dd7-task-information)。
-- [x] 正式d05fe81/24f628a胜利30、住宅完成96双钟/恢复与Owner计划已接桌面；33期限/80候选纯计划已冻结，见[B1](docs/stages/B1-playable-prototype.md#research-24f628a-task-residence)。
-- [x] 正式b260639/6f93c0c努力奖励67/授勋87三页、88仪式及严格恢复已接，96正常管理绘制接线同时修正；本地检查与条件窗口见[B1](docs/stages/B1-playable-prototype.md#research-6f93c0c-award-effort)。
-- [x] 正式cee9cee任务25–28/31–33 Owner游标/冻结名单、父答案、成果与期限皮肤已接，旧第二游标/手写成果退休；本地及窗口见[B1](docs/stages/B1-playable-prototype.md#research-cee9cee-task-successors)。
-- [x] 正式a98f70d职业大师70、93/94来源奖励及严格恢复已接入，本地/两尺寸窗口/真实图纸扣点链通过；见[B1](docs/stages/B1-playable-prototype.md#research-a98f70d-mastery-gifts)。
-- [x] 正式8665a17计分双钟/应用恢复、18f810e新局纯皮肤及既有PC适配已接；487来源/79适配、两Debug检查修正及Release窗口通过，见[B1](docs/stages/B1-playable-prototype.md#research-80d8b8d-score-startup)。
-- [x] ea9876a商会83有序皮肤/整帧FIFO、21e4d27设置/平台纯计划及空草稿修正完成本地短检和两尺寸窗口；493来源/79适配、731素材，见[B1](docs/stages/B1-playable-prototype.md#research-ea9876a-commerce-top)。
-- [x] 正式68acd7c/a87e9b7商会85设施图纸三行目录/整帧事务、86原单件反馈及底栏防重叠已接，本地检查与两尺寸/真实窗口见[B1](docs/stages/B1-playable-prototype.md#research-68acd7c-commerce-successors)。
-- [x] 3f744f3普通定义预览/严格挂起父商会、c982176装备店/植物、048b282募集详情已接；真实共享值/商品数/植物增量/入住资格、绘后热区及两Debug/Release检查通过，保存生命周期仅登记合同，玩家政策保持。见[B1](docs/stages/B1-playable-prototype.md#research-048b282-facility-details)。
-- [x] d6b546c税收90四键Init/整帧FIFO及正常怪物介绍89已接；两Debug失败夹具修正、Release受影响检查与最小窗口/真实新局介绍通过，见[B1](docs/stages/B1-playable-prototype.md#research-7fe54fa-tax-monsters)。
-- [x] 7fe54fa怪物92当前名单入口、共享统计/有序皮肤和common2金币袋已接，实际可见像素拾取/FIFO身份复核及0钟关闭通过；495来源/79适配、733素材，玩家存档政策保持。OS输入未验，见[本批记录](docs/stages/B1-playable-prototype.md#research-7fe54fa-tax-monsters)。
-- [x] 正式9cee27a/5708375完整建设目录、Owner游标、整帧输入、21→74→21返回、EndDrawing后Draw交接及两处纪录静态皮肤已接；503来源/80适配、749素材，两Debug修后检查/Release受影响检查、两尺寸条件图与月107隔离冷载通过，见[B1](docs/stages/B1-playable-prototype.md#research-9cee27a-build-record)。纪录独立钟、共享手形及原91/80等Owner仍缺，不接Steam服务或恢复二倍速。
-- [x] 获批steam-month分段月96→97→98→99及三次独立冷载通过；每段6分钟/10000轮，原季度入口保持，失败观察档不作输入，见[B1](docs/stages/B1-playable-prototype.md#research-e22ed0a-human-ui)。
+当前冻结正式5708375：503来源/81产品适配、749素材/26音频。已完成批次和旧经营前缀集中在[B1](docs/stages/B1-playable-prototype.md)，TODO只保留当前状态和后继。
 
-- [x] 正式bb61d5f普通设施两页维护计划：获批四目标已导入，455来源/70适配保留，新增资源映射现有Steam属性图标；后续c6b1a5b无闭包增量，见[方案](docs/MILESTONES.md#research-bb61d5f-detail-plan)。
-- [x] 普通raw74两页已接现facilities UI：正式c3b568c滚动皮肤/事件及原套件增量迁入，原序绘制/Steam箭头、字体测宽与五行光标沿已批桌面适配；窗口/剩余原版输入边界见[B1](docs/stages/B1-playable-prototype.md#research-c3b568c-detail-ui)。
+- [x] 正式建设/人物/设施/任务/村办/魔法壶/奖励/税收/怪物等维护消费者、只读皮肤及桌面接线已接，保留唯一Owner、整帧FIFO和建设Draw交接；最新接入见[B1](docs/stages/B1-playable-prototype.md#research-9cee27a-build-record)。未交付后继见下文。
+- [x] 用户指定的preview.mjs及小窗示例已纳入本goal，复用正式合同与套件；预览服务、CSS和夹具数值不进游戏，见[对照入口](docs/reference/REFERENCE_CHECKLIST.md#ui-small-window-goal)。
+- [x] 玩家两栏schema5/独立系统2、正常保存桥及维护回放已接；旧身份拒绝，月度真实经营独立冷载和字节复制持续验证。周期扣费可负、主动支付仍核余额，见[B1](docs/stages/B1-playable-prototype.md#campaign-negative-balance)。
+- [x] 真实转职、任务库存强化、额外募集/入住及预算接续已接；修复入住后父74退休与世界恢复，实际扩张至围栏2、18住户冷载后均可达，见[本批](docs/stages/B1-playable-prototype.md#campaign-residence-successors)。
 
-- [x] 用户批准系统2独立语义身份；原系统副本的Release标题通过、最高纪录/继承保留与未知/损坏/旧版拒绝覆盖，原系统及两栏未改，见[身份决策](docs/MILESTONES.md#system-record-identity)。
-- [ ] raw39极端金额列宽适配待确认：十位金额可能侵入名称列；按实际字体和最小窗口评估50像素金额列，不宣称极端排版已收口。
-- [ ] 对应main的desktop-release完整CTest及发布流水线验证；本地结果与CI分别记录，不自动推送或发布。
-
-## 完整经营验收
-
-- [x] 对齐周期扣费负余额：真实月报跨零、主动建设拒绝及五种经营策略配置的负最低值往返通过，长跑不以一次负债判世界失败；健康经营仍须实际恢复与后继推进，见[B1](docs/stages/B1-playable-prototype.md#campaign-negative-balance)。
-
-- [ ] 按[全解锁主动经营合同](docs/stages/ACTIVE_VILLAGE_PLAN.md#full-unlock-campaign)覆盖所有可达定义的取得、消费、效果与后继，包含建设营业、活动培养、任务胜利、逐星和新解锁消费，最终自然通关、继续经营与继承。代表样例、仅解锁或日期推进不算全覆盖。
-- [x] 月100合法隔离组合及单月接续至104、四次独立冷载通过：完整系统字段经产品原子桥读回相等，原输入不变；博物馆64真实图纸支付/领取、建设并完工及任务19胜利，见[B1](docs/stages/B1-playable-prototype.md#research-80d8b8d-score-startup)。
-- [ ] 月63→100的16段仅92定义部分回执，月101也无转职/魔法/配方或新任务胜利；按[覆盖核对](docs/stages/ACTIVE_VILLAGE_PLAN.md#campaign-coverage-audit)补真实输入与效果，不以日期或历史回执认证全量。
-- [x] 修后三星申请及学校首次营业：月74收入35551G及四条件正式回执通过，学校63真实支付2000G、完工并营业690G，烤肉店41图纸支付90点/领取；月75保存/冷载通过，见[B1](docs/stages/B1-playable-prototype.md#campaign-third-star)。
-- [x] 月87定向中止恢复营业、月88玩家存读、限时经营至月90四星及独立冷载；真实付费补员至9人后任务42胜利，现金145338G、两月预算31460G、布局50/50，见[经营状态](docs/stages/ACTIVE_VILLAGE_PLAN.md#campaign-fourth-star)。
-- [x] 月93有限季度存读通过：真实13次付费/4免费装备装配、任务43胜利、炖肉39营业及25目标位置全收入；月亏损仍保留，见[B1](docs/stages/B1-playable-prototype.md#four-star-consumption-20261012)。
-- [x] 月104→105真实300G移动博物馆及20G补两格道路，布局恢复50/50、原住宅/住户保留，保存和独立冷载通过，见[B1](docs/stages/B1-playable-prototype.md#research-ea9876a-commerce-top)。
-- [x] 月107任务47胜利、任务道具9/18实际强化博物馆64、玩家保存及独立冷载通过；50/50布局与既有住户保持，见[现状](docs/stages/ACTIVE_VILLAGE_PLAN.md)。
-- [x] 月107实际更新边界诊断与修后21预算接续：1500轮有界观察、正式160点预算预留、107→108玩家保存及独立冷载通过，复用现诊断/预算合同，见[B1](docs/stages/B1-playable-prototype.md#campaign-month107-activity-trace)。
-- [x] 108→109→110真实经营与独立冷载：任务36/定义17胜利、道具18/3强化及博物馆64首次营业1030G通过，见[B1](docs/stages/B1-playable-prototype.md#campaign-month110-museum)。
-- [x] 月110修后分支至111保存/独立冷载通过：人物0/1真实转入职业4、各R=1，保留160点举办21；五星人气达标，最高月收入仍差30444G，见[B1](docs/stages/B1-playable-prototype.md#campaign-profession-consumption)。旧超时观察保留、不作玩家档。
-- [x] 61–63真实付款→55切换→197收尾及魔法可用回执、公共预算/pending存储阻断已接现经营套件；两Debug标准及Release受影响检查通过，见[方案](docs/MILESTONES.md#campaign-profession-consumption)。4魔法实际施法/伤害/回复及全23职业仍未覆盖。
-- [x] 主动计分/继续/继承driver及单店扩展接线、三配置短合同通过，旧经营入口仍拒绝raw17，等待营业仍保留图纸预算；短日期资格不称自然通关，见[B1](docs/stages/B1-playable-prototype.md#campaign-natural-lifecycle)。
-- [x] 修复强化验收将旧收费缓存刷新误算为道具增量：真实75/76短资格和错误新缓存拒绝、三配置合同、月119→120经营/独立冷载通过，旧失败观察保留，见[B1](docs/stages/B1-playable-prototype.md#campaign-natural-lifecycle)。
-- [x] 自然路线120→121→122真实经营、第二栏保存、独立冷载及档位1→0字节复制通过；赌场54实际付250点买图纸、93领取、付2000G建设并完工，不能以phase0前缀宣称自然通关，见[B1](docs/stages/B1-playable-prototype.md#campaign-natural-lifecycle)。
-- [ ] 从有效月122继续收益与新店消费：赌场sales0待营业，任务52/定义31探索进行，37点/下一图纸预算150点；五星只差27378G最高月收入。保留两月现金与775项分母；自然通关/继续/继承与真实全链未完成，见[方案](docs/MILESTONES.md#campaign-natural-lifecycle)。
+- [ ] 按[全解锁合同](docs/stages/ACTIVE_VILLAGE_PLAN.md#full-unlock-campaign)逐定义覆盖取得、消费、实际效果与后继，保留775分母；代表样例、仅解锁或日期推进不算全覆盖。
+- [ ] 从有效月129继续健康经营：先留现金，验证魔法研究所62首次营业，继续真实任务/奖励强化、培养人物18/19及新图纸消费；五星仍差27378G最高月收入。资金与当前来源资格见[经营现状](docs/stages/ACTIVE_VILLAGE_PLAN.md)。
+- [ ] 主动计分/继续/继承driver和短合同已接，实际生命周期仍phase0；继续自然经营到真实计分，再验完整继续/继承，不以临近日期夹具称自然通关，见[生命周期方案](docs/MILESTONES.md#campaign-natural-lifecycle)。
+- [ ] 4魔法实际施放、投射/延迟伤害归因及全23职业后继等待真实局部消费事实；Q可用不等于学习/施法，见[研究请求](docs/reference/RESEARCH_REQUESTS.md#spell-consumption-receipts)。
 
 ## 表现与研究边界
 

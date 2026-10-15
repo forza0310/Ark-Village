@@ -1307,6 +1307,18 @@ StartupBuildResult act_startup_world_residence_page(State &s, std::uint64_t id, 
         old->second.status != 1 || !old->second.occupants.empty() ||
         s.human_homes.at(human)[2] != 0)
         return {Error::invalid_page};
+    // Admission consumes the plot. Validate its detail payload while the instance
+    // still exists; a successful transaction must retire both together.
+    std::vector<std::uint64_t> retired_details;
+    for (const auto &page : s.scripts.pages) {
+        const auto binding = s.facility_page_bindings.find(page.id);
+        if (page.kind != ref::WorldScriptPageKind::raw_page || page.legacy_page != 74 ||
+            binding == s.facility_page_bindings.end() || binding->second != old_id)
+            continue;
+        if (!valid_startup_world_facility_page(s, page))
+            return {Error::missing_source};
+        retired_details.push_back(page.id);
+    }
     if (s.scene.world.world.ai.accounting.funds() < h->residence_fee) {
         const auto event = ref::prepare_world_script(
             startup_world_runtime_catalog(), startup_world_runtime_scripts(next), {11, {}, {}});
@@ -1350,6 +1362,21 @@ StartupBuildResult act_startup_world_residence_page(State &s, std::uint64_t id, 
     next = *requests;
     for (auto &page : next.scripts.pages)
         page.lifecycle = page.kind == ref::WorldScriptPageKind::scene ? 2 : 4;
+    // The next framework validates closed pages before removing them. Keeping a
+    // detail bound to the consumed plot would turn this legal input into a failure.
+    for (const auto page : retired_details) {
+        next.facility_page_bindings.erase(page);
+        next.facility_page_neighbours.erase(page);
+        next.page_counters.erase(page);
+        next.page_phases.erase(page);
+    }
+    next.scripts.pages.erase(std::remove_if(next.scripts.pages.begin(), next.scripts.pages.end(),
+                                            [&](const auto &page) {
+                                                return std::find(retired_details.begin(),
+                                                                 retired_details.end(),
+                                                                 page.id) != retired_details.end();
+                                            }),
+                             next.scripts.pages.end());
     next.scripts.executing_page.reset();
     s = std::move(next);
     return installed;

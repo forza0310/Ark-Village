@@ -181,6 +181,18 @@ bool extension_candidate(const State &s, const SteamLayoutTarget &target,
              candidate.facility_residents.at(*after) != s.facility_residents.at(*before)))
             return false;
     }
+    // Later admissions live outside the fixed blueprint. Preserve every occupied
+    // home through a new shop/plot or an explicit move, using source connection queries.
+    for (const auto &[id, home] : s.scene.world.world.facilities) {
+        if (home.kind != 12 || s.facility_residents.at(id) < 0)
+            continue;
+        const auto kept = candidate.scene.world.world.facilities.find(id);
+        if (kept == candidate.scene.world.world.facilities.end() || kept->second.kind != 12 ||
+            kept->second.placement.definition_id != home.placement.definition_id ||
+            candidate.facility_residents.at(id) != s.facility_residents.at(id) ||
+            (candidate.facility_flags.at(id) & 1U) || !reachable(id))
+            return false;
+    }
     return true;
 }
 } // namespace
@@ -278,6 +290,21 @@ bool steam_shop_expansion_ready(const State &s) {
             (facility.status != 1 || facility.sales <= 0))
             return false;
     return true;
+}
+
+std::optional<std::uint64_t> steam_extra_recruitment_plot(const State &s) {
+    for (const auto &[id, facility] : s.scene.world.world.facilities)
+        if (facility.placement.definition_id == 24 && !steam_layout_slot(s, id))
+            return id;
+    return {};
+}
+
+bool steam_housing_expansion_needed(const State &s) {
+    if (static_cast<std::size_t>(s.fence_level + 1) >= s.rules->fences.size() ||
+        !steam_reference_layout_complete(s) || steam_extra_recruitment_plot(s))
+        return false;
+    const auto candidates = simulation::startup_world_residence_candidates(s);
+    return candidates && !candidates->empty();
 }
 
 void steam_layout_contract() {
@@ -395,6 +422,40 @@ void steam_layout_contract() {
     require(!(corner.facility_flags.at(protected_home) & 1U),
             "the original corner residence must be connected before the extra shop");
     const SteamLayoutTarget obstructing{64, {5, 4}, first, Role::shop};
+    // Only a non-blueprint occupied home remains, so reference-slot protection
+    // cannot hide a missing guard for later residents. This is a placement qualification.
+    auto external_only = corner;
+    for (const auto &[id, facility] : corner.scene.world.world.facilities)
+        if (facility.kind == 12)
+            require(simulation::retire_startup_world_facility(external_only, id),
+                    "external-home fixture retirement failed");
+    // Unoccupied, differently facing houses close the alternative path without
+    // being protected reference slots or another occupied-home rejection reason.
+    for (const ref::Position anchor : {ref::Position{4, 3}, {4, 6}}) {
+        const auto barrier =
+            simulation::install_startup_world_facility(external_only, 25, anchor, second);
+        require(barrier.created && !steam_layout_slot(external_only, *barrier.created) &&
+                    external_only.facility_residents.at(*barrier.created) < 0,
+                "external-home path barriers must be unoccupied non-reference instances");
+    }
+    const auto extra_home =
+        simulation::install_startup_world_facility(external_only, 25, {4, 5}, first);
+    require(extra_home.created.has_value(), "external-home fixture insertion failed");
+    const auto extra_id = *extra_home.created;
+    external_only.facility_residents.at(extra_id) = 0;
+    require(!steam_layout_slot(external_only, extra_id) &&
+                !(external_only.facility_flags.at(extra_id) & 1U),
+            "later occupied home must be connected outside the reference slots");
+    auto blocked_external = external_only;
+    const auto blocking = simulation::install_startup_world_facility(
+        blocked_external, 64, obstructing.anchor, obstructing.orientation);
+    require(blocking.created.has_value(), "external-home blocker insertion failed");
+    require(!(blocked_external.facility_flags.at(*blocking.created) & 1U),
+            "external-home blocking shop must remain connected");
+    require(blocked_external.facility_flags.at(extra_id) & 1U,
+            "external-home blocker must actually close the occupied home's entrance");
+    require(!extension_candidate(external_only, obstructing, {}),
+            "a connected shop cannot certify disconnecting a later occupied home");
     const auto unchanged = corner;
     require(!extension_candidate(corner, obstructing, {}),
             "an empty legal footprint must not certify a build that disconnects a retained home");
@@ -492,6 +553,50 @@ void steam_layout_contract() {
     readiness.scene.world.world.facilities.at(readiness_id).sales = 1;
     require(steam_shop_expansion_ready(readiness) &&
                 !steam_shop_expansion_ready(waiting_projection),
-            "readiness must follow durable sales in each independent projection, not controller history");
+            "readiness must follow durable sales in each independent projection, not controller "
+            "history");
+
+    require(!steam_extra_recruitment_plot(complete_projection),
+            "the permanent reference plot must not block later admissions");
+    auto demand = complete_projection;
+    demand.fence_level = 1;
+    for (auto &[id, present] : demand.human_presence)
+        present = id == 1 ? 1 : 0;
+    demand.human_homes.at(1)[2] = 0;
+    demand.shop_humans.at(1).satisfaction = demand.rules->humans.at(1).residence_threshold;
+    require(steam_housing_expansion_needed(demand),
+            "qualified later residents must retain the remaining source expansion goal");
+    auto already_housed = demand;
+    already_housed.human_homes.at(1)[2] = 1;
+    auto final_fence = demand;
+    final_fence.fence_level = static_cast<int>(demand.rules->fences.size()) - 1;
+    require(!steam_housing_expansion_needed(already_housed) &&
+                !steam_housing_expansion_needed(final_fence),
+            "no homeless candidate or no source fence level must reject redundant expansion");
+    // Read-only projections model the durable states that survive a player load;
+    // no private controller history may permit a second unoccupied plot purchase.
+    for (const int status : {0, 1}) {
+        auto recruiting = demand;
+        auto plot = prototype;
+        plot.placement.instance_id.value = readiness_id;
+        plot.placement.definition_id = 24;
+        plot.placement.anchor = {1, 1};
+        plot.placement.orientation = first;
+        plot.kind = 13;
+        plot.status = status;
+        recruiting.scene.world.world.facilities.emplace(readiness_id, plot);
+        const auto restored = recruiting;
+        require(steam_extra_recruitment_plot(restored) == readiness_id,
+                "an extra unfinished or ready plot must retain the admission reservation");
+        require(
+            !steam_housing_expansion_needed(restored),
+            "an already purchased plot must finish admission before expanding for more housing");
+        auto &house = recruiting.scene.world.world.facilities.at(readiness_id);
+        house.placement.definition_id = 25;
+        house.kind = 12;
+        require(!steam_extra_recruitment_plot(recruiting) &&
+                    steam_extra_recruitment_plot(restored) == readiness_id,
+                "only actual plot-to-house conversion releases the next admission reservation");
+    }
 }
 } // namespace ark::test

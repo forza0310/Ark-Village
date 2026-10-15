@@ -3,6 +3,7 @@
 #include "world_campaign_receipts_test.hpp"
 #include "../support/world_fixture.hpp"
 #include "ark/simulation/map/startup_world_expansion.hpp"
+#include "ark/simulation/persistence/startup_world_persistence.hpp"
 #include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
 #include "ark/simulation/village/startup_world_tax.hpp"
 #include "ark/simulation/actors/rules/human_management.hpp"
@@ -734,13 +735,34 @@ void steam_people_receipt_contract(const CampaignCommandConsumer &apply) {
     housed.scene.world.world.ai.accounting = *qualified_cash;
     ark::test::SteamVillageStrategy homes;
     std::optional<ark::test::CampaignReceipt> admission;
+    bool damaged_parent_rejected{};
+    const auto admit = [&](State &candidate, const app::WorldCommand &command) {
+        if (command.kind == Kind::residence_action && !command.cancel) {
+            const auto parent =
+                std::find_if(candidate.scripts.pages.begin(), candidate.scripts.pages.end(),
+                             [](const auto &page) { return page.legacy_page == 74; });
+            require(parent != candidate.scripts.pages.end(),
+                    "Admission fixture lacks its real74 parent");
+            auto damaged = candidate;
+            damaged.page_phases.erase(parent->id);
+            const auto before = sim::startup_world_state_digest(damaged);
+            const auto rejection = sim::act_startup_world_residence_page(damaged, command.page,
+                                                                         command.selection, false);
+            require(rejection.error == sim::StartupWorldRuntimeError::missing_source &&
+                        sim::startup_world_state_digest(damaged) == before,
+                    "Admission retirement must not conceal a damaged parent or partially charge");
+            damaged_parent_rejected = true;
+        }
+        return apply(candidate, command);
+    };
     run_steam_receipt_fixture(
-        apply, housed, homes, [&] { return admission.has_value(); },
+        admit, housed, homes, [&] { return admission.has_value(); },
         [&](const auto &receipt) {
             if (receipt.kind == Receipt::human_home_admitted)
                 admission = receipt;
         });
-    require(admission->definition == 1 && admission->recipient == 1 && admission->subject &&
+    require(damaged_parent_rejected && admission->definition == 1 && admission->recipient == 1 &&
+                admission->subject &&
                 admission->before[0] - admission->after[0] ==
                     housed.rules->humans.at(1).residence_fee &&
                 admission->before[1] == 0 && admission->after[1] == 1 &&
@@ -748,6 +770,9 @@ void steam_people_receipt_contract(const CampaignCommandConsumer &apply) {
                 housed.scene.world.world.facilities.at(admission->subject).kind == 12 &&
                 housed.facility_residents.at(admission->subject) == 1,
             "Actual admission lacks its one-time source fee and bound residential instance");
+    auto resumed = sim::prepare_startup_world_runtime(housed);
+    require(resumed.candidate && sim::update_startup_world_render_cache(*resumed.candidate),
+            "Successful admission must resume the world after retiring its recruitment plot");
 }
 
 void steam_profession_receipt_contract(const CampaignCommandConsumer &apply) {

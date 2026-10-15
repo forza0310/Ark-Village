@@ -13,7 +13,18 @@
 
 从有效185另进程继承，经真实start_world_draft核对通关触发时G/p；旧局资金、布局、人物成长/永久魔法、库存及策略累计不带入。新局由5000G起步，实际600G建设面包店35/实例9于(12,6)，完工后该店545G、全村1445G营业，原道具0对人物属性+4；原稳定门保存并独立inherit-verify通过，phase3/inherited_business=1。证据为`build/validation/business-liquidity/steam-inherit-month186-goal-440904d22d964ed88752ac9489af4d8d/`，实际端点month3/ticks1012/5845G、69命令；目录的month186是父前缀预标签，不是新局日期。1.81秒是小规模新局的墙钟，不能与旧村经营时长作性能比较。独立冷载和栏1→0字节复制成功，父185档保留，全部进程已终态。
 
-五星→自然计分/纪录→完整继续营业→合法继承新局建设/营业/冷载链已闭合；不代表40配方、全23职业、4魔法实际施放、全部任务/BOSS或775定义全覆盖。下一步从父185有效档推进27等配方产物、未举办活动及药店真实营业，17等装备保留合法较早前缀分支。无新代码后不重复本批已通过检查，不自动推送。
+五星→自然计分/纪录→完整继续营业→合法继承新局建设/营业/冷载链已闭合；不代表40配方、全23职业、4魔法实际施放、全部任务/BOSS或775定义全覆盖。后继27及药店营业见[下节](#campaign-post-clear-pot)，17等装备保留合法较早前缀分支。无新代码后不重复本批已通过检查，不自动推送。
+
+<a id="campaign-post-clear-pot"></a>
+### 通关后的配方27与经营输入修正
+
+壶专项现根据已核lifecycle复用原自然/按月继续消费者，普通natural-month的通关前限制不变。185→186真实142.09秒，实际购买道具25/12共1800G并投入，处理经验52→53；配方27准确扣30/60/30/0元素，57/78/35/1→27/18/5/1，防具27免费资格1→0，人物14/实例2820装配后战斗值538/324/324/71→585/343/352/75。同段200点图纸52领取；冷载药店46累计0→1326G，首次营业已证。有效186在`build/validation/business-liquidity/steam-pot-equipment-month-month186-goal-ddeb135a6dc444179c02397467368afb/checkpoints/month-186`，当前装配与完整后继分别验证，不以免费资格或制造代替消费。
+
+首个186→187在188.38秒被“实际命令/效果”断言拒绝，失败根`steam-pot-equipment-month-month187-goal-ce5abc390d87401abc03a0eefe3e4ba3`保留。根因是壶测试玩家保留装备时拦截了全部主场景决策。现只通过next参数暂时排除该人物/槽位的后续赠礼；其他建设/培养/任务照常，通关前旧路线与已认证历史替换政策保持。短合同覆盖未装配不排除、只排指定人物/槽位及查询不消费，沿原people/壶套件，没有新增Owner、存档/侧车字段或测试target。
+
+从有效186重跑211.62秒，原1200G建设52/实例170于(11,11)，2次付费装备、2次库存强化及任务66实际出发；月186营业27295G/78命令/3个驱动输入效果后在187保存，独立普通冷载及原装备专项verify均通过，配方27 certified=1、人物14槽2保持。当前前缀`build/validation/business-liquidity/steam-pot-equipment-month-month187-goal-6cc8cec6169e4bbab95825ef66055775/checkpoints/month-187`，同根RESULT、month/cold-load、equipment-cold-verify与access-cold-inspect保留；52完工/flags0/入口可达但sales0，药店1326G/占卜屋2418G冷载保持。两段字节复制及原输入不变通过，失败观察未转存。最终三配置编译、desktop-debug标准140/140（28.81秒，仅排simulation.startup_world_continuous_test）、headless-debug定向1/1（4.62秒）、Release定向1/1（2.83秒）通过，日志post-clear-retention-*；核心DLL/CMake/资源未变，窗口、完整Release标准/三个月和CI未运行。
+
+187→188恢复普通经营219.16秒，原装备证据仅作已认证历史，不再限制人物槽；2次付费装备、3次库存强化及任务66胜利，月187营业46715G/80命令/3个输入效果后保存、独立冷载及字节复制通过。当前父世界前缀为`build/validation/business-liquidity/steam-continue-month-month188-goal-dc141eba30544b7fb1411b2f7e436d89/checkpoints/month-188`，同根RESULT、经营/冷载、lifecycle1及access-cold-inspect保留：五星800137G/两月预算79280G、195点、人气6604，建设68/强化211/装备303/胜利54/活动65/授勋45，phase2/continued_month187。药店1326G/占卜屋2418G保持；52已库存强化至价格1261、完工可达但仍sales0，活动20尚差5点、29未开放。全部进程已终态，正常玩家档/系统与研究在途未改；27闭环、单店营业及全775分别记录，后继继续新店/活动及其他产物。
 
 <a id="campaign-natural-clear-books"></a>
 ## 2026-10-16：真实自然计分、第四本魔法书与输入交接修正

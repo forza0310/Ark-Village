@@ -2,6 +2,7 @@
 
 #include "world_active_income_strategy.hpp"
 #include "world_active_trade_evidence.hpp"
+#include "world_steam_people.hpp"
 
 namespace ark::test {
 // A temporary player of the existing pot/commerce pages. The normal Steam player
@@ -9,7 +10,8 @@ namespace ark::test {
 class SteamPotEquipmentPlayer {
   public:
     void reconcile(const app::WorldState &state);
-    IncomeDecision next(const app::WorldState &state, std::int64_t budget, bool controller_ready,
+    // Legacy prefixes wait for trade after gifting; active business retains just the worn slot.
+    IncomeDecision next(const app::WorldState &state, std::int64_t budget, bool wait_for_trade,
                         const ActiveTradeEvidence &trade);
     void observe(const app::WorldState &before, const app::WorldCommand &command,
                  const app::WorldCommandResult &result, const app::WorldState &after,
@@ -27,6 +29,9 @@ class SteamPotEquipmentPlayer {
     void encode(std::ostream &out) const;
     static SteamPotEquipmentPlayer decode(std::istream &in);
     int recipe() const { return recipe_; }
+    std::optional<SteamEquipmentSlot> retained_slot() const {
+        return equipped_ ? std::optional<SteamEquipmentSlot>{{human_, slot_}} : std::nullopt;
+    }
 
   private:
     int recipe_{-1}, kind_{}, definition_{}, slot_{}, initial_month_{-1}, initial_experience_{};

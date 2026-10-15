@@ -285,14 +285,14 @@ IncomeDecision next_steam_pot_command(const State &s, const ref::WorldMagicPotRe
 }
 
 IncomeDecision SteamPotEquipmentPlayer::next(const State &s, std::int64_t budget,
-                                             bool controller_ready,
+                                             bool wait_for_trade,
                                              const ActiveTradeEvidence &trade) {
     const auto &p = top(s);
     if (p.lifecycle == 0)
         return {true, {}};
     if (p.kind == ref::WorldScriptPageKind::scene && s.scene.scene_state == 0 && equipped_) {
         certify(s, trade);
-        return {controller_ready && !complete(s, trade), {}};
+        return {wait_for_trade && !complete(s, trade), {}};
     }
     return next_steam_pot_command(s, source_recipe(s, recipe_), crafted_, budget, next_market_step_,
                                   leaving_market_);
@@ -412,8 +412,7 @@ SteamPotCommit observe_steam_pot_command(const State &before, const app::WorldCo
         std::uint64_t reward_page{};
         if (r.reward_kind == 4) {
             for (const auto &p : after.scripts.pages)
-                if (p.legacy_page == 93 && p.legacy_r == 3 &&
-                    p.legacy_s == r.reward_definition &&
+                if (p.legacy_page == 93 && p.legacy_r == 3 && p.legacy_s == r.reward_definition &&
                     std::none_of(before.scripts.pages.begin(), before.scripts.pages.end(),
                                  [&](const auto &old) { return old.id == p.id; })) {
                     require(!reward_page, "facility recipe queued multiple rewards");
@@ -727,6 +726,7 @@ void steam_pot_equipment_contract() {
     copy.observe(s, craft, result, granted);
     require(copy.diagnose().find("crafted=1 equipped=0") != std::string::npos,
             "a free grant must not pretend its equipment was already consumed");
+    require(!copy.retained_slot(), "an unconsumed reward cannot retain a person's worn slot");
     // Qualification fixture for a historical endpoint, not a natural gift/trade
     // claim. The ordinary source gift and real following month are checked above
     // by separate suites and by the isolated business route.
@@ -755,6 +755,16 @@ void steam_pot_equipment_contract() {
     trade.revenue[month(equipped) + 1] = 100;
     copy.certify(equipped, trade);
     require(!copy.certified(), "a gift cannot archive an unfinished following month");
+    const auto retained = copy.retained_slot();
+    auto business = equipped; // Main-scene decision fixture, not a naturally drained gift page.
+    business.scripts.pages.resize(1);
+    business.scripts.pages.front().kind = ref::WorldScriptPageKind::scene;
+    business.scripts.pages.front().legacy_page = 0;
+    business.scripts.pages.front().lifecycle = 2;
+    business.scene.scene_state = 0;
+    require(retained && retained->human == human && retained->slot == 2 &&
+                !copy.next(business, 0, false, trade).handled,
+            "observed equipment permits primary business while only its worn slot is retained");
     equipped.scene.calendar.month += 2;
     copy.certify(equipped, trade);
     require(copy.certified(), "strict live endpoint must archive its successful checks");

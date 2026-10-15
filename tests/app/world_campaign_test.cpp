@@ -240,9 +240,10 @@ template <class PlayerStrategy> struct CampaignRun {
     // committed transitions. It never calls next() or owns another world.
     std::optional<ark::test::SteamVillageStrategy> steam_observer{};
     std::optional<ark::test::SteamPotEquipmentPlayer> pot_equipment{};
+    bool pot_followup_business{}; // Per-process observation scope; never a persisted player policy.
     std::optional<ark::test::SteamPotSpellBookPlayer> pot_book{};      // Never serialized mid-flow.
     std::optional<ark::test::SteamPotDiscoveryPlayer> pot_discovery{}; // Source pending work saves.
-    std::optional<ark::test::SteamPotFacilityPlayer> pot_facility{}; // Claim before saving.
+    std::optional<ark::test::SteamPotFacilityPlayer> pot_facility{};   // Claim before saving.
 
     void command(const app::WorldCommand &input) {
         auto candidate = state;
@@ -411,11 +412,17 @@ template <class PlayerStrategy> struct CampaignRun {
                     state,
                     std::max<std::int64_t>(0, state.scene.world.world.ai.accounting.funds() -
                                                   ark::test::steam_operating_reserve(state)),
-                    Route<PlayerStrategy>::checkpoint(strategy, state), strategy.stats().trade);
+                    !pot_followup_business && Route<PlayerStrategy>::checkpoint(strategy, state),
+                    strategy.stats().trade);
                 if (input.handled)
                     return input.command;
             }
-            return strategy.next(state);
+            if constexpr (std::is_same_v<PlayerStrategy, ark::test::SteamVillageStrategy>)
+                return strategy.next(state, pot_followup_business && pot_equipment
+                                                ? pot_equipment->retained_slot()
+                                                : std::nullopt);
+            else
+                return strategy.next(state);
         }();
         if (const auto input = selected)
             command(*input);
@@ -1219,6 +1226,8 @@ int main(int argc, char **argv) {
                         std::cout << "POT_NEXT " << run.pot_equipment->diagnose() << std::endl;
                     }
                 }
+                run.pot_followup_business = run.lifecycle->finished() && run.pot_equipment &&
+                                            !run.pot_equipment->certified();
                 if (mode == "steam-pot-equipment-verify") {
                     require(run.pot_equipment.has_value(),
                             "Missing recorded equipment pot controller");
@@ -1237,7 +1246,8 @@ int main(int argc, char **argv) {
                     const auto segment =
                         mode == "steam-continue"
                             ? ark::test::CampaignClearSegment::continue_whole_month
-                        : mode == "steam-continue-month"
+                        : mode == "steam-continue-month" ||
+                                (mode != "steam-natural-month" && run.lifecycle->finished())
                             ? ark::test::CampaignClearSegment::continue_month_prefix
                             : ark::test::CampaignClearSegment::natural_month;
                     ark::test::run_campaign_clear_segment(lifecycle_driver(run), segment);

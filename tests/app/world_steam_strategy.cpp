@@ -222,9 +222,11 @@ std::optional<Command> SteamVillageStrategy::layout(const State &s) {
                 s.facility_presence.at(r.reward_definition) != 2 ||
                 s.facility_free_builds.at(r.reward_definition) <= 0 ||
                 std::any_of(s.scene.world.world.facilities.begin(),
-                            s.scene.world.world.facilities.end(), [&](const auto &f) {
+                            s.scene.world.world.facilities.end(),
+                            [&](const auto &f) {
                                 return f.second.placement.definition_id == r.reward_definition;
-                            }) || !buildable(s, r.reward_definition))
+                            }) ||
+                !buildable(s, r.reward_definition))
                 continue;
             const auto quote = sim::startup_world_build_quote(s, r.reward_definition);
             if (quote && funds >= quote->construction_cost + 2 * quote->definition_attributes[3])
@@ -328,13 +330,14 @@ std::optional<Command> SteamVillageStrategy::layout(const State &s) {
     return {};
 }
 
-std::optional<Command> SteamVillageStrategy::next(const State &s) {
+std::optional<Command> SteamVillageStrategy::next(const State &s,
+                                                  std::optional<SteamEquipmentSlot> retained) {
     if (stats_.initial_month < 0)
         reconcile(s);
     const auto &p = top(s);
     if (p.lifecycle == 0)
         return {};
-    const auto people = people_.next(s, steam_point_reserve(s), reserve(s), false);
+    const auto people = people_.next(s, steam_point_reserve(s), reserve(s), false, retained);
     if (people.handled)
         return people.command;
     if (income_.active()) {
@@ -386,7 +389,7 @@ std::optional<Command> SteamVillageStrategy::next(const State &s) {
             next_management_ = stats_.ticks + 100;
             if (const auto home = housing(s, false))
                 return home;
-            const auto value = people_.next(s, steam_point_reserve(s), reserve(s), true);
+            const auto value = people_.next(s, steam_point_reserve(s), reserve(s), true, retained);
             if (value.handled)
                 return value.command;
             const auto invest = income_.next(s, reserve(s), true);

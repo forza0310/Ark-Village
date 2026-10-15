@@ -17,7 +17,8 @@ struct SteamVillageStats {
 class SteamVillageStrategy {
   public:
     void reconcile(const app::WorldState &state);
-    std::optional<app::WorldCommand> next(const app::WorldState &state);
+    std::optional<app::WorldCommand> next(const app::WorldState &state,
+                                          std::optional<SteamEquipmentSlot> retained = {});
     void observe(const app::WorldState &before, const app::WorldCommand &command,
                  const app::WorldCommandResult &result, const app::WorldState &after,
                  const CampaignReceiptSink &receipts = {});
@@ -39,7 +40,7 @@ class SteamVillageStrategy {
     int unlock_{-1}, resident_{-1}, next_task_month_{};
     bool operation_committed_{}, checkpoint_phase_{true};
     bool party_budget_exhausted_{}; // Only this raw25/27 flow; no mid-page player saves.
-    bool discover_shop_{}; // Only the live83→85 flow; never persisted as a catalogue.
+    bool discover_shop_{};          // Only the live83→85 flow; never persisted as a catalogue.
     std::uint64_t next_management_{}, next_activity_{}, next_layout_{};
     SteamVillageStats stats_;
     SteamPeopleStrategy people_;

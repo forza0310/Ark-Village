@@ -12,12 +12,19 @@ namespace ark::test {
 // recipe's possible free grant. This neither grants stock nor certifies consumption.
 bool steam_equipment_reward_usable(const app::WorldState &state, int kind, int definition);
 
+// Test observation only: keep one worn slot until its following-business check finishes.
+// Other slots, people and management actions remain eligible; nothing is persisted here.
+struct SteamEquipmentSlot {
+    int human{}, slot{};
+};
+
 // Player policy only. Commands consume real award pages, reward qualifications and quotes;
 // this controller never changes character, inventory or random state itself.
 class SteamPeopleStrategy {
   public:
     IncomeDecision next(const app::WorldState &state, int reserved_points,
-                        std::int64_t cash_reserve, bool start);
+                        std::int64_t cash_reserve, bool start,
+                        std::optional<SteamEquipmentSlot> retained = {});
     void observe(const app::WorldState &before, const app::WorldCommand &command,
                  const app::WorldCommandResult &result, const app::WorldState &after,
                  const CampaignReceiptSink &receipts = {});

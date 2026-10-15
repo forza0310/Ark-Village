@@ -114,7 +114,8 @@ std::optional<int> award_index(const State &s, const std::vector<int> &ranked) {
 } // namespace
 
 IncomeDecision SteamPeopleStrategy::next(const State &s, int reserved_points,
-                                         std::int64_t cash_reserve, bool start) {
+                                         std::int64_t cash_reserve, bool start,
+                                         std::optional<SteamEquipmentSlot> retained) {
     const auto *p = top(s);
     if (!p || s.scene.framework_paused)
         return {};
@@ -160,6 +161,8 @@ IncomeDecision SteamPeopleStrategy::next(const State &s, int reserved_points,
             const int received = count == equipment_gifts_.end() ? 0 : count->second;
             for (int slot = 0; slot < 4; ++slot)
                 for (const auto &[key, entry] : s.catalog) {
+                    if (retained && retained->human == person && retained->slot == slot)
+                        continue;
                     if (key.first != kind(slot))
                         continue;
                     const auto target = equipment(s, slot, key.second);
@@ -461,6 +464,27 @@ void steam_people_contract() {
                 s.scene.world.world.ai.human_order.empty(),
             "pending profession cannot enter the unchanged sidecar or mutate the source new-world "
             "Owner");
+    // Isolated gift-selection inputs: retaining a worn test slot must not pause
+    // other slots or people, and must not change the source Owner or gift history.
+    auto retention = training;
+    retention.catalog.at({1, 1}).status = 1;
+    retention.catalog.at({1, 1}).free_purchases = 1;
+    retention.shop_humans.at(human).equipment[0].reset();
+    for (auto &[person, present] : retention.human_presence)
+        present = person == human ? 1 : 0;
+    const std::array<SteamEquipmentSlot, 3> retained{{{human, 0}, {human, 2}, {human + 1, 0}}};
+    for (std::size_t n = 0; n < retained.size(); ++n) {
+        SteamPeopleStrategy gifts;
+        const auto selected = gifts.next(retention, 1000, 0, true, retained[n]);
+        require(n == 0 ? !selected.handled && !gifts.active()
+                       : selected.handled && selected.command &&
+                             selected.command->kind == Kind::open_human &&
+                             selected.command->definition == human && gifts.active(),
+                "retention must exclude only the observed person's worn slot");
+        require(gifts.gifts() == 0 && retention.catalog.at({1, 1}).free_purchases == 1 &&
+                    !retention.shop_humans.at(human).equipment[0],
+                "retention selection cannot equip, spend or invent gift history");
+    }
     const std::vector<int> list{0, 1, 2};
     for (const int person : list) {
         s.human_presence.at(person) = 1;

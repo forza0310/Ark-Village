@@ -1,5 +1,13 @@
 # 当前研究验证与历史索引
 
+## 年末贡献回卷修正 2026-10-16
+
+回应产品月167→168的真实最小复现，固定APK DEX确认贡献总和／差／平方／累加按int32回卷，负方差sqrt为NaN，Java转整NaN为0且越界饱和。35／87共用[维护规则](example/src/world_award_page.cpp)纠正原先过强的算术拒绝；不扩大精度、改年度记录或放宽身份／空群体、奖章及奖励回滚检查。Steam机器码存在异常转换差异，默认CRT／屏蔽异常条件与未验动态已合入[贡献合同](rules/ai/WORLD_SCHEDULE.md#steam贡献异常数值的版本边界)，规则仍沿已确认APK基线。
+
+Windows单Release动态构建及独立严格C++17语法检查通过；现award_page／pages／projection **3/3通过3.89秒**。原授勋套件扩真实25人数值oracle及总和／差／平方／负方差／退化边界，现Owner套件补负方差Init一次提交贡献、奖章与名单且输入／现金／随机不变；既有晚期奖励回滚继续通过。三份他人在途住宅存取测试未编译，产品失败快照单轮与自然经营后继仍待产品接入复验，本批不宣称自然跨年已通过。
+
+无新文件、target、Owner／codec／schema、素材或核对产物；Release1398文件／224826101字节，assets872文件／9504668字节，无.pending。候选与数值输出按次消费，不新增长期引用／历史；不外推世界账本永久有界。构建及短测进程已结束，原游戏／原档和产品未改；仅白名单本地提交，不推送，保留未确认Rank设计及其他维护者改动。
+
 ## 公共触摸请求与菜单／标记分支 2026-10-16
 
 接`91d3f95`，`81d388d`新增标准C++17职责模块[steam_touch_commands](prototype/include/dungeon_village_prototype/steam_touch_commands.hpp)，本批再接标题／菜单及箭头。0–2／4–7／9／18–22／24的纯请求保留各自边沿、custom／默认键、属性拆分及扩展原序；0的ENTER固定type0x30000写完整int，UP只发键；1／18先KeyDown再用实际paint请求箭头效果，TEXTURES行2／3与vx按原值选择，LOST／CANCEL才释放。7实际KeyDown(true)，19主type仍掩高16位而dx原样保留。8独立计划绑定首主菜单与当时顶页，Pop请求后不重找accessor；16保留12→14→15→旧key短路，DOWN无旧key时仍可先Reset再Clear。观测轨迹不能再执行成第二次查询，原Set／Pop不冒称维护事务。

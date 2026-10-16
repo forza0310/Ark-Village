@@ -173,7 +173,7 @@ Steam36的具名方法体交叉见后文，实际字体／热区的原窗口动�
 
 `startup_town_information`已复用当前唯一Owner给出34的原显示口径。固定APK与Steam raw34绘制分支（VA0x10335781–0x10336227）一致：p1冒险者、D[2]恰1的居民、原g内定义类型3／9的每次出现、任务成功v及活动F；右四种类只数装备p1，不用38的flag过滤，不额外增加住宅数或分母。村名仍属于应用配置，不在世界统计中复制。缺定义／名单引用或定义kind镜像失配显式拒绝，查询不修补Owner、不请求Steam平台成就。固定tenant表没有类型9行，测试仅用明确私有规则变体覆盖该原分支，不宣称发现了自然可建“类型9公园”。
 
-35所需`prepare_world_human_contributions`从既有[授勋模块](../example/include/dungeon_village_reference/world_award_page.hpp)抽出同一算法：p非0参与，保持定义顺序、其它字段及p0原贡献，返回完整候选或明确错误；不加奖章、不排序、不产生输出。87仍独立验证页状态、增加一枚奖章及按原严格反向交换排序，调用时移动已有私有人物列表，避免重复复制。原整数均值／方差、double平方根转float及取整口径、显式溢出拒绝全部保留。35初始化在唯一Owner内消费这份候选，不调用授勋初始化。
+35所需`prepare_world_human_contributions`从既有[授勋模块](../example/include/dungeon_village_reference/world_award_page.hpp)抽出同一算法：p非0参与，保持定义顺序、其它字段及p0原贡献，返回完整候选或明确错误；不加奖章、不排序、不产生输出。87仍独立验证页状态、增加一枚奖章及按原严格反向交换排序，调用时移动已有私有人物列表，避免重复复制。整数均值／方差、double平方根转float及逐项转整沿APK；2026-10-16修正算术为int32回卷与Java NaN／饱和转换，保留身份／空群体等拒绝。Steam异常转换差异见[贡献版本边界](../rules/ai/WORLD_SCHEDULE.md#steam贡献异常数值的版本边界)。35初始化在唯一Owner内消费这份候选，不调用授勋初始化。
 
 现有projection／world_award_page／pages三套短测通过，总耗时2.35秒。统计条件、纯算法及年度页面分别由所属套件主责，无新增target或持久字段。这只是34／35入口所需的数据和算法前置；34平台成就仍未接；34→39及35维护链见下节，不据查询存在开放假入口。
 

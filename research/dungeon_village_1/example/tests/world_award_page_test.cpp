@@ -41,14 +41,11 @@ void contribution_entry() {
              Case{{}, WorldAwardError::invalid_owner},
              Case{{{0, 0, {}, 92}}, WorldAwardError::invalid_owner},
              Case{{{4, 1, {}, 93}, {4, 0, {}, 92}}, WorldAwardError::invalid_owner},
-             Case{{{4, 1, {}, 93}, {-1, 0, {}, 92}}, WorldAwardError::invalid_owner},
-             Case{{{4, 1, {0, std::numeric_limits<int>::max(), 0}, 93},
-                   {2, 1, {0, 1, 0}, 91}},
-                  WorldAwardError::overflow}}) {
+             Case{{{4, 1, {}, 93}, {-1, 0, {}, 92}}, WorldAwardError::invalid_owner}}) {
         const auto before = c.humans;
         const auto rejected = prepare_world_human_contributions(c.humans);
         check(rejected.error == c.error && !rejected.candidate,
-              "standalone invalid identity, empty population or overflow has no partial candidate");
+              "standalone invalid identity or empty population has no partial candidate");
         for (std::size_t i = 0; i < before.size(); ++i)
             check(c.humans[i].definition == before[i].definition &&
                       c.humans[i].presence == before[i].presence &&
@@ -56,6 +53,43 @@ void contribution_entry() {
                       c.humans[i].contribution == before[i].contribution,
                   "standalone rejection leaves every input field unchanged");
     }
+}
+void contribution_wrap() {
+    // 独立APK数值oracle：覆盖平方和负值→NaN、单项平方、总和及离均差回卷。
+    struct Case { int first; int second; int expected_first; int expected_second; };
+    for (const auto c : {Case{0, 65536, 12, 12}, Case{0, 100000, 4, 70},
+                         Case{std::numeric_limits<int>::max(), 1, 25, 25},
+                         Case{0, 0, 25, 25}, Case{0, 1, 25, 25}}) {
+        WorldAwardPageState input;
+        input.humans = {{0, 1, {0, 0, c.first}, 91}, {1, 2, {0, 0, c.second}, 92}};
+        const auto r = prepare_world_award_page_initialization(input);
+        check(r.candidate && r.candidate->state.initialized &&
+                  r.candidate->state.medal_count == 1 && r.candidate->effects.empty() &&
+                  r.candidate->state.humans[0].contribution == c.expected_first &&
+                  r.candidate->state.humans[1].contribution == c.expected_second &&
+                  input.medal_count == 0 && input.humans[0].contribution == 91 &&
+                  input.humans[1].contribution == 92,
+              "APK arithmetic wrap commits a complete award candidate, never mutates input");
+    }
+    // 产品月167→168真实25人数值，B[1]是年度获得村点，不是击杀次数。
+    const std::array<int, 25> earned{23,29,26,74,38,4,21,29,12,26,25,13,17,14,3,33,13,10,32,13,14,79,26,44,9};
+    const std::array<int, 25> spent{21257,16289,37213,20530,35562,44299,17691,26312,17977,18951,14952,15040,29451,28714,21012,29569,31464,37118,16695,27882,26976,11780,11239,7703,3528};
+    const std::array<int, 25> expected{23,27,25,58,33,10,22,27,16,25,25,16,19,17,9,30,16,14,29,16,17,61,25,38,14};
+    WorldAwardPageState input;
+    input.medal_count = 3;
+    for (int i = 0; i < 25; ++i)
+        input.humans.push_back({i, 1, {0, earned[i], spent[i]}, 99});
+    const auto standalone = prepare_world_human_contributions(input.humans);
+    const auto award = prepare_world_award_page_initialization(input);
+    check(standalone.candidate && award.candidate && award.candidate->state.medal_count == 4 &&
+              award.candidate->state.ranked_definitions.size() == 25 && input.medal_count == 3,
+          "real annual spending population is accepted by both35 and87, with one medal increment");
+    for (std::size_t i = 0; i < expected.size(); ++i)
+        check(standalone.candidate->at(i).contribution == expected[i] &&
+                  award.candidate->state.humans[i].contribution == expected[i] &&
+                  award.candidate->state.humans[i].yearly_totals == input.humans[i].yearly_totals &&
+                  input.humans[i].contribution == 99,
+              "real25 APK contribution oracle preserves identity, annual records and original input");
 }
 void rules() {
     WorldAwardPageState original;
@@ -165,11 +199,15 @@ void rules() {
           "medal increment overflow rejects atomically");
     original.medal_count = 0;
     original.humans = {{0, 1, {0, std::numeric_limits<int>::max(), 0}, 0}, {1, 1, {0, 1, 0}, 0}};
-    check(prepare_world_award_page_initialization(original).error == WorldAwardError::overflow,
-          "source integer sum overflow rejects atomically");
+    r = prepare_world_award_page_initialization(original);
+    check(r.candidate && r.candidate->state.humans[0].contribution == 25 &&
+              r.candidate->state.humans[1].contribution == 25,
+          "source integer sum and difference wrap rather than reject");
     original.humans = {{0, 1, {0, 0, 0}, 0}, {1, 1, {0, 100000, 0}, 0}};
-    check(prepare_world_award_page_initialization(original).error == WorldAwardError::overflow,
-          "source square overflow rejects atomically");
+    r = prepare_world_award_page_initialization(original);
+    check(r.candidate && r.candidate->state.humans[0].contribution == 4 &&
+              r.candidate->state.humans[1].contribution == 70,
+          "source individual square wraps before integer variance division");
     original.humans = {{0, 0, {}, 0}};
     check(prepare_world_award_page_initialization(original).error == WorldAwardError::invalid_owner,
           "zero roster rejects source division by zero, never injects adventurer");
@@ -216,6 +254,7 @@ void displays() {
 int main() {
     try {
         contribution_entry();
+        contribution_wrap();
         rules();
         displays();
         std::cout << checks << " award page checks passed\n";

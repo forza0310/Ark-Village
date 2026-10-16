@@ -53,8 +53,9 @@ struct WorldContributionResult {
     WorldAwardError error{WorldAwardError::none};
     std::optional<std::vector<WorldAwardHuman>> candidate;
 };
-// a/e.l、Steam CharacterData.SetContributeParam：35/87共用的纯贡献重算。
-// 保持定义原序、身份和p0贡献；不授勋、不排序。非法群体/溢出无部分候选。
+// APK a/e.l：35/87共用的纯贡献重算，int32回卷、NaN转0及越界饱和。
+// Steam同名消费者的异常浮点转换不同，见WORLD_SCHEDULE的版本边界。
+// 保持定义原序、身份和p0贡献；不授勋、不排序。非法群体无部分候选。
 // 按值接收窄投影，Owner可移入私有候选，避免再次复制；lvalue输入保持不变。
 WorldContributionResult
 prepare_world_human_contributions(std::vector<WorldAwardHuman> humans);

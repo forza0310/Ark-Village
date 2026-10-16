@@ -1250,6 +1250,56 @@ void steam_config_skin_checks(Checks &check) {
         else {const int row=(fault-2)/2;bad.state.values[row]=(fault%2==0)?-1:(row<2?2:6);}
         check(!steam_config_english_update(bad),"Steam12非法行/实际值显式拒绝，不能靠返回或速度锁掩盖坏来源");
     }
+    // setter计划独立于键盘净改值过滤：同值画质/速度仍写，音量同值才无后继。
+    using Property=SteamConfigProperty;
+    using SetterAction=SteamConfigSetterAction;
+    const auto property_is=[](const SteamConfigSetterOperation &op,Property property,int index,int value) {
+        const auto *write=std::get_if<SteamConfigPropertyWrite>(&op);
+        return write&&write->property==property&&write->index==index&&write->value==value;
+    };
+    const auto quality=changed?steam_config_setting_effects(
+        std::get<SteamConfigSettingRequest>(changed->operations.front())):std::nullopt;
+    check(quality&&quality->operations.size()==3&&
+        property_is(quality->operations[0],Property::world,12,1)&&
+        std::get<SteamConfigLinearFilter>(quality->operations[1]).enabled&&
+        std::get<SetterAction>(quality->operations[2])==SetterAction::draw_all_forms,
+        "Steam12真实键盘请求接setter，先写P12再请求过滤与DrawAllForms，不代表GPU或绘制已执行");
+    for(int value:{0,1}) {
+        const auto same=steam_config_setting_effects({0,value,value});
+        check(same&&same->operations.size()==3&&
+            property_is(same->operations[0],Property::world,12,value)&&
+            std::get<SteamConfigLinearFilter>(same->operations[1]).enabled==(value==1)&&
+            std::get<SetterAction>(same->operations[2])==SetterAction::draw_all_forms,
+            "Steam12画质同值仍依序写P12/请求过滤/重绘，不能复用音量同值优化");
+        const auto speed=steam_config_setting_effects({1,value,value});
+        check(speed&&speed->operations.size()==1&&
+            property_is(speed->operations[0],Property::world,13,value),
+            "Steam12速度同值也只写P13；setter不额外添加J9门控、音频或重绘");
+    }
+    for(int row:{2,3})for(const auto values:std::array<std::array<int,2>,2>{{{1,0},{0,5}}}) {
+        const int channel=row-2,after=values[1];
+        const auto sound=steam_config_setting_effects({row,values[0],after});
+        check(sound&&sound->operations.size()==(row==2?4U:5U)&&
+            property_is(sound->operations[0],Property::system,row+1,after)&&
+            std::get<SteamConfigVolume>(sound->operations[1]).channel==channel&&
+            std::get<SteamConfigVolume>(sound->operations[1]).volume==after*51&&
+            std::get<SteamConfigMute>(sound->operations[2]).channel==channel&&
+            std::get<SteamConfigMute>(sound->operations[2]).mute==(after==0)&&
+            std::get<SetterAction>(sound->operations[3])==SetterAction::reflect_audio,
+            "Steam12音量边界先写J3/J4，再SetVolume(0/255)/SetMute/Reflect，BGM与SE通道分开");
+        if(row==3)check(sound&&sound->operations.size()==5&&
+            std::get<SteamConfigResourceSound>(sound->operations[4]).index==7,
+            "Steam12效果音改变后末请求resSound_[7]试听，归零仍保留该请求，不替换成固定音频字节");
+    }
+    for(int row:{2,3})for(int value:{0,5}) {
+        const auto same=steam_config_setting_effects({row,value,value});
+        check(same&&same->operations.empty(),"Steam12音量同值为空计划，不写系统属性、Reflect或试听");
+    }
+    for(int row:{-1,4})check(!steam_config_setting_effects({row,0,0}),"Steam12 setter未知行显式拒绝");
+    for(int row=0;row<4;++row)for(int value:{-1,row<2?2:6}) {
+        check(!steam_config_setting_effects({row,value,0})&&!steam_config_setting_effects({row,0,value}),
+            "Steam12 setter前后值各自校验，不能以同值过滤或调用者门控掩盖坏来源");
+    }
 }
 void steam_commerce_skin_checks(Checks &check,const std::filesystem::path &root) {
     // raw83纯输入条件夹具；NEW不是购买资格，rank不是现金，不运行Owner事务。

@@ -740,6 +740,8 @@ SaveAll已证true→false→system的顺序保留，完整生命周期上游仍�
 
 后续最小动态条件是：自然请求产生后，核对**同一KairoBase接收者**的reserveSave／reserveSaveEnable，以及失焦／退出前是否实际进入`Main.OnUpdate→Execute→_execute`并到达上述尾段；同时区别请求清零、业务保存调用与文件写入结果。外层`IApplication.Update`在`0x1078F550`先调用TerminateCheck，true分支`0x1078F55A`跳离稍后的槽11 OnUpdate（`0x1078FA9E`）；TerminateCheck的原条件不检查预留保存是否仍待消费。因此不能仅凭“退出回调发生／窗口最后一帧”保证还有一次尾段，也不应再用无自然预留请求的重复失焦实验认证SaveAll。构造后的reserveSaveEnable实际改写仍缺有接收者身份的具体配置入口或运行证据；共享setter地址不补成已闭合链，本轮未重扫全程序调用点。
 
+2026-10-16补核到达该更新点前的两版资格：APK管理器`kairo/android/a/b.java:191–199`在锁屏、前台标志false或无窗口焦点时，调用`IApplication.b(100)`的绘制等待后提前返回，未到`:321`的表单Update；`kairo/android/ui/IApplication.java:347/364/370`由onRestart／onStart置前台true、onStop置false。Steam `OnApplicationPause 10787AD0`写isPause_，但`IApplication.Update 1078F636–F648`仅在`Config.UNITY_EDITOR && isPause_`时因该标志提前离开；固定MyConfig的UNITY_EDITOR=false不走此门，通过其它资格后才在`1078FA99–FA9E`分派OnUpdate。这不证明Unity后台实际持续调用Update，也不能将APK后台门外推Steam；回调不提出请求与后续是否取得业务更新机会分别认证。同批有限核KairoBase Reset／两种Restart／Init／Reboot／Start／Finish／Update共6176字节，未发现同一this.reserveSaveEnable的运行期写入；仍没有可命名的新配置入口，不将构造true改判为永久true，不新增失焦SaveAll或最后保存轮。
+
 ### 强制终止与浏览器延迟不提供最后保存轮
 
 2026-10-16固定Steam局部续核：`IApplication.TerminateCheck`在VA`1078D7C0–1078D803`即使`force=true`仍要求静态`TerminateCheckEnable +4C`为真及实例`delayQuitFrames_ +D8 <= 0`；force仅绕过普通的部分splash／Xbox与非空表单门槛，不检查`reserveSave`。调用Terminate后，`1078D806–1078D8F9`比较`Canvas.lastOpenBrowserFrame_ +24`和`IApplication.totalFrames_ +2C`：不同则直接`Application.Quit`，相同才写退出延迟3。这里是Canvas字段，不是保存请求的时间戳。

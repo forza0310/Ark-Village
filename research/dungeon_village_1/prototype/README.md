@@ -20,6 +20,7 @@
 | `steam_startup_skin` | Steam共用窗框、标题菜单／选档局部及背景→upper→演员插入点→草／Logo的有序前段；整场组合仍待接；[标题绘制](../ui/STEAM_TITLE_DRAW.md) |
 | `steam_platform_button_skin` | 平台绑定／键盘／语言按钮及NEW原序请求、控制器后备及glyph矩阵几何；语言普通结果输出安装／成功条件共享回调／Pop次序，不调用Steam、安装包或发现设备；[按钮及glyph](../ui/STEAM_FONT_CONSUMER.md#内嵌按钮提示)、[语言结果](../ui/STEAM_LANGUAGE_INSTALL.md#语言页的选择结果与标题回调) |
 | `steam_font_metrics` | 原字号preset／实例整数比例、本地化准入及float32派生请求；不选字形、不改Owner或模拟平台线程；[字体数值合同](../ui/STEAM_FONT_CONSUMER.md#可直接消费的字号数值接口) |
+| `steam_config_skin` | 设置12四行皮肤／键盘候选及setter有序后继：区分P12／P13、J3／J4，声音改值去重与画质同值重绘；仅交属性／声音／Canvas请求，不写文件或代替应用联合提交；[设置合同](../ui/STEAM_INTERACTIONS.md#游戏设置与标题平台按钮) |
 | `steam_dialogue_skin`／`steam_event_skin`／`steam_news_skin` | 对话0有序纯请求，事件11及人物解锁59完整局部皮肤／严格Owner桥，报纸15真实排版观测的页数／输入／绘制纯计划；11／59接正常研究窗口，59读取当前职业／武器，不创建到访实体；报纸尚无专用Owner或精确恢复；[页面及限制](../ui/PAGES.md#steam脚本事件11报纸15与等待16) |
 | `steam_cursor_skin` | 虚拟光标的按下图资格、原SEB两帧、平台坐标补偿和恢复缩放／混合的有序纯计划；不合成Touch或推进平台状态；[原输入与绘制合同](../ui/STEAM_INTERACTIONS.md#虚拟屏幕光标模式位置与合成touch) |
 | `steam_touch_commands` | 已准入组件的公共按键／属性写入及箭头反馈、主菜单切换与解除标记纯请求；列表／滚动使用SteamTouchFlow逐请求临时续体，等真实Set完成再取下一观测；保留触发边沿、绑定目标、查询短路、扩展原序与顶页截获，不执行OS命中、Canvas或业务；[公共输入合同](../ui/STEAM_INTERACTIONS.md#公共触摸分派与请求边界) |

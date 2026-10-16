@@ -177,11 +177,25 @@ raw12同身份静态子批进一步核定以下生命周期；字段含义及四
 | 左→右 | 先把画质／速度实际值作`(value+1)%2`得到显示索引，音量原值不反转；`10326B50/10326BD4`均为Repeat，按本行MAX分别减1／加1绕环，最后才反转回存储值。音量0向左为5、5向右为0，不是夹限。速度行且J9为0在`10326B08–10326B37`直接越过两个方向查询；仅行选择变化、无方向或左右同轮净值不变都不调用setter。 |
 | 改值→返回 | 净值改变才在`10326CEB`请求当前行setter；之后一律在`10326D03`查询soft2，没有确认键提交分支。soft2命中时请求顺序是SaveSystem→ResetOffscreen→Pop，并把实际Pop bool交还调用者；同轮改值在保存前已生效，不是返回撤销。 |
 
-声音只随有效setter发生：BGM在`10201480/102014C3/102014CB`依次SetVolume(type0,value×51)→SetMute(type0,value==0)→Reflect；SE在`102011DD/10201220/10201228`用type1执行同序，再于`10201261`Play(resSound_[7])。归零仍保留试听请求，实际静音由播放器决定，不能因听不到便删请求；页内没有新增“方向声／确认声”，通用待发jingle仍归上游。速度setter`1020139C–102013DA`只写P13，没有额外J9资格或重绘；画质setter`10201509–1020156D`写P12后还调用Canvas后继与DrawAllForms，不用纯值变化冒称平台画质已经刷新。
+声音只随有效setter发生：BGM在`10201480/102014C3/102014CB`依次SetVolume(type0,value×51)→SetMute(type0,value==0)→Reflect；SE在`102011DD/10201220/10201228`用type1执行同序，再于`10201261`Play(resSound_[7])。归零仍保留试听请求，实际静音由播放器决定，不能因听不到便删请求；页内没有新增“方向声／确认声”，通用待发jingle仍归上游。资源槽7在消费时从同一AppData.ResourceManager.sounds读取，不把APK已核se_06.ogg字节自动认证为Steam同一音频。速度setter`1020139C–102013DA`只写P13，没有额外J9资格或重绘；画质setter`10201539`无条件写P12，再于`10201550`调用Canvas.SetLinearFilterEnable(value==1)、`10201562`调用DrawAllForms。后两项在同值直接调用时仍执行，区别于键盘Update仅净改值才调用setter。Steam滤镜方法与共享空实现`101C9750`绑定，不能宣称GPU过滤实际改变；APK对应`b/d.java:198–202`及Canvas `kairo/android/ui/a.java:302–304`确实写布尔字段w，两版不混同。
 
-现[steam_config_english_update](../prototype/include/dungeon_village_prototype/steam_config_skin.hpp)复用既有设置皮肤输入的四个实际值、当前行、speed_unlocked，另接四个具名Repeat与soft2查询结果，返回下一值／行、实际检查轨迹、单次setter及返回动作的有序请求；它不新增Owner／持久布局。setter以row、before、after的实际存储值表达，真实执行者独占后继声音／画质操作，不能同时执行setter与另一路拆分输出而重复试听。音量／画质后继、跨局权威J字段、系统文件写入失败与Pop结果均留给真正执行者，不能仅安装候选便宣称完整设置完成。原SaveSystem异常可能捕获后直接Pop（`10326DA2–10326E22`），不回滚已经改值；维护的原子提交与失败保留仍须独立契约，不照搬该原异常行为。Touch6／19即时setter及拖动行回写是既有另一条输入路径，不把键盘J9门控外推给它或重复消费一次。
+现[steam_config_english_update](../prototype/include/dungeon_village_prototype/steam_config_skin.hpp)复用既有设置皮肤输入的四个实际值、当前行、speed_unlocked，另接四个具名Repeat与soft2查询结果，返回下一值／行、实际检查轨迹、单次setter及返回动作的有序请求；它不新增Owner／持久布局。setter以row、before、after的实际存储值表达，`steam_config_setting_effects`可继续展开为属性写→声音／画质后继的有序纯计划；音量同值为空，画质／速度同值仍写。before必须来自真实setter时点，资源槽7消费时解析，实际执行者沿同一接收者消费这些请求，不能同时调用原setter而重复试听。跨局权威J字段、真正音频／绘制执行、系统文件写入失败与Pop结果仍留给应用Owner，不能仅安装候选便宣称完整设置完成。原SaveSystem异常可能捕获后直接Pop（`10326DA2–10326E22`），不回滚已经改值；维护的原子提交与失败保留仍须独立契约，不照搬该原异常行为。Touch6／19即时setter及拖动行回写是既有另一条输入路径，不把键盘J9门控外推给它或重复消费一次。
 
 候选值域沿现皮肤：P12／P13为0..1，J3／J4为0..5。按现明确提供的中文选项顺序，画质stored0／1分别显示“速度优先”／“画质优先”，速度stored0／1分别显示“普通”／“高速”；中文名称是当前适配文案，反向索引来自原数组。J9的原字段名为`SYSSAVEI_OPEN_HIGHSPEED`，资格是`!=0`而非恰等于1；最终行被锁时检查轨迹应为上、下、soft2，不虚报已经查询左右。`MyFormBase.Jp RVA200A20`和`SubForm.En RVA30E210`分别委托Language.Japanese／English，调用者须明确提供本分支资格，不能把“研究窗口显示中文”直接当作En真。
+
+### 设置初值、新局与读取
+
+2026-10-16交叉固定APK与同身份Steam，以下为模板及明确覆盖顺序，不是用户当前档或平台动态值：
+
+| 时点 | 已核来源与效果 |
+| --- | --- |
+| 系统模板 | APK `d/a.java:125`的F与Steam defSysSaveI均为J3=3、J4=3、J9=0、J13=−1。Steam静态数据槽110F36F8经fieldRefs[188]映射17项int，版本字段256且比APK多一末尾0；不能只按相似字节猜字段。 |
+| 系统初始化覆盖 | APK `d/a.java:3427–3435`还按语言设置J14；Steam `102589CA–10258A08`只有Config.MUTE_SE为真且AppData +B8字符串StartsWith("ap")时才将J4置0。模板SE=3不等于所有平台最后都为3，也不能反推Steam无条件默认0。 |
+| 新局 | APK `d/a.java:1017–1036`及Steam `1025F203–1025F4BC`保留J，先写所选栏J8并SaveSystem，再新建P；P13沿模板0，不继承旧局速度。P12先置0，应用GetWidth／GetHeight任一≤480再置1；不是按研究窗口固定240坐标猜设备初值。 |
+| 世界读取 | APK `d/a.java:1280–1290`及Steam `1025A183–1025A2CA`先经NewGame，再用世界默认模板重建P并SetData，因此P12／P13由所读世界字节恢复。APK Property `kairo/android/i/k.java:47–114`缺尾字段保留模板；Steam SetData的内层尚未独立逐分支核完，不将APK回退细节认证为Steam事实。 |
+| 系统读取／保存 | APK `d/a.java:3905–3933`先初始化J再读记录0，保存只写J；Steam SaveSystem的同一归属见上文。世界档的速度／画质与跨局J权威分别恢复，不由高分或世界镜像重新推算音量／高速资格。 |
+
+维护`StartupSystemRecords`系统2的三个必需分区均拒绝尾字节，且系统文件没有应用／世界schema字段；新增正式设置不能只改应用schema或借opaque占位。系统正式分区／版本、世界画质、跨局高速权威及实际输出／返回失败的联合方案仍须独立设计；本次纯计划不改变该布局。
 
 ### 平台按钮事件与显式动作
 

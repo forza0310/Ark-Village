@@ -69,4 +69,21 @@ struct SteamConfigUpdatePlan {
 // 有序纯请求：真正setter负责声音/画质/速度输出；本接口不重复试听或执行文件/平台操作。
 // 返回并非撤销当轮设置；实际执行失败策略仍由应用Owner独立设计，不复制原异常后继续Pop。
 std::optional<SteamConfigUpdatePlan> steam_config_english_update(const SteamConfigUpdateInput &input);
+
+// MyFormBase.SetTouchValue四类设置setter的有序后继；键盘和Touch均可交同一请求。
+// 音量同值为空，画质／速度同值仍写入；高速门控属于调用者，不在setter重复添加。
+enum class SteamConfigProperty { world, system };
+struct SteamConfigPropertyWrite { SteamConfigProperty property{}; int index{}, value{}; };
+struct SteamConfigVolume { int channel{}, volume{}; };
+struct SteamConfigMute { int channel{}; bool mute{}; };
+struct SteamConfigLinearFilter { bool enabled{}; }; // Steam已核函数体为空，非GPU已改变的保证。
+struct SteamConfigResourceSound { int index{}; }; // 消费时解析同一AppData的resSound_[index]。
+enum class SteamConfigSetterAction { reflect_audio, draw_all_forms };
+using SteamConfigSetterOperation=std::variant<SteamConfigPropertyWrite,SteamConfigVolume,
+    SteamConfigMute,SteamConfigLinearFilter,SteamConfigResourceSound,SteamConfigSetterAction>;
+struct SteamConfigSetterPlan { std::vector<SteamConfigSetterOperation> operations; };
+// 只生成计划，不执行属性写／试听／Draw；before须由实际setter时点读取，不复用过期皮肤值。
+// 执行者沿原调用绑定同一SoundPlayer／AppData／Canvas／FormManager，不再执行一次原setter。
+// 文件写、平台失败和Owner联合提交独立；计划不入codec或长期队列。
+std::optional<SteamConfigSetterPlan> steam_config_setting_effects(const SteamConfigSettingRequest &request);
 } // namespace dungeon_village_prototype

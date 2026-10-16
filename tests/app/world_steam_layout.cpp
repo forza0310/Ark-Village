@@ -169,6 +169,13 @@ bool extension_candidate(const State &s, const SteamLayoutTarget &target,
                          [id](const auto &entry) { return entry.instance_id.value == id; });
         return status != access.facilities.end() && !status->cells.empty();
     };
+    // A connected shop can still close the only gate into the adventure area.
+    // Keep both real gates reachable through the source search; do not infer
+    // global connectivity from the new shop's own connection flag.
+    for (const auto &[id, gate] : s.scene.world.world.facilities)
+        if ((gate.kind == 4 || gate.kind == 5) &&
+            (!candidate.scene.world.world.facilities.count(id) || !reachable(id)))
+            return false;
     const bool plant = candidate.scene.world.world.facilities.at(*built.created).kind == 2;
     if (!reachable(*built.created))
         return false;
@@ -283,13 +290,43 @@ std::optional<SteamLayoutTarget> steam_connected_extension(const State &s, int d
 
 std::optional<std::pair<std::uint64_t, SteamLayoutTarget>>
 steam_layout_access_repair(const State &s) {
+    const auto &map = s.scene.world.world.map;
+    const auto paths = ref::search_legacy_map(map, simulation::startup_evidence().spawn_points.at(0));
+    if (!paths.field)
+        return {};
+    std::set<std::uint64_t> gate_blockers;
+    for (const auto &[id, gate] : s.scene.world.world.facilities) {
+        if (gate.kind != 4 && gate.kind != 5)
+            continue;
+        const auto access = ref::inspect_facility_access(*paths.field, {gate.placement});
+        if (access.error != ref::MapAccessError::none)
+            return {};
+        if (!access.facilities.front().cells.empty())
+            continue;
+        const auto ring = ref::facility_surroundings(gate.placement.shape, gate.placement.orientation,
+                                                      gate.placement.anchor, map.width, map.height);
+        if (ring.error != ref::GeometryError::none)
+            return {};
+        for (const auto &cell : ring.cells) {
+            const auto &tile = map.cells.at(cell.y * map.width + cell.x);
+            if (!tile.facility)
+                continue;
+            const auto blocker = tile.facility->instance_id.value;
+            const auto &facility = s.scene.world.world.facilities.at(blocker);
+            if (facility.kind == 3 && facility.status == 1 && !steam_layout_slot(s, blocker))
+                gate_blockers.insert(blocker);
+        }
+    }
+    for (const auto id : gate_blockers)
+        if (const auto target = steam_connected_extension(
+                s, s.scene.world.world.facilities.at(id).placement.definition_id, id))
+            return std::pair{id, *target};
     for (const auto &[id, shop] : s.scene.world.world.facilities)
         if (shop.kind == 3 && shop.status == 1 && !steam_layout_slot(s, id) &&
             (s.facility_flags.at(id) & 1U))
             if (const auto target = steam_connected_extension(s, shop.placement.definition_id, id))
                 return std::pair{id, *target};
     std::set<std::uint64_t> blockers;
-    const auto &map = s.scene.world.world.map;
     for (const auto &goal : layout) {
         const auto id = steam_layout_match(s, goal);
         if (!id || !(s.facility_flags.at(*id) & 1U))
@@ -353,6 +390,80 @@ bool steam_housing_expansion_needed(const State &s) {
     const auto candidates = simulation::startup_world_residence_candidates(s);
     return candidates && !candidates->empty();
 }
+
+namespace {
+void gate_access_contract() {
+    const auto require = [](bool value, const char *message) {
+        if (!value)
+            throw std::runtime_error(std::string("Steam gate access: ") + message);
+    };
+    // Both shops may trade while jointly sealing the south gate. Source
+    // placement/search produce this fixture; it does not certify a natural task.
+    auto gates = initial_world();
+    gates.scene.world.world.ai.accounting = ref::PeriodAccounting(100000);
+    gates.scripts.user_flags |= 32U;
+    gates.scripts.event_calls[115] = 1;
+    for (const auto id : std::vector<std::uint64_t>(gates.scene.world.facility_order)) {
+        const auto kind = gates.scene.world.world.facilities.at(id).kind;
+        if (kind != 4 && kind != 5)
+            require(simulation::retire_startup_world_facility(gates, id),
+                    "fixture must retire unneeded initial buildings");
+    }
+    require(simulation::expand_startup_world_map(gates), "fixture expansion failed");
+    const auto gate = std::find_if(gates.scene.world.world.facilities.begin(),
+                                   gates.scene.world.world.facilities.end(),
+                                   [](const auto &entry) { return entry.second.kind == 5; });
+    require(gate != gates.scene.world.world.facilities.end(), "real south gate is required");
+    const auto gate_id = gate->first;
+    const auto gate_reachable = [&](const State &owner) {
+        const auto paths = ref::search_legacy_map(owner.scene.world.world.map,
+                                                  simulation::startup_evidence().spawn_points.at(0));
+        require(paths.field.has_value(), "source search must succeed");
+        const auto access = ref::inspect_facility_access(
+            *paths.field, {owner.scene.world.world.facilities.at(gate_id).placement});
+        require(access.error == ref::MapAccessError::none, "gate binding must stay valid");
+        return !access.facilities.front().cells.empty();
+    };
+    require(gate_reachable(gates), "unobstructed expanded gate must be reachable");
+    const auto anchor = gate->second.placement.anchor;
+    const auto left = simulation::install_startup_world_facility(
+        gates, 35, {anchor.x, anchor.y - 1}, first);
+    require(left.created.has_value(), "first inner shop must be a legal placement");
+    gates.scene.world.world.facilities.at(*left.created).status = 1;
+    require(gate_reachable(gates), "one open gate tile must preserve exterior access");
+    const SteamLayoutTarget sealing{35, {anchor.x + 1, anchor.y - 1}, first, Role::shop};
+    const auto before = simulation::startup_world_state_digest(gates);
+    require(!extension_candidate(gates, sealing, {}) &&
+                simulation::startup_world_state_digest(gates) == before,
+            "connected placement must not seal the last exterior passage or mutate its input");
+    const auto right = simulation::install_startup_world_facility(gates, 35, sealing.anchor, first);
+    require(right.created.has_value(), "second inner shop must reproduce the obstruction");
+    gates.scene.world.world.facilities.at(*right.created).status = 1;
+    require(!gate_reachable(gates) && !(gates.facility_flags.at(*left.created) & 1U) &&
+                !(gates.facility_flags.at(*right.created) & 1U),
+            "both shops must remain connected while their shared gate is unreachable");
+    const auto blocked = simulation::startup_world_state_digest(gates);
+    const auto repair = steam_layout_access_repair(gates);
+    require(repair && (repair->first == *left.created || repair->first == *right.created) &&
+                simulation::startup_world_state_digest(gates) == blocked,
+            "repair must select a gate blocker without changing Owner/random");
+    auto moved = gates;
+    const auto funds = moved.scene.world.world.ai.accounting.funds();
+    require(simulation::begin_startup_world_edit(moved, true).error ==
+                    simulation::StartupWorldRuntimeError::none &&
+                simulation::confirm_startup_world_edit(
+                    moved, gates.scene.world.world.facilities.at(repair->first).placement.anchor,
+                    first).error == simulation::StartupWorldRuntimeError::none,
+            "repair must open the original move transaction");
+    const auto result = simulation::confirm_startup_world_edit(
+        moved, repair->second.anchor, repair->second.orientation);
+    require(result.created && gate_reachable(moved) &&
+                moved.scene.world.world.ai.accounting.funds() == funds - 300 &&
+                simulation::cancel_startup_world_edit(moved) ==
+                    simulation::StartupWorldRuntimeError::none,
+            "paid repair must restore source reachability and return normally");
+}
+} // namespace
 
 void steam_layout_contract() {
     const auto require = [](bool value, const char *message) {
@@ -545,6 +656,7 @@ void steam_layout_contract() {
             "connected extension query must discard every private paid candidate");
     require(!steam_connected_extension(corner, 25, protected_home),
             "repair planning must never relocate a protected blueprint residence");
+    gate_access_contract();
 
     // Plant qualification: source placement/adjacency, with an explicit unlocked
     // definition and cash. This is not a natural recipe, claim or village build.

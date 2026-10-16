@@ -14,6 +14,7 @@
 #include <set>
 #include <sstream>
 #include <stdexcept>
+#include <type_traits>
 
 namespace ark::test {
 namespace {
@@ -72,7 +73,10 @@ template <class Values> void list(std::ostream &out, const Values &values) {
     for (const auto value : values) {
         if (!first)
             out << ',';
-        out << value;
+        if constexpr (std::is_same_v<std::decay_t<decltype(value)>, sim::rules::CharacterId>)
+            out << value.value;
+        else
+            out << value;
         first = false;
     }
     out << ']';
@@ -177,6 +181,74 @@ void activity_facility_fields(std::ostream &out, const sim::rules::RescueFacilit
     }
     out << ']';
 }
+void inspect_adventure_progress(const app::WorldState &s, std::ostream &out) {
+    if (s.active_task) {
+        const auto &task = s.tasks.at(*s.active_task);
+        out << "ACTIVE_ADVENTURE instance=" << *s.active_task << " definition=" << task.definition
+            << " kind=" << s.rules->tasks.at(task.definition).factory.kind
+            << " difficulty=" << task.difficulty << " participants=" << s.participants.size()
+            << " facility=" << task.facility.value_or(0)
+            << " center=" << s.task.center.x << ',' << s.task.center.y
+            << " ai_active=" << s.scene.world.world.ai.task_active << " roster=";
+        list(out, s.participants);
+        out << '\n';
+        const auto &map = s.scene.world.world.map;
+        out << "ADVENTURE_MAP town=" << s.scene.world.town.left << ',' << s.scene.world.town.top
+            << ',' << s.scene.world.town.right << ',' << s.scene.world.town.bottom << '\n';
+        for (int y = std::max(0, s.task.center.y - 1);
+             y <= std::min(map.height - 1, s.task.center.y + 1); ++y)
+            for (int x = std::max(0, s.task.center.x - 1);
+                 x <= std::min(map.width - 1, s.task.center.x + 1); ++x) {
+                const auto &cell = map.cells.at(y * map.width + x);
+                out << "ADVENTURE_CELL cell=" << x << ',' << y
+                    << " state=" << cell.legacy_state << " category=" << int(cell.category)
+                    << " facility=" << (cell.facility ? cell.facility->instance_id.value : 0)
+                    << " definition=" << (cell.facility ? cell.facility->definition_id : -1)
+                    << '\n';
+            }
+        for (const auto id : s.scene.world.world.ai.human_order) {
+            const auto &actor = s.scene.world.world.ai.battle.actors.at(id);
+            if (std::find(s.participants.begin(), s.participants.end(), actor.definition) ==
+                s.participants.end())
+                continue;
+            const auto field = sim::rules::prepare_world_departure_field(
+                map, s.scene.world.world.ai.contexts.at(id).cell,
+                std::numeric_limits<int>::max());
+            if (!field.field)
+                break;
+            // Print the source search's two connected components; this is an
+            // observation of its distances, never a replacement pathfinder.
+            out << "ADVENTURE_FIELD actor=" << id.value << " width=" << map.width
+                << " height=" << map.height << " legend=state_hex/reachable01\n";
+            for (int y = 0; y < map.height; ++y) {
+                out << "ADVENTURE_FIELD_ROW y=" << y << " states=";
+                for (int x = 0; x < map.width; ++x)
+                    out << "0123456789abc"[map.cells.at(y * map.width + x).legacy_state];
+                out << " reachable=";
+                for (int x = 0; x < map.width; ++x)
+                    out << bool(field.field->distances.at(y * map.width + x));
+                out << '\n';
+            }
+            break;
+        }
+        if (task.facility && s.dungeon_facilities.count(*task.facility)) {
+            const auto &progress = s.dungeon_facilities.at(*task.facility);
+            out << "ADVENTURE_PROGRESS facility=" << *task.facility
+                << " updates=" << progress.updates << " progress=" << progress.progress
+                << " extent=" << progress.extent << " percent=" << progress.percent
+                << " challenges=" << progress.challenges.size();
+            const auto live = s.scene.world.world.facilities.find(*task.facility);
+            out << " facility_live=" << (live != s.scene.world.world.facilities.end());
+            if (live != s.scene.world.world.facilities.end()) {
+                out << " status=" << live->second.status << " occupants=";
+                list(out, live->second.occupants);
+                out << " anchor=" << live->second.placement.anchor.x << ','
+                    << live->second.placement.anchor.y << " category=" << live->second.category;
+            }
+            out << '\n';
+        }
+    }
+}
 } // namespace
 
 void inspect_campaign_activity(const app::WorldState &before, const app::WorldState &after,
@@ -256,20 +328,7 @@ void inspect_campaign_progress(const app::WorldState &s, std::ostream &out) {
                 << " threshold=" << found->second[n].threshold << " met=" << rank.rank_met.at(n)
                 << '\n';
     }
-    if (s.active_task) {
-        const auto &task = s.tasks.at(*s.active_task);
-        out << "ACTIVE_ADVENTURE instance=" << *s.active_task << " definition=" << task.definition
-            << " kind=" << s.rules->tasks.at(task.definition).factory.kind
-            << " difficulty=" << task.difficulty << " participants=" << s.participants.size()
-            << " facility=" << task.facility.value_or(0) << '\n';
-        if (task.facility && s.dungeon_facilities.count(*task.facility)) {
-            const auto &progress = s.dungeon_facilities.at(*task.facility);
-            out << "ADVENTURE_PROGRESS facility=" << *task.facility
-                << " updates=" << progress.updates << " progress=" << progress.progress
-                << " extent=" << progress.extent << " percent=" << progress.percent
-                << " challenges=" << progress.challenges.size() << '\n';
-        }
-    }
+    inspect_adventure_progress(s, out);
     const auto &ai = s.scene.world.world.ai;
     // Durable definition progress can outlive the current scene actor. Cold-load
     // inspection must expose R and learning separately from the derived Q cache.
@@ -321,16 +380,40 @@ void inspect_campaign_progress(const app::WorldState &s, std::ostream &out) {
             const bool roster_member = std::find(s.participants.begin(), s.participants.end(),
                                                  actor.definition) != s.participants.end();
             out << " task_roster_member=" << roster_member
-                << " task_member=" << (s.active_task && roster_member);
+                << " task_member=" << (s.active_task && roster_member)
+                << " definition_task_flag=" << ((s.human_flags.at(actor.definition) & 2U) != 0);
         }
         if (const auto context = s.scene.world.world.actors.find(id);
             context != s.scene.world.world.actors.end()) {
             const auto &route = context->second;
             out << " path_pending=" << route.path_pending << " journey=" << bool(route.journey)
-                << " waypoint=" << route.waypoint << " no_path=" << route.no_path_updates;
+                << " waypoint=" << route.waypoint << " no_path=" << route.no_path_updates
+                << " route_task_flag=" << route.definition_task_flag;
             if (route.destination)
                 out << " destination=" << route.destination->x << ',' << route.destination->y;
+            if (human && s.active_task && route.definition_task_flag) {
+                const auto cell = ai.contexts.at(id).cell;
+                const auto field = sim::rules::prepare_world_departure_field(
+                    s.scene.world.world.map, cell, std::numeric_limits<int>::max());
+                const auto target = s.task.center;
+                out << " task_reachable=";
+                if (!field.field)
+                    out << "unresolved";
+                else {
+                    const auto &distance = field.field->distances.at(
+                        target.y * s.scene.world.world.map.width + target.x);
+                    if (distance)
+                        out << *distance;
+                    else
+                        out << "none";
+                }
+            }
         }
+        const auto crew = s.dungeon_actors.find(id);
+        if (crew != s.dungeon_actors.end())
+            out << " dungeon_progress=" << crew->second.progress
+                << " dungeon_endurance=" << crew->second.endurance
+                << " dungeon_retreat=" << crew->second.retreat_state;
         out << '\n';
     }
 }

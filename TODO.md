@@ -9,10 +9,10 @@
 - [ ] 正式9692bb8/197d5b2已交植物路线绑定修正、施工只读计划及设施完工/装备库存头标；d4ed6be已交事务式魔法实际消费观察。按独立批次核对和接入，不混入a9dc1bd验收结果。
 
 - [ ] 按[全解锁合同](docs/stages/ACTIVE_VILLAGE_PLAN.md#full-unlock-campaign)逐定义覆盖取得、消费、实际效果与后继，保留775分母；代表样例、仅解锁或日期推进不算全覆盖。
-- [ ] 普通道具显式输入已获批并接入；2/5/8/22/27已真实购买/强化、完整后继营业及独立冷载。继续补11/23的合法取得与实际使用：月202配方5已足额，配方2仅缺暗2，仍无库存/商会货源；[最新合法补料](docs/stages/B1-playable-prototype.md#campaign-pot39-actual-plant)与[既有消费证据](docs/stages/B1-playable-prototype.md#campaign-item-stock-gaps)分开，不把目录或材料当消费。
+- [ ] 普通道具显式输入已获批并接入；2/5/8/22/27已真实购买/强化、完整后继营业及独立冷载。继续补11/23的合法取得与实际使用：月209配方2/5材料均足额，仍无库存/商会货源；[最新合法补料](docs/stages/B1-playable-prototype.md#campaign-gate-access)与[既有消费证据](docs/stages/B1-playable-prototype.md#campaign-item-stock-gaps)分开，不把目录或材料当消费。
 - 普通道具配方的制造/设施使用八目标已[准备方案](docs/MILESTONES.md#campaign-pot-ordinary-items)并发出确认，尚未编码；原九目标批准与既有魔法壶发现/设施路线继续有效。
 - 历史回执2838条：80个已核分段外补核5个旧格式阶段，配方7完整消费及职业4人物0/1/3已联接；旧来源字段缺失、失败后段和每定义未完环节保留，见[审计](docs/stages/B1-playable-prototype.md#campaign-history-receipt-audit)，不把“有回执”当全覆盖。
-- [ ] 从当前有效父世界月202接续：配方39实际制造/领取/建设、木灵大树70/20邻接及完整后继营业/冷载已[通过](docs/stages/B1-playable-prototype.md#campaign-pot39-actual-plant)。18、32/33及52营业保留各自原证据；继续1/2/3/37等产物，37缺暗20。17的独立分支资格不改签主线；29未开放，20付款排队不当人气兑现。保留两月现金及图纸预算、40配方与775分母，实际施法不以学习/Q替代；原197/200失败不由新路线改签。
+- [ ] 从当前有效父世界月209接续：南门付费修复、任务74胜利、壶经验90及配方9/19/23/28/29真实发现均已[验证](docs/stages/B1-playable-prototype.md#campaign-gate-access)；继续29等新装备的实际制造/分配及完整后继，37缺暗7。39植物70/20、18、32/33及52营业保留各自原证据，17的独立分支不改签主线。20付款排队不当人气兑现；保留两月现金及图纸预算、40配方与775分母，实际施法不以学习/Q替代，原197/200失败不由新路线改签。
 - [ ] 接入d4ed6be法术及239d071物理局部回执，再补实际施放、投射/延迟伤害与武器实战归因，见[研究回应](docs/reference/RESEARCH_REQUESTS.md#spell-consumption-receipts)；Q可用、装配属性及退休现金均不替代实际作用，不再将已交观察接口当作研究缺口。
 - [ ] 继续23职业的显式消费分支和后继。职业0/1/2/3/7已有合法付款、原三阶段、完整后继营业及冷载；木匠/商人效果见[经营效果](docs/stages/B1-playable-prototype.md#campaign-profession-economy)，职业0实收住宅税560G及月148后继见[税收](docs/stages/B1-playable-prototype.md#campaign-profession-tax)。独立培养分支已验真实付费、任务73胜利及月153冷载，两名职业8升9级、职业5升7级；5/6/8/15仍未开放，见[培养](docs/stages/B1-playable-prototype.md#campaign-profession-training)。植物实付、其它职业税收、剩余收费及精通后继待核，不把普通策略跳过标作不可达。
 - [ ] 优先接入正式6cbfdf3的跨年贡献修正：APK按int32回卷及Java转整处理，保留有效身份/奖章/奖励拒绝；先从月167→168失败Owner/随机快照单轮复验，再验玩家经营/授勋/保存冷载，见[研究回应](docs/reference/RESEARCH_REQUESTS.md#award-contribution-overflow)。当前产品尚未修正，职业0的独立跨年前分支通过不替代失败后继认证。

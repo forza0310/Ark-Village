@@ -12,15 +12,17 @@
 #include <stdexcept>
 
 namespace ark::desktop::ui {
-bool world_hud_buttons_visible(const simulation::rules::WorldScriptPage *page) {
-    return !page ||
-           (page->legacy_page != 21 && page->legacy_page != 74 && page->legacy_page != 29 &&
-            page->legacy_page != 89 && page->legacy_page != 90 && page->legacy_page != 92 &&
-            page->legacy_page != 99 && page->legacy_page != 100 &&
-            (page->legacy_page < 22 || page->legacy_page > 24) && !world_source_menu_page(*page) &&
-            page->legacy_page != 9 && page->legacy_page != 13 && page->legacy_page != 14 &&
-            (page->legacy_page < 34 || page->legacy_page > 40) &&
-            (page->legacy_page < 83 || page->legacy_page > 86));
+bool world_hud_buttons_visible(const simulation::rules::WorldScriptPage *page,
+                               bool dungeon_footer) {
+    return !dungeon_footer &&
+           (!page ||
+            (page->legacy_page != 21 && page->legacy_page != 74 && page->legacy_page != 29 &&
+             page->legacy_page != 89 && page->legacy_page != 90 && page->legacy_page != 92 &&
+             page->legacy_page != 99 && page->legacy_page != 100 &&
+             (page->legacy_page < 22 || page->legacy_page > 24) && !world_source_menu_page(*page) &&
+             page->legacy_page != 9 && page->legacy_page != 13 && page->legacy_page != 14 &&
+             (page->legacy_page < 34 || page->legacy_page > 40) &&
+             (page->legacy_page < 83 || page->legacy_page > 86)));
 }
 std::string world_page_body(const simulation::StartupWorldRuntimeState &s,
                             const simulation::rules::WorldScriptPage &page, int paragraph) {
@@ -37,7 +39,7 @@ std::string world_page_body(const simulation::StartupWorldRuntimeState &s,
 }
 void draw_world_hud(const simulation::StartupWorldRuntimeState &s, const Layout &layout,
                     const Skin &skin, bool failed, bool menu_open, bool menu_pending,
-                    const simulation::rules::WorldScriptPage *page) {
+                    const simulation::rules::WorldScriptPage *page, bool dungeon_footer) {
     const float w = layout.extent.width, h = layout.extent.height;
     skin.tile("top_bar.png", {22, 0, 90, 24}, {22, 0, w - 150, 24});
     skin.sprites.image("top_bar.png", {0, 0, 22, 24}, {0, 0, 22, 24});
@@ -50,16 +52,17 @@ void draw_world_hud(const simulation::StartupWorldRuntimeState &s, const Layout 
     skin.tile("btmbar.png", {116, 1, 4, 20}, {0, h - 21, w, 20});
     // Information footnotes occupy the same area as the village sign at the
     // minimum window size; those modals own the footer just like facility details.
-    if (!page ||
-        (page->legacy_page != 74 && page->legacy_page != 9 && !world_source_menu_page(*page) &&
-         page->legacy_page != 14 && (page->legacy_page < 34 || page->legacy_page > 40)))
+    if (!dungeon_footer && (!page || (page->legacy_page != 74 && page->legacy_page != 9 &&
+                                      !world_source_menu_page(*page) && page->legacy_page != 14 &&
+                                      (page->legacy_page < 34 || page->legacy_page > 40))))
         draw_world_popularity(s.popularity, layout, skin);
     // Catalogue/details own the footer; the same predicate rejects their hidden mouse buttons.
-    if (!world_hud_buttons_visible(page) || s.scene.scene_state == 4 || s.scene.scene_state == 5)
-        return;
-    skin.button(layout.left_button, s.scene.framework_paused ? "继续" : "暂停", !failed);
-    skin.button(world_menu_button(layout.extent), "菜单",
-                !failed && !menu_pending && (menu_open || (s.scene.scene_state == 0 && !page)));
+    if (world_hud_buttons_visible(page, dungeon_footer) && s.scene.scene_state != 4 &&
+        s.scene.scene_state != 5) {
+        skin.button(layout.left_button, s.scene.framework_paused ? "继续" : "暂停", !failed);
+        skin.button(world_menu_button(layout.extent), "菜单",
+                    !failed && !menu_pending && (menu_open || (s.scene.scene_state == 0 && !page)));
+    }
     if (failed)
         skin.centered("当前活动尚未接入", {8, 46, w - 16, 20}, MAROON);
     if (s.report_state && !page)

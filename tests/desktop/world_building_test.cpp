@@ -2,11 +2,12 @@
 // Rule arithmetic/transactions stay in frozen building tests; this suite owns mapping and input.
 #include "../../src/desktop/scene/world_build_placement.hpp"
 #include "../../src/desktop/scene/world_editing.hpp"
-#include "../../src/desktop/ui/facilities/world_building.hpp"
 #include "../../src/desktop/ui/facilities/world_build_menu.hpp"
+#include "../../src/desktop/ui/facilities/world_building.hpp"
 #include "../support/checks.hpp"
 #include "../support/world_fixture.hpp"
 #include <algorithm>
+#include <cmath>
 #include <utility>
 
 namespace ark::test {
@@ -44,21 +45,24 @@ void build_menu_mapping(Checks &check, desktop::Sprites &sprites) {
     auto view = measured_fixture(state);
     check(view.source.catalogs == catalog && catalog[0].front() == 18 && catalog[0][1] == -1,
           "Desktop preserves the complete source directory without inserting extra tools");
-    check(view.source.visible_rows[1].definition == -1 &&
-              view.source.visible_rows[1].quote == 0 &&
+    check(view.source.visible_rows[1].definition == -1 && view.source.visible_rows[1].quote == 0 &&
               view.source.visible_rows[0].mapchip >= 0,
           "Negative tools have their source quote while road keeps its mapchip identity");
-    const auto real = std::find_if(view.source.visible_rows.begin(), view.source.visible_rows.end(),
-                                   [](const auto &row) { return row.definition >= 0 && row.kind != 6; });
+    const auto real =
+        std::find_if(view.source.visible_rows.begin(), view.source.visible_rows.end(),
+                     [](const auto &row) { return row.definition >= 0 && row.kind != 6; });
     check(real != view.source.visible_rows.end() &&
-              real->quote == sim::startup_world_build_quote(state, real->definition)->construction_cost,
+              real->quote ==
+                  sim::startup_world_build_quote(state, real->definition)->construction_cost,
           "Desktop price comes from the current shared definition quote");
     for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{384, 256},
                               desktop::Extent{540, 360}, desktop::Extent{960, 640}}) {
         auto local = state;
         view = measured_fixture(local);
         auto controls = ui::world_build_menu_controls(view, extent, sprites, 7, 11);
-        const auto middle = [](Rectangle r) { return Vector2{r.x + r.width / 2, r.y + r.height / 2}; };
+        const auto middle = [](Rectangle r) {
+            return Vector2{r.x + r.width / 2, r.y + r.height / 2};
+        };
         check(controls.rows[4].y - controls.rows[0].y == 148 && controls.rows[0].width == 175 &&
                   controls.track.height == 189 && controls.cancel.y == extent.height - 25 &&
                   !CheckCollisionRecs(controls.rows[4], controls.cancel),
@@ -66,26 +70,30 @@ void build_menu_mapping(Checks &check, desktop::Sprites &sprites) {
         ui::WorldBuildMenuGesture gesture;
         ui::WorldBuildMenuInput input;
         input.click = middle(controls.rows[2]);
-        const auto first = ui::world_build_menu_input(view, extent, 7, 11, controls, gesture, input, false);
+        const auto first =
+            ui::world_build_menu_input(view, extent, 7, 11, controls, gesture, input, false);
         check(first && first->selection == 2 && !first->confirm && gesture.marked_row == 2,
               "First construction click submits an absolute row and marks without buying");
         const auto marked = gesture.marked_row;
         check(!ui::world_build_menu_input(view, extent, 7, 11, controls, gesture, input, true) &&
                   gesture.marked_row == marked,
               "Pending input cannot consume or duplicate the marker");
-        const auto premature = ui::world_build_menu_input(view, extent, 7, 11, controls, gesture, input, false);
+        const auto premature =
+            ui::world_build_menu_input(view, extent, 7, 11, controls, gesture, input, false);
         check(premature && !premature->confirm,
               "Second physical click still cannot confirm before Owner selection commits");
         check(sim::input_startup_world_build_menu(local, id, *first).error == E::none,
               "The real Owner commits the first row selection");
         view = measured_fixture(local);
         controls = ui::world_build_menu_controls(view, extent, sprites, 7, 12);
-        const auto second = ui::world_build_menu_input(view, extent, 7, 12, controls, gesture, input, false);
+        const auto second =
+            ui::world_build_menu_input(view, extent, 7, 12, controls, gesture, input, false);
         check(second && second->confirm && second->selection == 2,
               "Same marked committed row confirms without a double-click time threshold");
         input = {};
         input.up = input.down = input.left = input.right = input.inspect = true;
-        const auto keys = ui::world_build_menu_input(view, extent, 7, 12, controls, gesture, input, false);
+        const auto keys =
+            ui::world_build_menu_input(view, extent, 7, 12, controls, gesture, input, false);
         check(keys && keys->directions.up && keys->directions.down && keys->directions.left &&
                   keys->directions.right && keys->details && !gesture.marked_row,
               "Whole keyboard frame keeps simultaneous directions and detail for source ordering");
@@ -93,22 +101,29 @@ void build_menu_mapping(Checks &check, desktop::Sprites &sprites) {
         input.click = middle(controls.rows[2]);
         for (int stale = 0; stale < 4; ++stale) {
             auto old = controls;
-            if (stale == 0) ++old.epoch;
-            if (stale == 1) --old.generation;
-            if (stale == 2) ++old.extent.width;
-            if (stale == 3) old.cursor.selection = 0;
+            if (stale == 0)
+                ++old.epoch;
+            if (stale == 1)
+                --old.generation;
+            if (stale == 2)
+                ++old.extent.width;
+            if (stale == 3)
+                old.cursor.selection = 0;
             check(!ui::world_build_menu_input(view, extent, 7, 12, old, gesture, input, false),
                   "Future epoch or stale generation/size/cursor cannot replay a pointer action");
         }
-        check(ui::world_build_menu_input(view, extent, 7, 13, controls, gesture, input, false).has_value(),
-              "A new update epoch retains actually painted controls when source geometry still matches");
+        check(ui::world_build_menu_input(view, extent, 7, 13, controls, gesture, input, false)
+                  .has_value(),
+              "A new update epoch retains actually painted controls when source geometry still "
+              "matches");
         input.focus_lost = true;
         check(!ui::world_build_menu_input(view, extent, 7, 12, controls, gesture, input, false) &&
                   !gesture.marked_row,
               "Losing focus clears the pointer marker without changing Owner selection");
         input = {};
         input.click = middle(controls.categories[2]);
-        const auto category = ui::world_build_menu_input(view, extent, 7, 12, controls, gesture, input, false);
+        const auto category =
+            ui::world_build_menu_input(view, extent, 7, 12, controls, gesture, input, false);
         check(category && category->page == 2 && !category->confirm && !gesture.marked_row,
               "Category touch submits only the source category; Owner performs its cursor reset");
     }
@@ -118,13 +133,15 @@ void build_menu_mapping(Checks &check, desktop::Sprites &sprites) {
     check(sim::input_startup_world_build_menu(short_list, id, tab).error == E::none,
           "Real food category selected for empty-row input");
     view = measured_fixture(short_list);
-    check(view.source.catalogs[2].size() < 5, "Real initial food directory has a registered empty row");
+    check(view.source.catalogs[2].size() < 5,
+          "Real initial food directory has a registered empty row");
     const desktop::Extent extent{540, 360};
     const auto controls = ui::world_build_menu_controls(view, extent, sprites, 1, 1);
     ui::WorldBuildMenuGesture gesture;
     ui::WorldBuildMenuInput click;
     click.click = Vector2{controls.rows[4].x + 60, controls.rows[4].y + 18};
-    const auto empty = ui::world_build_menu_input(view, extent, 1, 1, controls, gesture, click, false);
+    const auto empty =
+        ui::world_build_menu_input(view, extent, 1, 1, controls, gesture, click, false);
     check(empty && empty->selection == 4 && !empty->confirm,
           "An empty row is selectable and keeps its own absolute marker identity");
     auto long_menu = initial_world();
@@ -146,8 +163,7 @@ void build_menu_mapping(Checks &check, desktop::Sprites &sprites) {
     const auto long_controls = ui::world_build_menu_controls(long_view, extent, sprites, 1, 1);
     ui::WorldBuildMenuGesture drag;
     ui::WorldBuildMenuInput movement;
-    movement.pointer = Vector2{long_controls.track.x + 1,
-                                long_controls.track.y + 2};
+    movement.pointer = Vector2{long_controls.track.x + 1, long_controls.track.y + 2};
     movement.pointer_pressed = movement.pointer_down = true;
     (void)ui::world_build_menu_input(long_view, extent, 1, 1, long_controls, drag, movement, false);
     check(drag.scrolling && drag.consumed && !drag.marked_row,
@@ -156,17 +172,21 @@ void build_menu_mapping(Checks &check, desktop::Sprites &sprites) {
     movement.pointer_released = true;
     movement.pointer->y += 2.25F * long_controls.drag_grid;
     movement.click = movement.pointer;
-    const auto scrolled = ui::world_build_menu_input(long_view, extent, 1, 1, long_controls,
-                                                    drag, movement, false);
+    const auto scrolled =
+        ui::world_build_menu_input(long_view, extent, 1, 1, long_controls, drag, movement, false);
     check(scrolled && scrolled->scroll == 2 && scrolled->selection == 2 && !scrolled->confirm &&
               !drag.scrolling && !drag.consumed,
           "Source-grid drag submits the first row and visible selection without confirming a row");
     auto broken = state;
     broken.build_page_catalogs.at(id)[0].push_back(broken.build_page_catalogs.at(id)[0].front());
     bool rejected = false;
-    try { (void)ui::world_build_menu_view(broken, broken.scripts.pages.back()); }
-    catch (const std::invalid_argument &) { rejected = true; }
-    check(rejected, "Duplicate source directory identities reject rather than being silently displayed");
+    try {
+        (void)ui::world_build_menu_view(broken, broken.scripts.pages.back());
+    } catch (const std::invalid_argument &) {
+        rejected = true;
+    }
+    check(rejected,
+          "Duplicate source directory identities reject rather than being silently displayed");
     check(state.build_page_catalogs.at(id) == catalog && state.scene.random.draws() == draws &&
               state.scene.world.world.ai.accounting.funds() == cash,
           "Desktop projection and input conversion never rewrite caches, random or funds");
@@ -252,6 +272,22 @@ void world_building() {
     check(scaled_crop && scaled_crop->source.x == 20 && scaled_crop->source.y == 25 &&
               scaled_crop->source.width == 30 && scaled_crop->source.height == 20,
           "Clipping respects an existing draw scale without fitting or recentering the sprite");
+    for (const auto &[flip_x, flip_y] : {std::pair{false, false}, std::pair{true, false},
+                                         std::pair{false, true}, std::pair{true, true}}) {
+        const auto atlas = desktop::clip_sprite_source(
+            {{-10, -5, flip_x ? -30.F : 30.F, flip_y ? -20.F : 20.F}, {100, 200, 60, 40}}, 15, 12);
+        const auto near = [](float a, float b) { return std::abs(a - b) < .0001F; };
+        check(atlas && near(atlas->source.x, 0) && near(atlas->source.y, 0) &&
+                  near(atlas->source.width, flip_x ? -15 : 15) &&
+                  near(atlas->source.height, flip_y ? -12 : 12) &&
+                  near(atlas->destination.x, flip_x ? 110 : 120) &&
+                  near(atlas->destination.y, flip_y ? 206 : 210) &&
+                  near(atlas->destination.width, 30) && near(atlas->destination.height, 24),
+              "Atlas overflow stays transparent at its original destination, including flips");
+    }
+    check(!desktop::clip_sprite_source({{30, 0, 10, 10}, {0, 0, 10, 10}}, 20, 20) &&
+              !desktop::clip_sprite_source({{0, 0, 0, 10}, {0, 0, 10, 10}}, 20, 20),
+          "Outside and empty atlas requests draw no pixels");
     // FACILITIES shape/fragment tables and SPRITE_BINDINGS independently specify these
     // examples. In particular the two inn fragments come from different PNGs in one SEB.
     struct GraphicCase {

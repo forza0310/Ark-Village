@@ -98,6 +98,7 @@ class SteamPlanDraw {
         clips_.assign(1, {origin_.x + r[0], origin_.y + r[1], float(r[2]), float(r[3])});
     }
     void clear_clip() { clips_.clear(); }
+    std::optional<Rectangle> clip_bounds() const { return active_clip(); }
     void whole_image(const char *png, std::array<int, 2> position) const {
         const std::string source = png;
         const auto group = source.rfind("original/event/", 0) == 0 ? Sprites::Binding::event

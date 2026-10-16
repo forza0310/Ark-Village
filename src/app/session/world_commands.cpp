@@ -632,6 +632,13 @@ std::uint64_t WorldSession::draw_build_menu(std::uint64_t page, std::uint64_t ep
     command.generation = generation;
     return submit(command);
 }
+std::uint64_t WorldSession::present_world(std::uint64_t epoch, std::uint64_t generation) {
+    WorldCommand command;
+    command.kind = WorldCommandKind::present_world;
+    command.generation = generation;
+    command.presentation_epoch = epoch;
+    return submit(command);
+}
 std::uint64_t WorldSession::cancel_build_menu(std::uint64_t page) {
     WorldCommand command;
     command.kind = WorldCommandKind::cancel_build_menu;

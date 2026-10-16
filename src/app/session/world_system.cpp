@@ -132,9 +132,8 @@ std::string advance_world_clear(State &candidate, WorldSystemState &system, bool
     system.clear.reset();
     return {};
 }
-std::string commit_world_system(const std::filesystem::path &directory, const State &before,
-                                const State &candidate, WorldSystemState &system,
-                                bool clear_finished) {
+bool prepare_world_system_records(const State &before, const State &candidate,
+                                  WorldSystemState &system, bool clear_finished) {
     bool changed = clear_finished;
     if (candidate.cash_peak > system.records.cash_peak) {
         system.records.cash_peak = candidate.cash_peak;
@@ -146,7 +145,14 @@ std::string commit_world_system(const std::filesystem::path &directory, const St
         system.records.profession_status = candidate.system_unlock_data[1];
         changed = true;
     }
-    return changed ? write_world_system(directory, system.records) : std::string{};
+    return changed;
+}
+std::string commit_world_system(const std::filesystem::path &directory, const State &before,
+                                const State &candidate, WorldSystemState &system,
+                                bool clear_finished) {
+    return prepare_world_system_records(before, candidate, system, clear_finished)
+               ? write_world_system(directory, system.records)
+               : std::string{};
 }
 void change_world_draft_sex(WorldNewGameDraft &draft, int sex) {
     if (sex != 0 && sex != 1)

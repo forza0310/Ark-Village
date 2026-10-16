@@ -1,5 +1,16 @@
 # B1：持续世界产品接入
 
+<a id="desktop-dungeon-footer"></a>
+## 2026-10-16：探索条与一次性桌面表现交接
+
+按用户已确认的[方案](../MILESTONES.md#research-45b480b-footer-owner)，WorldSession新增同FIFO表现请求；每个generation/presentation_epoch至多成功一次full_redraw，暂停允许，重复/迟到/旧代次及玩家存档overlay拒绝。正式维护候选在worker中准备，产品计分引用先校验，66包装保持关闭；世界、冻结抖动、系统和音频一并提交，回执不创造新机会。WorldFrame只留一份无历史链的完整世界/计划对，后续输入与更新不能借旧计划，窗口等待时保留该画面。系统纪录先在私有候选准备，画面副本及全部分配完成后才替换文件，失败不发布半个事务。职责分在app/session/world_presentation、ui/tasks/world_dungeon_footer及resources/dungeon_footer，CMake显式登记，不新增target或玩家字段。
+
+底部18逻辑单位按源顺序绘探索条、宝箱/怪物、人物与攻略百分比。产品固定English基础＋简中资源/gate，出版语言目录完整保留，INF只换算物理源坐标；目标沿原SEB。源纹理外交集保留透明且不挤压/居中重画，作为明确PC适配，未认证原GPU越界像素。人物局部clip与两层父clip分别恢复，轮廓逐边裁剪。探索条与底部鼠标按钮/人气扇形使用同一显示/命中条件；快捷键、右键及左上自动月报保留，绘制不抽随机或重发特效。
+
+最终公共DLL与三消费者构建通过。两Debug标准分别140/140、119/119，仅排simulation.startup_world_continuous_test；首轮仅新增计分夹具遗漏pending生命周期和浮点裁片完全相等预期失败，按正式生产者的生命周期0/三钟全无及小于0.0001像素误差修正，新/旧有效断言保留，对应配置world_session/world_building复验通过。Release定向最终11/11（同两项修正后2/2复验），不重复已通过的无关全套。期间源码收口改变字形输入身份，首次消费者被DLL守卫拒绝，最终严格先发布共享库再重链通过；这些失败日志保留，不当成功或规则缺陷。
+
+Release已生成24张条件图（两尺寸、根/English/简中/繁中、滑入及特效0/4/退休8），已查看各语言与两尺寸；真实月196玩家档副本另以world-load的FIFO输入在1080×720和240×256加载绘制，均12帧、音频26/26、failed0、outer_updates0，攻略条/百分比及隐藏按钮已查看。原业务根再次独立冷载通过phase2/continued_month195/154750，9份原输入逐字节未变；玩家schema5/独立系统2及随机不保存保持。日志、条件图、真实载入图见`build/validation/research-a9dc1bd-integration/`的footer-*及latest-footer-live.txt。窗口是程序内输入验收，非OS鼠标/原程序动态或新经营月认证；完整Release标准/三个月、CI、配方18完整后继及全775仍分别未完成。维护批checkpoint为27ec47e；本桌面批本地提交及便携包后续记录。
+
 <a id="research-a9dc1bd-maintenance"></a>
 ## 2026-10-16：攻略特效、应用表现事务与经营回执审计
 

@@ -17,6 +17,7 @@
 #include "../ui/common/world_reports.hpp"
 #include "../ui/system/world_clear_score.hpp"
 #include "../ui/system/world_menu.hpp"
+#include "../ui/tasks/world_dungeon_footer.hpp"
 #include "../ui/tasks/world_tasks.hpp"
 #include "../ui/village/world_award.hpp"
 #include "ark/app/session/world_report.hpp"
@@ -139,6 +140,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
     int frames{}, paragraph{}, scroll{};
     std::uint64_t viewed_page{}, pending_ack{}, pending_view{}, pending_pause{};
     std::uint64_t pending_task{}, held_task_page{}, pending_menu{};
+    std::uint64_t requested_presentation_epoch{}, requested_presentation_generation{};
     int menu_inspection_phase{};
     std::string menu_feedback;
     // Menu inspection exercises the real asynchronous desktop command after natural startup.
@@ -189,6 +191,21 @@ static void run_world_game_capture(const app::LaunchOptions &options,
         last_render = now;
         publication = session.frame(); // Only a shared_ptr exchange; never waits for world work.
         diagnostics.observe(*publication);
+        if (!publication->failed && publication->system_error.empty() &&
+            !publication->save_menu_open && !publication->save_busy && !publication->presentation &&
+            (publication->presentation_epoch != requested_presentation_epoch ||
+             publication->generation != requested_presentation_generation)) {
+            session.present_world(publication->presentation_epoch, publication->generation);
+            requested_presentation_epoch = publication->presentation_epoch;
+            requested_presentation_generation = publication->generation;
+        }
+        // Do not join a new world's facts to an old random plan while the FIFO is working.
+        // The worker retains exactly one complete pair, with no chain of old publications.
+        if (!publication->presentation && publication->last_presented && !publication->failed &&
+            publication->system_error.empty() && !publication->save_menu_open &&
+            !publication->save_busy &&
+            publication->last_presented->generation == publication->generation)
+            publication = publication->last_presented;
         audio.consume(session.take_audio_requests());
         audio.update(now);
         const auto &current = *publication->state;
@@ -280,6 +297,8 @@ static void run_world_game_capture(const app::LaunchOptions &options,
             throw std::runtime_error("当前字体不支持存档中的姓名");
         text.prepare(raster.zoom);
         const ui::Layout layout(extent);
+        const auto dungeon_footer = ui::world_dungeon_footer(*publication, extent);
+        const bool footer_visible = !dungeon_footer.operations.empty();
         const auto mouse = logical_mouse(GetMousePosition(), destination, extent);
         const auto *input_page = active_page(current);
         // Key and text events have separate raylib queues. Drain key events for marker resets;
@@ -329,7 +348,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
             retry.kind = app::WorldCommandKind::retry_system_write;
             session.submit(retry);
         }
-        const bool hud_mouse_buttons = ui::world_hud_buttons_visible(input_page) &&
+        const bool hud_mouse_buttons = ui::world_hud_buttons_visible(input_page, footer_visible) &&
                                        current.scene.scene_state != 4 &&
                                        current.scene.scene_state != 5;
         if (!failed && !publication->save_menu_open && !save_menu.pending() &&
@@ -579,7 +598,11 @@ static void run_world_game_capture(const app::LaunchOptions &options,
         text.flush(raster.zoom, raster.offset);
         BeginMode2D(raster);
         ui::draw_world_hud(current, layout, skin, failed, publication->main_menu_open,
-                           pending_menu != 0, active_page(current));
+                           pending_menu != 0, active_page(current), footer_visible);
+        ui::draw_world_dungeon_footer(
+            dungeon_footer, skin,
+            {simulation::SteamDungeonFooterBaseLanguage::english,
+             simulation::SteamDungeonFooterResourceLanguage::simplified_chinese, true});
         if (const auto *page = active_page(current)) {
             management.draw_build_background(current, *page, extent, skin);
             if (page->legacy_page == 17) {

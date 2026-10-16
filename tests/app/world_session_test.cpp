@@ -1,4 +1,5 @@
 // Transport tests use the real maintained runtime; no alternative AI/tick consumer is injected.
+#include "../../src/app/session/world_presentation.hpp"
 #include "../support/world_fixture.hpp"
 #include "ark/app/session/world_report.hpp"
 #include "ark/app/session/world_session.hpp"
@@ -120,6 +121,96 @@ void paused_commands() {
     check(Clock::now() - stopped < 1s && session.set_paused(false) == 0 &&
               session.wait_for_frame_after(same->revision, 5s) == session.frame(),
           "Stop wakes waits, joins idempotently and refuses further input");
+}
+void presentation_transport() {
+    auto start = initial(true);
+    const auto made =
+        rules::prepare_world_task_creation(sim::startup_world_runtime_factory(start), 0);
+    check(made.candidate && made.candidate->created_task &&
+              sim::write_startup_world_runtime_factory(start, made.candidate->state),
+          "Presentation transport uses a source-created exploration site");
+    const auto task = *made.candidate->created_task;
+    const auto facility = *start.tasks.at(task).facility;
+    start.active_task = task;
+    start.scene.world.world.ai.task_active = true;
+    start.task.kind = 0;
+    start.task.center = *start.tasks.at(task).site;
+    start.dungeon_facilities.at(facility).challenges = {{0, 1, 1, 10, 0, 0}, {80, 1, 1, 10, 0, 0}};
+    start.scripts.pages.front().lifecycle = 3;
+    start.scene.random = rules::WorldRandomStream::from_raw({2, 0, 1, 2});
+    start.cash_peak = start.scene.world.world.ai.accounting.funds();
+    app::WorldSession session(start);
+    const auto first = session.frame();
+    const auto serial = session.present_world(first->presentation_epoch, first->generation);
+    const auto painted = input_frame(session, serial);
+    check(!painted->failed && painted->presentation && painted->last_presented &&
+              painted->last_presented->state == painted->state &&
+              painted->last_presented->system.records.cash_peak ==
+                  painted->system.records.cash_peak &&
+              painted->system.records.cash_peak == start.cash_peak &&
+              !painted->last_presented->last_presented && painted->outer_updates == 0 &&
+              painted->state->scene.framework_paused &&
+              painted->presentation_epoch == first->presentation_epoch &&
+              painted->presentation->random_before == 0 &&
+              painted->presentation->random_after == 2 &&
+              painted->presentation->dungeon_jitters[0].offset == 1 &&
+              painted->presentation->dungeon_jitters[1].offset == -1,
+          "Paused FIFO freezes reverse-order source randomness with one immutable world/plan pair");
+    for (const auto [epoch, generation] :
+         {std::pair{painted->presentation_epoch, painted->generation},
+          std::pair{painted->presentation_epoch + 1, painted->generation},
+          std::pair{painted->presentation_epoch, painted->generation + 1}}) {
+        const auto rejected = input_frame(session, session.present_world(epoch, generation));
+        check(!rejected->failed &&
+                  input_result(*rejected, rejected->last_command_serial).outcome ==
+                      app::WorldCommandOutcome::rejected &&
+                  rejected->state == painted->state && rejected->state->scene.random.draws() == 2 &&
+                  rejected->presentation_epoch == painted->presentation_epoch,
+              "Duplicate, future opportunity and old-generation presentation facts cannot redraw");
+    }
+    const auto changed = input_frame(session, session.set_view({12, 13}, {0, 24, 300, 211}));
+    check(!changed->presentation && changed->last_presented &&
+              changed->last_presented->state == painted->state &&
+              !changed->last_presented->last_presented &&
+              changed->presentation_epoch == painted->presentation_epoch + 1,
+          "A new input keeps the last complete picture without pairing its plan to new state");
+    const auto old = input_frame(
+        session, session.present_world(painted->presentation_epoch, painted->generation));
+    check(input_result(*old, old->last_command_serial).outcome ==
+                  app::WorldCommandOutcome::rejected &&
+              old->state == changed->state,
+          "Late presentation is rejected after a source input");
+    const auto fresh = input_frame(
+        session, session.present_world(changed->presentation_epoch, changed->generation));
+    check(fresh->presentation && fresh->state->scene.random.draws() == 4 &&
+              fresh->last_presented->state == fresh->state && session.take_audio_requests().empty(),
+          "The next admitted opportunity freezes once without inventing audio");
+    session.stop();
+    auto broken = start;
+    broken.dungeon_facilities.at(facility).challenges.front()[1] = 9;
+    app::WorldSession failed(broken);
+    const auto before = failed.frame();
+    const auto after =
+        input_frame(failed, failed.present_world(before->presentation_epoch, before->generation));
+    check(after->failed && after->state == before->state && !after->presentation &&
+              after->state->scene.random.draws() == 0 && failed.take_audio_requests().empty(),
+          "A later source failure discards earlier jitter, plan, world and audio together");
+    failed.stop();
+    auto clear_state = initial(false);
+    clear_state.scripts.pages.front().lifecycle = 3;
+    auto &page = clear_state.scripts.pages.emplace_back();
+    page.id = clear_state.scripts.next_page_id++;
+    page.kind = rules::WorldScriptPageKind::raw_page;
+    page.legacy_page = 17;
+    page.lifecycle = 0; // The real producer publishes a pending page without its three clocks.
+    app::WorldSystemState system;
+    check(app::advance_world_clear(clear_state, system, false).empty(),
+          "Presentation scoring fixture initializes the real product system controller");
+    check(app::detail::prepare_world_presentation(clear_state, system, 1).candidate.has_value(),
+          "Presentation accepts the matching product clear controller");
+    ++system.clear->score.counter;
+    check(!app::detail::prepare_world_presentation(clear_state, system, 1).candidate,
+          "Presentation rejects mismatched world/application scoring references");
 }
 void sequential_equivalence() {
     for (int speed : {0, 1}) {
@@ -549,6 +640,7 @@ void sound_output_sink() {
 int main() {
     using namespace ark::test::world_session;
     paused_commands();
+    presentation_transport();
     sequential_equivalence();
     page_failure_rollback();
     runtime_failure_rollback();

@@ -46,6 +46,13 @@ void source_save_bridge() {
               input_result(*frame, late_draw).runtime_error ==
                   sim::StartupWorldRuntimeError::invalid_page,
           "Save overlay explicitly rejects a late Draw receipt without changing Owner or token");
+    const auto hidden_presentation =
+        session.present_world(frame->presentation_epoch, frame->generation);
+    frame = input_frame(session, hidden_presentation);
+    check(!frame->failed && frame->save_menu_open && frame->state == overlay->state &&
+              input_result(*frame, hidden_presentation).outcome ==
+                  app::WorldCommandOutcome::rejected,
+          "Player slot overlay refuses an automatic world presentation without consuming it");
     frame = input_frame(session, session.load_slot(0));
     check(frame->save_menu_open && frame->state == old && frame->generation == 1 &&
               input_result(*frame, frame->last_command_serial).outcome ==

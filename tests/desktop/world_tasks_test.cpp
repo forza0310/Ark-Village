@@ -1,6 +1,7 @@
 // Deliberately sparse definition/instance IDs catch accidental row-index ownership. These are
 // presentation fixtures, not evidence of natural recruitment or successful task completion.
 #include "../../src/desktop/ui/common/world_reports.hpp"
+#include "../../src/desktop/ui/tasks/world_dungeon_footer.hpp"
 #include "../../src/desktop/ui/tasks/world_task_tracking.hpp"
 #include "../../src/desktop/ui/tasks/world_tasks.hpp"
 #include "../../src/desktop/ui/village/world_award.hpp"
@@ -19,6 +20,44 @@ bool contains(Rectangle outer, Rectangle inner) {
 namespace ark::test {
 void world_tasks() {
     Checks check{"world_tasks"};
+    {
+        namespace sim = ark::simulation;
+        auto owner = initial_world();
+        const auto created =
+            sim::rules::prepare_world_task_creation(sim::startup_world_runtime_factory(owner), 0);
+        check(created.candidate && created.candidate->created_task &&
+                  sim::write_startup_world_runtime_factory(owner, created.candidate->state),
+              "Footer mapping starts with a source-created exploration task");
+        owner.active_task = *created.candidate->created_task;
+        owner.task.kind = 0;
+        owner.scripts.pages.front().lifecycle = 3;
+        sim::StartupPresentationRequest request;
+        request.ordinal = 1;
+        request.mode = sim::StartupPresentationMode::full_redraw;
+        request.expected_pages = *sim::startup_world_presentation_pages(owner, request.mode);
+        auto prepared = sim::prepare_startup_world_presentation(owner, request);
+        check(prepared.candidate && prepared.plan,
+              "Footer mapping freezes its source presentation");
+        ark::app::WorldFrame frame;
+        frame.state = std::make_shared<const ark::app::WorldState>(std::move(*prepared.candidate));
+        frame.presentation = prepared.plan;
+        const auto random = frame.state->scene.random.draws();
+        for (const auto extent : {ark::desktop::Extent{240, 256}, ark::desktop::Extent{540, 360}}) {
+            const auto a = ark::desktop::ui::world_dungeon_footer(frame, extent);
+            const auto b = ark::desktop::ui::world_dungeon_footer(frame, extent);
+            check(!a.operations.empty(), "Bound exploration has a drawable footer");
+            const auto &clip = std::get<sim::SteamHumanClip>(a.operations.front());
+            check(a.operations.size() == b.operations.size() &&
+                      clip.rectangle ==
+                          std::array<int, 4>{0, extent.height - 18, extent.width, 18} &&
+                      frame.state->scene.random.draws() == random,
+                  "Desktop footer uses the actual viewport and repeated projections never redraw "
+                  "Owner");
+        }
+        frame.presentation.reset();
+        check(ark::desktop::ui::world_dungeon_footer(frame, {240, 256}).operations.empty(),
+              "An unprepared publication cannot borrow a footer plan from another world");
+    }
     namespace ui = ark::desktop::ui;
     namespace sim = ark::simulation;
     namespace rules = sim::rules;

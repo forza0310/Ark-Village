@@ -3,6 +3,7 @@
 #include "ark/app/timing/original_loop.hpp"
 #include "ark/simulation/world/startup_world_save.hpp"
 #include "world_commands.hpp"
+#include "world_presentation.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -170,6 +171,46 @@ class WorldSession::Impl {
         state.page_confirm_held = held_page.has_value();
     }
 
+    std::shared_ptr<const WorldFrame> apply_presentation(const WorldFrame &current,
+                                                         const QueuedCommand &input) {
+        auto next = current;
+        WorldCommandResult result;
+        result.serial = input.serial;
+        result.kind = WorldCommandKind::present_world;
+        const auto ordinal = input.value.presentation_epoch;
+        if (!ordinal || ordinal != current.presentation_epoch || current.save_menu_open ||
+            save_request || (current.presentation && current.presentation->ordinal == ordinal))
+            result.runtime_error = RuntimeError::invalid_page;
+        else {
+            auto prepared =
+                detail::prepare_world_presentation(*current.state, current.system, ordinal);
+            result.runtime_error = prepared.error;
+            if (prepared.candidate && prepared.plan) {
+                auto candidate = std::make_shared<WorldState>(std::move(*prepared.candidate));
+                synchronize_held(*candidate);
+                take_sound_outputs(*candidate, next);
+                next.state = std::move(candidate);
+                next.presentation = std::move(prepared.plan);
+            } else if (prepared.error == RuntimeError::none)
+                result.runtime_error = RuntimeError::missing_source;
+        }
+        result.outcome = result.runtime_error == RuntimeError::none ? WorldCommandOutcome::applied
+                                                                    : WorldCommandOutcome::rejected;
+        next.command_results.push_back(result);
+        if (next.command_results.size() > 64)
+            next.command_results.erase(next.command_results.begin());
+        next.last_command_serial = input.serial;
+        next.previous = next.state;
+        ++next.revision;
+        if (result.runtime_error != RuntimeError::none &&
+            result.runtime_error != RuntimeError::invalid_page)
+            return fail(next,
+                        "World presentation failed: error=" +
+                            std::to_string(static_cast<int>(result.runtime_error)),
+                        input.serial);
+        return publish(std::move(next), false, true);
+    }
+
     std::shared_ptr<const WorldFrame> apply_decision(const WorldFrame &current,
                                                      const QueuedCommand &input) {
         const auto &command = input.value;
@@ -301,13 +342,31 @@ class WorldSession::Impl {
         // Otherwise 60FPS painting and snapshot publication would drive one another forever.
         result->presentation_epoch = before->presentation_epoch;
         if (!source_draw &&
-            (result->state != before->state || result->save_menu_open != before->save_menu_open))
+            (result->state != before->state || result->save_menu_open != before->save_menu_open)) {
             ++result->presentation_epoch;
-        if ((result->state != before->state && result->generation == before->generation) ||
-            force_system) {
-            const auto error = commit_world_system(
-                save_directory, *before->state, *result->state, result->system,
-                force_system || (before->system.clear && !result->system.clear));
+            result->presentation.reset();
+        }
+        if (result->generation != before->generation)
+            result->last_presented.reset();
+        const bool system_transaction =
+            (result->state != before->state && result->generation == before->generation) ||
+            force_system;
+        const bool system_write =
+            system_transaction &&
+            prepare_world_system_records(*before->state, *result->state, result->system,
+                                         force_system ||
+                                             (before->system.clear && !result->system.clear));
+        // Allocate the complete render publication before any durable system replacement.
+        // No linked publication history: only one immutable world/plan pair is retained.
+        if (result->presentation && !result->failed && result->system_error.empty()) {
+            auto ready = std::make_shared<WorldFrame>(*result);
+            ready->last_presented.reset();
+            result->last_presented = std::move(ready);
+        }
+        if (system_transaction) {
+            const auto error = system_write
+                                   ? write_world_system(save_directory, result->system.records)
+                                   : std::string{};
             if (!error.empty()) {
                 pending_system = std::move(result);
                 pending_audio.splice(pending_audio.end(), prepared_audio);
@@ -382,10 +441,13 @@ class WorldSession::Impl {
             retry.system_error.clear();
             retry.last_command_serial = input.serial;
             retry.revision = current.revision + 1;
-            return publish(std::move(retry), true);
+            const bool presentation_retry = retry.presentation.has_value();
+            return publish(std::move(retry), true, presentation_retry);
         }
         if (kind == WorldCommandKind::retry_system_write)
             return frame();
+        if (kind == WorldCommandKind::present_world)
+            return apply_presentation(current, input);
         if (kind == WorldCommandKind::acknowledge_page && world_clear_page(*current.state)) {
             const auto *page = top_page(*current.state);
             auto next = current;
@@ -754,6 +816,8 @@ class WorldSession::Impl {
             ++result->revision;
             ++result->outer_updates;
             ++result->presentation_epoch;
+            result->presentation.reset();
+            result->last_presented.reset();
             return result;
         };
         auto good = make_result(std::move(*success), true);

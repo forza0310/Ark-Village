@@ -25,6 +25,11 @@ bool world_clear_page(const simulation::StartupWorldRuntimeState &state);
 // Mutates private candidates only. Rule projection/phase advancement use maintained helpers.
 std::string advance_world_clear(simulation::StartupWorldRuntimeState &candidate,
                                 WorldSystemState &system, bool confirm);
+// Prepare records in a private application candidate before allocating its render publication.
+// Returns whether the caller must atomically replace the system file before installing it.
+bool prepare_world_system_records(const simulation::StartupWorldRuntimeState &before,
+                                  const simulation::StartupWorldRuntimeState &candidate,
+                                  WorldSystemState &system, bool clear_finished = false);
 // File replacement is the last fallible step before the caller installs both candidates.
 // Empty directory is the explicit in-memory test/diagnostic mode, never an implicit player path.
 std::string commit_world_system(const std::filesystem::path &directory,

@@ -54,7 +54,7 @@ ark_target(ark_world_simulation)
 if(ARK_BUILD_DESKTOP)
     add_executable(ark_village src/desktop/main.cpp src/desktop/platform/desktop_session.cpp
         src/desktop/platform/crash_report.cpp src/desktop/platform/world_diagnostics.cpp
-        src/desktop/resources/sprites.cpp src/desktop/resources/text.cpp
+        src/desktop/resources/sprites.cpp src/desktop/resources/dungeon_footer.cpp src/desktop/resources/text.cpp
         src/desktop/resources/asset_check.cpp src/desktop/resources/resource_metadata.cpp src/desktop/scene/sprite_picking.cpp src/desktop/scene/projection.cpp
         src/desktop/application/world_view.cpp src/desktop/inspection/world_inspection.cpp
         src/desktop/input/world_save_menu.cpp src/desktop/application/world_title.cpp src/desktop/platform/world_audio.cpp src/desktop/ui/system/world_startup.cpp
@@ -90,6 +90,7 @@ if(ARK_BUILD_DESKTOP)
         src/desktop/ui/village/world_magic_pot_skin.cpp
         src/desktop/ui/tasks/world_crew_summary.cpp src/desktop/ui/tasks/world_tasks.cpp
         src/desktop/ui/tasks/world_task_selection.cpp src/desktop/ui/tasks/world_task_tracking.cpp
+        src/desktop/ui/tasks/world_dungeon_footer.cpp
         src/desktop/ui/tasks/world_task_input.cpp src/desktop/ui/tasks/world_task_followup.cpp
         src/desktop/ui/tasks/world_task_draw.cpp
         src/desktop/ui/tasks/world_task_result.cpp src/desktop/ui/actors/world_human_ceremony.cpp

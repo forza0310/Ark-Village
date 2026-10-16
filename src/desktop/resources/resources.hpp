@@ -11,6 +11,10 @@
 #include <utility>
 #include <vector>
 
+namespace ark::simulation {
+struct StartupSkinDraw;
+struct SteamDungeonFooterLanguageProfile;
+} // namespace ark::simulation
 namespace ark::desktop {
 // Explicit --font wins; packaged fonts resolve beside the executable's assets, not the cwd.
 std::filesystem::path desktop_font_path(const std::filesystem::path &assets,
@@ -21,6 +25,8 @@ struct SpriteBlit {
 // Crop in logical drawing coordinates, preserving source flips. Canvas/DPI transforms
 // subsequently apply once to the destination, without a nested physical-pixel scissor.
 std::optional<SpriteBlit> clip_sprite_blit(SpriteBlit blit, Rectangle clip);
+// Explicit PC policy for an atlas request outside its physical texture: keep that area empty.
+std::optional<SpriteBlit> clip_sprite_source(SpriteBlit blit, int width, int height);
 class Sprites {
   public:
     enum class Binding {
@@ -65,6 +71,10 @@ class Sprites {
     // Raw published PNG rectangles for tiled bars and nine-slice window components.
     void image(const std::string &name, Rectangle source, Rectangle destination,
                Binding binding = Binding::common, Color tint = WHITE);
+    // Published footer language paths and INF source scaling; destination/SEB geometry stays.
+    void dungeon_footer_image(const simulation::StartupSkinDraw &request,
+                              const simulation::SteamDungeonFooterLanguageProfile &language,
+                              std::optional<Rectangle> clip);
     // Only explicitly requested whole-image UI nodes use their loaded PNG dimensions.
     void full_image(const std::string &name, Vector2 position, Binding binding,
                     std::optional<Rectangle> clip = {});

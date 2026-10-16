@@ -4,6 +4,7 @@
 #include "../../src/desktop/ui/actors/world_human_ceremony.hpp"
 #include "../../src/desktop/ui/common/skin.hpp"
 #include "../../src/desktop/ui/common/world_reports.hpp"
+#include "../../src/desktop/ui/tasks/world_dungeon_footer.hpp"
 #include "../../src/desktop/ui/tasks/world_task_tracking.hpp"
 #include "../../src/desktop/ui/tasks/world_tasks.hpp"
 #include "../../src/desktop/ui/village/world_progression.hpp"
@@ -36,6 +37,87 @@ void ready(State &s) {
 void world_task_render_fixture() {
     namespace ui = desktop::ui;
     using namespace desktop;
+    if (std::getenv("ARK_RENDER_DUNGEON_FOOTER")) {
+        InitWindow(480, 512, "Ark-Village dungeon footer / explicit conditions");
+        struct WindowScope {
+            ~WindowScope() { CloseWindow(); }
+        } window;
+        Sprites sprites(ARK_TEST_ASSETS);
+        Text text(ARK_TEST_FONT);
+        ui::Skin skin(sprites, text);
+        const auto *configured = std::getenv("ARK_TEST_OUTPUT_DIR");
+        const auto output =
+            std::filesystem::path(configured ? configured : ARK_TEST_OUTPUT) / "footer";
+        std::filesystem::create_directories(output);
+        using Base = sim::SteamDungeonFooterBaseLanguage;
+        using Language = sim::SteamDungeonFooterResourceLanguage;
+        const std::array<sim::SteamDungeonFooterLanguageProfile, 4> languages{
+            {{Base::root, Language::root, true},
+             {Base::english, Language::english, true},
+             {Base::english, Language::simplified_chinese, true},
+             {Base::english, Language::traditional_chinese, true}}};
+        WorldCanvas canvas;
+        for (const auto extent : {Extent{240, 256}, Extent{540, 360}})
+            for (std::size_t language = 0; language < languages.size(); ++language)
+                for (const int age : {0, 4, 8}) {
+                    sim::SteamDungeonFooterInput input;
+                    input.view = {0, 0, extent.width, extent.height};
+                    input.page = 1;
+                    input.presentation.ordinal = 1;
+                    input.presentation.pages = {1};
+                    input.presentation.random_after = 1;
+                    input.presentation.dungeon_jitters = {{1, 7, 1, -1}};
+                    sim::SteamDungeonFooterTask task;
+                    task.facility = 7;
+                    task.background_row = 3;
+                    task.counter = age == 0 ? 4 : 18;
+                    task.progress = 42;
+                    task.maximum = 100;
+                    task.challenges = {{{18, 0, 3, 0, 0, 0}, -1, -1},
+                                       {{64, 1, 1, 20, 0, 0}, 0, 42}};
+                    task.humans = {{22, 0, 0, 0}, {50, 1, 13, 1}};
+                    // Age8 is already retired by the actual logic consumer (runtime_tasks suite).
+                    if (age < 8)
+                        task.effects = {{{age, 85, extent.height - 14}}};
+                    input.task = task;
+                    const auto plan = sim::steam_dungeon_footer_skin(input);
+                    require(plan && !plan->operations.empty(), "Footer conditional plan failed");
+                    for (int frame = 0; frame < 4; ++frame) {
+                        SetWindowSize(extent.width, extent.height);
+                        canvas.resize({GetRenderWidth(), GetRenderHeight()});
+                        const auto raster = canvas_camera(
+                            viewport(canvas.size.width, canvas.size.height, extent), extent);
+                        text.prepare(raster.zoom);
+                        BeginTextureMode(canvas.texture);
+                        ClearBackground({145, 211, 247, 255});
+                        BeginMode2D(raster);
+                        // A stripe behind the transparent source overflow makes cropping visible.
+                        DrawRectangle(0, extent.height - 18, extent.width, 18,
+                                      {220, 160, 100, 255});
+                        ui::draw_world_dungeon_footer(*plan, skin, languages[language]);
+                        EndMode2D();
+                        text.flush(raster.zoom, raster.offset);
+                        EndTextureMode();
+                        BeginDrawing();
+                        ClearBackground(BLACK);
+                        DrawTexturePro(canvas.texture.texture,
+                                       {0, 0, float(canvas.size.width), -float(canvas.size.height)},
+                                       {0, 0, float(GetScreenWidth()), float(GetScreenHeight())},
+                                       {0, 0}, 0, WHITE);
+                        EndDrawing();
+                    }
+                    const auto file =
+                        output / ("footer-" + std::to_string(extent.width) + "-language" +
+                                  std::to_string(language) + "-age" + std::to_string(age) + ".png");
+                    auto image = LoadImageFromScreen();
+                    const bool saved = image.data && ExportImage(image, file.string().c_str());
+                    if (image.data)
+                        UnloadImage(image);
+                    require(saved, "Footer screenshot failed");
+                    std::cout << "Conditional footer screenshot=" << file.string() << '\n';
+                }
+        return;
+    }
     auto listing = initial_world();
     const auto task =
         sim::rules::prepare_world_task_creation(sim::startup_world_runtime_factory(listing), 0);

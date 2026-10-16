@@ -1,23 +1,24 @@
 #pragma once
 
 // Page chrome reads the canonical page identity; it never confirms pages or advances a clock.
+#include "ark/presentation/script_text.hpp"
 #include "ark/simulation/village/rules/world_scripts.hpp"
 #include "ark/simulation/world/startup_world_runtime.hpp"
 #include "layout.hpp"
-#include "ark/presentation/script_text.hpp"
 
 namespace ark::desktop::ui {
 class Skin;
 // One visibility rule governs both footer artwork and pointer admission. Keyboard pause is
 // separate.
-bool world_hud_buttons_visible(const simulation::rules::WorldScriptPage *page);
+bool world_hud_buttons_visible(const simulation::rules::WorldScriptPage *page,
+                               bool dungeon_footer = false);
 // Shared by input pagination and drawing; reading text never advances the source page.
 std::string world_page_body(const simulation::StartupWorldRuntimeState &state,
                             const simulation::rules::WorldScriptPage &page, int paragraph);
 // The caller supplies current modal visibility; this function owns artwork only.
 void draw_world_hud(const simulation::StartupWorldRuntimeState &state, const Layout &layout,
                     const Skin &skin, bool failed, bool menu_open, bool menu_pending,
-                    const simulation::rules::WorldScriptPage *page);
+                    const simulation::rules::WorldScriptPage *page, bool dungeon_footer = false);
 struct WorldScriptRewardView {
     std::uint64_t page{};
     int kind{}, counter{};

@@ -491,7 +491,7 @@ d7ca763亦已发布actor_housekeeping、battle_commit、object_commit和ai_rewar
 
 ## 探索底栏：正式交付与剩余平台缺口（2026-10-16）
 
-正式82b7e3a/3db316f已交任务背景行、Steam有序计划及严格同次Owner桥；4f66ce1补真实crew的231→aW生产，45b480b补应用表现事务和七份必要语言资源，a9dc1bd同步交付状态。产品已验收3db316f底座与通知窗口，本批后继维护接入验收中；这些已证部分不再向研究重复请求。合同见[探索底栏](../../research/dungeon_village_1/ui/DUNGEON_RENDER.md)，产品计划见[Owner接续](../MILESTONES.md#research-45b480b-footer-owner)。
+正式82b7e3a/3db316f已交任务背景行、Steam有序计划及严格同次Owner桥；4f66ce1补真实crew的231→aW生产，45b480b补应用表现事务和七份必要语言资源，a9dc1bd同步交付状态。产品维护接入、已批准的PC FIFO/语言/纹理外交集适配及探索条窗口已完成本地验收，见[B1](../stages/B1-playable-prototype.md#desktop-dungeon-footer)；这些已证部分不再向研究重复请求。合同见[探索底栏](../../research/dungeon_village_1/ui/DUNGEON_RENDER.md)，产品计划见[Owner接续](../MILESTONES.md#research-45b480b-footer-owner)。
 
 已闭合：kind0资格、实例g/h、六行背景、原B/U/视口表达式及滑入，挑战两遍逆序/跨条目dy、宝箱/怪物/人物裁片、两层clip/百分比，冻结抖动、失绑恢复/清任务、aW同事务追加/下一共同前段推进及8退休。dungeon_labels是已应用效果的观察输出，不能重播成aW；玩家schema5已有表现discard/冷清，不新增持久字段或迁移。资源语言、基础语言和线程gate分开，118×90物理PNG不能直接当59×45逻辑资源。
 
@@ -501,6 +501,6 @@ d7ca763亦已发布actor_housekeeping、battle_commit、object_commit和ai_rewar
 - 66包装资格/共享scratch、真实语言安装/字体与OS动态；不由中文界面推基础English或已安装语言包。
 - 保留Steam未消费ClampMax返回值的负源X；GPU最终越界像素仍未闭合，不自动套APK的min宽。
 
-产品Owner/FIFO/重绘缓存与底部按钮排版、显式语言profile及越界裁片行为属于新增桌面映射，当前已提出具体方案待用户确认；未确认前只接维护底座。重复绘同次计划不推进随机、计数、清任务或追加aW。验证复用现runtime_tasks/application/skin及Session/桌面套件，研究只做定向功能、拒绝、顺序和回滚，产品负责自然到达及全经营链。
+产品Owner/FIFO/重绘缓存与底部按钮排版、显式语言profile及越界裁片行为属于用户已确认的PC映射，现已接线并完成本地验收。重复绘同次计划不推进随机、计数、清任务或追加aW。验证复用现runtime_tasks/application/skin及Session/桌面套件，研究只做定向功能、拒绝、顺序和回滚，产品负责自然到达及全经营链；上列原平台缺口不据此关闭。
 
 包含表现抽签会改变共同随机轨迹，须记录本次请求身份和冻结事实；旧纯逻辑回放/经营尾段不能代替含表现链认证。原版一致性、维护原型、产品适配和条件截图分别记，不以素材齐全或启动烟测宣称完整探索结算已验。

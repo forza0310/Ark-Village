@@ -30,6 +30,8 @@ Steam可选活动保留当前已提供且布局需要的扩张预算；原合同
 
 按被测所有者和依赖找用例；迁入研究测试与产品适配测试分开。标准CTest保留全部适用用例；默认本地desktop-debug排除三个月连续模拟，CI desktop-release完整执行，headless按需追加，选择规则见[构建检查](../docs/CONTRIBUTING.md#构建检查)。标签用于定位，不能以单层通过替代阶段验收。
 
+世界表现交接归现`world_session`：覆盖暂停、一次性随机、重复/迟到/代次、后段拒绝回滚、系统计分引用及完整画面对的寿命。源随机细节仍由runtime_tasks/application套件主责；`world_tasks/world_panels/world_building`只补只读映射、底栏显示/命中和纹理越界几何。实际探索条条件窗口复用`world_task_render_fixture`，显式`ARK_RENDER_DUNGEON_FOOTER=1`只画本专题，`ARK_TEST_OUTPUT_DIR`指定忽略的build输出；不新增target、不作为自然探索或OS输入证书。
+
 四套测试EXE共用独立`shared-libraries`预设的Release DLL，库源码只编译一次；Debug/Release描述的是测试与应用消费者的编译配置。库内不保留调试符号，测试的有效断言仍按原合同保留。`build/bin/`只保留一套DLL，EXE用配置后缀区分；先重建公共库再构建消费者。CI打包脚本的递归依赖/缺失拒绝/架构合同在`.github/ci/build_test.py`，由CI构建驱动先执行，不增加游戏CTest或新依赖。
 
 | 目录 | 负责的契约 | 主标签 |

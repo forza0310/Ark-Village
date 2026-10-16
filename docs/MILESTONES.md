@@ -3,7 +3,7 @@
 <a id="research-45b480b-footer-owner"></a>
 ## 探索特效、应用表现与桌面底栏接续
 
-维护底座已接正式a9dc1bd，合并4f66ce1/45b480b：真实crew在扣耐力的原时点追加age0的aW，共同前段推进并在8退休；dungeon_labels只作已应用的观察输出，历史不重播。维护应用新增present_world，沿私有候选/既有联合提交校验标题、暂停和计分引用，返回同次冻结表现事实。语言底栏资源按基础语言、资源语言及线程gate分开处理。完整505来源、81项产品适配及全部有效断言已保留，七份出版语言文件进入assets；玩家schema5、独立系统2、随机不保存和775分母保持，不读取research在途文件。本地维护验收、回执解析修正及62段只读审计见[B1](stages/B1-playable-prototype.md#research-a9dc1bd-maintenance)；下述桌面映射仍待确认。
+维护底座已接正式a9dc1bd，合并4f66ce1/45b480b：真实crew在扣耐力的原时点追加age0的aW，共同前段推进并在8退休；dungeon_labels只作已应用的观察输出，历史不重播。维护应用新增present_world，沿私有候选/既有联合提交校验标题、暂停和计分引用，返回同次冻结表现事实。语言底栏资源按基础语言、资源语言及线程gate分开处理。完整505来源、81项产品适配及全部有效断言已保留，七份出版语言文件进入assets；玩家schema5、独立系统2、随机不保存和775分母保持，不读取research在途文件。本地维护验收、回执解析修正及62段只读审计见[B1](stages/B1-playable-prototype.md#research-a9dc1bd-maintenance)；用户随后批准下述桌面映射，接线与本地验收已[单独完成](stages/B1-playable-prototype.md#desktop-dungeon-footer)。
 
 桌面接线方案（用户已明确批准，维护底座先独立完成验收）：复用现Session FIFO、generation/presentation_epoch，每个已发布源更新或输入机会最多准入一次full_redraw；重复/迟到拒绝，表现回执不产生新机会，暂停允许一次获准重绘。worker调用正式表现消费者，连同当前系统/音频事务提交，返回与同次不可变世界绑定的计划；桌面只投影该对状态/计划，重复画面复用冻结随机，等待时保留最后一份完整可绘publication，不造第二个可写世界或从60FPS反向推进随机。计分引用沿当前系统Owner核验，66包装资格保持false。主责风险是迟到/重复/新局代次、暂停、错页、联合提交失败以及音频一次性；复用world_session/management及源application/runtime_tasks/skin套件，不新增target。
 

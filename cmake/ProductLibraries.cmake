@@ -34,7 +34,7 @@ add_library(ark_world_save ${ark_save_library_type} src/app/save/world_save_code
 target_link_libraries(ark_world_save PUBLIC ark_world_runtime)
 ark_target(ark_world_save)
 add_library(ark_world_session SHARED src/app/session/world_session.cpp src/app/session/world_commands.cpp src/app/session/world_report.cpp
-    src/app/session/world_system.cpp)
+    src/app/session/world_system.cpp src/app/session/world_presentation.cpp)
 target_link_libraries(ark_world_session PUBLIC ark_world_runtime ark_world_system ark_timing ark_world_save Threads::Threads)
 ark_target(ark_world_session)
 
@@ -65,7 +65,7 @@ if(ARK_BUILD_DESKTOP)
     pkg_check_modules(RAYLIB REQUIRED IMPORTED_TARGET raylib>=6.0)
     ark_copy_raylib_runtime()
     add_library(ark_world_ui_test_support SHARED src/desktop/ui/common/layout.cpp
-        src/desktop/ui/common/skin.cpp src/desktop/resources/sprites.cpp src/desktop/resources/text.cpp
+        src/desktop/ui/common/skin.cpp src/desktop/resources/sprites.cpp src/desktop/resources/dungeon_footer.cpp src/desktop/resources/text.cpp
         src/desktop/resources/asset_check.cpp src/desktop/resources/resource_metadata.cpp src/desktop/scene/sprite_picking.cpp
         src/desktop/scene/projection.cpp src/desktop/scene/boundary_render.cpp src/desktop/scene/road_render.cpp)
     target_include_directories(ark_world_ui_test_support PUBLIC src/desktop

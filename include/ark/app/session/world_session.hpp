@@ -10,6 +10,7 @@
 #include "ark/simulation/facilities/startup_world_facility_catalog.hpp"
 #include "ark/simulation/facilities/startup_world_facility_items.hpp"
 #include "ark/simulation/facilities/startup_world_magic_pot.hpp"
+#include "ark/simulation/presentation/startup_world_presentation.hpp"
 #include "ark/simulation/village/startup_world_information.hpp"
 #include "ark/simulation/village/startup_world_tax.hpp"
 #include "ark/simulation/village/startup_world_village_activity.hpp"
@@ -90,7 +91,8 @@ enum class WorldCommandKind {
     commerce_top_input,
     commerce_facility_input,
     build_menu_input,
-    build_menu_draw
+    build_menu_draw,
+    present_world
 };
 enum class WorldCommandOutcome { applied, rejected };
 struct WorldCommandResult {
@@ -116,6 +118,10 @@ struct WorldFrame {
     // A source update/input changes this token; acknowledging a painted plan does not.
     // It is session handoff metadata, never part of the world or player save.
     std::uint64_t presentation_epoch{1};
+    // Frozen by the worker with this exact state. Repainting never consumes source randomness.
+    std::optional<simulation::StartupPresentationPlan> presentation;
+    // One complete publication survives intervening updates; its own pointer is always empty.
+    std::shared_ptr<const WorldFrame> last_presented;
     std::uint64_t last_command_serial{};
     // Derived visibility of the real source raw3 page, never an independent update gate.
     bool main_menu_open{};
@@ -238,6 +244,8 @@ class WorldSession {
     // Call after the observed plan has actually been presented. Stale/duplicate facts reject.
     std::uint64_t draw_build_menu(std::uint64_t page, std::uint64_t presentation_epoch,
                                   std::uint64_t generation = 0);
+    // Request at most once per observed source opportunity, including while paused.
+    std::uint64_t present_world(std::uint64_t presentation_epoch, std::uint64_t generation);
     std::uint64_t cancel_build_menu(std::uint64_t page);
     // Bind placement to the selection observed by the UI; an old click cannot build a new item.
     std::uint64_t confirm_build(int expected_definition, simulation::rules::Position anchor,

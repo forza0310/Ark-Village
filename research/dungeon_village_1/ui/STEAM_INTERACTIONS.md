@@ -71,7 +71,31 @@
 
 8／16的probes是本轮**已消费观测**的顺序轨迹，不能照它再查询一次；16的DOWN观测时点在原frame归0之后。命令与观测各自保序，不冒充跨两向量的完整执行trace。维护Owner的联合提交仍由消费者实现，本模块不改Owner、持久布局、随机或声音，也不接OS命中、全表单栈和原物理输入。现有公共皮肤套件的事件／顺序／短路／拒绝及预算短验通过，实际结果查[验证入口](../VERIFICATION.md)。
 
-1／18的paint字段是TouchComponent.paintX／paintY／paintFrame（+28／+2C／+30），不是命中矩形或事件坐标。`GameView.AddEffect` RVA2393F0的imgId是TEXTURES行索引，不是common图片ID；包装读取真实Image宽度缩放源矩形，以0.75缩放目的尺寸／偏移，最终在102396ED交效果管理器。直接AddEffect RVA2AF8C0正常复用／创建、Init及入active表后返回，本链没有正常null返回；叶端null会抛异常。请求将同一事件组件key位型及paint冻结，不创建效果池或把创建失败当成功；原KeyDown先发生，后续失败无键状态回滚，完整效果绘制／退休仍独立。
+### 箭头TouchEffect id0：资源、墙钟与退休
+
+本节仅限1／18正常DOWN创建的id0，不推广其它效果。paint是TouchComponent.paintX／paintY／paintFrame（+28／+2C／+30），不是命中矩形或事件坐标。`GameView.AddEffect` RVA2393F0的imgId是TEXTURES行索引；`.cctor` RVA23FA70独立核出FILENAMES[0]=`buttoneffect.png`、IMAGE_WIDTH[0]=128，以及行2／3分别为`{0,−9,−12,31,57,20,26}`／`{0,−6,−12,52,57,20,26}`（image、偏移x/y、源x/y、宽/高）。复用`assets/steam-common/buttoneffect.png`，其128×128副本字节匹配EXE mdpi资源，不能换成APK同名图；原运行究竟选择哪一密度仍未动态认证。
+
+包装以`density=float(实际Image宽)/128`构造`arg={Image,float[6]}`：`a0/a1=行宽/高×0.75`，`a2..a5=行源x/y/宽/高×density`；位置为`float(paintX/Y)+行偏移×0.75`，此处不舍入。102396ED交管理器，故128宽图的初始源矩形为`(31或52,57,20,26)`、目的宽高为15×19.5，位置为`(paintX−6.75或−4.5,paintY−9)`。行由paintFrame==3取2，否则3；入口随后写vx=+10，仅完整value==16改−10，自定义键不改变此方向规则。
+
+`TouchEffect.Init` RVA2B1650保存surface／id／位置／arg与组件key，先将速度／加速度清0；只读一次CurrentTimeMillis，同时写time及lastFrameTime，入口再覆写vx。`Frame` RVA2B1470及管理器RVA2AFD70的实际内联均先读墙钟，以低32位差按signed int32比较age≥400，成立便返回退休、不再积分。存活时第二次读墙钟，以完整long差`(now−lastFrameTime)/1000.0`为double dt，依次执行x、y、vx、vy各自的`float(double(当前速度或加速度)×dt)`增量，再第三次读墙钟写lastFrameTime。原vx过零清vx，**vy过零分支也清vx**，不改成对称算法。正常id0的vy／ax／ay均0；这些墙钟不是世界tick、页面钟或TotalFrames，本链不消费随机。
+
+`Draw` RVA2B03B0的id0分支102B1192–102B141D独立读一次墙钟；`q=surface.scaleRatio_/100`，surface的+64／+68是x_／y_。以下乘加按原float32顺序，除50按有符号整数截零；Draw不写效果状态：
+
+```text
+k = trunc_toward_zero(int32(now低32位−time低32位) / 50)
+src = 160−18×k；src≤0直接不绘
+grow = (float(k)×2.5f)×q
+dx = (x_×q+float(surface.x_))−grow×0.5f
+dy = (y_×q+float(surface.y_))−grow×0.5f
+目的宽高 = (a0×q+grow, a1×q+grow)
+源x/y/宽/高 = trunc_toward_zero(float32(a2..a5+0.5f))
+```
+
+绘制先`SetRenderMode(1,src,255−src)`，再DrawScaledImage，最后固定`SetRenderMode(0,255,0)`，不保存／恢复任意旧模式；此id0分支无矩阵Push／Pop。Frame的400ms退休与Draw的src不可见是独立条件，不能合成一个门槛或由截图间隔反推内部帧。管理器Draw RVA2AFBE0按active正序画，Frame按逆序更新；Draw不代调Frame。
+
+`TouchEffectManager.AddEffect` RVA2AF8C0顺序找buffer中不在active的首对象，无则创建并加入buffer，Init后加入active。本链没有正常null返回；叶端null会抛异常，原KeyDown已先发生，创建失败不回滚键状态。退休／RemoveEffect仅从active移除；`Clear` RVA2AFB40也仅清active，**buffer持有全部已分配对象，退休不清arg／Image／surface引用**，不能称退回池时释放引用或永久有界。
+
+维护纯请求目前只冻结同一事件组件key位型、paint、行及vx，不创建效果池。现窗口`SourceSprites::crop`支持同PNG缓存、目的宽高和tint，可复用资源／几何能力，但静态`steam_manual_arrow_skin`不是id0生命周期消费者；真实状态调度、墙钟顺序、RenderMode混合及原OS动态仍未接，不能单凭tint宣称后端等价。
 
 ### 列表确认与Canvas同步回调
 

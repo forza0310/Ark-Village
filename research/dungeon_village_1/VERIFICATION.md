@@ -10,6 +10,8 @@ Windows单Release动态构建及独立严格C++17语法检查通过；现award_p
 
 ## 公共触摸请求与菜单／标记分支 2026-10-16
 
+后继只读交叉闭合[箭头TouchEffect id0局部源合同](ui/STEAM_INTERACTIONS.md#箭头toucheffect-id0资源墙钟与退休)：TEXTURES2／3及Steam原PNG、包装0.75、三次墙钟积分、独立Draw／400ms退休、混合请求与buffer引用保留；未接维护动态效果池，不以静态箭头或tint冒充后端等价。[覆盖表](ui/STEAM_UI_COVERAGE.md)修正已有4／5候选镜头Owner接线，2／3登记实际消费但正常产生者未证，保持人物自主行动。仅整合现两份合同，链接／差异检查通过，无新文件、素材或进程，不触发游戏回归。
+
 接`91d3f95`，`81d388d`新增标准C++17职责模块[steam_touch_commands](prototype/include/dungeon_village_prototype/steam_touch_commands.hpp)，本批再接标题／菜单及箭头。0–2／4–7／9／18–22／24的纯请求保留各自边沿、custom／默认键、属性拆分及扩展原序；0的ENTER固定type0x30000写完整int，UP只发键；1／18先KeyDown再用实际paint请求箭头效果，TEXTURES行2／3与vx按原值选择，LOST／CANCEL才释放。7实际KeyDown(true)，19主type仍掩高16位而dx原样保留。8独立计划绑定首主菜单与当时顶页，Pop请求后不重找accessor；16保留12→14→15→旧key短路，DOWN无旧key时仍可先Reset再Clear。观测轨迹不能再执行成第二次查询，原Set／Pop不冒称维护事务。
 
 并行静态补核合入[现交互合同](ui/STEAM_INTERACTIONS.md#公共触摸分派与请求边界)：3／10／11完整64位组件key与Set先行；Canvas.KeyClick同步通知已注册GameView并清marker，−1早返回而0仍通知。公共滚动保留重复Get、每次Set的扩展、14双delta无N上限及13逐次规范化；现raw74 helper仅属稳定id12／五行维护域，宽整数／输入INT_MAX拒绝不伪装原全int32等价。只澄清其注释，不更改既有算法。列表／公共滚动接下述逐请求消费者，箭头效果池／图像包装／OS仍独立。完整源锚及注册合并现合同，精简重复指纹与过期过程统计，不另写分支报告。

@@ -142,7 +142,9 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 100 | MANYMONSTER_APPEAR | 新局／奖励／解锁／事件 | 产生者133→100及167守卫已核；Steam19抽Init／原序八行、先Update后40确认及最终页钟帧独立交叉，正式有序皮肤／Owner只读桥和条件例图已接，见[通知合同](PAGES.md#steam-task-notices)。不由Draw重建数组或消费随机，原字体及原窗口动态仍缺 |
 
 标题菜单0／存档栏1的[菜单／选档静态合同](STEAM_TITLE_MENU.md)与维护纯计划已接；[六态研究窗口](examples/steam-title-menu-slots.png)已消费原图元、遮挡与两名中央普通演员，目录资格和演员位置／age是显示条件，平台按钮／语言／原字体及完整Steam调度另列；S038／S039/S062及[后继窗口](../verification/startup-ui-analysis/ANALYSIS.md)只认证局部入口／显示，不证明完整覆盖、删除或配置最终开始。独立RankForm的[双页Update及纪录getter](../rules/STARTUP_RECORDS.md#steam小方法交叉及设计决策)有Steam静态证据，[两轮窗口](../verification/skin-observation-analysis/ANALYSIS.md)补纪录外观／翻页；Steam完整正常Draw已独立核出并有[纪录纯计划](../prototype/include/dungeon_village_prototype/steam_record_skin.hpp)，独立Update纯候选已接，Net getter已证仅只读系统备用项；独立页钟Owner／恢复、完整字体及共享scratch仍未接，不与SubForm的3 MAIN_MENU混号。
-GameForm 0 MAIN、1 BUILD有局部窗口证据；6 CHASE_CHARA、7 CHASE_TENANT另有[具名追踪／确认与镜头静态合同及维护接线](INFORMATION_MENU.md)，不再仅有声明，但原窗口追踪全链未认证。2 USER、3 BACK、4 DUNGEON_SELECT、5 DUNGEON_MOVE在此仍仅登记声明。
+GameForm 0 MAIN、1 BUILD有局部窗口证据；6 CHASE_CHARA、7 CHASE_TENANT已有[追踪／确认与镜头合同及维护接线](INFORMATION_MENU.md)，原窗口追踪全链未认证。4 DUNGEON_SELECT／5 DUNGEON_MOVE已有[22查看位置→镜头移动→候选选择合同及Owner接线](PAGES.md#steam任务选择与募集2224)：复制当前任务目录进入5，到达转4；仅4画[候选任务信息](PAGES.md#steam地图候选信息与raw29不同入口)，两者共用帮助文字／HUD。候选信息与当前活动任务的[探索底栏](DUNGEON_RENDER.md)分开，不再登记为仅声明；原字体／OS动态与特殊Camera.subQuest入口仍待证。
+
+2 USER／3 BACK的消费分支已核，正常产生者未证。2的ChangeState初始化调用Set_userPlayerMode（102F64AA–C5）；更新依次执行UserData.Update、Update_userPlayerMode、当前userPlayer.Update（103043F3起），后者读方向KeyState，确认后找近敌或随机选怪物并登记投射物（103044A8–45D5）。仅state2调用Draw_userPlayerMode（102FEC00–26），是特殊人物渲染模式，不补造USER窗口，也不据此改变人物自主行动的正常玩法。3在stateCnt≥10后仍须逻辑确认才ChangeState(0)（103043C9–EE／1030448B–A3），无专属面板，不能写成满10自动返回或换算秒。有限22处直接ChangeState调用与局部字段写核对未见2／3产生者，不等于全程序不可达，也不认证为DEBUG或隐藏键入口。
 S066–S068自然对话不按旧标签补写具名详情，见[非空p实验](../work/window-restore-observation/20261007-131546-nonempty-p-reload/RESULT.md)。
 
 探索底栏的[Steam纯计划／Owner只读桥](DUNGEON_RENDER.md#steam底栏维护消费者与资源边界)已交，包含两遍挑战、跨条目dy、冻结抖动、头像、特效与右段。aW同事务生产／退休、两个条件研究窗口及正常窗口显式全重绘请求已接；应用通过唯一Owner提交并一次领取声音。根及七个必要语言素材、独立基础语言／资源gate／标准尺寸请求已交，正常窗口仍显式选根。原Draw准入、66包装资格、实际语言安装／字体及GPU越界像素另列，不能由静态合同或条件短测认证完整原动态。
@@ -156,7 +158,7 @@ GameView先让顶页处理事件，hook返回false即退出，再通用分派；
 | ID／组件 | 实际路由或候选 | 限制 |
 | --- | --- | --- |
 | 0 TITLEMENU | ENTER固定type0x30000写完整值；UP只发确认 | custom/default与扩展原序已有纯请求短验；完整标题Owner／OS仍独立 |
-| 1 DLGPAGE、18 ARROW | DOWN先KeyDown再箭头效果；LOST／CANCEL才KeyUp | paint坐标／TEXTURES2或3／vx原序纯请求已短验；36／38等页注册沿各合同，原效果池及OS另核 |
+| 1 DLGPAGE、18 ARROW | DOWN先KeyDown再箭头效果；LOST／CANCEL才KeyUp | paint／TEXTURES2或3／vx纯请求已短验；[id0局部合同](STEAM_INTERACTIONS.md#箭头toucheffect-id0资源墙钟与退休)已核EXE图绑定、Init／三墙钟积分、400ms退休及Draw缩放／混合，buffer保留对象与引用。维护尚无效果池／动态消费者，原OS及其它effect IDs另核 |
 | 2 DLGCMD、9 SUBMENU | 同入口0x1023C9CD | raw9基矩形／值及ENTER选行、UP请求确认已核，见[输入后继](INFORMATION_MENU.md#steam9选行确认与虚拟光标后继静态已核)；公共ENTER／UP的Set→custom/default确认纯请求已短验；完整命中／guard和其它页仍独立 |
 | 3 DLGSEL、10 LIST、11 SLIST | 同入口0x1023CA42；有marker才标记后确认，无marker的UP直接确认 | SteamTouchFlow已接Set先行、Set后marker／两次key和custom分步请求并短验；75／21与无marker页分别处理，Canvas／OS仍外接 |
 | 4 KEYCLICK、20 PLUS、21 MINUS | OnTouchKeyClick；仅CLICK5 | 编码值Set／普通键KeyClick、自定义首key及有序扩展写已核；纯请求接口已短验，raw9／34及raw12注册沿各合同，不推广全屏热区 |

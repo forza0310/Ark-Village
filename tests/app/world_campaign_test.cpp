@@ -16,6 +16,7 @@
 #include "world_steam_magic_books.hpp"
 #include "world_steam_magic_discovery.hpp"
 #include "world_steam_magic_facilities.hpp"
+#include "world_steam_magic_items.hpp"
 #include "world_steam_magic_pot.hpp"
 #include "world_steam_strategy.hpp"
 #include <charconv>
@@ -63,6 +64,18 @@ std::optional<int> item_target_argument(const std::string &mode, const std::stri
     require(parsed.ec == std::errc{} && parsed.ptr == option.data() + option.size() &&
                 id >= 0 && id < 36,
             "invalid explicit item identity");
+    return id;
+}
+std::optional<int> recipe_target_argument(const std::string &mode, const std::string &option) {
+    const std::string prefix = "--recipe=";
+    if (option.compare(0, prefix.size(), prefix) != 0)
+        return {};
+    require(mode == "steam-pot-equipment-month" || mode == "steam-pot-item-month",
+            "recipe coverage requires its equipment/item monthly route");
+    int id{};
+    const auto parsed = std::from_chars(option.data() + prefix.size(), option.data() + option.size(), id);
+    require(parsed.ec == std::errc{} && parsed.ptr == option.data() + option.size() && id >= 0 && id < 40,
+            "invalid explicit recipe identity");
     return id;
 }
 // A bounded manual player sequence uses the same command/update transaction as strategies.
@@ -261,6 +274,7 @@ template <class PlayerStrategy> struct CampaignRun {
     std::optional<ark::test::SteamPotSpellBookPlayer> pot_book{};      // Never serialized mid-flow.
     std::optional<ark::test::SteamPotDiscoveryPlayer> pot_discovery{}; // Source pending work saves.
     std::optional<ark::test::SteamPotFacilityPlayer> pot_facility{};   // Claim before saving.
+    std::optional<ark::test::SteamPotItemPlayer> pot_item{}; // Manufacture and effect before saving.
 
     void command(const app::WorldCommand &input) {
         auto candidate = state;
@@ -297,7 +311,12 @@ template <class PlayerStrategy> struct CampaignRun {
                                  });
                 if (steam_observer)
                     steam_observer->observe(state, input, result, candidate);
-                if (pot_facility && pot_facility->active())
+                if (pot_item && pot_item->active())
+                    pot_item->observe(state, input, result, candidate,
+                                      [&](const ark::test::CampaignReceipt &receipt) {
+                                          pending_receipts.push_back(receipt);
+                                      });
+                else if (pot_facility && pot_facility->active())
                     pot_facility->observe(state, input, result, candidate,
                                           [&](const ark::test::CampaignReceipt &receipt) {
                                               pending_receipts.push_back(receipt);
@@ -400,6 +419,11 @@ template <class PlayerStrategy> struct CampaignRun {
         const auto selected = [&] {
             if (!automatic)
                 return manual;
+            if (pot_item) {
+                const auto input = pot_item->next(state, ark::test::steam_operating_reserve(state));
+                if (input.handled)
+                    return input.command;
+            }
             if (pot_facility) {
                 const auto input = pot_facility->next(
                     state,
@@ -485,6 +509,11 @@ template <class PlayerStrategy> struct CampaignRun {
                                   });
             if (steam_observer)
                 steam_observer->observe_tick(state, *update.candidate);
+            if (pot_item)
+                pot_item->observe_tick(state, *update.candidate,
+                                       [&](const ark::test::CampaignReceipt &receipt) {
+                                           pending_receipts.push_back(receipt);
+                                       });
             if (pot_equipment)
                 pot_equipment->observe_tick(state, *update.candidate);
             const auto loot = ark::test::task_loot_receipts(state, *update.candidate);
@@ -610,6 +639,8 @@ template <class PlayerStrategy> struct CampaignRun {
             require(pot_facility->complete(state), "Cannot save an incomplete facility claim");
         if (pot_book)
             require(pot_book->complete(state), "Cannot save an incomplete spell book flow");
+        if (pot_item)
+            require(pot_item->complete(state), "Cannot save an incomplete manufactured item use");
         coverage.save(directory, state);
         if (lifecycle)
             lifecycle->verify(state, system);
@@ -633,6 +664,8 @@ template <class PlayerStrategy> struct CampaignRun {
             std::cout << "POT_DISCOVERY_ENDPOINT " << pot_discovery->diagnose(state) << std::endl;
         if (pot_facility)
             std::cout << "POT_FACILITY_ENDPOINT " << pot_facility->diagnose() << std::endl;
+        if (pot_item)
+            std::cout << "POT_ITEM_ENDPOINT " << pot_item->diagnose() << std::endl;
         if (lifecycle)
             ark::test::write_campaign_clear_evidence(directory, slot, *lifecycle);
         std::cout << "SAVE slot=" << slot << " bytes=" << captured.image->bytes.size() << " "
@@ -654,6 +687,7 @@ ark::test::CampaignClearDriver lifecycle_driver(CampaignRun<PlayerStrategy> &run
             [&run] {
                 return Route<PlayerStrategy>::checkpoint(run.strategy, run.state) &&
                        (!run.pot_book || run.pot_book->complete(run.state)) &&
+                       (!run.pot_item || run.pot_item->complete(run.state)) &&
                        (!run.pot_facility || run.pot_facility->complete(run.state));
             },
             [&run] { return run.input_effects; },
@@ -973,6 +1007,23 @@ void negative_balance_contract() {
 }
 void contract() {
     negative_balance_contract();
+    require(recipe_target_argument("steam-pot-item-month", "--recipe=2") == 2 &&
+                recipe_target_argument("steam-pot-equipment-month", "--recipe=39") == 39 &&
+                !recipe_target_argument("steam-pot-item-month", "--item=2"),
+            "recipe option must preserve its two explicit routes");
+    for (const auto &option : {"--recipe=", "--recipe=-1", "--recipe=40", "--recipe=2x",
+                               "--recipe=2:5", "--recipe=999999999999999999"}) {
+        bool refused{};
+        try { (void)recipe_target_argument("steam-pot-item-month", option); }
+        catch (const std::runtime_error &) { refused = true; }
+        require(refused, "invalid recipe option must reject before file access");
+    }
+    for (const auto &mode : {"steam-inspect", "steam-natural-month", "steam-pot-spell-month"}) {
+        bool refused{};
+        try { (void)recipe_target_argument(mode, "--recipe=2"); }
+        catch (const std::runtime_error &) { refused = true; }
+        require(refused, "wrong-route recipe input must reject before file access");
+    }
     require(item_target_argument("steam-natural-month", "--item=2") == 2 &&
                 item_target_argument("steam-continue-month", "--item=35") == 35 &&
                 !item_target_argument("steam-natural-month", "--profession=0:1"),
@@ -991,6 +1042,18 @@ void contract() {
         require(rejected, "wrong-route item option must reject before file access");
     }
     auto state = ark::test::initial_world();
+    {
+        CampaignRun<ark::test::SteamVillageStrategy> pending{
+            state, {}, std::filesystem::path("build/validation/pending-pot-item-save-contract"), {}};
+        pending.pot_item.emplace();
+        bool refused{};
+        try { pending.save(1); }
+        catch (const std::runtime_error &error) {
+            refused = std::string(error.what()).find("incomplete manufactured item use") != std::string::npos;
+        }
+        require(refused && !std::filesystem::exists(pending.directory),
+                "pending manufacture/use must reject before writing any checkpoint file");
+    }
     {
         CampaignRun<ark::test::SteamVillageStrategy> pending{
             state, {}, std::filesystem::path("build/validation/pending-item-save-contract"), {}};
@@ -1168,6 +1231,7 @@ int main(int argc, char **argv) {
             ark::test::steam_strategy_contract();
             ark::test::steam_pot_equipment_contract();
             ark::test::steam_magic_book_contract();
+            ark::test::steam_magic_item_contract();
             ark::test::steam_magic_discovery_contract();
             ark::test::steam_magic_facility_contract(apply);
             std::cout << "PASS Steam layout, budget, people and expansion contract" << std::endl;
@@ -1211,23 +1275,15 @@ int main(int argc, char **argv) {
         require(argc == 3 || argc == 4,
                 "Expected campaign phase, isolated directory and optional mode-specific argument");
         const std::string mode = argv[1];
-        std::optional<int> requested_recipe;
+        const auto requested_recipe = argc == 4 ? recipe_target_argument(mode, argv[3])
+                                                 : std::optional<int>{};
         const auto requested_item = argc == 4 ? item_target_argument(mode, argv[3])
                                               : std::optional<int>{};
         std::optional<std::pair<int, int>> requested_profession;
         if (requested_item) {
             // Already validated; configure only after the real player/strategy cold-load.
-        } else if (argc == 4 && mode == "steam-pot-equipment-month") {
-            const std::string option = argv[3], prefix = "--recipe=";
-            int id{};
-            require(option.compare(0, prefix.size(), prefix) == 0,
-                    "equipment coverage expects --recipe=ID");
-            const auto parsed = std::from_chars(option.data() + prefix.size(),
-                                                option.data() + option.size(), id);
-            require(parsed.ec == std::errc{} && parsed.ptr == option.data() + option.size() &&
-                        id >= 0 && id < 40,
-                    "invalid explicit recipe identity");
-            requested_recipe = id;
+        } else if (requested_recipe) {
+            // Recipe kind/availability is verified against the cold-loaded source definitions.
         } else if (argc == 4 && (mode == "steam-natural-month" || mode == "steam-continue-month")) {
             const std::string option = argv[3], prefix = "--profession=";
             const auto colon = option.find(':', prefix.size());
@@ -1245,7 +1301,10 @@ int main(int argc, char **argv) {
             require(argc == 3 ||
                         (mode == "steam-observe" && std::string(argv[3]) == "--trace-activity"),
                     "unsupported campaign-mode argument");
+        require(mode != "steam-pot-item-month" || requested_recipe.has_value(),
+                "item manufacturing requires --recipe=ID");
         if (mode == "steam-natural-month" || mode == "steam-continue-month" ||
+            mode == "steam-pot-item-month" ||
             mode == "steam-pot-equipment-month" || mode == "steam-pot-spell-month" ||
             mode == "steam-pot-discover-month" || mode == "steam-pot-facility-month" ||
             mode == "steam-pot-equipment-verify" || mode == "steam-continue" ||
@@ -1293,7 +1352,14 @@ int main(int argc, char **argv) {
                     directory, slot, run.state, run.system,
                     mode == "steam-natural-month" || mode == "steam-pot-equipment-month" ||
                         mode == "steam-pot-spell-month" || mode == "steam-pot-discover-month" ||
-                        mode == "steam-pot-facility-month");
+                        mode == "steam-pot-facility-month" || mode == "steam-pot-item-month");
+                if (mode == "steam-pot-item-month") {
+                    if (run.pot_equipment)
+                        require(run.pot_equipment->certified(),
+                                "Item manufacturing follows the prior strict equipment endpoint");
+                    run.pot_item.emplace();
+                    run.pot_item->reconcile(run.state, *requested_recipe);
+                }
                 if (requested_profession)
                     run.strategy.set_profession_target(run.state, requested_profession->first,
                                                         requested_profession->second);
@@ -1335,7 +1401,7 @@ int main(int argc, char **argv) {
                             std::cout << "POT_NEXT " << run.pot_equipment->diagnose() << std::endl;
                     }
                 }
-                run.pot_coverage_objective = requested_recipe.has_value();
+                run.pot_coverage_objective = mode == "steam-pot-equipment-month" && requested_recipe.has_value();
                 run.pot_followup_business =
                     (run.lifecycle->finished() || run.pot_coverage_objective) && run.pot_equipment &&
                     !run.pot_equipment->certified();
@@ -1868,6 +1934,8 @@ int main(int argc, char **argv) {
             if (steam_campaign->pot_facility)
                 std::cerr << "POT_FACILITY_FAILURE " << steam_campaign->pot_facility->diagnose()
                           << std::endl;
+            if (steam_campaign->pot_item)
+                std::cerr << "POT_ITEM_FAILURE " << steam_campaign->pot_item->diagnose() << std::endl;
             if (steam_campaign->pot_discovery) {
                 try {
                     std::cerr << "POT_DISCOVERY_FAILURE "

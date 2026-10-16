@@ -1,5 +1,22 @@
 # B1：持续世界产品接入
 
+<a id="campaign-pot-ordinary-items"></a>
+## 2026-10-16：普通道具制造、真实强化及完整后继
+
+用户已批准[八目标方案](../MILESTONES.md#campaign-pot-ordinary-items)。新增薄协调器`world_steam_magic_items`，只管进程内配方目标、原壶操作与既有income消费者的衔接；普通47的精确元素扣减/库存取得沿现观察器，75消耗和76实际价格/品质/魅力验证沿原消费者，不复制规则或增加第二世界。`steam-pot-item-month --recipe=ID`只接受已知、正常开放且非药品/魔法书的设施强化道具；未完成制造、实际强化和退回稳定主场景前拒绝保存。没有新玩家字段、侧车、target或保存时点，research只读。
+
+从有效月217真实处理原3件待料，经验93→96；配方5在47扣火/冰/雷/暗60/60/60/0，175/261/233/1→115/201/173/1，道具23库存0→1。原75消费1件、不再扣金币，原76使花店45/实例23品质62→65、魅力79→83、价格保持900。月218保存/独立冷载通过（254.995秒），该段没有新购材料，不虚构付费。
+
+随后从有效月218实付1000G购买道具20并投入一次，配方2在47扣70/40/30/2，118/207/178/2→48/167/148/0；道具11库存0→1→0，同一花店品质65→72，价格900/魅力83保持，使用不再收费。月219保存/独立冷载通过（222.514秒），再实际经营至月220保存/冷载通过（227.904秒）；完整后继营业月218/219收入54422/53179G。三个新段152条回执，经现独立oracle核来源定义、精确扣减、取得/使用/效果、月度输入与槽位字节复制；总203–220连续18段754条回执、228次文件核对见`build/validation/research-a9dc1bd-integration/pot-progression-month220-RESULT.json`。两项完整消费链与最终冷载花店品质72/魅力83在同根`ordinary-items-month220-RESULT.json`；收入仅作实际营业后继，不作道具收益的隔离因果对照，主策略强化计数不包含本次进程内协调器的两条使用回执。
+
+两Debug配置/完整构建及标准CTest通过：desktop-debug 140/140、111.74秒，headless-debug 119/119、106.81秒，均仅排`simulation.startup_world_continuous_test`；Release受影响经营合同1/1、2.76秒。构建和检查记录在`build/validation/research-a9dc1bd-integration/ordinary-items-20261016/CHECKS.json`。只给现campaign登记实现，无新target；规则/Owner/codec/资源与来源身份不变，不重复窗口/便携包，CI未运行、未推送。本批进程已收齐。
+
+当前有效档为`build/validation/business-liquidity/steam-continue-month-month220-goal-57c1ffcf68364456a3ebf71174a03991/checkpoints/month-220`：现金1625596G高于82700G预留、8点、人气8280，五星/154750分及phase2/continued_month219；任务80本段真实胜利，策略胜利62，活动92、装备353，人物2实际付点转入职业8并完成三阶段/属性重算。壶经验96、待料1、四元素48/167/148/0，11/23已开放且库存0；继续补37、120/150门槛和其余定义，不称全775认证。此前配方37设施路线在360.139秒超时，8次购料/投入但没有制造/领取，未生成玩家新栏，现场保留于`build/validation/business-liquidity/steam-pot-facility-month-month218-goal-dcff4e614f0d471e9319ceceb19d9ac8`，不由本次成功改签。
+
+额外失败接线已按独立批准实际完成：月202六文件复制到新目录，非法`--recipe=0`拒绝并生成观察文件，现`inspect-observation`解码通过，246行原壶/经营/人物状态与原档冷载一致。原六文件及副本逐字节不变、无世界推进/新玩家栏；证据为`build/validation/research-a9dc1bd-integration/observation-wiring-c6e413b5-15b9-4363-8fdd-4e51d7516dea/RESULT.json`，替代的是此前“未执行”的状态，不改旧失败结果。
+
+正式研究已只读审阅至1408586：新增UTF-16排块/14TAG/字体副本生命周期的类型化消费者，复用既有visuals套件；19ecaf1的有序文字后端与原生缺字候选仍与当前运行face、字形度量及平台宿主分别认证。本批未导入该家族，也未实施待批d4ed6be的29目标；完整冻结仍a9dc1bd加6cb贡献修正、505项/84适配，不把研究新提交或只读审阅当产品完成。
+
 <a id="research-6cbfdf3-contribution"></a>
 ## 2026-10-16：正式贡献修正、跨年恢复与配方19后继
 

@@ -9,10 +9,9 @@
 - [ ] 正式9692bb8/197d5b2已交植物路线绑定修正、施工只读计划及设施完工/装备库存头标；d4ed6be已交事务式魔法实际消费观察。按独立批次核对和接入，不混入a9dc1bd验收结果。
 
 - [ ] 按[全解锁合同](docs/stages/ACTIVE_VILLAGE_PLAN.md#full-unlock-campaign)逐定义覆盖取得、消费、实际效果与后继，保留775分母；代表样例、仅解锁或日期推进不算全覆盖。
-- [ ] 普通道具显式输入已获批并接入；2/5/8/22/27已真实购买/强化、完整后继营业及独立冷载。继续补11/23的合法取得与实际使用：月217配方5足额、2缺暗2，仍无库存/商会货源；[当前元素与后继](docs/stages/B1-playable-prototype.md#research-6cbfdf3-contribution)与[既有消费证据](docs/stages/B1-playable-prototype.md#campaign-item-stock-gaps)分开，不把目录或材料当消费。
-- 普通道具配方的制造/设施使用八目标已[准备方案](docs/MILESTONES.md#campaign-pot-ordinary-items)并发出确认，尚未编码；原九目标批准与既有魔法壶发现/设施路线继续有效。
+- [ ] 普通道具继续按剩余定义补覆盖：2/5/8/22/27已有真实购买/强化，11/23现已完成合法制造/实际强化、完整后继营业及独立冷载，见[制造接线与结果](docs/stages/B1-playable-prototype.md#campaign-pot-ordinary-items)。药品/魔法书仍沿各自消费者核效果，不能用入壶或仅库存变化替代使用。
 - 历史回执2838条：80个已核分段外补核5个旧格式阶段，配方7完整消费及职业4人物0/1/3已联接；旧来源字段缺失、失败后段和每定义未完环节保留，见[审计](docs/stages/B1-playable-prototype.md#campaign-history-receipt-audit)，不把“有回执”当全覆盖。
-- [ ] 从当前有效父世界月217接续：正式6cb贡献修正、跨年授勋/任务78胜利，以及19→武器24的[实际制造/装配/属性、完整后继与严格冷载](docs/stages/B1-playable-prototype.md#research-6cbfdf3-contribution)已验。先处理3件待料，再补37等产物和经验120/150后继；37当前缺暗20。29/23/28三防具、39植物70/20、18、32/33及52营业保留原证据，17独立分支不改签主线。活动20付款排队不当人气兑现；保留两月现金及图纸预算、40配方与775分母，实际施法不以学习/Q替代，原失败不由修后新路线改签。
+- [ ] 从当前有效父世界月220接续：11/23真实制造/强化及后继、任务80胜利、人物2实际转入职业8均见[最新结果](docs/stages/B1-playable-prototype.md#campaign-pot-ordinary-items)；壶经验96、待料1，四元素48/167/148/0，补37等产物和经验120/150后继，37仍缺暗20。既有29/23/28三防具、39植物70/20、18、32/33、52营业及19→武器24严格冷载保留原证据，17独立分支不改签主线。活动20付款排队不当人气兑现；保留两月现金及图纸预算、40配方与775分母，实际施法不以学习/Q替代，原失败不由新路线改签。
 - [ ] 接入d4ed6be法术及239d071物理局部回执，再补实际施放、投射/延迟伤害与武器实战归因，见[研究回应](docs/reference/RESEARCH_REQUESTS.md#spell-consumption-receipts)；Q可用、装配属性及退休现金均不替代实际作用，不再将已交观察接口当作研究缺口。
 - [ ] 继续23职业的显式消费分支和后继。职业0/1/2/3/7/8已有合法付款、原三阶段、完整后继营业及冷载；木匠/商人效果见[经营效果](docs/stages/B1-playable-prototype.md#campaign-profession-economy)，职业0实收住宅税560G见[税收](docs/stages/B1-playable-prototype.md#campaign-profession-tax)。历史培养分支见[原结果](docs/stages/B1-playable-prototype.md#campaign-profession-training)；主线原职业8人物6/9现均10级、职业8已开放，0/1/3/7实际转入，见[最新后继](docs/stages/B1-playable-prototype.md#campaign-pot29-equipment)。5/6/15仍未开放；最早精通领取页、植物实付、其它职业税收及剩余精通效果待核，不把普通策略跳过标作不可达。
 

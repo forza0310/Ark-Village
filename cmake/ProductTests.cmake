@@ -46,6 +46,7 @@ ark_test_executable(ark_world_campaign_tests SOURCES tests/app/world_campaign_te
     tests/app/world_active_pot_strategy.cpp
     tests/app/world_steam_magic_pot.cpp
     tests/app/world_steam_magic_books.cpp
+    tests/app/world_steam_magic_items.cpp
     tests/app/world_steam_magic_discovery.cpp
     tests/app/world_steam_magic_facilities.cpp
     tests/app/world_campaign_diagnostics.cpp

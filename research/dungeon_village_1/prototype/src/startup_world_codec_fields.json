@@ -68,6 +68,23 @@
       ]
     },
     {
+      "name": "dungeon_village_prototype::StartupAwardQuestionUi",
+      "fields": [
+        {
+          "name": "parent",
+          "type": "std::uint64_t"
+        },
+        {
+          "name": "kind",
+          "type": "int"
+        },
+        {
+          "name": "selection",
+          "type": "int"
+        }
+      ]
+    },
+    {
       "name": "dungeon_village_prototype::StartupHumanDetailContext",
       "fields": [
         {
@@ -115,6 +132,23 @@
         {
           "name": "localize_text",
           "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_prototype::StartupResidenceAwardPageUi",
+      "fields": [
+        {
+          "name": "selection",
+          "type": "int"
+        },
+        {
+          "name": "first",
+          "type": "int"
+        },
+        {
+          "name": "tab",
+          "type": "int"
         }
       ]
     },
@@ -901,6 +935,18 @@
           "type": "std::map<std::uint64_t, int>"
         },
         {
+          "name": "residence_award_page_ui",
+          "type": "std::map<std::uint64_t, StartupResidenceAwardPageUi>"
+        },
+        {
+          "name": "award_question_ui",
+          "type": "std::map<std::uint64_t, StartupAwardQuestionUi>"
+        },
+        {
+          "name": "award_question_answers",
+          "type": "std::map<std::uint64_t, int>"
+        },
+        {
           "name": "reward_display",
           "type": "std::array<std::array<int, 2>, 3>"
         },
@@ -987,6 +1033,10 @@
         {
           "name": "commerce_page_lists",
           "type": "std::map<std::uint64_t, std::vector<int>>"
+        },
+        {
+          "name": "commerce_page_feedback_amount",
+          "type": "std::map<std::uint64_t, int>"
         },
         {
           "name": "facility_catalog_pages_initialized",

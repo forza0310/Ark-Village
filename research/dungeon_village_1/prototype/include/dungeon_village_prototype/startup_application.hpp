@@ -122,6 +122,7 @@ class StartupApplication {
     std::string set_page_confirm_held(bool held);
     std::string acknowledge_page(std::uint64_t page);
     std::string act_award_page(std::uint64_t page, ref::WorldAwardAction action, int selection = 0);
+    std::string input_residence_award_page(std::uint64_t page,const StartupResidenceAwardInput &input);
     std::string return_rank_page(std::uint64_t page);
     std::string leave_commerce_page(std::uint64_t page);
     // 首星/住宅/二星管理命令：复用Session资格与唯一应用提交点，不开放可写world。

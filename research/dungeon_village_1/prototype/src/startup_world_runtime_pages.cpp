@@ -4,6 +4,7 @@
 #include "dungeon_village_prototype/startup_world_facility_catalog.hpp"
 #include "dungeon_village_prototype/startup_world_magic_pot.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
+#include "dungeon_village_prototype/startup_world_profile.hpp"
 #include "dungeon_village_prototype/startup_world_information.hpp"
 #include "dungeon_village_prototype/startup_world_menu.hpp"
 #include "dungeon_village_prototype/startup_world_save.hpp"
@@ -15,6 +16,7 @@
 #include "dungeon_village_reference/world_gift_page.hpp"
 
 #include <algorithm>
+#include <iterator>
 #include <set>
 #include <limits>
 
@@ -22,6 +24,14 @@ namespace dungeon_village_prototype {
 namespace {
 using State = StartupWorldRuntimeState;
 using Error = StartupWorldRuntimeError;
+bool follows_award_page(const State &s, std::uint64_t id) {
+    const auto page = std::find_if(s.scripts.pages.begin(), s.scripts.pages.end(),
+                                   [=](const auto &p) { return p.id == id; });
+    if (page == s.scripts.pages.end() || page == s.scripts.pages.begin() ||
+        page->kind != ref::WorldScriptPageKind::raw_page || page->legacy_page != 1) return false;
+    const auto parent = std::prev(page);
+    return parent->kind == ref::WorldScriptPageKind::raw_page && parent->legacy_page == 87;
+}
 bool valid_reward_display(const State &s) {
     // 原n.aH共享旧/新/请求三行；两种奖励页都不能从当前人物反推或修补。
     for(std::size_t column=0;column<2;++column) {
@@ -240,6 +250,9 @@ bool award_reward(State &s, int human) {
     return true;
 }
 bool consume_award(State &s, std::uint64_t id, ref::WorldAwardAction action, int selection = 0) {
+    if (!initialize_startup_world_residence_award_page(s, id) ||
+        !valid_startup_world_residence_award_page(s, id))
+        return false;
     const auto initialized = ref::prepare_world_award_page_initialization(award_projection(s, id));
     if (!initialized.candidate)
         return false;
@@ -284,7 +297,7 @@ bool consume_award(State &s, std::uint64_t id, ref::WorldAwardAction action, int
                 !write_startup_world_runtime_scripts(s, closed.candidate->state))
                 return false;
         }
-        // termination_prompt由独立命令/窗口是非输入消费，不把普通确认当作终止。
+        // 问题页面由输入Owner创建；这里只消费原业务与一次性效果。
     }
     return true;
 }
@@ -338,6 +351,227 @@ bool consume_award_display(State &s, std::uint64_t id, bool confirm, int raw) {
     return true;
 }
 } // namespace
+
+bool valid_startup_world_residence_award_page(const State &s, std::uint64_t id) {
+    const auto p = std::find_if(s.scripts.pages.begin(), s.scripts.pages.end(),
+                              [=](const auto &v) { return v.id == id; });
+    if (!s.rules || !id || p == s.scripts.pages.end() ||
+        std::count_if(s.scripts.pages.begin(), s.scripts.pages.end(),
+                      [=](const auto &v) { return v.id == id; }) != 1 ||
+        p->kind != ref::WorldScriptPageKind::raw_page ||
+        (p->legacy_page != 80 && p->legacy_page != 87) || p->lifecycle < 0 || p->lifecycle > 4)
+        return false;
+    const auto ui = s.residence_award_page_ui.find(id);
+    const auto human = [&](int h) {
+        return s.human_calendar.count(h) && s.human_presence.count(h) && s.human_homes.count(h) &&
+               s.scene.world.world.ai.battle.humans.count(h) && s.scene.world.world.human_spending.count(h) &&
+               std::count_if(s.rules->humans.begin(), s.rules->humans.end(),
+                             [=](const auto &v) { return v.identity == h; }) == 1;
+    };
+    const std::vector<int> *list{};
+    if (p->legacy_page == 80) {
+        const auto rows = s.residence_page_candidates.find(id);
+        if (rows == s.residence_page_candidates.end() || !s.facility_page_bindings.count(id) ||
+            !s.page_counters.count(id) || s.page_counters.at(id) < 0 ||
+            s.page_counters.at(id) == std::numeric_limits<int>::max() ||
+            s.award_rankings.count(id) || s.award_announced.count(id) ||
+            s.award_termination_pending.count(id) || s.award_pending_humans.count(id) ||
+            s.award_question_answers.count(id)) return false;
+        list = &rows->second;
+        if (p->lifecycle != 4) {
+            const auto facility = s.scene.world.world.facilities.find(s.facility_page_bindings.at(id));
+            if (facility == s.scene.world.world.facilities.end() || facility->second.kind != 13 ||
+                facility->second.status != 1 || !facility->second.occupants.empty() || list->empty()) return false;
+        }
+    } else {
+        for (const auto &h : s.rules->humans) if (!human(h.identity)) return false;
+        const auto rows = s.award_rankings.find(id);
+        if (rows == s.award_rankings.end())
+            return p->lifecycle == 0 && ui == s.residence_award_page_ui.end() &&
+                   !s.page_counters.count(id) && !s.award_announced.count(id) &&
+                   !s.award_termination_pending.count(id) && !s.award_pending_humans.count(id) &&
+                   !s.award_question_answers.count(id) && !s.residence_page_candidates.count(id) &&
+                   !s.facility_page_bindings.count(id) &&
+                   std::none_of(s.award_question_ui.begin(), s.award_question_ui.end(),
+                                [=](const auto &q) { return q.second.parent == id; });
+        if (!s.award_announced.count(id) || !s.award_termination_pending.count(id) ||
+            !s.page_counters.count(id) || s.page_counters.at(id) < 0 ||
+            s.page_counters.at(id) == std::numeric_limits<int>::max() || rows->second.empty() ||
+            s.residence_page_candidates.count(id) || s.facility_page_bindings.count(id)) return false;
+        list = &rows->second;
+    }
+    if (ui == s.residence_award_page_ui.end() || list->size() > s.rules->humans.size()) return false;
+    const auto &v = ui->second;
+    const int count = static_cast<int>(list->size()), visible = p->legacy_page == 80 ? 4 : 5;
+    if (v.selection < 0 || v.first < 0 || v.tab < 0 || v.tab > (p->legacy_page == 80 ? 0 : 2) ||
+        (count == 0 ? v.selection != 0 || v.first != 0 :
+         v.selection >= count || v.first > count - 1 || v.selection < v.first || v.selection >= v.first + visible)) return false;
+    std::set<int> seen;
+    for (int h : *list) if (!human(h) || !seen.insert(h).second) return false;
+    const auto pending = s.award_pending_humans.find(id);
+    const bool termination = s.award_termination_pending.count(id) && s.award_termination_pending.at(id);
+    if (pending != s.award_pending_humans.end() &&
+        (termination || pending->second != (*list)[v.selection])) return false;
+    const auto answer = s.award_question_answers.find(id);
+    if (answer != s.award_question_answers.end() &&
+        (answer->second < -1 || answer->second > 1 || (!termination && pending == s.award_pending_humans.end()))) return false;
+    if (p->legacy_page == 87) {
+        const auto child = std::next(p);
+        if (child != s.scripts.pages.end() && child->kind == ref::WorldScriptPageKind::raw_page && child->legacy_page == 1) {
+            const auto question = s.award_question_ui.find(child->id);
+            if (question == s.award_question_ui.end() || question->second.parent != id) return false;
+        }
+    }
+    int questions{};
+    for (const auto &q : s.award_question_ui) if (q.second.parent == id) {
+        const auto child = std::find_if(s.scripts.pages.begin(), s.scripts.pages.end(),
+                                       [&](const auto &v) { return v.id == q.first; });
+        if (++questions > 1 || child == s.scripts.pages.end() ||
+            child->kind != ref::WorldScriptPageKind::raw_page || child->legacy_page != 1 ||
+            q.second.kind < 0 || q.second.kind > 1 || q.second.selection < 0 || q.second.selection > 1 ||
+            (q.second.kind == 0 ? pending == s.award_pending_humans.end() : !termination) ||
+            (child->lifecycle != 4 && (p->lifecycle != 3 || answer != s.award_question_answers.end()))) return false;
+    }
+    return true;
+}
+
+bool initialize_startup_world_residence_award_page(State &s, std::uint64_t id) {
+    if (!valid_startup_world_residence_award_page(s, id)) return false;
+    const auto page = std::find_if(s.scripts.pages.begin(), s.scripts.pages.end(),
+                                 [=](const auto &v) { return v.id == id; });
+    if (page->legacy_page == 80 || s.award_rankings.count(id)) return true;
+    const auto initialized = ref::prepare_world_award_page_initialization(award_projection(s, id));
+    if (!initialized.candidate) return false;
+    const auto &a = initialized.candidate->state;
+    s.medal_count = a.medal_count;
+    s.award_rankings.emplace(id, a.ranked_definitions);
+    s.award_announced.emplace(id, a.announced);
+    s.award_termination_pending.emplace(id, a.termination_pending);
+    s.page_counters.emplace(id, 0);
+    s.residence_award_page_ui.emplace(id, StartupResidenceAwardPageUi{});
+    for (const auto &h : a.humans) s.human_calendar.at(h.definition).contribution = h.contribution;
+    return valid_startup_world_residence_award_page(s, id);
+}
+
+bool valid_startup_world_award_question_page(const State &s, std::uint64_t id) {
+    const auto page = std::find_if(s.scripts.pages.begin(), s.scripts.pages.end(),
+                                 [=](const auto &v) { return v.id == id; });
+    const auto q = s.award_question_ui.find(id);
+    if (page == s.scripts.pages.end() || q == s.award_question_ui.end() || !id ||
+        std::count_if(s.scripts.pages.begin(), s.scripts.pages.end(), [=](const auto &v) { return v.id == id; }) != 1 ||
+        page->kind != ref::WorldScriptPageKind::raw_page || page->legacy_page != 1 ||
+        page->lifecycle < 0 || page->lifecycle > 4 || q->second.kind < 0 || q->second.kind > 1 ||
+        q->second.selection < 0 || q->second.selection > 1 ||
+        !valid_startup_world_residence_award_page(s, q->second.parent) ||
+        s.page_human_bindings.count(id) || s.human_detail_contexts.count(id) ||
+        s.residence_award_page_ui.count(id) || s.award_question_answers.count(id) ||
+        page->title.empty() || page->paragraphs.size() != 1) return false;
+    auto parent = page;
+    while (parent != s.scripts.pages.begin()) { --parent; if (parent->lifecycle != 4) break; }
+    if (parent == page || parent->id != q->second.parent || parent->legacy_page != 87 ||
+        (page->lifecycle != 4 && parent->lifecycle != 3)) return false;
+    const bool pending = q->second.kind == 0 ? s.award_pending_humans.count(parent->id) != 0 :
+        s.award_termination_pending.count(parent->id) && s.award_termination_pending.at(parent->id);
+    const auto answer = s.award_question_answers.find(parent->id);
+    return pending && (page->lifecycle == 4 ? answer != s.award_question_answers.end() &&
+        (answer->second == -1 || answer->second == q->second.selection) : answer == s.award_question_answers.end());
+}
+
+Error input_startup_world_residence_award_page(State &s, std::uint64_t id,
+                                              const StartupResidenceAwardInput &input) {
+    const auto top = std::find_if(s.scripts.pages.rbegin(), s.scripts.pages.rend(),
+                                 [](const auto &p) { return p.lifecycle != 4; });
+    if (s.scene.framework_paused || top == s.scripts.pages.rend() || top->id != id || top->lifecycle != 2)
+        return Error::invalid_page;
+    if (s.award_question_ui.count(id)) {
+        if (!valid_startup_world_award_question_page(s, id) || input.scroll)
+            return Error::invalid_page;
+        auto next = s;
+        auto &q = next.award_question_ui.at(id);
+        if (input.selection) { if (*input.selection < 0 || *input.selection > 1) return Error::invalid_page; q.selection = *input.selection; }
+        if (input.right) q.selection = (q.selection + 1) % 2;
+        else if (input.left) q.selection = (q.selection + 1) % 2;
+        else if (input.confirm || input.cancel) {
+            next.scripts.executing_page = id;
+            if (!next.award_question_answers.emplace(q.parent, input.confirm ? q.selection : -1).second) return Error::invalid_page;
+            const auto closed = ref::prepare_world_script_close_page(startup_world_runtime_scripts(next), id);
+            if (!closed.candidate || !write_startup_world_runtime_scripts(next, closed.candidate->state)) return Error::script_failed;
+            next.scripts.executing_page.reset();
+        }
+        s = std::move(next); return Error::none;
+    }
+    if (!valid_startup_world_residence_award_page(s, id) ||
+        !s.residence_award_page_ui.count(id) || s.award_pending_humans.count(id) ||
+        (s.award_termination_pending.count(id) && s.award_termination_pending.at(id)) ||
+        s.award_question_answers.count(id)) return Error::invalid_page;
+    auto next = s;
+    auto &ui = next.residence_award_page_ui.at(id);
+    const int raw = top->legacy_page;
+    const auto &list = raw == 80 ? next.residence_page_candidates.at(id) : next.award_rankings.at(id);
+    const int count = static_cast<int>(list.size()), visible = raw == 80 ? 4 : 5;
+    if (count <= 0) return Error::invalid_page;
+    if (input.selection) { if (*input.selection < 0 || *input.selection >= count) return Error::invalid_page; ui.selection = *input.selection; }
+    if (input.scroll) {
+        const auto selection = input.scroll->absolute ? static_cast<std::int64_t>(input.scroll->value) :
+            static_cast<std::int64_t>(ui.selection) + input.scroll->value;
+        if (selection < 0 || selection >= count) return Error::invalid_page;
+        ui.selection = static_cast<int>(selection);
+    }
+    if (input.up) ui.selection = (ui.selection + count - 1) % count;
+    if (input.down) ui.selection = (ui.selection + 1) % count;
+    if (ui.first > ui.selection) ui.first = ui.selection;
+    if (ui.first + visible <= ui.selection) ui.first = ui.selection - visible + 1;
+    if (raw == 87) {
+        if (input.left) ui.tab = (ui.tab + 2) % 3;
+        if (input.right) ui.tab = (ui.tab + 1) % 3;
+    }
+    if (raw == 80) {
+        if (input.confirm || input.cancel) {
+            const auto result = act_startup_world_residence_page(next, id, list[ui.selection], !input.confirm && input.cancel);
+            if (result.error != Error::none) return result.error;
+        }
+    } else if (input.confirm || input.cancel) {
+        const bool terminate = !input.confirm && input.cancel;
+        const int selected_human = list[ui.selection];
+        // 维护输入沿既有act回调进入一次新主钟，不重放上轮counter1前缀。
+        const auto requested = act_startup_world_runtime_award_page(next, id,
+            terminate ? ref::WorldAwardAction::request_termination : ref::WorldAwardAction::request_award,
+            ui.selection);
+        if (requested != Error::none) return requested;
+        next.scripts.executing_page = id;
+        const bool pending = terminate ? next.award_termination_pending.at(id) : next.award_pending_humans.count(id) != 0;
+        if (pending) {
+            const auto profile = terminate ? std::optional<StartupWorldHumanProfile>{} : startup_world_human_profile(next, selected_human);
+            if (!terminate && !profile) return Error::missing_source;
+            ref::WorldScriptPage question;
+            question.kind = ref::WorldScriptPageKind::raw_page; question.legacy_page = 1;
+            question.title = "是\t否";
+            question.paragraphs = {terminate ? "要中止勋章授予仪式吗？" : profile->name + "<br>将被授予勋章。"};
+            for (auto &p : next.scripts.pages) if (p.id == id) p.lifecycle = 3;
+            const auto opened = ref::prepare_world_script_page(startup_world_runtime_scripts(next), question);
+            if (!opened.candidate || opened.candidate->inserted_pages.size() != 1 ||
+                !write_startup_world_runtime_scripts(next, opened.candidate->state)) return Error::script_failed;
+            const auto child = opened.candidate->inserted_pages.front().id;
+            if (!next.award_question_ui.emplace(child, StartupAwardQuestionUi{id, terminate ? 1 : 0, terminate ? 1 : 0}).second ||
+                !valid_startup_world_award_question_page(next, child)) return Error::missing_source;
+        }
+        next.scripts.executing_page.reset();
+    } else if (input.inspect) {
+        const int human = list[ui.selection];
+        if (!startup_world_human_details(next, human)) return Error::missing_source;
+        next.scripts.executing_page = id;
+        for (auto &p : next.scripts.pages) if (p.id == id) p.lifecycle = 3;
+        ref::WorldScriptPage detail; detail.kind = ref::WorldScriptPageKind::raw_page; detail.legacy_page = 60;
+        const auto opened = ref::prepare_world_script_page(startup_world_runtime_scripts(next), detail);
+        if (!opened.candidate || opened.candidate->inserted_pages.size() != 1 ||
+            !write_startup_world_runtime_scripts(next, opened.candidate->state)) return Error::script_failed;
+        const auto child = opened.candidate->inserted_pages.front().id;
+        if (!next.page_human_bindings.emplace(child, human).second ||
+            !next.human_detail_contexts.emplace(child, StartupHumanDetailContext{0, {}}).second) return Error::missing_source;
+        next.scripts.executing_page.reset();
+    }
+    s = std::move(next); return Error::none;
+}
 
 bool valid_startup_world_runtime_task_summary_ui_page(const State &s,const ref::WorldScriptPage &p) {
     const int raw=p.legacy_page;const auto id=p.id;
@@ -635,7 +869,18 @@ Error act_startup_world_runtime_award_page(State &state, std::uint64_t id,
         return Error::invalid_page;
     auto next = state;
     next.scripts.executing_page = id;
-    auto &counter = next.page_counters[id];
+    if (!initialize_startup_world_residence_award_page(next, id))
+        return Error::missing_source;
+    if (next.award_question_answers.count(id)) return Error::invalid_page;
+    if (action == ref::WorldAwardAction::request_award) {
+        const int size = static_cast<int>(next.award_rankings.at(id).size());
+        if (selection < 0 || selection >= size) return Error::invalid_page;
+        auto &ui = next.residence_award_page_ui.at(id);
+        ui.selection = selection;
+        if (ui.first > selection) ui.first = selection;
+        if (ui.first + 5 <= selection) ui.first = selection - 4;
+    }
+    auto &counter = next.page_counters.at(id);
     if (counter == std::numeric_limits<int>::max())
         return Error::missing_source;
     ++counter;
@@ -701,6 +946,12 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
     if (state.scene.framework_paused || top == state.scripts.pages.rend() || top->id != id ||
         top->kind == ref::WorldScriptPageKind::scene)
         return Error::invalid_page;
+    if (follows_award_page(state, id) && !state.award_question_ui.count(id))
+        return Error::missing_source;
+    if (state.award_question_ui.count(id) || top->legacy_page == 80 || top->legacy_page == 87) {
+        StartupResidenceAwardInput input; input.confirm = true;
+        return input_startup_world_residence_award_page(state, id, input);
+    }
     if (top->kind == ref::WorldScriptPageKind::raw_page && (top->legacy_page == 58||top->legacy_page==17))
         return Error::invalid_page; // 58由逐帧跟踪收尾；17只能由应用Owner计分，均不能通用确认关闭。
     if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==89&&
@@ -892,6 +1143,14 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
 Error cancel_startup_world_runtime_page(State &state, std::uint64_t id) {
     const auto catalogue = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
                                        [](const auto &p) { return p.lifecycle != 4; });
+    if (catalogue != state.scripts.pages.rend() && catalogue->id == id &&
+        follows_award_page(state, id) && !state.award_question_ui.count(id))
+        return Error::missing_source;
+    if(catalogue!=state.scripts.pages.rend()&&catalogue->id==id&&
+       (state.award_question_ui.count(id)||catalogue->legacy_page==80||catalogue->legacy_page==87)) {
+        StartupResidenceAwardInput input;input.cancel=true;
+        return input_startup_world_residence_award_page(state,id,input);
+    }
     if(catalogue!=state.scripts.pages.rend()&&catalogue->id==id&&catalogue->kind==ref::WorldScriptPageKind::raw_page&&
        catalogue->legacy_page==17)return Error::invalid_page;
     if(catalogue!=state.scripts.pages.rend()&&catalogue->id==id&&catalogue->kind==ref::WorldScriptPageKind::raw_page&&
@@ -1068,6 +1327,11 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
     if (state.scene.framework_paused) {
         const auto page = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
                                       [](const auto &p) { return p.lifecycle != 4; });
+        if(page!=state.scripts.pages.rend()&&follows_award_page(state,page->id)&&
+           !state.award_question_ui.count(page->id))return {};
+        if(page!=state.scripts.pages.rend()&&
+           ((page->legacy_page==80||page->legacy_page==87) ? !valid_startup_world_residence_award_page(state,page->id) :
+            state.award_question_ui.count(page->id)&&!valid_startup_world_award_question_page(state,page->id)))return {};
         if(page!=state.scripts.pages.rend()&&page->kind==ref::WorldScriptPageKind::raw_page&&
            page->legacy_page==21&&!valid_startup_world_build_menu(state,*page))return {};
         if (page != state.scripts.pages.rend() && page->kind == ref::WorldScriptPageKind::raw_page &&
@@ -1102,6 +1366,11 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
                                   [](const auto &p) { return p.lifecycle != 4; });
     if (top == state.scripts.pages.rend() || top->kind == ref::WorldScriptPageKind::scene)
         return {};
+    if (follows_award_page(state, top->id) && !state.award_question_ui.count(top->id)) return {};
+    if (state.award_question_ui.count(top->id))
+        return valid_startup_world_award_question_page(state, top->id) ? std::optional<State>(state) : std::nullopt;
+    if ((top->legacy_page == 80 || top->legacy_page == 87) &&
+        !valid_startup_world_residence_award_page(state, top->id)) return {};
     if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==21)
         return update_startup_world_build_menu(state,top->id);
     if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==17)return {};
@@ -1235,9 +1504,19 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
         (top->legacy_page == 99 || top->legacy_page == 100) &&
         !consume_task_display(next, *top, ref::WorldTaskDisplayAction::update))
         return {};
-    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 87 &&
-        !consume_award(next, top->id, ref::WorldAwardAction::update))
-        return {};
+    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 87) {
+        auto action = ref::WorldAwardAction::update;
+        const auto answer = next.award_question_answers.find(top->id);
+        if (answer != next.award_question_answers.end()) {
+            const bool terminate = next.award_termination_pending.at(top->id);
+            action = terminate ? (answer->second == 0 ? ref::WorldAwardAction::confirm_termination : ref::WorldAwardAction::reject_termination) :
+                (answer->second == 0 ? ref::WorldAwardAction::confirm_award : ref::WorldAwardAction::reject_award);
+        }
+        if (!consume_award(next, top->id, action)) return {};
+        // event23可在原共同前缀提前返回；pending仍在时答案也必须保留。
+        if (answer != next.award_question_answers.end() && !next.award_pending_humans.count(top->id) &&
+            !next.award_termination_pending.at(top->id)) next.award_question_answers.erase(top->id);
+    }
     if (top->kind == ref::WorldScriptPageKind::raw_page &&
         (top->legacy_page == 67 || top->legacy_page == 88) &&
         !consume_award_display(next, top->id, false, top->legacy_page))

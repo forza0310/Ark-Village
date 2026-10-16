@@ -1,4 +1,5 @@
 #include "dungeon_village_prototype/steam_human_skin.hpp"
+#include "dungeon_village_prototype/steam_facility_catalog_skin.hpp"
 #include "dungeon_village_prototype/startup.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_building.hpp"
@@ -1121,6 +1122,35 @@ void award_skin_checks(Checks &c,const std::filesystem::path &source_root) {
         if(asset==SteamHumanAsset::contribution_unit)c(r->image==104&&r->sprite==13&&
           dungeon_village_tools::parse_legacy_seb(bytes(root/r->published_sprite)).frame_count>13,"87点单位13真实帧存在");
     }
+    auto owner=test_support::page_fixture(87);const auto id=owner.scripts.pages.back().id;
+    // 六人开放仅为目录显示条件；不声称自然年度贡献或玩家已取得授勋资格。
+    for(int human=0;human<6;++human)owner.human_presence.at(human)=1;
+    c(initialize_startup_world_residence_award_page(owner,id),"87Owner显示夹具沿真实目录初始化");
+    owner.scripts.pages.back().lifecycle=2;owner.scripts.executing_page.reset();
+    owner.residence_award_page_ui.at(id)={4,1,2};
+    auto options=in.options;options.japanese=false;options.footer_widths=std::array<int,2>{24,24};
+    const auto digest=startup_world_state_digest(owner);const auto actual=steam_human_award_skin(owner,id,options);
+    c(actual&&actual->title=="勋章授予式 3/3"&&parts<SteamStartupTouch>(*actual).front().value==(0x20000|1),
+      "87桥读取Owner独立首行和页签，不由选中4重算首行0");
+    for(int n=0;n<3;++n)c(steam_human_award_skin(owner,id,options)->operations.size()==actual->operations.size()&&
+        startup_world_state_digest(owner)==digest,"87只读桥不改排序、勋章、随机或增长输出");
+    auto broken=owner;broken.residence_award_page_ui.erase(id);c(!steam_human_award_skin(broken,id,options),"87缺Owner游标拒绝，不默认0");
+    broken=owner;broken.page_counters.erase(id);c(!steam_human_award_skin(broken,id,options),"87缺主钟拒绝");
+    broken=owner;broken.scripts.pages.back().lifecycle=3;c(bool(steam_human_award_skin(broken,id,options)),"87覆盖时保留同一目录显示");
+    broken.scripts.pages.back().lifecycle=4;c(!steam_human_award_skin(broken,id,options),"87退休不再持显示引用");
+    auto residence=test_support::page_fixture(80);const auto rid=residence.scripts.pages.back().id;
+    residence.scripts.pages.back().lifecycle=2;residence.scripts.executing_page.reset();
+    ref::RescueFacility plot;plot.placement.instance_id={700};plot.kind=13;plot.status=1;
+    residence.scene.world.world.facilities.emplace(700,plot);residence.facility_page_bindings.emplace(rid,700);
+    residence.page_counters.emplace(rid,0);
+    residence.residence_page_candidates[rid]={0,1,2,3,4,5};residence.residence_award_page_ui[rid]={4,1,0};
+    SteamResidenceOptions ro;ro.title_widths=std::array<int,2>{100,100};ro.bottom_width=80;
+    const auto home_digest=startup_world_state_digest(residence);const auto home=steam_residence_skin(residence,rid,ro);
+    c(home&&parts<SteamHumanEquipmentRow>(*home).size()==5&&
+      parts<SteamHumanEquipmentRow>(*home).front().touch.value==(0x20000|1),"80Owner首行1仍绘五行，不重复其四行更新业务");
+    c(startup_world_state_digest(residence)==home_digest,"80Owner桥不入住或扣款");
+    auto missing=residence;missing.residence_award_page_ui.erase(rid);c(!steam_residence_skin(missing,rid,ro),"80缺Owner首行拒绝");
+    missing=residence;missing.residence_award_page_ui.at(rid).tab=1;c(!steam_residence_skin(missing,rid,ro),"80不接受87页签");
 }
 void effort_skin_checks(Checks &c) {
     SteamHumanEffortResultInput in{0,1,73,19,25,"能力条件",{{{50,10,8,5},{55,11,7,5},{5,1,-1,0}}}};

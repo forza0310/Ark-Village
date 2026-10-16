@@ -34,6 +34,8 @@ struct SteamResidenceInput {
 // 原上后下循环，再按四行修首行；绘制仍五行。仅转换显式游标，不读写Owner。
 std::optional<SteamResidenceCursor> steam_residence_cursor(
     SteamResidenceCursor cursor,int count,bool up,bool down);
-// 无Owner桥、页面初始化、扣款、入住或随机；marker16热区复用现EquipmentRow载荷。
+// 纯条件接口不初始化页面、扣款、入住或抽随机；marker16热区复用现EquipmentRow载荷。
 std::optional<SteamHumanOverviewPlan> steam_residence_skin(const SteamResidenceInput &);
+std::optional<SteamHumanOverviewPlan> steam_residence_skin(
+    const StartupWorldRuntimeState &,std::uint64_t page,const SteamResidenceOptions &);
 } // namespace dungeon_village_prototype

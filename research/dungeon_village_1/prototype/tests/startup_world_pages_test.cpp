@@ -2821,13 +2821,15 @@ void annual_termination() {
               test_support::audio_ids(repeated.candidate->sound_requests) == std::vector<int>{3} &&
               repeated.candidate->sound_requests.front().operation == StartupAudioOperation::replace_bgm,
           "raw87 later updates neither award another medal nor replay first sound");
-    check(acknowledge_startup_world_runtime_page(s, id) ==
-                  StartupWorldRuntimeError::missing_source &&
+    auto ordinary_confirm = s;
+    check(acknowledge_startup_world_runtime_page(ordinary_confirm, id) ==
+                  StartupWorldRuntimeError::none && ordinary_confirm.scripts.pages.back().legacy_page == 1 &&
+              ordinary_confirm.award_pending_humans.at(id) == 1 && ordinary_confirm.medal_count == 2 &&
               act_startup_world_runtime_award_page(s, id,
                                                    ref::WorldAwardAction::confirm_termination) ==
                   StartupWorldRuntimeError::missing_source &&
               s.medal_count == 2,
-          "ordinary confirm and absent termination question cannot silently end ceremony");
+          "ordinary confirm opens an award question; absent termination question cannot end ceremony");
     check(act_startup_world_runtime_award_page(s, id, ref::WorldAwardAction::request_termination) ==
                   StartupWorldRuntimeError::none &&
               s.award_termination_pending.at(id),
@@ -2872,6 +2874,120 @@ void annual_termination() {
               malformed.award_rankings.empty() && malformed.page_counters.empty(),
           "late award initialization error cannot leave partial medal/list/page state");
 }
+void residence_award_input() {
+    using E = StartupWorldRuntimeError;
+    auto s = fixture(87);
+    const auto parent = s.scripts.pages.back().id;
+    for (int h = 1; h <= 6; ++h) s.human_presence.at(h) = 1;
+    page_tick(s);
+    const auto medals = s.medal_count;
+    const auto cash = s.scene.world.world.ai.accounting.funds();
+    const auto draws = s.scene.random.draws();
+    StartupResidenceAwardInput move; move.up = move.left = true;
+    check(input_startup_world_residence_award_page(s, parent, move) == E::none &&
+              s.residence_award_page_ui.at(parent).selection == 5 &&
+              s.residence_award_page_ui.at(parent).first == 1 &&
+              s.residence_award_page_ui.at(parent).tab == 2,
+          "87 original up wrap uses five rows, then left wraps three tabs");
+    auto malformed = s; malformed.residence_award_page_ui.erase(parent);
+    check(!prepare_startup_world_runtime(malformed).candidate &&
+              input_startup_world_residence_award_page(malformed, parent, {}) == E::invalid_page,
+          "initialized87 missing actual cursor is rejected instead of reinitialized");
+    StartupResidenceAwardInput confirm; confirm.confirm = true;
+    check(input_startup_world_residence_award_page(s, parent, confirm) == E::none &&
+              s.award_pending_humans.at(parent) == 6 && s.scripts.pages.back().legacy_page == 1 &&
+              s.award_question_ui.at(s.scripts.pages.back().id).selection == 0 &&
+              s.medal_count == medals && s.scripts.pages[s.scripts.pages.size() - 2].lifecycle == 3,
+          "87 actual award question freezes selected identity, defaults yes, suspends parent without reward");
+    const auto question = s.scripts.pages.back().id;
+    malformed = s; malformed.award_question_ui.erase(question);
+    check(!valid_startup_world_residence_award_page(malformed, parent) &&
+              !prepare_startup_world_runtime(malformed).candidate,
+          "parent detects missing question binding rather than accepting a generic raw1");
+    const auto malformed_lifecycle = malformed.scripts.pages.back().lifecycle;
+    check(acknowledge_startup_world_runtime_page(malformed, question) == E::missing_source &&
+              cancel_startup_world_runtime_page(malformed, question) == E::missing_source &&
+              !update_startup_world_runtime_page(malformed) &&
+              malformed.scripts.pages.back().lifecycle == malformed_lifecycle &&
+              !malformed.award_question_answers.count(parent) &&
+              malformed.award_pending_humans.at(parent) == 6 && malformed.medal_count == medals,
+          "generic acknowledge/cancel reject missing award binding without closing or losing answer");
+    malformed.scene.framework_paused = true;
+    check(!update_startup_world_runtime_page(malformed) && !malformed.page_counters.count(question),
+          "standalone paused update rejects missing award binding without synthesizing a counter");
+    page_tick(s);
+    StartupResidenceAwardInput simultaneous;
+    simultaneous.left = simultaneous.right = simultaneous.confirm = true;
+    check(input_startup_world_residence_award_page(s, question, simultaneous) == E::none &&
+              s.award_question_ui.at(question).selection == 1 && !s.award_question_answers.count(parent) &&
+              s.scripts.pages.back().lifecycle == 2,
+          "raw1 right wins left and returns before same-round confirmation");
+    check(input_startup_world_residence_award_page(s, question, confirm) == E::none &&
+              s.award_question_answers.at(parent) == 1 && s.award_pending_humans.at(parent) == 6 &&
+              s.medal_count == medals && valid_startup_world_award_question_page(s, question),
+          "raw1 closes and returns one answer; parent has not consumed business yet");
+    check(input_startup_world_residence_award_page(s, question, confirm) == E::invalid_page,
+          "closed question cannot return a second answer");
+    page_tick(s);
+    check(!s.award_question_ui.count(question) && !s.award_question_answers.count(parent) &&
+              !s.award_pending_humans.count(parent) && s.medal_count == medals &&
+              s.residence_award_page_ui.at(parent).selection == 5 &&
+              s.residence_award_page_ui.at(parent).first == 1 && s.residence_award_page_ui.at(parent).tab == 2,
+          "resumed87 consumes no once and preserves frozen directory cursor and tab");
+    StartupResidenceAwardInput cancel; cancel.cancel = true;
+    check(input_startup_world_residence_award_page(s, parent, cancel) == E::none &&
+              s.award_question_ui.at(s.scripts.pages.back().id).kind == 1 &&
+              s.award_question_ui.at(s.scripts.pages.back().id).selection == 1,
+          "87 cancellation opens actual termination question defaulting no");
+    const auto terminate = s.scripts.pages.back().id;
+    page_tick(s);
+    check(cancel_startup_world_runtime_page(s, terminate) == E::none &&
+              s.award_question_answers.at(parent) == -1 && s.award_termination_pending.at(parent),
+          "question soft cancel returns minus1 before parent termination decision");
+    page_tick(s);
+    check(!s.award_termination_pending.at(parent) && !s.award_question_answers.count(parent) &&
+              s.medal_count == medals && s.scene.world.world.ai.accounting.funds() == cash &&
+              s.scene.random.draws() == draws,
+          "resumed parent rejects cancelled termination without medals, cash or random effects");
+    s.scripts.event_calls[111] = 1; // 人物详情首次说明已见的调用点夹具，避免覆盖返回契约。
+    StartupResidenceAwardInput inspect; inspect.inspect = true;
+    check(input_startup_world_residence_award_page(s, parent, inspect) == E::none &&
+              s.scripts.pages.back().legacy_page == 60 &&
+              s.page_human_bindings.at(s.scripts.pages.back().id) == 6 &&
+              s.human_detail_contexts.at(s.scripts.pages.back().id).chase_mode == 0 &&
+              !s.human_detail_contexts.at(s.scripts.pages.back().id).actor,
+          "87 actual details binds selected person with chase0 and no scene actor");
+    const auto detail = s.scripts.pages.back().id;
+    page_tick(s);
+    check(cancel_startup_world_runtime_page(s, detail) == E::none,
+          "87 nested person detail returns through its existing consumer");
+    page_tick(s);
+    check(s.residence_award_page_ui.at(parent).selection == 5 &&
+              s.residence_award_page_ui.at(parent).first == 1 && s.residence_award_page_ui.at(parent).tab == 2 &&
+              !s.human_detail_contexts.count(detail),
+          "87 detail return preserves parent directory and retires child context");
+    check(input_startup_world_residence_award_page(s, parent, confirm) == E::none,
+          "same frozen person may be asked again after prior answer consumption");
+    const auto award = s.scripts.pages.back().id;
+    page_tick(s);
+    check(input_startup_world_residence_award_page(s, award, confirm) == E::none,
+          "yes returns from second actual award question");
+    s.page_counters.at(parent) = 0; // 调用点夹具：专测已证event23共同前缀提前返回。
+    const auto before = s.human_calendar.at(6).celebrations;
+    page_tick(s);
+    check(s.award_question_answers.at(parent) == 0 && s.award_pending_humans.at(parent) == 6 &&
+              s.medal_count == medals && s.human_calendar.at(6).celebrations == before &&
+              s.scripts.event_calls.at(23) == 1,
+          "event23 early return preserves yes and pending identity without premature award");
+    auto rollback = s;
+    for (auto &p : rollback.scripts.pages) if (p.id != parent && p.kind != ref::WorldScriptPageKind::scene) p.lifecycle = 4;
+    rollback.human_calendar.at(6).celebrations = std::numeric_limits<int>::max();
+    const auto failed = prepare_startup_world_runtime(rollback);
+    check(!failed.candidate && rollback.award_question_answers.at(parent) == 0 &&
+              rollback.award_pending_humans.at(parent) == 6 && rollback.medal_count == medals,
+          "late resumed reward failure keeps old answer/pending/medal intact");
+}
+
 void annual_award() {
     auto s = fixture(87);
     s.human_presence.at(1) = 1;
@@ -3792,15 +3908,19 @@ void commerce_transactions() {
               s.monthly_cash[3][3][1] == 400 && s.scene.random.draws() == 0,
           "84 holdings tab buys one potato using cash category3, never village points");
     const auto result = s.scripts.pages.back().id;
-    check(s.scripts.pages.back().legacy_page == 86, "trade has actual result86");
+    check(s.scripts.pages.back().legacy_page == 86 && s.commerce_page_feedback_amount.at(buy)==400 &&
+              !s.commerce_page_feedback_amount.count(result),
+          "trade has actual result86 while only its parent84 owns the frozen400 feedback");
     const auto updated = update_startup_world_commerce_page(s, result);
     check(updated.has_value(), "86 actual update closes without confirmation or a second trade");
     s = *updated;
     check(s.scene.world.world.ai.accounting.funds() == 4600 &&
+              s.commerce_page_data.at(buy)[5]==20&&s.commerce_page_feedback_amount.at(buy)==400&&
               act_startup_world_commerce_page(s, result, A::confirm) == E::invalid_page,
-          "retired86 cannot repeat trade");
+          "86 does not decrement covered parent feedback or repeat trade");
     check(act_startup_world_commerce_page(s, buy, A::confirm) == E::none &&
               s.commerce_page_data.at(buy)[5] == 0 && s.items.at(0).inventory == 3 &&
+              !s.commerce_page_feedback_amount.count(buy)&&
               s.scene.world.world.ai.accounting.funds() == 4600,
           "first parent confirmation clears20 feedback rather than purchasing twice");
     s.item_commerce_read.at(0) = false;
@@ -3820,8 +3940,90 @@ void commerce_transactions() {
           "sale returns half-price200 cash, updates peak, not merchant stock or highest facility "
           "income");
     check(s.scene.world.world.ai.accounting.entries().rbegin()->second.category ==
-              ref::CashCategory::shop,
+              ref::CashCategory::shop&&s.commerce_page_feedback_amount.at(sell)==200,
           "commerce ledger records shop rather than generic other category");
+
+    // 只补货源调用点；商品身份、400/800/1500价格均来自冻结原表。
+    auto feedback=fixture(84);const auto page=feedback.scripts.pages.back().id;
+    feedback.shop_item_stock.at(0).quantity=1;
+    feedback.shop_item_stock.at(1).quantity=2;
+    feedback.shop_item_stock.at(2).quantity=1;
+    check(initialize_startup_world_commerce_pages(feedback)&&
+          !feedback.commerce_page_feedback_amount.count(page),"84 Init has no feedback amount");
+    auto preinstalled=fixture(84);preinstalled.commerce_page_feedback_amount[preinstalled.scripts.pages.back().id]=400;
+    const auto preinstalled_before=startup_world_state_digest(preinstalled);
+    check(!initialize_startup_world_commerce_pages(preinstalled)&&
+          startup_world_state_digest(preinstalled)==preinstalled_before,
+          "uninitialized84 cannot adopt preinstalled feedback amount");
+    check(act_startup_world_commerce_page(feedback,page,A::confirm)==E::none&&
+          feedback.commerce_page_lists.at(page)==std::vector<int>({1,2})&&
+          feedback.commerce_page_data.at(page)[5]==20&&
+          feedback.commerce_page_feedback_amount.at(page)==400,
+          "depleted selected stock changes directory but freezes the actual400 paid");
+    const auto child=feedback.scripts.pages.back().id;
+    const auto returned=update_startup_world_commerce_page(feedback,child);
+    check(returned.has_value(),"actual86 returns to parent84 without a second transaction");
+    feedback=*returned;
+    check(act_startup_world_commerce_page(feedback,page,A::next)==E::none,
+          "positive feedback allows actual parent directory navigation");
+    const auto view=inspect_startup_world_commerce_page(feedback,page);
+    check(view&&view->entries.at(view->selection)==2&&view->feedback_amount==400&&
+          feedback.rules->items.at(2).commerce_price==1500,
+          "feedback view uses prior400 transaction instead of newly selected1500 price");
+    for(int fault=0;fault<4;++fault) {
+        auto broken=feedback;
+        if(fault==0)broken.commerce_page_feedback_amount.erase(page);
+        if(fault==1)broken.commerce_page_feedback_amount.at(page)=-1;
+        if(fault==2)broken.commerce_page_data.at(page)[5]=0;
+        if(fault==3) {broken.commerce_page_feedback_amount.erase(page);broken.scene.framework_paused=true;}
+        const auto digest=startup_world_state_digest(broken);
+        check(!inspect_startup_world_commerce_page(broken,page)&&
+              !update_startup_world_commerce_page(broken,page)&&
+              act_startup_world_commerce_page(broken,page,A::confirm)!=E::none&&
+              startup_world_state_digest(broken)==digest,
+              "missing, negative, unexpected or paused invalid feedback refuses without partial UI/cash writes");
+    }
+    auto wrong_page=feedback;wrong_page.commerce_page_feedback_amount[child]=400;
+    const auto child_page=std::find_if(wrong_page.scripts.pages.begin(),wrong_page.scripts.pages.end(),
+        [&](const auto &p){return p.id==child;});
+    check(child_page!=wrong_page.scripts.pages.end()&&
+          !valid_startup_world_commerce_page(wrong_page,*child_page),
+          "non84 result cannot own a parent feedback amount even while awaiting retirement");
+    feedback.commerce_page_data.at(page)[5]=2;
+    const auto one=update_startup_world_commerce_page(feedback,page);
+    check(one&&one->commerce_page_data.at(page)[5]==1&&one->commerce_page_feedback_amount.at(page)==400,
+          "feedback2 decrements once to1 and keeps actual amount");
+    auto confirmed=*one;
+    check(act_startup_world_commerce_page(confirmed,page,A::confirm)==E::none&&
+          confirmed.commerce_page_data.at(page)[5]==0&&!confirmed.commerce_page_feedback_amount.count(page)&&
+          confirmed.scene.world.world.ai.accounting.funds()==4600&&confirmed.items.at(2).inventory==feedback.items.at(2).inventory,
+          "confirmation at remaining feedback1 clears only feedback and amount");
+    const auto expired=update_startup_world_commerce_page(*one,page);
+    check(expired&&expired->commerce_page_data.at(page)[5]==0&&!expired->commerce_page_feedback_amount.count(page),
+          "feedback1 expires before subsequent page input and removes amount in the same candidate");
+    auto late=*expired;late.scripts.next_page_id=std::numeric_limits<std::uint64_t>::max();
+    const auto late_digest=startup_world_state_digest(late);
+    check(act_startup_world_commerce_page(late,page,A::confirm)!=E::none&&
+          startup_world_state_digest(late)==late_digest&&!late.commerce_page_feedback_amount.count(page),
+          "late86 insertion failure rolls back paid cash, inventory and the new feedback amount");
+    auto next_trade=*expired;
+    check(act_startup_world_commerce_page(next_trade,page,A::confirm)==E::none&&
+          next_trade.commerce_page_feedback_amount.at(page)==1500&&
+          next_trade.scene.world.world.ai.accounting.funds()==3100,
+          "first confirmation after feedback expiration performs actual newly selected1500 trade");
+    auto closing=feedback;
+    check(act_startup_world_commerce_page(closing,page,A::cancel)==E::none&&
+          closing.commerce_page_feedback_amount.at(page)==400,
+          "closed84 retains positive feedback payload until real Finish");
+    page_tick(closing);
+    check(!closing.commerce_page_feedback_amount.count(page),"Finish releases closed84 feedback amount");
+    auto last=fixture(84);const auto last_page=last.scripts.pages.back().id;
+    last.shop_item_stock.at(0).quantity=1;
+    check(initialize_startup_world_commerce_pages(last)&&
+          act_startup_world_commerce_page(last,last_page,A::confirm)==E::none&&
+          last.commerce_page_lists.at(last_page).empty()&&last.commerce_page_data.at(last_page)[5]==0&&
+          !last.commerce_page_feedback_amount.count(last_page),
+          "last stock trade closes exhausted84 without creating an invisible feedback amount");
 }
 void commerce_facility_and_projection() {
     using A = StartupCommerceAction;
@@ -5756,6 +5958,7 @@ int main() {
         monster_details();
         annual_termination();
         annual_award();
+        residence_award_input();
         task_display();
         event_message_and_shop_return();
         popularity_return();

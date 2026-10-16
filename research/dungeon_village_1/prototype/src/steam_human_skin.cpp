@@ -11,6 +11,47 @@
 #include <limits>
 
 namespace dungeon_village_prototype {
+std::optional<SteamHumanOverviewPlan> steam_residence_skin(
+    const StartupWorldRuntimeState &s,std::uint64_t id,const SteamResidenceOptions &options) {
+    const auto page=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[=](const auto &p){return p.id==id;});
+    if(page==s.scripts.pages.end()||page->legacy_page!=80||page->lifecycle<1||page->lifecycle>3||
+       !valid_startup_world_residence_award_page(s,id))return {};
+    const auto ui=s.residence_award_page_ui.find(id),end=s.residence_award_page_ui.end();
+    const auto rows=s.residence_page_candidates.find(id);
+    if(ui==end||rows==s.residence_page_candidates.end())return {};
+    SteamResidenceInput input;input.options=options;input.cursor={ui->second.selection,ui->second.first};
+    input.order=rows->second;
+    for(const int human:input.order) {
+        const auto details=startup_world_human_details(s,human);
+        const auto definition=std::find_if(s.rules->humans.begin(),s.rules->humans.end(),
+            [=](const auto &h){return h.identity==human;});
+        if(!details||definition==s.rules->humans.end())return {};
+        input.humans.push_back({human,details->profession,details->sex,definition->residence_fee,
+            details->name,s.scene.world.world.ai.accounting.funds()>=definition->residence_fee});
+    }
+    return steam_residence_skin(input);
+}
+std::optional<SteamHumanOverviewPlan> steam_human_award_skin(
+    const StartupWorldRuntimeState &s,std::uint64_t id,const SteamHumanAwardOptions &options) {
+    const auto page=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[=](const auto &p){return p.id==id;});
+    if(page==s.scripts.pages.end()||page->legacy_page!=87||page->lifecycle<1||page->lifecycle>3||
+       !valid_startup_world_residence_award_page(s,id))return {};
+    const auto ui=s.residence_award_page_ui.find(id);const auto counter=s.page_counters.find(id);
+    const auto rows=s.award_rankings.find(id);
+    if(ui==s.residence_award_page_ui.end()||counter==s.page_counters.end()||rows==s.award_rankings.end())return {};
+    SteamHumanAwardInput input;input.options=options;input.frame=counter->second;input.medals_left=s.medal_count;
+    input.cursor={ui->second.selection,ui->second.first,ui->second.tab};input.rank_order=rows->second;
+    for(const int human:input.rank_order) {
+        const auto details=startup_world_human_details(s,human);const auto calendar=s.human_calendar.find(human);
+        const auto battle=s.scene.world.world.ai.battle.humans.find(human);
+        const auto spent=s.scene.world.world.human_spending.find(human);const auto home=s.human_homes.find(human);
+        if(!details||calendar==s.human_calendar.end()||battle==s.scene.world.world.ai.battle.humans.end()||
+           spent==s.scene.world.world.human_spending.end()||home==s.human_homes.end())return {};
+        input.humans.push_back({human,details->profession,details->sex,calendar->second.contribution,details->effort,
+            battle->second.killed_stat1,spent->second,home->second[2],details->medals,details->name});
+    }
+    return steam_human_award_skin(input);
+}
 std::optional<int> steam_human_shared_character_frame(const StartupWorldRuntimeState &s) {
     if(s.entry_updates<0||s.entry_updates>=std::numeric_limits<int>::max())return {};
     return s.entry_updates;

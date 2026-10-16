@@ -87,6 +87,12 @@ bool payload(const State &s, const Page &p) {
         v[5] > 20)
         return false;
     const int raw = p.legacy_page;
+    const auto amount = s.commerce_page_feedback_amount.find(p.id);
+    if (raw == 84 && v[5] > 0) {
+        if (amount == s.commerce_page_feedback_amount.end() || amount->second < 0)
+            return false;
+    } else if (amount != s.commerce_page_feedback_amount.end())
+        return false;
     if ((raw != 84 && raw != 86 && v[0] != 0) || ((raw != 84 || v[0] == 1) && v[1] != 0) ||
         (raw != 84 && v[5] != 0))
         return false;
@@ -127,7 +133,7 @@ bool initialize(State &s, const Page &p) {
     if(p.legacy_page==93&&!valid_startup_world_commerce_claim_page(s,p))return false;
     if (s.commerce_pages_initialized.count(p.id))
         return payload(s, p);
-    if (!s.rules || !supported(p.legacy_page) ||
+    if (!s.rules || !supported(p.legacy_page) || s.commerce_page_feedback_amount.count(p.id) ||
         ((p.legacy_page == 84 || p.legacy_page == 86) && (p.legacy_f < 0 || p.legacy_f > 1)) ||
         (p.legacy_page == 93 && p.legacy_r != 3))
         return false;
@@ -222,10 +228,23 @@ bool valid_startup_world_commerce_page(const State &s,const Page &p) {
     return p.kind==ref::WorldScriptPageKind::raw_page&&payload(s,p)&&
         (p.legacy_page!=93||valid_startup_world_commerce_claim_page(s,p));
 }
+bool valid_startup_world_commerce_feedback(const State &s,const Page &p) {
+    if(p.kind!=ref::WorldScriptPageKind::raw_page||p.legacy_page!=84||p.lifecycle<0||p.lifecycle>4)return false;
+    const auto data=s.commerce_page_data.find(p.id);
+    const auto count=s.page_counters.find(p.id);
+    const auto amount=s.commerce_page_feedback_amount.find(p.id);
+    if(!s.commerce_pages_initialized.count(p.id))return p.lifecycle==0&&
+        data==s.commerce_page_data.end()&&count==s.page_counters.end()&&amount==s.commerce_page_feedback_amount.end();
+    if(data==s.commerce_page_data.end()||count==s.page_counters.end()||count->second<0||
+       count->second==std::numeric_limits<int>::max()||data->second[5]<0||data->second[5]>20)return false;
+    return data->second[5]>0 ? amount!=s.commerce_page_feedback_amount.end()&&amount->second>=0 :
+                              amount==s.commerce_page_feedback_amount.end();
+}
 bool valid_startup_world_commerce_claim_page(const State &s,const Page &p) {
     if(!s.rules||p.kind!=ref::WorldScriptPageKind::raw_page||p.legacy_page!=93||p.lifecycle<0||p.lifecycle>4||
        p.legacy_r!=3||!facility_state(s,p.legacy_s)||s.page_phases.count(p.id)||
-       s.page_secondary_counters.count(p.id)||s.commerce_page_lists.count(p.id))return false;
+       s.page_secondary_counters.count(p.id)||s.commerce_page_lists.count(p.id)||
+       s.commerce_page_feedback_amount.count(p.id))return false;
     if(!s.commerce_pages_initialized.count(p.id))return p.lifecycle==0&&
         !s.commerce_page_data.count(p.id)&&!s.page_counters.count(p.id)&&s.facility_presence.at(p.legacy_s)==0;
     const auto count=s.page_counters.find(p.id);
@@ -280,6 +299,8 @@ std::optional<StartupCommerceView> inspect_startup_world_commerce_page(const Sta
                           s.page_counters.at(id), {}};
     if (s.commerce_page_lists.count(id))
         r.entries = s.commerce_page_lists.at(id);
+    if (p->legacy_page == 84 && v[5] > 0)
+        r.feedback_amount = s.commerce_page_feedback_amount.find(id)->second;
     return r;
 }
 Error act_startup_world_commerce_page(State &s, std::uint64_t id, Action action, int selection) {
@@ -293,7 +314,8 @@ Error act_startup_world_commerce_page(State &s, std::uint64_t id, Action action,
     // 已初始化页仍走完整载荷验证，不能用取消掩盖缺字段。
     if (p->legacy_page == 83 && action == Action::cancel &&
         !s.commerce_pages_initialized.count(id)) {
-        if (s.commerce_page_data.count(id) || s.commerce_page_lists.count(id))
+        if (s.commerce_page_data.count(id) || s.commerce_page_lists.count(id) ||
+            s.commerce_page_feedback_amount.count(id))
             return Error::missing_source;
         auto next = s;
         next.scripts.executing_page = id;
@@ -351,9 +373,10 @@ Error act_startup_world_commerce_page(State &s, std::uint64_t id, Action action,
         if (!open(next, v[2] == 2 ? 85 : 84, v[2] == 1 ? 1 : 0))
             return Error::script_failed;
     } else if (raw == 84) {
-        if (v[5] > 0)
+        if (v[5] > 0) {
             v[5] = 0;
-        else {
+            next.commerce_page_feedback_amount.erase(id);
+        } else {
             auto &list = next.commerce_page_lists.at(id);
             const int entry = list[v[2]];
             const bool sale = v[0] == 1;
@@ -390,8 +413,10 @@ Error act_startup_world_commerce_page(State &s, std::uint64_t id, Action action,
                 if (list.empty()) {
                     if (!event(next, sale ? 14 : 13) || !close(next, id))
                         return Error::script_failed;
-                } else
+                } else {
                     v[5] = 20;
+                    next.commerce_page_feedback_amount.emplace(id, price);
+                }
             }
         }
     } else if (raw == 85) {
@@ -477,6 +502,9 @@ std::optional<State> update_startup_world_commerce_page(const State &s, std::uin
     if (!p || p->id != id || p->kind != ref::WorldScriptPageKind::raw_page ||
         !supported(p->legacy_page))
         return {};
+    if ((s.commerce_pages_initialized.count(id) && !payload(s, *p)) ||
+        (!s.commerce_pages_initialized.count(id) && s.commerce_page_feedback_amount.count(id)))
+        return {};
     if (s.scene.framework_paused)
         return s;
     auto next = s;
@@ -497,8 +525,11 @@ std::optional<State> update_startup_world_commerce_page(const State &s, std::uin
         if (original.legacy_page == 93 && counter == 1)
             next.sound_requests.push_back({StartupAudioOperation::jingle, 5});
         auto &feedback = next.commerce_page_data.at(id)[5];
-        if (original.legacy_page == 84 && feedback > 0)
+        if (original.legacy_page == 84 && feedback > 0) {
             --feedback;
+            if (feedback == 0)
+                next.commerce_page_feedback_amount.erase(id);
+        }
         if (original.legacy_page == 86 && !close(next, id))
             return {};
     }

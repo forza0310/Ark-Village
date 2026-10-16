@@ -605,12 +605,16 @@ struct Validation {
         PAGE_MAP(build_page_catalogs);
         PAGE_MAP(build_page_ui);
         PAGE_MAP(residence_page_candidates);
+        PAGE_MAP(residence_award_page_ui);
+        PAGE_MAP(award_question_ui);
+        PAGE_MAP(award_question_answers);
         PAGE_MAP(facility_item_page_items);
         PAGE_MAP(facility_item_page_lists);
         PAGE_MAP(facility_item_page_selections);
         PAGE_MAP(facility_item_page_scroll);
         PAGE_MAP(commerce_page_data);
         PAGE_MAP(commerce_page_lists);
+        PAGE_MAP(commerce_page_feedback_amount);
         PAGE_MAP(facility_catalog_page_data);
         PAGE_MAP(facility_catalog_page_lists);
         PAGE_MAP(facility_catalog_page_parents);
@@ -813,6 +817,26 @@ struct Validation {
         for (const auto &[id, list] : s.residence_page_candidates)
             if (!page_kind(id, {80}) || !unique_references(list, [&](int n) { return human(n); }))
                 return fail("residence page: 候选名单非法");
+        for (const auto &[id, ui] : s.residence_award_page_ui) {
+            (void)ui;
+            if (!page_kind(id, {80, 87}) || !valid_startup_world_residence_award_page(s, id))
+                return fail("residence/award UI: 目录游标/页签载荷非法");
+        }
+        for (const auto &[id, ui] : s.award_question_ui) {
+            (void)ui;
+            if (!page_kind(id, {1}) || !valid_startup_world_award_question_page(s, id))
+                return fail("award question: 问答/父目录载荷非法");
+        }
+        for (const auto &[id, answer] : s.award_question_answers)
+            if (!page_kind(id, {87}) || answer < -1 || answer > 1 ||
+                !valid_startup_world_residence_award_page(s, id))
+                return fail("award answer: 一次答案/父目录载荷非法");
+        for (const auto &[id, amount] : s.commerce_page_feedback_amount) {
+            const auto data = get(s.commerce_page_data, id);
+            if (!page_kind(id, {84}) || !s.commerce_pages_initialized.count(id) ||
+                !data || (*data)[5] <= 0 || amount < 0)
+                return fail("commerce feedback: 成交金额附于错误页或没有有效反馈");
+        }
         for (const auto &[id, lists] : s.build_page_catalogs) {
             (void)lists;
             if (!page_kind(id, {21}))
@@ -983,6 +1007,9 @@ struct Validation {
         if (!v || !s.page_counters.count(id))
             return fail("commerce page: 已初始化缺载荷");
         const auto &a = *v;
+        const auto amount = get(s.commerce_page_feedback_amount, id);
+        if ((raw == 84 && a[5] > 0) != (amount != nullptr) || (amount && *amount < 0))
+            return fail("commerce feedback: 正反馈与实际成交金额不成对");
         if (a[0] < 0 || a[0] > 1 || a[1] < 0 || a[1] > 1 || a[5] < 0 || a[5] > 20 ||
             (raw != 84 && raw != 86 && a[0] != 0) || ((raw != 84 || a[0] == 1) && a[1] != 0) ||
             (raw != 84 && a[5] != 0))
@@ -1120,6 +1147,12 @@ struct Validation {
             if(p.kind==ref::WorldScriptPageKind::raw_page&&p.legacy_page==74&&
                !valid_startup_world_facility_page(s,p))
                 return fail("facility page: 详情绑定/父21或85及退休载荷非法");
+            if(p.kind==ref::WorldScriptPageKind::raw_page&&(p.legacy_page==80||p.legacy_page==87)&&
+               !valid_startup_world_residence_award_page(s,p.id))
+                return fail("residence/award UI: 缺初始化游标或问答/退休载荷非法");
+            if(p.kind==ref::WorldScriptPageKind::raw_page&&p.legacy_page==84&&
+               !valid_startup_world_commerce_feedback(s,p))
+                return fail("commerce feedback: 待初始化/关闭页缺合法成交配对");
             if (p.lifecycle == 4 || p.kind == ref::WorldScriptPageKind::scene)
                 continue;
             const auto id = p.id;

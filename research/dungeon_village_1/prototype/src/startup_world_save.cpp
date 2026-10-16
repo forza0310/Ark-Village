@@ -38,14 +38,15 @@ bool extra_payload(const State &s,std::uint64_t id) {
     EXTRA(deadline_initialized);EXTRA(deadline_grades);EXTRA(deadline_returns);
     EXTRA(crew_summaries);EXTRA(exploration_summaries);EXTRA(facility_page_bindings);
     EXTRA(facility_definition_page_bindings);EXTRA(facility_page_neighbours);EXTRA(build_page_catalogs);EXTRA(build_page_ui);
-    EXTRA(residence_page_candidates);EXTRA(facility_upgrade_initialized);EXTRA(award_rankings);
+    EXTRA(residence_page_candidates);EXTRA(residence_award_page_ui);EXTRA(award_question_ui);EXTRA(award_question_answers);
+    EXTRA(facility_upgrade_initialized);EXTRA(award_rankings);
     EXTRA(award_announced);EXTRA(award_termination_pending);EXTRA(award_pending_humans);
     EXTRA(rank_celebration_participants);EXTRA(tax_page_residents);EXTRA(tax_page_selection);EXTRA(tax_page_scroll);
     EXTRA(activity_pages_initialized);EXTRA(activity_page_bindings);EXTRA(activity_page_lists);
     EXTRA(activity_page_display_humans);EXTRA(activity_page_parents);EXTRA(activity_page_answers);
     EXTRA(activity_page_selections);EXTRA(activity_page_scroll);EXTRA(facility_item_pages_initialized);
     EXTRA(facility_item_page_items);EXTRA(facility_item_page_lists);EXTRA(facility_item_page_selections);
-    EXTRA(commerce_pages_initialized);EXTRA(commerce_page_data);EXTRA(commerce_page_lists);
+    EXTRA(commerce_pages_initialized);EXTRA(commerce_page_data);EXTRA(commerce_page_lists);EXTRA(commerce_page_feedback_amount);
     EXTRA(facility_catalog_pages_initialized);EXTRA(facility_catalog_page_data);
     EXTRA(facility_catalog_page_lists);EXTRA(facility_catalog_page_parents);
     EXTRA(magic_pot_pages_initialized);EXTRA(magic_pot_page_data);EXTRA(magic_pot_page_lists);EXTRA(magic_pot_page_parents);

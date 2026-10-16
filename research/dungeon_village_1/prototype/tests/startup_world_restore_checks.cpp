@@ -561,7 +561,7 @@ int check_startup_world_restore_contracts(
             expect(restored, true, scenario);
             require(p::persistence_detail::encode_state(restored) == bytes,
                     "save stage/counter/result/provenance restore without Init or file writes");
-            for (int fault = 0; fault < 6; ++fault) {
+            for (int fault = 0; fault < 10; ++fault) {
                 auto bad = restored;
                 auto page = std::find_if(bad.scripts.pages.begin(), bad.scripts.pages.end(),
                     [&](const auto &entry) { return entry.id == id; });
@@ -572,6 +572,10 @@ int check_startup_world_restore_contracts(
                 if (fault == 3) page->source_record = 9;
                 if (fault == 4) page->legacy_tag = 21;
                 if (fault == 5) page->legacy_f = 7;
+                if (fault == 6) bad.residence_award_page_ui.emplace(id,p::StartupResidenceAwardPageUi{});
+                if (fault == 7) bad.award_question_ui.emplace(id,p::StartupAwardQuestionUi{id,0,0});
+                if (fault == 8) bad.award_question_answers.emplace(id,0);
+                if (fault == 9) bad.commerce_page_feedback_amount.emplace(id,400);
                 expect(bad, false, "raw14 malformed initialized provenance/stage/result rejects");
             }
         };
@@ -1761,15 +1765,26 @@ int check_startup_world_restore_contracts(
                     !build.page_secondary_counters.count(menu),"no orphaned build cursor or frozen source references after Finish");
     }
     {
-        auto residence = baseline;
-        r::WorldScriptPage menu;
-        menu.id = residence.scripts.next_page_id++;
-        menu.kind = r::WorldScriptPageKind::raw_page;
-        menu.legacy_page = 80;
-        menu.lifecycle = 2;
-        residence.scripts.pages.push_back(menu);
-        residence.residence_page_candidates[menu.id] = {baseline.rules->humans.front().identity};
-        residence.facility_page_bindings[menu.id] = baseline.scene.world.facility_order.front();
+        // 真实募集24→74→80；仅把人物满足度设为原住宅门槛，不伪造页绑定。
+        using E=p::StartupWorldRuntimeError;
+        const auto require=[&](bool ok,const char *why){++checks;if(!ok)throw std::runtime_error(std::string("restore residence UI: ")+why);};
+        auto residence=p::test_support::world_fixture();
+        require(p::begin_startup_world_build(residence,24).error==E::none,"select recruitment24");
+        p::StartupBuildResult built;
+        const auto bounds=residence.rules->fences.at(residence.fence_level);
+        for(int y=bounds[1].y+1;y<bounds[0].y&&!built.created;++y)
+            for(int x=bounds[0].x+1;x<bounds[1].x&&!built.created;++x)
+                built=p::confirm_startup_world_build(residence,{x,y},r::FacilityOrientation::first);
+        require(built.created.has_value()&&p::cancel_startup_world_build(residence)==E::none,"real paid recruitment");
+        const auto adapter=p::startup_world_runtime_adapter();
+        const auto completed=r::prepare_world_facility_update(adapter.facilities.read(residence),*built.created,adapter.catalog);
+        require(completed.candidate&&adapter.facilities.write(residence,completed.candidate->state),"one source construction call");
+        residence.shop_humans.at(1).satisfaction=residence.rules->humans.at(1).residence_threshold;
+        require(p::open_startup_world_facility_page(residence,*built.created)==E::none,"actual74");
+        require(p::act_startup_world_facility_page(residence,residence.scripts.pages.back().id,p::StartupFacilityPageAction::confirm)==E::none,"real80 producer");
+        const auto tick=[&](auto &s){const auto next=p::prepare_startup_world_runtime(s);require(next.candidate.has_value(),"actual framework");s=*next.candidate;};
+        tick(residence);
+        const auto menu=residence.scripts.pages.back();
         expect(residence, true, "residence menu structural fixture");
         auto damaged = residence;
         damaged.residence_page_candidates.erase(menu.id);
@@ -1777,6 +1792,134 @@ int check_startup_world_restore_contracts(
         damaged = residence;
         damaged.facility_page_bindings.erase(menu.id);
         expect(damaged, false, "residence menu missing facility binding");
+        damaged = residence;
+        damaged.residence_award_page_ui.erase(menu.id);
+        expect(damaged, false, "residence menu missing initialized cursor");
+        for (const auto ui : {p::StartupResidenceAwardPageUi{1,0,0},
+                              p::StartupResidenceAwardPageUi{0,1,0},
+                              p::StartupResidenceAwardPageUi{0,0,1}}) {
+            damaged = residence;
+            damaged.residence_award_page_ui.at(menu.id) = ui;
+            expect(damaged, false, "residence menu invalid selection/first/tab");
+        }
+        const auto bytes=p::persistence_detail::encode_state(residence);
+        auto loaded=p::persistence_detail::decode_state(bytes,*residence.rules);
+        require(p::persistence_detail::encode_state(loaded)==bytes,"80 exact candidate/binding/UI restore");
+        for(auto *owner:{&residence,&loaded}) {
+            p::StartupResidenceAwardInput cancel;cancel.cancel=true;
+            require(p::input_startup_world_residence_award_page(*owner,menu.id,cancel)==E::none,"80 cancel preserves pending-Finish payload");
+            expect(*owner,true,"closed80 complete payload");
+            auto missing=*owner;missing.residence_award_page_ui.erase(menu.id);
+            expect(missing,false,"closed80 missing cursor cannot hide until Finish");
+            require(!p::prepare_startup_world_runtime(missing).candidate,"closed80 missing cursor refuses before retirement");
+            tick(*owner);
+            require(!owner->residence_award_page_ui.count(menu.id)&&!owner->residence_page_candidates.count(menu.id),"80 Finish releases UI and frozen candidates");
+        }
+        require(p::persistence_detail::encode_state(residence)==p::persistence_detail::encode_state(loaded),"80 same cancel/retirement preserves complete Owner");
+    }
+    {
+        // 定向年度入口：只设在籍资格，不跑一年经营；问题/答案均由真实Owner输入产生。
+        using E=p::StartupWorldRuntimeError;
+        using Input=p::StartupResidenceAwardInput;
+        const auto require=[&](bool ok,const char *why){++checks;if(!ok)throw std::runtime_error(std::string("restore award UI: ")+why);};
+        const auto tick=[&](auto &s){const auto next=p::prepare_startup_world_runtime(s);require(next.candidate.has_value(),"actual framework update");s=*next.candidate;};
+        const auto replay=[&](const auto &source,const auto &consume,const char *why){
+            expect(source,true,why);const auto bytes=p::persistence_detail::encode_state(source);
+            auto live=source,loaded=p::persistence_detail::decode_state(bytes,*source.rules);
+            require(p::persistence_detail::encode_state(loaded)==bytes,"exact frozen cursor/question/answer roundtrip");
+            consume(live);consume(loaded);expect(live,true,why);expect(loaded,true,why);
+            require(p::persistence_detail::encode_state(live)==p::persistence_detail::encode_state(loaded),"same input complete Owner/random/output equality");
+        };
+        auto state=p::test_support::page_fixture(87);state.human_presence.at(1)=1;
+        state.scripts.executing_page.reset();const auto parent=state.scripts.pages.back().id;
+        replay(state,tick,"87 real Init installs frozen rankings and zero UI");tick(state);
+        {
+            auto closing=state;closing.scripts.pages.back().lifecycle=4; // 仅退休边界夹具，非实际终止认证。
+            expect(closing,true,"closed initialized87 retains complete cursor");
+            closing.residence_award_page_ui.erase(parent);
+            expect(closing,false,"closed87 missing cursor refuses restore");
+            require(!p::prepare_startup_world_runtime(closing).candidate,"closed87 missing cursor refuses before cleanup");
+        }
+        for(int fault=0;fault<7;++fault){
+            auto bad=state;
+            if(fault==0)bad.residence_award_page_ui.erase(parent);
+            if(fault==1)bad.residence_award_page_ui.at(parent).selection=static_cast<int>(bad.award_rankings.at(parent).size());
+            if(fault==2)bad.residence_award_page_ui.at(parent).first=1;
+            if(fault==3)bad.residence_award_page_ui.at(parent).tab=3;
+            if(fault==4)bad.award_question_answers.emplace(parent,2);
+            if(fault==5)bad.award_question_answers.emplace(parent,0);
+            if(fault==6)bad.residence_award_page_ui.emplace(bad.scripts.next_page_id,p::StartupResidenceAwardPageUi{});
+            expect(bad,false,("87 invalid UI/pending payload fault="+std::to_string(fault)).c_str());
+        }
+        Input input;input.right=true;
+        const auto move=[&](auto &s){require(p::input_startup_world_residence_award_page(s,parent,input)==E::none,"actual parent input");};
+        replay(state,move,"87 independent source tab restore");move(state);
+        input={};input.confirm=true;
+        replay(state,move,"87 same selected row opens real raw1");move(state);
+        const auto question=state.scripts.pages.back().id;
+        require(state.scripts.pages.back().legacy_page==1&&state.award_question_ui.at(question).parent==parent&&
+                    state.award_question_ui.at(question).selection==0,"award default yes with explicit source parent");
+        for(int fault=0;fault<6;++fault){
+            auto bad=state;
+            if(fault==0)bad.award_question_ui.erase(question);
+            if(fault==1)bad.award_question_ui.at(question).parent=bad.scripts.pages.front().id;
+            if(fault==2)bad.award_question_ui.at(question).selection=2;
+            if(fault==3)bad.award_question_ui.at(question).kind=2;
+            if(fault==4)bad.award_pending_humans.erase(parent);
+            if(fault==5)bad.award_question_answers.emplace(parent,0);
+            expect(bad,false,"raw1 missing UI, wrong ancestor, selection/kind, pending or duplicate answer");
+        }
+        replay(state,tick,"87 covered by raw1 initializes same question");tick(state);
+        const auto medals=state.medal_count;
+        const auto answer=[&](auto &s){Input yes;yes.confirm=true;
+            require(p::input_startup_world_residence_award_page(s,question,yes)==E::none&&s.medal_count==medals&&
+                    s.award_question_answers.at(parent)==0,"child only returns answer, no early award");};
+        replay(state,answer,"raw1 closed answer survives exact restore before parent resumes");answer(state);
+        replay(state,tick,"87 parent resumes and consumes one answer");tick(state);
+        require(!state.award_question_ui.count(question)&&!state.award_question_answers.count(parent)&&
+                    !state.award_pending_humans.count(parent)&&state.medal_count==medals-1,
+                "question references retired and source award consumed once");
+    }
+    {
+        // 商会补货为最小条件夹具；现金/目录/成交/86与反馈全部走真实消费者。
+        using E=p::StartupWorldRuntimeError;using A=p::StartupCommerceAction;
+        const auto require=[&](bool ok,const char *why){++checks;if(!ok)throw std::runtime_error(std::string("restore commerce feedback: ")+why);};
+        auto state=p::test_support::page_fixture(84);state.scripts.executing_page.reset();
+        const auto parent=state.scripts.pages.back().id;state.shop_item_stock.at(0).quantity=2;
+        require(p::initialize_startup_world_commerce_pages(state),"actual84 Init");
+        require(p::act_startup_world_commerce_page(state,parent,A::confirm)==E::none,"actual400G purchase");
+        const auto result=state.scripts.pages.back().id;
+        expect(state,true,"84 frozen actual amount covered by86");
+        for(int fault=0;fault<5;++fault){auto bad=state;
+            if(fault==0)bad.commerce_page_feedback_amount.erase(parent);
+            if(fault==1)bad.commerce_page_feedback_amount.at(parent)=-1;
+            if(fault==2)bad.commerce_page_data.at(parent)[5]=0;
+            if(fault==3)bad.commerce_page_feedback_amount.emplace(result,400);
+            if(fault==4)bad.commerce_page_feedback_amount.emplace(bad.scripts.next_page_id,400);
+            expect(bad,false,"84 amount missing, negative, expired, wrong page or orphan");
+        }
+        const auto replay=[&](const auto &source,const auto &consume,const char *why){
+            expect(source,true,why);const auto bytes=p::persistence_detail::encode_state(source);
+            auto live=source,loaded=p::persistence_detail::decode_state(bytes,*source.rules);
+            require(p::persistence_detail::encode_state(loaded)==bytes,"feedback/child exact decode");
+            consume(live);consume(loaded);expect(live,true,why);expect(loaded,true,why);
+            require(p::persistence_detail::encode_state(live)==p::persistence_detail::encode_state(loaded),"same input preserves actual amount, cash and random");
+        };
+        const auto tick=[&](auto &s){const auto next=p::prepare_startup_world_runtime(s);require(next.candidate.has_value(),"framework returns86");s=*next.candidate;};
+        replay(state,tick,"covered actual amount retained through result update");tick(state);
+        tick(state); // 真正Finish86并恢复父84，才允许取消目录。
+        auto closed=state;
+        require(p::act_startup_world_commerce_page(closed,parent,A::cancel)==E::none,"close84 while feedback still active");
+        expect(closed,true,"closed84 retains actual amount until Finish");
+        auto missing=closed;missing.commerce_page_feedback_amount.erase(parent);
+        expect(missing,false,"closed84 positive feedback missing amount refuses restore");
+        require(!p::prepare_startup_world_runtime(missing).candidate,"closed84 missing amount refuses before cleanup");
+        replay(closed,tick,"closed84 Finish releases frozen actual amount");tick(closed);
+        require(!closed.commerce_page_feedback_amount.count(parent),"closed84 amount retired");
+        // 使用原反馈门槛的定向夹具，不把逻辑tick换算为秒。
+        state.commerce_page_data.at(parent)[5]=1;
+        replay(state,tick,"feedback1 ends and releases frozen amount atomically");tick(state);
+        require(!state.commerce_page_feedback_amount.count(parent),"no expired amount");
     }
     {
         // 明确源码合同夹具：world_dungeon_finish::restore_site与runtime_deadline::restore_site

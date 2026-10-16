@@ -1271,6 +1271,9 @@ Error act_startup_world_facility_page(State &s, std::uint64_t id,
         next.facility_page_bindings[page] = next.facility_page_bindings.at(id);
         auto &list = next.residence_page_candidates[page];
         list=*candidates;
+        if (!next.residence_award_page_ui.emplace(page, StartupResidenceAwardPageUi{}).second ||
+            !next.page_counters.emplace(page, 0).second)
+            return Error::missing_source;
         if (list.empty()) {
             const auto event = ref::prepare_world_script(
                 startup_world_runtime_catalog(), startup_world_runtime_scripts(next), {16, {}, {}});
@@ -1290,7 +1293,7 @@ StartupBuildResult act_startup_world_residence_page(State &s, std::uint64_t id, 
                                                     bool cancel) {
     const auto *p = top(s);
     if (s.scene.framework_paused || !p || p->id != id || p->legacy_page != 80 ||
-        !s.residence_page_candidates.count(id) || !s.facility_page_bindings.count(id))
+        !valid_startup_world_residence_award_page(s, id))
         return {Error::invalid_page};
     auto next = s;
     if (cancel) {
@@ -1302,6 +1305,12 @@ StartupBuildResult act_startup_world_residence_page(State &s, std::uint64_t id, 
         return {};
     }
     const auto &list = s.residence_page_candidates.at(id);
+    const auto selected = std::find(list.begin(), list.end(), human);
+    if (selected == list.end()) return {Error::invalid_page};
+    auto &ui = next.residence_award_page_ui.at(id);
+    ui.selection = static_cast<int>(selected - list.begin());
+    if (ui.first > ui.selection) ui.first = ui.selection;
+    if (ui.first + 4 <= ui.selection) ui.first = ui.selection - 3;
     const auto h = std::find_if(s.rules->humans.begin(), s.rules->humans.end(),
                                 [&](const auto &v) { return v.identity == human; });
     const auto old_id = s.facility_page_bindings.at(id);

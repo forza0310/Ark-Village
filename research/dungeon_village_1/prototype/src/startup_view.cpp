@@ -1274,7 +1274,7 @@ std::optional<SteamHumanOverviewPlan> window_human_gift_confirmation_plan(
     }
     return steam_human_gift_confirmation_skin(s,id,o);
 }
-void draw_human_overview(const SteamHumanOverviewPlan &plan,SourceSprites &sprites,const ChineseFont &font,Vector2 origin=human_overview_origin) {
+void draw_human_overview(const SteamHumanOverviewPlan &plan,SourceSprites &sprites,const ChineseFont &font,Vector2 origin=human_overview_origin,bool include_soft_labels=true) {
     const auto color=[](std::array<int,3> c) {return Color{static_cast<unsigned char>(c[0]),
         static_cast<unsigned char>(c[1]),static_cast<unsigned char>(c[2]),255};};
     const auto rectangle=[&](const StartupSkinRect &r) {
@@ -1368,10 +1368,12 @@ void draw_human_overview(const SteamHumanOverviewPlan &plan,SourceSprites &sprit
         } else if(!std::holds_alternative<SteamStartupTouch>(op)&&!std::holds_alternative<SteamHumanEquipmentRow>(op))
             throw std::runtime_error("人物详情未消费图元");
     }
+    if(!include_soft_labels)return;
     if(plan.soft_labels[0]==8)font.text("追踪",18,272);
     else if(plan.soft_labels[0]==2)font.text("返回",18,272);
     else if(plan.soft_labels[0]==7)font.text("详细",18,272);
     if(plan.soft_labels[1]==2)font.text("返回",188,272);
+    else if(plan.soft_labels[1]==10)font.text("终止",188,272);
 }
 // 探索底栏独立消费普通clip栈与临时头像ImageClip；后者结束时恢复外层，
 // 只模拟本计划正常未翻转图元，不认证原后端共享ImageClip/GPU越界行为。
@@ -1917,6 +1919,36 @@ std::optional<SteamTaskResultPlan> task_result_example(const std::string &name,c
     in.options.view_y=23;const int width=int(font.measure("成果"));in.options.title_widths=std::array<int,2>{width,width};
     in.options.bottom_width=int(font.measure(in.raw==31?in.task_name+"完成!":"获得了宝物!"));
     return steam_task_result_skin(in);
+}
+std::optional<SteamHumanOverviewPlan> window_residence_award_plan(
+    const StartupWorldRuntimeState &s,std::uint64_t id,const ChineseFont &font,bool touching=false) {
+    const auto page=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[=](const auto &p){return p.id==id;});
+    const auto ui=s.residence_award_page_ui.find(id);
+    if(page==s.scripts.pages.end()||ui==s.residence_award_page_ui.end())return {};
+    if(page->legacy_page==80) {
+        SteamResidenceOptions o;o.view_y=23;o.scroll_first_touch=touching;
+        const int w=int(font.measure("选择入住者"));o.title_widths=std::array<int,2>{w,w};
+        o.bottom_width=int(font.measure("请选择入住者"));return steam_residence_skin(s,id,o);
+    }
+    if(page->legacy_page!=87)return {};
+    SteamHumanAwardOptions o;o.view_y=23;o.scroll_first_touch=touching;
+    const auto title="勋章授予式 "+std::to_string(ui->second.tab+1)+"/3";
+    const int w=int(font.measure(title));o.title_widths=std::array<int,2>{w,w};
+    o.footer_widths=std::array<int,2>{int(font.measure(std::to_string(s.medal_count)+"个")),int(font.measure("还有"))};
+    return steam_human_award_skin(s,id,o);
+}
+std::optional<SteamStartupSkinPlan> window_award_question_plan(
+    const StartupWorldRuntimeState &s,std::uint64_t id,const ChineseFont &font) {
+    if(!valid_startup_world_award_question_page(s,id))return {};
+    const auto page=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[=](const auto &p){return p.id==id;});
+    const auto ui=s.award_question_ui.find(id);
+    if(page==s.scripts.pages.end()||page->lifecycle<1||page->lifecycle>3||ui==s.award_question_ui.end()||
+       page->paragraphs.size()!=1)return {};
+    const auto separator=page->title.find('\t');
+    if(separator==std::string::npos||separator==0||separator+1==page->title.size()||
+       page->title.find('\t',separator+1)!=std::string::npos)return {};
+    return steam_save_confirmation_skin(width,height,ui->second.selection,
+        {font.measure(page->title.substr(0,separator)),font.measure(page->title.substr(separator+1))});
 }
 std::optional<SteamHumanOverviewPlan> residence_candidates_example(const ChineseFont &font) {
     // 六行是明确目录条件，人物与入住费取新局；不伪造自然达到入住满足度。
@@ -4146,24 +4178,13 @@ int run_startup_world_window(const std::filesystem::path &assets,
                         .error;
                 });
             else if (raw == 87) {
-                last_command = "年度87请求结束并确认实际问答";
-                // 明确的诊断玩家选择结束授勋；保留尚未使用的勋章，不伪装成通用确认。
-                const auto pending = s.award_termination_pending.find(p.id);
-                if (pending != s.award_termination_pending.end() && pending->second)
-                    error =
-                        session.act_award_page(p.id, ref::WorldAwardAction::confirm_termination);
-                else {
-                    error =
-                        session.act_award_page(p.id, ref::WorldAwardAction::request_termination);
-                    if (error == StartupWorldRuntimeError::none) {
-                        const auto question = session.state().award_termination_pending.find(p.id);
-                        // 首轮说明可能先返回；只在实际生成了终止问答后提交确认。
-                        if (question != session.state().award_termination_pending.end() &&
-                            question->second)
-                            error = session.act_award_page(
-                                p.id, ref::WorldAwardAction::confirm_termination);
-                    }
-                }
+                last_command = "Annual award termination request";
+                StartupResidenceAwardInput input;input.cancel=true;
+                error=session.input_residence_award_page(p.id,input);
+            } else if(raw==1&&s.award_question_ui.count(p.id)) {
+                last_command = "Annual award termination answer";
+                StartupResidenceAwardInput input;input.selection=0;input.confirm=true;
+                error=session.input_residence_award_page(p.id,input);
             } else if (raw == 48)
                 error =
                     command("返回晋级条件48", [&] { return session.act_rank_page(p.id, 0, true); });
@@ -4632,8 +4653,8 @@ int run_startup_world_window(const std::filesystem::path &assets,
     std::map<ref::CharacterId, ref::CombatPoint> previous_positions;
     float body_scroll{}, body_extent{};
     std::uint64_t viewed_page{};
-    int residence_selection{}; // 80旧目录适配；任务25–33游标由Owner保存。
-    int award_selection{}, prompt_selection{};
+    int task_abort_prompt_selection{}; // 既有任务中止短适配；本批不扩它的持久化范围。
+    std::optional<std::pair<std::uint64_t,int>> residence_item_marker; // 仅80同页同绝对行marker16。
     std::optional<std::pair<std::uint64_t,int>> build_item_marker; // 类目切换、覆盖或失焦时清除。
     int bonus_selection{}, bonus_scroll{}; // 原5行视窗的研究输入适配，不进入Owner或存档。
     std::map<std::uint64_t,SteamFacilityBonusCursor> bonus_views; // 父74覆盖后恢复，退休页及时回收。
@@ -4667,7 +4688,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
             current_top->kind==ref::WorldScriptPageKind::raw_page && current_top->legacy_page==17;
         if(human_scroll_drag&&(session.state().scene.framework_paused||
            current_top==session.state().scripts.pages.rend()||current_top->id!=human_scroll_drag->page||
-           (current_top->legacy_page!=22&&current_top->legacy_page!=25&&current_top->legacy_page!=26&&current_top->legacy_page!=27&&current_top->legacy_page!=31&&current_top->legacy_page!=32&&current_top->legacy_page!=42&&current_top->legacy_page!=43&&current_top->legacy_page!=51&&current_top->legacy_page!=54&&current_top->legacy_page!=60&&current_top->legacy_page!=61&&current_top->legacy_page!=64&&current_top->legacy_page!=75&&current_top->legacy_page!=79&&current_top->legacy_page!=85&&current_top->legacy_page!=21)))human_scroll_drag.reset();
+           (current_top->legacy_page!=22&&current_top->legacy_page!=25&&current_top->legacy_page!=26&&current_top->legacy_page!=27&&current_top->legacy_page!=31&&current_top->legacy_page!=32&&current_top->legacy_page!=42&&current_top->legacy_page!=43&&current_top->legacy_page!=51&&current_top->legacy_page!=54&&current_top->legacy_page!=60&&current_top->legacy_page!=61&&current_top->legacy_page!=64&&current_top->legacy_page!=75&&current_top->legacy_page!=79&&current_top->legacy_page!=85&&current_top->legacy_page!=80&&current_top->legacy_page!=87&&current_top->legacy_page!=21)))human_scroll_drag.reset();
         if(tax_scroll_drag&&(session.state().scene.framework_paused||!IsWindowFocused()||
            current_top==session.state().scripts.pages.rend()||current_top->id!=tax_scroll_drag->page||
            current_top->legacy_page!=90))tax_scroll_drag.reset();
@@ -4680,6 +4701,9 @@ int run_startup_world_window(const std::filesystem::path &assets,
            current_top->id!=commerce_item_marker->first||current_top->legacy_page!=85||!IsWindowFocused()))commerce_item_marker.reset();
         if(human_catalogue_marker&&(current_top==session.state().scripts.pages.rend()||
            current_top->id!=human_catalogue_marker->first))human_catalogue_marker.reset();
+        if(residence_item_marker&&(session.state().scene.framework_paused||!IsWindowFocused()||
+           current_top==session.state().scripts.pages.rend()||current_top->id!=residence_item_marker->first||
+           current_top->legacy_page!=80))residence_item_marker.reset();
         if(facility_item_marker&&(session.state().scene.framework_paused||current_top==session.state().scripts.pages.rend()||
            current_top->id!=facility_item_marker->first||current_top->legacy_page!=75))facility_item_marker.reset();
         bool pointer_consumed=facility_scroll_gesture||human_scroll_gesture||tax_scroll_gesture;
@@ -4714,14 +4738,14 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 viewed_page = page->id;
                 paragraph_index = 0;
                 body_scroll = body_extent = 0;
-                residence_selection = 0;
                 build_item_marker.reset();
+                residence_item_marker.reset();
                 const auto old_bonus=bonus_views.find(page->id);
                 bonus_selection=old_bonus==bonus_views.end()?0:old_bonus->second.selection;
                 bonus_scroll=old_bonus==bonus_views.end()?0:old_bonus->second.first;
-                award_selection = prompt_selection = 0;
+                task_abort_prompt_selection = 0;
                 if (page->legacy_page == 1 && session.state().task_abort_questions.count(page->id))
-                    prompt_selection = 1; // 原主动中止询问默认“否”，不因新页重置变成“是”。
+                    task_abort_prompt_selection = 1; // 原主动中止询问默认“否”。
                 command_feedback.clear();
             }
             const int raw = page->legacy_page;
@@ -5180,75 +5204,78 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     }
                 }
                 if(confirm&&session.acknowledge_page(page->id)!=StartupWorldRuntimeError::none)throw std::runtime_error("Town progress confirmation rejected");
-            } else if (raw == 87) {
-                const auto &s = session.state();
-                const bool ending = s.award_termination_pending.count(page->id) &&
-                                    s.award_termination_pending.at(page->id);
-                const bool awarding = s.award_pending_humans.count(page->id) != 0;
-                std::optional<ref::WorldAwardAction> action;
-                if (ending || awarding) {
-                    if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT))
-                        prompt_selection = 1 - prompt_selection;
-                    if (hit({24, 194, 96, 28}))
-                        prompt_selection = 0;
-                    if (hit({120, 194, 96, 28}))
-                        prompt_selection = 1;
-                    if (IsKeyPressed(KEY_ENTER) || hit({176, 265, 58, 24}))
-                        action =
-                            ending ? (prompt_selection ? ref::WorldAwardAction::reject_termination
-                                                       : ref::WorldAwardAction::confirm_termination)
-                                   : (prompt_selection ? ref::WorldAwardAction::reject_award
-                                                       : ref::WorldAwardAction::confirm_award);
-                } else if (s.award_rankings.count(page->id)) {
-                    const int count = static_cast<int>(s.award_rankings.at(page->id).size());
-                    if (count && IsKeyPressed(KEY_UP))
-                        award_selection = (award_selection + count - 1) % count;
-                    if (count && IsKeyPressed(KEY_DOWN))
-                        award_selection = (award_selection + 1) % count;
-                    const int start = std::max(0, award_selection - 4);
-                    for (int n = start; n < count && n < start + 5; ++n)
-                        if (hit({12, 72.F + (n - start) * 22, 216, 20}))
-                            award_selection = n;
-                    if (IsKeyPressed(KEY_ESCAPE) || hit({8, 265, 58, 24})) {
-                        action = ref::WorldAwardAction::request_termination;
-                        prompt_selection = 1; // 原终止询问默认“否”。
-                    } else if (count && (IsKeyPressed(KEY_ENTER) || hit({176, 265, 58, 24}))) {
-                        action = ref::WorldAwardAction::request_award;
-                        prompt_selection = 0;
+            } else if (raw == 80 || raw == 87 || (raw == 1 && session.state().award_question_ui.count(page->id))) {
+                const auto pid=page->id;
+                StartupResidenceAwardInput input;
+                input.left=IsKeyPressed(KEY_LEFT);input.right=IsKeyPressed(KEY_RIGHT);
+                input.confirm=IsKeyPressed(KEY_ENTER);input.cancel=IsKeyPressed(KEY_ESCAPE);
+                if(raw==1) {
+                    const auto plan=window_award_question_plan(session.state(),pid,font);
+                    if(!plan&&page->lifecycle!=0)throw std::runtime_error("Award question source rejected");
+                    if(plan&&!pointer_consumed&&IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+                        // 研究窗口对重叠扩展触区取最近按钮中心；不认证Unity物理命中仲裁。
+                        float distance=std::numeric_limits<float>::max();
+                        for(const auto &touch:plan->touches)if(touch.component==3&&touch.rectangle) {
+                            const auto &r=*touch.rectangle;
+                            if(CheckCollisionPointRec(mouse,{float(plan->origin[0]+r[0]),float(plan->origin[1]+r[1]),float(r[2]),float(r[3])})) {
+                                const int row=touch.value&0xffff;
+                                const float d=std::abs(mouse.x-float(plan->origin[0]+84+72*row));
+                                if(d<distance){distance=d;input.selection=row;input.confirm=true;}
+                            }
+                        }
                     }
+                } else {
+                    const auto &state=session.state();
+                    const auto plan=window_residence_award_plan(state,pid,font,human_scroll_drag&&human_scroll_drag->page==pid);
+                    if(!plan&&page->lifecycle!=0)throw std::runtime_error("Residence/award input source rejected");
+                    input.up=IsKeyPressed(KEY_UP);input.down=IsKeyPressed(KEY_DOWN);
+                    input.inspect=raw==87&&(IsKeyPressed(KEY_I)||hit({8,265,58,24}));
+                    input.cancel|=hit({176,265,58,24});
+                    if(plan) {
+                        const auto ui=state.residence_award_page_ui.find(pid);
+                        const auto &list=raw==80?state.residence_page_candidates.at(pid):state.award_rankings.at(pid);
+                        const int count=int(list.size());
+                        const auto point=[&](std::array<int,4> r){return Rectangle{human_overview_origin.x+r[0],human_overview_origin.y+r[1],float(r[2]),float(r[3])};};
+                        for(const auto &touch:management_touches(*plan,sprites))
+                            if(touch.rectangle&&!pointer_consumed&&IsMouseButtonReleased(MOUSE_BUTTON_LEFT)&&CheckCollisionPointRec(mouse,point(*touch.rectangle))) {
+                                if(touch.component==11) {
+                                    const int chosen=touch.value&0xffff;input.selection=chosen;
+                                    input.confirm|=touch.option==0||residence_item_marker==std::make_pair(pid,chosen);
+                                    if(raw==80)residence_item_marker=std::make_pair(pid,chosen);
+                                } else if(touch.component==1){input.left|=touch.value==16;input.right|=touch.value==18;}
+                            }
+                        for(const auto &op:plan->operations)if(const auto *bar=std::get_if<SteamHumanCatalogueScroll>(&op)) {
+                            const auto &r=bar->rectangles[1].rect;auto area=r;area[0]-=3;area[2]+=23;
+                            if(count>5&&hit(point(area))) {
+                                const float grid=std::max(float(111-(r[3]-1))/(count-1),1.F);
+                                human_scroll_drag=FacilityScrollDrag{pid,mouse.y,ui->second.selection,grid};
+                                human_scroll_gesture=true;pointer_consumed=true;residence_item_marker.reset();
+                            } else if(count>5&&bar->track_touch.rectangle&&hit(point(*bar->track_touch.rectangle))) {
+                                const int selection=std::clamp(ui->second.selection+(mouse.y<human_overview_origin.y+r[1]?-5:5),0,count-1);
+                                input.scroll=StartupResidenceAwardInput::Scroll{true,selection};pointer_consumed=true;residence_item_marker.reset();
+                            }
+                        }
+                        const float wheel=GetMouseWheelMove();
+                        if(wheel!=0)input.scroll=StartupResidenceAwardInput::Scroll{true,std::clamp(ui->second.selection+(wheel>0?-1:1),0,count-1)};
+                        if(human_scroll_drag&&human_scroll_drag->page==pid) {
+                            const double wanted=human_scroll_drag->first+std::trunc(double(mouse.y-human_scroll_drag->start_y)/human_scroll_drag->grid);
+                            input.scroll=StartupResidenceAwardInput::Scroll{true,int(std::clamp(wanted,0.,double(count-1)))};
+                        }
+                    }
+                    if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT))human_scroll_drag.reset();
+                    if(input.up||input.down||input.left||input.right||input.scroll||input.cancel||input.inspect)residence_item_marker.reset();
                 }
-                if (action && session.act_award_page(page->id, *action, award_selection) !=
-                                  StartupWorldRuntimeError::none)
-                    throw std::runtime_error("授勋页面输入失败");
+                if(input.up||input.down||input.left||input.right||input.confirm||input.cancel||input.inspect||input.selection||input.scroll)
+                    if(session.input_residence_award_page(pid,input)!=StartupWorldRuntimeError::none)
+                        throw std::runtime_error("Residence/award input transaction rejected");
             } else if (raw == 1 && session.state().task_abort_questions.count(page->id)) {
                 if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT))
-                    prompt_selection = 1 - prompt_selection;
-                if (hit({24, 194, 96, 28}))
-                    prompt_selection = 0;
-                if (hit({120, 194, 96, 28}))
-                    prompt_selection = 1;
+                    task_abort_prompt_selection = 1 - task_abort_prompt_selection;
+                if (hit({24, 194, 96, 28}))task_abort_prompt_selection = 0;
+                if (hit({120, 194, 96, 28}))task_abort_prompt_selection = 1;
                 if ((IsKeyPressed(KEY_ENTER) || hit({176, 265, 58, 24})) &&
-                    session.act_task_page(page->id, StartupWorldTaskAction::confirm,
-                                          prompt_selection)
-                            .error != StartupWorldRuntimeError::none)
-                    throw std::runtime_error("主动中止答案失败");
-            } else if (raw == 80) {
-                const auto &list = session.state().residence_page_candidates.at(page->id);
-                if (!list.empty()) {
-                    if (IsKeyPressed(KEY_UP))
-                        residence_selection = (residence_selection + static_cast<int>(list.size()) - 1) %
-                                         static_cast<int>(list.size());
-                    if (IsKeyPressed(KEY_DOWN))
-                        residence_selection = (residence_selection + 1) % static_cast<int>(list.size());
-                }
-                const bool cancel = IsKeyPressed(KEY_ESCAPE) || hit({8, 265, 58, 24});
-                if (cancel ||
-                    (!list.empty() && (IsKeyPressed(KEY_ENTER) || hit({176, 265, 58, 24})))) {
-                    const auto r = session.act_residence_page(
-                        page->id, list.empty() ? -1 : list.at(residence_selection), cancel);
-                    if (r.error != StartupWorldRuntimeError::none)
-                        throw std::runtime_error("入住选择事务失败");
-                }
+                    session.act_task_page(page->id, StartupWorldTaskAction::confirm,task_abort_prompt_selection).error != StartupWorldRuntimeError::none)
+                    throw std::runtime_error("Task abort question rejected");
             } else if(raw==70) {
                 const auto plan=window_mastery_plan(session.state(),page->id,font);
                 if(plan) {
@@ -6398,6 +6425,13 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 draw_facility_ceremony(*background,sprites,font,human_overview_origin,false);
                 build_pages_drawn.push_back(parent.id);
             }
+            const bool steam_residence_directory=page->legacy_page==80||page->legacy_page==87;
+            const bool steam_award_question=page->legacy_page==1&&state.award_question_ui.count(page->id);
+            for(const auto &parent:state.scripts.pages)if(parent.legacy_page==87&&parent.lifecycle==3) {
+                const auto background=window_residence_award_plan(state,parent.id,font);
+                if(!background)throw std::runtime_error("Covered award catalogue rejected");
+                draw_human_overview(*background,sprites,font,human_overview_origin,false);
+            }
             const bool steam_info=page->legacy_page==29;
             const bool steam_task=(page->legacy_page>=22&&page->legacy_page<=28)||(page->legacy_page>=30&&page->legacy_page<=33);
             const bool steam_residence=page->legacy_page==96||page->legacy_page==67||page->legacy_page==88||page->legacy_page==70;
@@ -6422,7 +6456,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
             const bool steam_gift_result=page->legacy_page==66&&startup_world_human_page_ready(state,page->id);
             const bool steam_attribute_result=(page->legacy_page==68||page->legacy_page==69)&&startup_world_human_page_ready(state,page->id);
             const bool steam_profession=(page->legacy_page==62||page->legacy_page==63)&&startup_world_human_page_ready(state,page->id);
-            if (page->legacy_page != 21&&!steam_monster&&!steam_tax&&!steam_commerce_top&&!steam_commerce_result&&!steam_commerce_facility&&!steam_gift_claim&&!steam_info&&!steam_task&&!steam_residence&&!steam_magic&&!steam_reputation&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result) DrawRectangle(5, 170, 230, 119, paper);
+            if (page->legacy_page != 21&&!steam_residence_directory&&!steam_award_question&&!steam_monster&&!steam_tax&&!steam_commerce_top&&!steam_commerce_result&&!steam_commerce_facility&&!steam_gift_claim&&!steam_info&&!steam_task&&!steam_residence&&!steam_magic&&!steam_reputation&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result) DrawRectangle(5, 170, 230, 119, paper);
             std::string title = page->title;
             if (title.empty() && page->kind == ref::WorldScriptPageKind::raw_page) {
                 if (page->legacy_page == 30 || page->legacy_page == 31 || page->legacy_page == 32)
@@ -6443,7 +6477,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                          page->monster_definition)
                     title = rules.monsters.at(*page->monster_definition).name;
             }
-            if (page->legacy_page != 21&&!steam_monster&&!steam_tax&&!steam_commerce_top&&!steam_commerce_result&&!steam_commerce_facility&&!steam_gift_claim&&!steam_info&&!steam_task&&!steam_residence&&!steam_magic&&!steam_reputation&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result)
+            if (page->legacy_page != 21&&!steam_residence_directory&&!steam_award_question&&!steam_monster&&!steam_tax&&!steam_commerce_top&&!steam_commerce_result&&!steam_commerce_facility&&!steam_gift_claim&&!steam_info&&!steam_task&&!steam_residence&&!steam_magic&&!steam_reputation&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result)
                 font.text(title, 12, 177, ink, font.measure(title) > 208 ? 10 : 12);
             if(steam_gift_claim) {
                 const auto plan=window_town_progress_plan(state,page->id,font);
@@ -6536,8 +6570,10 @@ int run_startup_world_window(const std::filesystem::path &assets,
                             }
                             font.text(value, 222 - font.measure(value, 9), y, ink, 9);
                         }
-                        if (view->feedback_counter > 0)
-                            font.text("多谢惠顾!", 16, 225);
+                        if (view->feedback_counter > 0) {
+                            if(!view->feedback_amount)throw std::runtime_error("Commerce feedback amount missing");
+                            font.text("多谢惠顾! "+std::to_string(*view->feedback_amount)+"G",16,225);
+                        }
                         else
                             font.text(view->mode == 0 ? "购买一件道具"
                                                         : "出售一件道具",
@@ -6669,7 +6705,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 font.paragraph(job.name + "的\n" + human_name(human.identity) + "可以到访了!", 12, 198, 208);
                 EndScissorMode();
             }
-            if (!page->paragraphs.empty()) {
+            if (!page->paragraphs.empty()&&!steam_award_question) {
                 BeginScissorMode(12, 196, 212, 64);
                 body_extent =
                     font.paragraph(page->paragraphs.at(static_cast<std::size_t>(paragraph_index)),
@@ -6682,57 +6718,25 @@ int run_startup_world_window(const std::filesystem::path &assets,
                                   12, GRAY);
                 }
             }
-            if (page->legacy_page == 87) {
-                const bool ending = state.award_termination_pending.count(page->id) &&
-                                    state.award_termination_pending.at(page->id);
-                const bool awarding = state.award_pending_humans.count(page->id) != 0;
-                DrawRectangle(8, 42, 224, 190, paper);
-                font.text("年度贡献 / 勋章 " + std::to_string(state.medal_count), 17, 48);
-                if (ending || awarding) {
-                    font.paragraph(
-                        ending ? "终止授勋仪式？"
-                               : "授予" +
-                                     human_name(state.award_pending_humans.at(page->id)) +
-                                     "勋章？",
-                        17, 83, 204);
-                    DrawRectangle(prompt_selection == 0 ? 24 : 120, 194, 96, 28,
-                                  {219, 232, 204, 255});
-                    font.text("是", 62, 202);
-                    font.text("否", 158, 202);
-                } else if (state.award_rankings.count(page->id)) {
-                    const auto &list = state.award_rankings.at(page->id);
-                    const int start = std::max(0, award_selection - 4);
-                    for (int n = start; n < static_cast<int>(list.size()) && n < start + 5; ++n) {
-                        const int human = list[n];
-                        const int y = 75 + (n - start) * 22;
-                        if (n == award_selection)
-                            DrawRectangle(12, y - 3, 216, 20, {219, 232, 204, 255});
-                        font.text(human_name(human), 17, y);
-                        font.text(std::to_string(state.human_calendar.at(human).contribution), 188,
-                                  y);
+            if (steam_residence_directory) {
+                const auto plan=window_residence_award_plan(state,page->id,font,human_scroll_drag&&human_scroll_drag->page==page->id);
+                if(plan)draw_human_overview(*plan,sprites,font);
+                else if(page->lifecycle!=0)throw std::runtime_error("Residence/award drawing source rejected");
+            } else if(steam_award_question) {
+                const auto plan=window_award_question_plan(state,page->id,font);
+                if(plan)draw_startup_plan(*plan,[&](const SteamStartupText &text) {
+                    if(text.role==SteamStartupTextRole::message_title)return std::string("消息");
+                    if(text.role==SteamStartupTextRole::message_body)return page->paragraphs.front();
+                    if(text.role==SteamStartupTextRole::answer) {
+                        const auto separator=page->title.find('\t');
+                        return text.row==0?page->title.substr(0,separator):page->title.substr(separator+1);
                     }
-                    font.text("终止", 18, 272);
-                }
-                font.text(ending || awarding ? "确定" : "授予", 190, 272);
+                    throw std::runtime_error("Award question text role rejected");
+                },sprites,font);
+                else if(page->lifecycle!=0)throw std::runtime_error("Award question drawing source rejected");
             } else if (page->legacy_page == 1 && state.task_abort_questions.count(page->id)) {
-                DrawRectangle(prompt_selection == 0 ? 24 : 120, 194, 96, 28, {219, 232, 204, 255});
-                font.text("是", 62, 202);
-                font.text("否", 158, 202);
-                font.text("确定", 190, 272);
-            } else if (page->legacy_page == 80) {
-                DrawRectangle(8, 42, 224, 190, paper);
-                const auto &list = state.residence_page_candidates.at(page->id);
-                const int start = std::max(0, residence_selection - 3);
-                for (int n = start; n < static_cast<int>(list.size()) && n < start + 4; ++n) {
-                    const auto &human = rules.humans.at(list[n]);
-                    const int y = 65 + (n - start) * 24;
-                    if (n == residence_selection)
-                        DrawRectangle(12, y - 3, 216, 22, {219, 232, 204, 255});
-                    font.text(human_name(human.identity), 17, y);
-                    font.text(std::to_string(human.residence_fee) + "G", 178, y);
-                }
-                font.text("返回", 18, 272);
-                font.text("入住", 190, 272);
+                DrawRectangle(task_abort_prompt_selection == 0 ? 24 : 120, 194, 96, 28, {219, 232, 204, 255});
+                font.text("是", 62, 202);font.text("否", 158, 202);font.text("确定", 190, 272);
             } else if (page->legacy_page >= 51 && page->legacy_page <= 54) {
                 if(const auto plan=window_village_activity_plan(state,page->id,font,human_scroll_drag&&human_scroll_drag->page==page->id))
                     draw_facility_ceremony(*plan,sprites,font);
@@ -6803,7 +6807,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 font.text("确定", 190, 272);
             } else if (page->legacy_page == 83)
                 font.text("取消", 18, 270);
-            else if (!steam_gift_claim&&!steam_info&&!steam_task&&!steam_residence&&!steam_effect&&!steam_facility&&page->legacy_page != 21&&page->legacy_page != 97 && page->legacy_page != 72 &&
+            else if (!steam_residence_directory&&!steam_award_question&&!steam_gift_claim&&!steam_info&&!steam_task&&!steam_residence&&!steam_effect&&!steam_facility&&page->legacy_page != 21&&page->legacy_page != 97 && page->legacy_page != 72 &&
                      page->legacy_page != 79 && page->legacy_page != 82 &&
                      (page->legacy_page < 41 || page->legacy_page > 47) &&
                      (page->legacy_page != 59 || (state.page_counters.count(page->id) &&

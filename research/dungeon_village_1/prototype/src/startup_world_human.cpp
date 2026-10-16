@@ -1475,14 +1475,15 @@ StartupWorldResourceUsage startup_world_resource_usage(const State &s) {
                       s.activity_page_scroll.size() + s.facility_item_page_scroll.size() + s.facility_item_pages_initialized.size() +
                       s.facility_item_page_items.size() + s.facility_item_page_lists.size() +
                       s.facility_item_page_selections.size() + s.commerce_pages_initialized.size() +
-                      s.commerce_page_data.size() + s.commerce_page_lists.size() +
+                      s.commerce_page_data.size() + s.commerce_page_lists.size() + s.commerce_page_feedback_amount.size() +
                       s.facility_catalog_page_data.size() + s.facility_catalog_page_lists.size() +
                       s.facility_catalog_page_parents.size() + s.facility_catalog_pages_initialized.size() +
                       s.magic_pot_page_data.size() + s.magic_pot_page_lists.size() +
                       s.magic_pot_page_parents.size() + s.magic_pot_pages_initialized.size() +
                       s.facility_definition_page_bindings.size() + s.facility_page_bindings.size() +
                       s.facility_page_neighbours.size() + s.build_page_catalogs.size() + s.build_page_ui.size() +
-                      s.residence_page_candidates.size() + s.facility_upgrade_initialized.size();
+                      s.residence_page_candidates.size() + s.residence_award_page_ui.size() +
+                      s.award_question_ui.size() + s.award_question_answers.size() + s.facility_upgrade_initialized.size();
     r.sound_outputs = s.sound_requests.size();
     r.effects = s.visual_effects.size() + s.delayed_effects.size() + s.global_effects.size();
     r.continuations = s.scripts.continuations.size();

@@ -959,6 +959,10 @@ StartupBuildResult StartupWorldRuntimeSession::act_residence_page(std::uint64_t 
                                                                   bool cancel) {
     return act_startup_world_residence_page(state_, page, human, cancel);
 }
+StartupWorldRuntimeError StartupWorldRuntimeSession::input_residence_award_page(
+    std::uint64_t page, const StartupResidenceAwardInput &input) {
+    return input_startup_world_residence_award_page(state_, page, input);
+}
 void StartupWorldRuntimeSession::set_speed(int setting) { state_.scene.speed_setting = setting; }
 void StartupWorldRuntimeSession::set_page_confirm_held(bool held) {
     state_.page_confirm_held = held;
@@ -1173,10 +1177,19 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s, bool obs
         if(page.kind==ref::WorldScriptPageKind::raw_page&&page.legacy_page==88&&
            !valid_startup_world_runtime_award_result_page(s,page))
             return {StartupWorldRuntimeError::missing_source,{},ref::WorldSceneError::missing_consumer,{}, {}};
+        if(page.kind==ref::WorldScriptPageKind::raw_page&&
+           ((page.legacy_page==80||page.legacy_page==87) ? !valid_startup_world_residence_award_page(s,page.id) :
+            s.award_question_ui.count(page.id)&&!valid_startup_world_award_question_page(s,page.id)))
+            return {StartupWorldRuntimeError::missing_source,{},ref::WorldSceneError::missing_consumer,{}, {}};
     }
     const auto active=std::find_if(s.scripts.pages.rbegin(),s.scripts.pages.rend(),[](const auto &p){return p.lifecycle!=4;});
     if(active!=s.scripts.pages.rend()&&active->kind==ref::WorldScriptPageKind::raw_page&&active->legacy_page==17)
         return {StartupWorldRuntimeError::missing_source,{},ref::WorldSceneError::missing_consumer,{}, {}};
+    // Finish前核对84反馈；合法耗尽的空目录可退休，缺金额的正反馈不能靠清理修复。
+    for(const auto &page:s.scripts.pages)
+        if(page.kind==ref::WorldScriptPageKind::raw_page&&page.legacy_page==84&&
+           !valid_startup_world_commerce_feedback(s,page))
+            return {StartupWorldRuntimeError::missing_source,{},ref::WorldSceneError::missing_consumer,{}, {}};
     auto admitted = s;
     for (const auto &page : admitted.scripts.pages)
         if (page.lifecycle == 4) {
@@ -1216,6 +1229,10 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s, bool obs
             admitted.award_announced.erase(page.id);
             admitted.award_termination_pending.erase(page.id);
             admitted.award_pending_humans.erase(page.id);
+            admitted.residence_award_page_ui.erase(page.id);
+            admitted.award_question_ui.erase(page.id);
+            admitted.award_question_answers.erase(page.id);
+            admitted.commerce_page_feedback_amount.erase(page.id);
             admitted.page_human_bindings.erase(page.id);
             admitted.page_counters.erase(page.id);
             admitted.page_phases.erase(page.id);
@@ -1265,6 +1282,12 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s, bool obs
                 {}};
     // 暂停不初始化菜单/信息页/人物详情，也不把缺载荷的生命周期0页改成已就绪2。
     const auto &pending = admitted.scripts.pages.back();
+    if (admitted.scene.framework_paused && pending.kind == ref::WorldScriptPageKind::raw_page &&
+        (pending.legacy_page == 80 || pending.legacy_page == 87 || admitted.award_question_ui.count(pending.id))) {
+        admitted.scripts.executing_page.reset(); admitted.scene.top_is_main = false;
+        return {StartupWorldRuntimeError::none, std::move(admitted), ref::WorldSceneError::none,
+                ref::WorldScheduleError::none, {}};
+    }
     if(admitted.scene.framework_paused&&pending.kind==ref::WorldScriptPageKind::raw_page&&
        (pending.legacy_page==89||pending.legacy_page==92)) {
         admitted.scripts.executing_page.reset();admitted.scene.top_is_main=false;
@@ -1335,6 +1358,10 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s, bool obs
         return {StartupWorldRuntimeError::missing_source,{},ref::WorldSceneError::missing_consumer,ref::WorldScheduleError::none,{}};
     admitted.scripts.executing_page = admitted.scripts.pages.back().id;
     const auto &top = admitted.scripts.pages.back();
+    if (top.kind == ref::WorldScriptPageKind::raw_page && (top.legacy_page == 80 || top.legacy_page == 87) &&
+        !initialize_startup_world_residence_award_page(admitted, top.id))
+        return {StartupWorldRuntimeError::missing_source, {}, ref::WorldSceneError::missing_consumer,
+                ref::WorldScheduleError::none, {}};
     if (top.kind == ref::WorldScriptPageKind::raw_page &&
         (((top.legacy_page>=25&&top.legacy_page<=28)&&!initialize_startup_world_runtime_task_ui_page(admitted,top.id))||
          ((top.legacy_page>=31&&top.legacy_page<=33)&&!initialize_startup_world_runtime_task_summary_ui_page(admitted,top.id))))

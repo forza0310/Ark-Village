@@ -222,6 +222,9 @@ struct SteamHumanAwardInput {
 std::optional<SteamHumanAwardCursor> steam_human_award_cursor(
     SteamHumanAwardCursor,int count,bool up,bool down,bool left,bool right);
 std::optional<SteamHumanOverviewPlan> steam_human_award_skin(const SteamHumanAwardInput &);
+// 严格读取已初始化Owner目录；允许被raw1／60覆盖，缺游标／主钟显式拒绝。
+std::optional<SteamHumanOverviewPlan> steam_human_award_skin(
+    const StartupWorldRuntimeState &,std::uint64_t page,const SteamHumanAwardOptions &);
 // raw96上方身体不用武器；副钟跳跃，phase1底部mentalUp另读共享character_frame。
 std::optional<SteamHumanOverviewPlan> steam_human_residence_result_skin(
     const SteamHumanResidenceResultInput &,const SteamHumanOverviewOptions &);

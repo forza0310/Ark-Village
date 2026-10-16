@@ -63,6 +63,14 @@ StartupApplicationPresentationResult StartupApplication::present_world(
 }
 
 // 每项玩家动作独立提交；年度终止请求与确认不可被合并为一次隐式确认。
+std::string StartupApplication::input_residence_award_page(
+    std::uint64_t page,const StartupResidenceAwardInput &input) {
+    const auto error=world_action_error();
+    if(!error.empty())return error;
+    auto candidate=*world_;
+    const auto rejected=command_error(candidate.input_residence_award_page(page,input));
+    return rejected.empty()?commit_world(std::move(candidate)):rejected;
+}
 std::string StartupApplication::act_award_page(std::uint64_t id, ref::WorldAwardAction action,
                                                int selection) {
     if (!error_.empty()) return error_;

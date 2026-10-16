@@ -135,6 +135,9 @@ class StartupWindowHost {
     StartupWorldRuntimeError act_award_page(std::uint64_t page, ref::WorldAwardAction action, int selection = 0) {
         return command([&](auto &owner) { return owner.act_award_page(page, action, selection); });
     }
+    StartupWorldRuntimeError input_residence_award_page(std::uint64_t page,const StartupResidenceAwardInput &input) {
+        return command([&](auto &owner){return owner.input_residence_award_page(page,input);});
+    }
     StartupWorldRuntimeError act_rank_page(std::uint64_t page, int selection = 0, bool cancel = false) {
         return command([&](auto &owner) { return owner.act_rank_page(page, selection, cancel); });
     }

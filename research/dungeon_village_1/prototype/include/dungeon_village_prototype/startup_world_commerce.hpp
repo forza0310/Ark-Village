@@ -24,6 +24,7 @@ struct StartupCommerceView {
     int feedback_counter{};
     int counter{};
     std::vector<int> entries;
+    std::optional<int> feedback_amount{}; // 84上一笔实际成交价；无反馈时无值，不从当前选择重算。
 };
 // Steam83的一轮已解析输入；设备选择先安装，再按上→下→确认优先返回消费。
 // 仅作用于主页，不提前定义84/85的反馈、滚动和marker契约。
@@ -47,6 +48,8 @@ StartupWorldRuntimeError open_startup_world_commerce(StartupWorldRuntimeState &s
 bool initialize_startup_world_commerce_pages(StartupWorldRuntimeState &state);
 // 已初始化商会载荷的只读校验；允许挂起的父页，不要求栈顶，也不补字段或初始化。
 bool valid_startup_world_commerce_page(const StartupWorldRuntimeState &state,const ref::WorldScriptPage &page);
+// 84待Finish可有合法耗尽的空目录；仍须保留完整反馈/成交金额配对，不能借退休掩盖缺键。
+bool valid_startup_world_commerce_feedback(const StartupWorldRuntimeState &state,const ref::WorldScriptPage &page);
 // raw93领取前后沿同一交易载荷；关闭待退休不能通过删除字段伪装未初始化。
 bool valid_startup_world_commerce_claim_page(const StartupWorldRuntimeState &state,const ref::WorldScriptPage &page);
 std::optional<StartupCommerceView>

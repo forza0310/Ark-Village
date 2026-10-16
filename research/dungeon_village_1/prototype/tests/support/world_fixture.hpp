@@ -24,7 +24,7 @@ inline StartupWorldRuntimeState page_fixture(int raw) {
     p.id = s.scripts.next_page_id++;
     p.kind = ref::WorldScriptPageKind::raw_page;
     p.legacy_page = raw;
-    if (raw == 60 || (raw >= 48 && raw <= 54) || raw == 90 || raw == 95) p.lifecycle = 0; // 新管理页须先经过真实Init。
+    if (raw == 60 || (raw >= 48 && raw <= 54) || raw == 87 || raw == 90 || raw == 95) p.lifecycle = 0; // 新管理页须先经过真实Init。
     s.scripts.pages.push_back(p);
     if (raw == 60) s.human_detail_contexts.emplace(p.id, StartupHumanDetailContext{});
     s.scripts.executing_page = p.id;

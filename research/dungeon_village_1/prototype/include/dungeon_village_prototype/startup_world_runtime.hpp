@@ -69,6 +69,15 @@ struct StartupWorldMenuPageData {
 struct StartupWorldBuildPageUi {
     int selection{}, scroll{};
 };
+// raw80/87目录实际游标，及87专属raw1问答；不保存物理按键或窗口几何。
+struct StartupResidenceAwardPageUi { int selection{}, first{}, tab{}; };
+struct StartupAwardQuestionUi { std::uint64_t parent{}; int kind{}, selection{}; };
+struct StartupResidenceAwardInput {
+    bool up{}, down{}, left{}, right{}, confirm{}, cancel{}, inspect{};
+    std::optional<int> selection;
+    struct Scroll { bool absolute{}; int value{}; };
+    std::optional<Scroll> scroll;
+};
 struct StartupWorldHumanCalendar {
     int absent_months{}; // e.aq：月度累计/到访排序优先值，页59确认可置10，不是单纯缺席月数。
     std::array<int, 3> yearly_totals{}; // B2在调用点投影world.human_spending。
@@ -270,6 +279,9 @@ struct StartupWorldRuntimeState {
     std::map<std::uint64_t, bool> award_announced;
     std::map<std::uint64_t, bool> award_termination_pending;
     std::map<std::uint64_t, int> award_pending_humans;  // raw87原bV是非询问绑定。
+    std::map<std::uint64_t, StartupResidenceAwardPageUi> residence_award_page_ui;
+    std::map<std::uint64_t, StartupAwardQuestionUi> award_question_ui;
+    std::map<std::uint64_t, int> award_question_answers; // 父87一次答案，缺键表示尚未回答。
     std::array<std::array<int, 2>, 3> reward_display{}; // 全局n.aH，授勋/住宅共用。
     std::array<std::array<int, 4>, 3> effort_display{}; // 全局e.as[0]，不是每页独立奖励。
     std::map<std::uint64_t, std::uint64_t> facility_page_bindings;  // raw74实际n引用稳定实例。
@@ -295,6 +307,7 @@ struct StartupWorldRuntimeState {
     // 页mode/tab/selection/scroll/item_binding/feedback；binding=-1表示没有条目。
     std::map<std::uint64_t, std::array<int, 6>> commerce_page_data;
     std::map<std::uint64_t, std::vector<int>> commerce_page_lists;
+    std::map<std::uint64_t, int> commerce_page_feedback_amount; // 仅raw84正feedback期间的实际成交价。
     std::set<std::uint64_t> facility_catalog_pages_initialized;
     // 79/72/82：原类别、选择、首行、绑定；82绑定源设施定义，72绑定装备，79无绑定(-1)。
     std::map<std::uint64_t, std::array<int, 4>> facility_catalog_page_data;
@@ -386,6 +399,11 @@ StartupWorldRuntimeError acknowledge_startup_world_runtime_page(StartupWorldRunt
 // 商店追加页83的原按钮2返回；不把确认伪装成取消，不执行购买或删掉下方脚本页。
 StartupWorldRuntimeError cancel_startup_world_runtime_page(StartupWorldRuntimeState &state,
                                                            std::uint64_t page);
+bool valid_startup_world_residence_award_page(const StartupWorldRuntimeState &state, std::uint64_t page);
+bool initialize_startup_world_residence_award_page(StartupWorldRuntimeState &state, std::uint64_t page);
+bool valid_startup_world_award_question_page(const StartupWorldRuntimeState &state, std::uint64_t page);
+StartupWorldRuntimeError input_startup_world_residence_award_page(StartupWorldRuntimeState &state,
+    std::uint64_t page, const StartupResidenceAwardInput &input);
 // 授勋按独立页面更新消费；普通确认不隐式选择授予或终止，selection是贡献榜索引。
 StartupWorldRuntimeError act_startup_world_runtime_award_page(StartupWorldRuntimeState &state,
                                                               std::uint64_t page,
@@ -540,6 +558,7 @@ class StartupWorldRuntimeSession {
     StartupWorldRuntimeError act_facility_page(std::uint64_t page,
                                                StartupFacilityPageAction action);
     StartupBuildResult act_residence_page(std::uint64_t page, int human, bool cancel = false);
+    StartupWorldRuntimeError input_residence_award_page(std::uint64_t page, const StartupResidenceAwardInput &input);
     StartupWorldTaskPageResult act_task_page(std::uint64_t page, StartupWorldTaskAction action,
                                              int selection = 0);
     StartupWorldTaskPageResult input_task_page(std::uint64_t page, const StartupTaskPageInput &input);

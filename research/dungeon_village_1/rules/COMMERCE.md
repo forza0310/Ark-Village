@@ -107,7 +107,7 @@ Steam85在`10319B9E`检查村点，足额`10319BC5`先扣点，`10319BE7–19C05
 
 文字槽按usage5独立核：购买标题`110FC3D8`、名称`110F5D68`、持有`110F6E48`、价格`110F4CB4`、剩余`110F7FD8`、交易反馈`110F1CA4`；对应字面见上文。当前语言转换、真正字体度量、继承字号／SEB当前帧、所有TextLayout排版及触控到OS的投递不由这批机器码／PNG关系证明。资源均沿现出版common图标、数字／单位、手形、箭头和南瓜肖像，不新复制图集；本次只交静态合同，没有新增84研究窗口认证。
 
-现Owner的`commerce_page_data[id]={mode,tab,selection,first,binding−1,feedbackCounter}`、`commerce_page_lists[id]`原序ID、初始化集合及page_counters已持久；库存／货源／已读、现金与月桶已有唯一消费者，可接严格只读目录桥，不另建目录／游标缓存。但当前逐action API还需整轮输入及反馈先减的次序接线；当前仅保存feedbackCounter，**没有本次冻结反馈金额**，选中商品已删除／价格改变／导航后不能拿当前价格替代。纯计划可先显式接受已核反馈金额来源，Owner桥与精确恢复须先解决这项实际缺口，不能靠0占位伪称反馈完整；保存该额外显示载荷的设计另按仓库约定处理。既有普通档规则／研究安全校验不因皮肤查询放宽。
+现Owner的`commerce_page_data[id]={mode,tab,selection,first,binding−1,feedbackCounter}`、`commerce_page_lists[id]`原序ID、初始化集合及page_counters已持久；库存／货源／已读、现金与月桶已有唯一消费者。2026-10-16按批准设计新增`commerce_page_feedback_amount`：成功交易且目录非空时冻结实际成交价，86覆盖保留，反馈到0／确认清除及Finish同事务释放。查询与窗口只读`StartupCommerceView.feedback_amount`，不根据当前选择重算；正反馈缺金额、负值、错页、孤立键以及关闭待退休缺键均拒绝，旧布局不迁移，见[维护存取](../prototype/PERSISTENCE.md#商会84交易反馈金额设计待确认)。当前逐action API仍需整轮输入及反馈先减的次序接线；金额与精确恢复完成不等于该输入时序或原OS动态已完成。普通档／安全校验不因皮肤查询放宽。
 
 <a id="steam-commerce-facilities"></a>
 

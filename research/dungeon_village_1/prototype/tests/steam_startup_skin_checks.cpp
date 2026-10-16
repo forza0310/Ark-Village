@@ -41,6 +41,69 @@ auto sprite(const std::filesystem::path &p) {
 }
 void touch_commands(Checks &check) {
     SteamTouchCommandInput in;in.admission=SteamTouchAdmission::ready;
+    for(int id:std::array<int,3>{0,2,9})for(int event=0;event<14;++event) {
+        in.component=id;in.event_type=event;in.value=0x28000;in.extended_values={7};
+        const auto plan=steam_touch_commands(in);
+        const std::size_t count=event==2?2:event==1?(id==0?1:3):0;
+        check(plan&&plan->commands.size()==count,"标题与菜单事件分母：仅ENTER/UP各有原分工");
+        if(event==2||(event==1&&id!=0)) {
+            const auto &write=std::get<SteamTouchValueWrite>(plan->commands[0]);
+            check(write.type==(id==0?0x30000U:0x20000U)&&write.value==(id==0?0x28000:-32768)&&
+                      std::get<SteamTouchValueWrite>(plan->commands[1]).type==0,
+                  "标题ENTER不拆完整int值；菜单先signed short主写再type0扩展");
+        }
+        if(event==1)check(std::get<SteamTouchKeyClick>(plan->commands.back()).bits==0x100000U,
+                         "标题UP不Set，菜单UP在Set之后按缺省确认键请求");
+    }
+    in.extended_values.assign(4097,0);
+    for(const auto key:std::array<std::uint32_t,3>{0,0xffffffffU,0x80000010U}) {
+        in.component=0;in.event_type=1;in.first_key=key;
+        auto p=steam_touch_commands(in);
+        check(p&&p->commands.size()==1&&std::get<SteamTouchKeyClick>(p->commands[0]).bits==key,
+              "标题UP原样消费首自定义键，不读超预算未消费扩展");
+        in.extended_values.clear();in.component=9;in.value=0;
+        p=steam_touch_commands(in);
+        check(p&&p->commands.size()==1&&std::get<SteamTouchKeyClick>(p->commands[0]).bits==key,
+              "菜单值0跳主写并保持自定义键，不套KEYCLICK默认键号20");
+        in.extended_values.assign(4097,0);
+    }
+    in.component=2;
+    check(!steam_touch_commands(in),"菜单UP必须消费Set，扩展超预算时不得泄出确认");
+    in.component=0;in.event_type=2;
+    check(!steam_touch_commands(in),"标题ENTER必须消费Set，扩展超预算整体拒绝");
+    in.extended_values.clear();in.first_key.reset();
+    for(int id:std::array<int,2>{1,18})for(int event=0;event<14;++event) {
+        in.component=id;in.event_type=event;in.value=16;
+        const auto component_key=(static_cast<std::uint64_t>(id)<<32)|16U;
+        in.arrow_paint=SteamTouchArrowPaint{37,-12,3,component_key};
+        const auto p=steam_touch_commands(in);
+        const std::size_t count=event==0?2:event==6||event==10?1:0;
+        check(p&&p->commands.size()==count,"DLGPAGE/ARROW仅DOWN建效果，LOST/CANCEL才释放");
+        if(event==0) {
+            const auto &down=std::get<SteamTouchKeyDown>(p->commands[0]);
+            const auto &effect=std::get<SteamTouchArrowEffect>(p->commands[1]);
+            check(down.bits==0x10000U&&down.pulse&&effect.paint.x==37&&effect.paint.y==-12&&
+                      effect.paint.component_key==component_key&&effect.texture_row==2&&effect.velocity_x==-10.f,
+                  "箭头先Down再id0效果，取实际paint而非命中坐标，原value16向左");
+        } else if(count)check(std::get<SteamTouchKeyUp>(p->commands[0]).bits==0x10000U,
+                              "箭头释放沿同一逻辑位，无额外Set或效果");
+    }
+    in.component=1;in.event_type=0;in.value=0;in.arrow_paint->frame=4;
+    in.arrow_paint->component_key=0x100000000ULL;
+    auto arrow=steam_touch_commands(in);
+    check(arrow&&std::get<SteamTouchKeyDown>(arrow->commands[0]).bits==1&&
+              std::get<SteamTouchArrowEffect>(arrow->commands[1]).texture_row==3&&
+              std::get<SteamTouchArrowEffect>(arrow->commands[1]).velocity_x==10.f,
+          "箭头值0不默认20，paintFrame非3改图3，方向不按键名猜");
+    in.value=16;in.first_key=0xffffffffU;in.arrow_paint->component_key=0x100000010ULL;
+    arrow=steam_touch_commands(in);
+    check(arrow&&std::get<SteamTouchKeyDown>(arrow->commands[0]).bits==0xffffffffU&&
+              std::get<SteamTouchArrowEffect>(arrow->commands[1]).velocity_x==-10.f,
+          "自定义负一仍保留后继效果请求，方向只读原value而非custom键");
+    in.arrow_paint.reset();check(!steam_touch_commands(in),"箭头DOWN缺真实paint拒绝整个候选");
+    in.event_type=10;in.extended_values.assign(4097,0);
+    check(steam_touch_commands(in)->commands.size()==1,"箭头取消不消费paint或Set扩展");
+    in.extended_values.clear();in.first_key.reset();
     // 固定DLL跳表及各具名入口的触发事件；不从被测函数生成期望资格。
     const std::array<std::array<int,2>,6> triggers{{{4,5},{5,0},{6,0},{7,1},{20,5},{21,5}}};
     for(const auto &entry:triggers)for(int event=0;event<14;++event) {

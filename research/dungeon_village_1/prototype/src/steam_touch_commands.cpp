@@ -28,14 +28,33 @@ std::optional<SteamTouchCommandPlan> steam_touch_commands(const SteamTouchComman
     if(in.admission==SteamTouchAdmission::intercepted)return plan;
     if(in.admission!=SteamTouchAdmission::ready||in.event_type<0||in.event_type>13)return {};
     const int id=in.component,event=in.event_type;
+    if(id==0) {
+        // 标题ENTER写完整选择值；UP只发键，不重复Set或消费扩展。
+        if(event==2&&!set_values(plan,0x30000U,in.value,in.extended_values))return {};
+        if(event==1)plan.commands.emplace_back(SteamTouchKeyClick{in.first_key.value_or(0x100000U)});
+        return plan;
+    }
+    if(id==1||id==18) {
+        if(event!=0&&event!=6&&event!=10)return plan;
+        const auto bits=in.first_key.value_or(std::uint32_t{1}<<(static_cast<std::uint32_t>(in.value)&31U));
+        if(event!=0)plan.commands.emplace_back(SteamTouchKeyUp{bits});
+        else {
+            if(!in.arrow_paint)return {};
+            plan.commands.emplace_back(SteamTouchKeyDown{bits,true});
+            plan.commands.emplace_back(SteamTouchArrowEffect{*in.arrow_paint,
+                in.arrow_paint->frame==3?2:3,in.value==16?-10.f:10.f});
+        }
+        return plan;
+    }
     if(id==19) {
         if(event==9&&!set_values(plan,static_cast<std::uint32_t>(in.value),in.delta_x,in.extended_values))return {};
         return plan;
     }
-    if(id==22||id==24) {
+    if(id==2||id==9||id==22||id==24) {
         const bool set=id==22?event==13:event==2||event==1;
         if(set&&!packed_set(plan,in.value,in))return {};
-        if(id==24&&event==1)plan.commands.emplace_back(SteamTouchKeyClick{0x100000U});
+        if(id!=22&&event==1)
+            plan.commands.emplace_back(SteamTouchKeyClick{id==24?0x100000U:in.first_key.value_or(0x100000U)});
         return plan;
     }
     if(id!=4&&id!=5&&id!=6&&id!=7&&id!=20&&id!=21)return {};

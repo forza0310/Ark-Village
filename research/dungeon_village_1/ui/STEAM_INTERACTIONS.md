@@ -46,6 +46,9 @@
 
 | 组件及源锚 | 实际事件与请求 |
 | --- | --- |
+| 0 TITLEMENU；1023C940–C9CC／1023D5D0 | ENTER2固定Set(top,0x30000,component.value,component)，value保留完整int32及扩展；UP1完全不Set，只发custom首key或默认0x100000。无value0→20替代。 |
+| 1 DLGPAGE、18 ARROW；1023CCBE–CDCA／OnTouchDlgPage 1023C620–C71F | DOWN0先KeyDown(bits,true)，再AddEffect(id0,paintX,paintY,imgId,component)，imgId取paintFrame==3时2、否则3，返回对象vx先+10，仅原value==16改−10。LOST6／CANCEL10才KeyUp；UP1无动作。default为1u<<(value&31)，不拆编码值、不将0改20；custom只替换键，方向仍看原value。 |
+| 2 DLGCMD、9 SUBMENU；1023C9CD／共享1023C5A0 | ENTER2／UP1先packed Set，含signed lowshort与全部扩展；仅UP随后发custom首key或默认0x100000。无value0→20替代，本叶无AddEffect。 |
 | 4 KEYCLICK、20 PLUS、21 MINUS；OnTouchKeyClick 1023CF10–CFE9 | 仅CLICK5生效。value为0时先代成20；高16位非0则Set，否则Canvas.KeyClick。20／21复用4，名字不表示本函数直接加减数值。 |
 | 5 KEYPRESS；1023D0F0–D244 | DOWN0：编码值执行Set，普通键执行KeyDown(bits,false)。普通键仅在LOST6／CANCEL10执行KeyUp；UP1不在本函数释放。编码值的释放不额外写设置。 |
 | 6 KEYDOWN；1023D000–D0DB及通用内联1023CB0D起 | 仅DOWN0，编码值执行Set，普通键执行KeyDown(bits,true)。 |
@@ -64,9 +67,31 @@
 
 16的自动注册在`EndTouchRegist`的1023B237–B39A：发现组件的有效`Check(16)`（flags与denyFlag共同决定）才在1023B923–B983登记贯穿FLAG_THROUGH1的ID16/value0，全游戏逻辑区域`(0,0,GetGameWidth,GetGameHeight)`。marker key−1是无标记；`ClearMarker` RVA23A3C0只写key−1与钟0，构造10240FD1–FE5同初值，`OnKeyDown` RVA23C550无条件清标记。EndTouch尾1088ECD0仅关闭regist标记，不能把它写成所有组件对象已退休；命中、显示及完整平台生命周期仍分别认证。
 
-[标准C++纯请求接口](../prototype/include/dungeon_village_prototype/steam_touch_commands.hpp)的`steam_touch_commands`表达4／5／6／7／19／20／21／22／24已准入叶分支，输出有序键与值写请求；8／16分别由`steam_touch_main_menu`／`steam_touch_unmarker`表达，通用入口仍拒绝这两类。接口不执行Canvas或页面业务。未核准入拒绝，已截获返回空计划；实际消费的扩展项、8实际扫描项各最多4096是维护预算，非原版上限，已短路的未消费项不校验。8用显式稳定身份绑定原主菜单及顶页，Pop空目标仍只保留原调用意图；缺必需观测、无父却需要读父属性或空accessor写入明确拒绝，不模拟原异常副作用。
+[标准C++纯请求接口](../prototype/include/dungeon_village_prototype/steam_touch_commands.hpp)的`steam_touch_commands`表达0–2／4–7／9／18–22／24已准入叶分支，输出有序键、值写及箭头效果请求；8／16分别由`steam_touch_main_menu`／`steam_touch_unmarker`表达，通用入口仍拒绝这两类。接口不执行Canvas或页面业务。未核准入拒绝，已截获返回空计划；实际消费的扩展项、8实际扫描项各最多4096是维护预算，非原版上限，已短路的未消费项不校验。8用显式稳定身份绑定原主菜单及顶页，Pop空目标仍只保留原调用意图；缺必需观测、无父却需要读父属性或空accessor写入明确拒绝，不模拟原异常副作用。
 
 8／16的probes是本轮**已消费观测**的顺序轨迹，不能照它再查询一次；16的DOWN观测时点在原frame归0之后。命令与观测各自保序，不冒充跨两向量的完整执行trace。维护Owner的联合提交仍由消费者实现，本模块不改Owner、持久布局、随机或声音，也不接OS命中、全表单栈和原物理输入。现有公共皮肤套件的事件／顺序／短路／拒绝及预算短验通过，实际结果查[验证入口](../VERIFICATION.md)。
+
+1／18的paint字段是TouchComponent.paintX／paintY／paintFrame（+28／+2C／+30），不是命中矩形或事件坐标。`GameView.AddEffect` RVA2393F0的imgId是TEXTURES行索引，不是common图片ID；包装读取真实Image宽度缩放源矩形，以0.75缩放目的尺寸／偏移，最终在102396ED交效果管理器。直接AddEffect RVA2AF8C0正常复用／创建、Init及入active表后返回，本链没有正常null返回；叶端null会抛异常。请求将同一事件组件key位型及paint冻结，不创建效果池或把创建失败当成功；原KeyDown先发生，后续失败无键状态回滚，完整效果绘制／退休仍独立。
+
+### 列表确认与Canvas同步回调
+
+3／10／11共用`OnTouchDlgSel` RVA23C730及1023CA42内联：ENTER2／UP1都先Set，不先比较旧选择；仅UP继续检查实际有效marker16（flags与denyFlag共同决定）。无marker直接确认；有marker时比较完整64位组件key，不同只重新写标记key，相同才确认，没有双击时间窗。重标记两次读取事件组件GetKey，第一次比较、第二次写入，叶端没有直接清markerframe。`BitUtil.Join` RVA837CA0将ID的uint32位型放高字、完整value位型放低字，负value不污染高字；3／10／11的相同行值不是同一key。确认仍用custom首key或默认0x100000，纯按“相同行号”比较会丢失资格。此分支尚未接新的纯候选，不由静态合同冒称Owner已接。
+
+`Canvas.KeyClick` RVA74EB20并非只入队：key为−1直接返回；其它值（包括0）先GetFocusKeypad、写脉冲与来源标志，再在管理器非空时同步调用SurfaceManagerBase.OnKeyDown RVA895840／OnKeyUp RVA895A20。OnKeyDown逆序通知surface虚槽17；已注册GameView的OnKeyDown RVA23C550无条件ClearMarker。因此该正常确认链在KeyClick返回前已使key−1／frame0，不能因列表叶函数没写Clear而称确认后保留marker，也不能另补一次清理当作原调用。−1不通知，是独立特例；当前基础OnKeyUp实现无虚槽通知。上述资格不推成所有自定义surface、焦点和OS实际投递都相同。
+
+### 公共滚动与现设施helper的适用域
+
+12／14／15经1023CC8C调用`OnTouchVScrollBar` RVA23D810，13经1023CC73调用`OnTouchVScrollButton` RVA23D9D0。每次Get均重新取当时顶页并掩type高16位，不冻结整个handler的accessor；每次Set先主写再执行原component的全部扩展，同次扩展使用同一accessor。后续Get必须看到前次Set及扩展结果，不能按初始快照折叠多次写。
+
+| 入口 | 原局部次序及边界 |
+| --- | --- |
+| 12／14／15前提 | 先读option.args，null直接返回，非null不足两项原越界；取N=args[0]、M=args[1]及可选K=args[2]（缺省−1），**随后**才检查事件8／9。 |
+| 8／9候选；1023D87A–D966 | 8先int32(Get(v)+e.dy)，9直接e.dy；candidate等于INT_MAX才停。按原有符号int32取wanted=max(0,min(candidate,N−M))；再次Get(v)相同即停，不同则第三次Get(v)计算delta，再Set(v,wanted,component)。 |
+| 选择耦合；1023D969–D9B1 | K恰等于−1才跳过；否则先在首Set及扩展完成后Get(K)。14写max(0,selection+2×delta)，没有N上限；12／15写selection+delta，先夹0，再若≥N改N−1。Set(K,result,component)会再执行扩展。 |
+| 13前提／方向；1023D9DC–DAD5 | args为空原异常；至少三项且K≠−1才继续，再检查ON13。uint16(v)为0时仅selection>0才再次Get(K)减1并Set；为1时仅selection<N−1才再次Get(K)加1并Set。其它低位方向不改选择，**仍规范视窗**；没有INT_MAX专门哨兵。 |
+| 13跟随／尾循环；1023DAD8–DCE1 | 分别重新Get(K)、Get(v)：selection≥first+M时再Get(K)并Set(v,selection−M+1)；随后重读，两值selection<first时再Get(K)并Set(v,selection)。最后循环重读first，若first>0且N<first+M，就Set(v,first−1)并重试。各Set都带扩展，不能直接折成一次clamp。 |
+
+算术阶段保持原int32，不据有限夹限声称异常args、溢出或受扩展影响的循环必然安全。[现设施helper](../prototype/include/dungeon_village_prototype/steam_facility_skin.hpp)只表达raw74／id12、M=5与稳定合法Owner光标；宽整数相加、拒绝**输入**INT_MAX属于维护保护，不是全int32域等价。例如first=1、相对值INT_MAX，原相加先回卷INT_MIN再夹0，现helper拒绝。它不能替代14双delta或13多次读写；本批不另造第二套页面分页规则。
 
 ## 游戏设置与标题平台按钮
 

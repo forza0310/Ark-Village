@@ -2,11 +2,11 @@
 
 ## 公共触摸请求与菜单／标记分支 2026-10-16
 
-接`91d3f95`，新增标准C++17职责模块[steam_touch_commands](prototype/include/dungeon_village_prototype/steam_touch_commands.hpp)，显式加入现application库，无新target。公共4–7／19–22／24保留事件边沿、默认键20、custom首键、属性高位／有符号short、扩展type0及重复写原序；7实际请求KeyDown(true)，5仅LOST／CANCEL释放。源核纠正19主type仍经Set掩高16位，dx原样保留。8独立计划绑定首主菜单与当时顶页，Pop请求后不重找accessor；16保留12→14→15→旧key短路，DOWN无旧key时仍可先Reset再Clear。观测轨迹不能再执行成第二次查询，原Set／Pop不冒称维护事务。完整源锚、正常／条件注册及标题广告UP截获合入[现交互合同](ui/STEAM_INTERACTIONS.md#公共触摸分派与请求边界)，精简重复指纹与过期过程统计。
+接`91d3f95`，`81d388d`新增标准C++17职责模块[steam_touch_commands](prototype/include/dungeon_village_prototype/steam_touch_commands.hpp)，本批再接标题／菜单及箭头。0–2／4–7／9／18–22／24的纯请求保留各自边沿、custom／默认键、属性拆分及扩展原序；0的ENTER固定type0x30000写完整int，UP只发键；1／18先KeyDown再用实际paint请求箭头效果，TEXTURES行2／3与vx按原值选择，LOST／CANCEL才释放。7实际KeyDown(true)，19主type仍掩高16位而dx原样保留。8独立计划绑定首主菜单与当时顶页，Pop请求后不重找accessor；16保留12→14→15→旧key短路，DOWN无旧key时仍可先Reset再Clear。观测轨迹不能再执行成第二次查询，原Set／Pop不冒称维护事务。
 
-Windows单Release动态构建通过；模块独立标准C++17严格语法检查通过，最终既有visuals **1/1通过1.79秒**。集中覆盖事件分母、真实目标／操作原序、无符号比较与有符号写值、空Pop请求、按需观测／短路、缺失拒绝及4096维护预算两侧边界。没有Owner、codec、schema、素材、随机或声音变化，不编译三份他人在途存取测试，不重复窗口或世界长测；纯请求已验不等于实际OS／Owner执行接线。字体有限复核没有新增实际中文供给证据，保留现合同限制。
+并行静态补核合入[现交互合同](ui/STEAM_INTERACTIONS.md#公共触摸分派与请求边界)：3／10／11完整64位组件key与Set先行；Canvas.KeyClick同步通知已注册GameView并清marker，−1早返回而0仍通知。公共滚动保留重复Get、每次Set的扩展、14双delta无N上限及13逐次规范化；现raw74 helper仅属稳定id12／五行维护域，宽整数／输入INT_MAX拒绝不伪装原全int32等价。只澄清其注释，不更改既有算法。列表／公共滚动新纯消费者尚未接，箭头效果池／图像包装／OS仍独立。完整源锚及注册合并现合同，精简重复指纹与过期过程统计，不另写分支报告。
 
-Release1398文件／224406739字节，assets仍872文件／9504668字节；两份此前受审批限制的AST原地保留，无新增audit、指纹或过程报告。计划按次返回／消费释放，不持实体根或新增长期队列，合法世界历史不称永久有界。本轮编译、测试及三个子任务已结束，仅白名单本地提交research、不推送，保留产品、三份在途测试和未获确认的Rank设计。80／87目录及84反馈的两项授权已由既有正式实现落实，本批不重复开发。
+Windows单Release动态构建通过；模块独立标准C++17严格语法检查通过。`81d388d`的既有visuals 1/1通过1.79秒，本批最终 **1/1通过1.77秒**；集中覆盖事件分母、目标／操作原序、标题完整值与菜单short、箭头paint／custom方向、空Pop、短路／缺失观测及4096维护预算两侧边界。无新target、Owner、codec、schema、素材、随机或声音；不编译三份他人在途存取测试，不重复窗口或世界长测，纯请求通过不等于OS／Owner执行接线。Release1398文件／224546508字节，assets仍872文件／9504668字节，两份此前受审批限制AST保留；无新增audit、指纹或过程报告。计划按次消费释放，不持实体根或长期队列，不称合法历史永久有界。全部本轮进程及静态子任务已结束，仅白名单本地提交research、不推送，保留其他维护者及未确认Rank设计。
 
 ## 情报34–39普通窗口与退出尾段 2026-10-16
 

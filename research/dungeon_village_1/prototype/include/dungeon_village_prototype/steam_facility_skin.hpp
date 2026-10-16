@@ -167,7 +167,9 @@ std::optional<SteamFacilityBonusCursor> steam_facility_bonus_cursor(
     int count, SteamFacilityBonusCursor cursor, bool up, bool down);
 enum class SteamFacilityScrollEvent { relative, absolute };
 // OnTouchVScrollBar组件12的逻辑事件8/9：scroll变化后按实际delta同步选择。
-// value的INT_MAX哨兵及坏当前光标显式拒绝；不推导Surface的物理拖动映射。
+// 仅raw74/id12、visible=5及稳定合法Owner光标；不表示id14双delta或id13多次Get/Set。
+// 拒绝输入INT_MAX、用宽整数相加是维护保护；原哨兵检查在int32相加之后，非全整数域等价。
+// 坏当前光标显式拒绝；不推导Surface的物理拖动映射。
 std::optional<SteamFacilityBonusCursor> steam_facility_bonus_scroll(
     int count,SteamFacilityBonusCursor cursor,SteamFacilityScrollEvent event,int value);
 struct SteamFacilityDetailSkinInput {

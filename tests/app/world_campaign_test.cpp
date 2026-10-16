@@ -1385,6 +1385,7 @@ int main(int argc, char **argv) {
                                   << " fee=" << human.residence_fee << '\n';
                 ark::test::inspect_income(state, std::cout);
                 ark::test::inspect_campaign_progress(state, std::cout);
+                ark::test::inspect_steam_magic_pot(state, std::cout);
             } else {
                 steam_campaign.emplace(load<ark::test::SteamVillageStrategy>(directory, 1));
                 require(steam_campaign->strategy.complete(steam_campaign->state),

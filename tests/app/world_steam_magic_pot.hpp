@@ -5,6 +5,10 @@
 #include "world_steam_people.hpp"
 
 namespace ark::test {
+// Cold-prefix diagnostics separate actual recipe/resources from this player's
+// conservative equipment policy. No acquisition, crafting, or reachability claim.
+void inspect_steam_magic_pot(const app::WorldState &state, std::ostream &out);
+
 // A temporary player of the existing pot/commerce pages. The normal Steam player
 // owns equipment allocation; this module only observes its real resulting gift.
 class SteamPotEquipmentPlayer {

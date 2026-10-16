@@ -143,6 +143,34 @@ std::optional<int> next_equipment_recipe(const State &s) {
 }
 } // namespace
 
+void inspect_steam_magic_pot(const State &s, std::ostream &out) {
+    require(s.rules != nullptr, "inspection needs actual recipe definitions");
+    out << "POT_RESOURCES experience=" << s.legacy_n[0] << " pending=" << s.legacy_n[1]
+        << " level=" << s.legacy_n[11] << " elements=";
+    for (int n = 0; n < 4; ++n)
+        out << (n ? "," : "") << s.legacy_n[3 + n];
+    out << '\n';
+    for (const auto &recipe : s.rules->magic_pot_recipes) {
+        const auto &progress = s.magic_pot_recipes.at(recipe.identity);
+        const auto reward = s.catalog.find({recipe.reward_kind, recipe.reward_definition});
+        const bool is_equipment = recipe.reward_kind >= 1 && recipe.reward_kind <= 3;
+        out << "POT_RECIPE definition=" << recipe.identity << " status=" << progress.status
+            << " pending_notice=" << progress.pending_notice << " flags=" << recipe.flags
+            << " discovery_experience=" << recipe.experience_required
+            << " reward_kind=" << recipe.reward_kind << " reward=" << recipe.reward_definition
+            << " catalog_status=" << (reward == s.catalog.end() ? -1 : reward->second.status)
+            << " free_stock=" << (reward == s.catalog.end() ? -1 : reward->second.free_purchases)
+            << " equipment_policy_useful="
+            << (is_equipment ? int(steam_equipment_reward_usable(
+                                   s, recipe.reward_kind, recipe.reward_definition))
+                             : -1)
+            << " costs=";
+        for (int n = 0; n < 4; ++n)
+            out << (n ? "," : "") << recipe.costs[n];
+        out << " deficit=" << deficit(s, recipe) << '\n';
+    }
+}
+
 void SteamPotEquipmentPlayer::reconcile(const State &s) {
     require(s.rules && s.rank >= 2 && (s.scripts.user_flags & 1U),
             "requires the real imported pot");

@@ -20,7 +20,8 @@
 - [x] 设施配方的47扣元素/93领取和原金币建设测试玩家已接；配方35/点心铺44真实制造、领取、2000G建设/完工、强化、实际营业1870G及后继存读通过，H不是普通建筑免费券，见[本批](docs/stages/B1-playable-prototype.md#campaign-healing-shop)。
 
 - [ ] 按[全解锁合同](docs/stages/ACTIVE_VILLAGE_PLAN.md#full-unlock-campaign)逐定义覆盖取得、消费、实际效果与后继，保留775分母；代表样例、仅解锁或日期推进不算全覆盖。
-- 已核历史回执合计80段/2683条，覆盖月113—130及135—196两个窗口；每定义的未完环节和旧格式边界保留，见[审计](docs/stages/B1-playable-prototype.md#campaign-history-receipt-audit)，不把“有回执”当全覆盖。
+- 历史回执2838条：80个已核分段外补核5个旧格式阶段，配方7完整消费及职业4人物0/1/3已联接；旧来源字段缺失、失败后段和每定义未完环节保留，见[审计](docs/stages/B1-playable-prototype.md#campaign-history-receipt-audit)，不把“有回执”当全覆盖。
+- 现steam-inspect已分开40配方实际条件与装备策略资格；月177的17已知/未取得/元素足够，只因“不降属性”策略跳过。接合法前缀定向消费分支，保留后继及冷载要求，见[诊断](docs/stages/B1-playable-prototype.md#campaign-history-receipt-audit)。
 - [x] 未举办常规活动预算已接：保留图纸/扩张点数、按源报价/ID安排首次消费；22/9/11实际付款、9/11的25人属性效果及后继月/冷载通过，见[活动批次](docs/stages/B1-playable-prototype.md#campaign-unheld-activities)。20已真实付200点并排队50人气、冷载次数1；排队不当实际人气归因，见[后继](docs/stages/B1-playable-prototype.md#campaign-material-plant-planning)。
 - [x] 后建商店入口保护/修复已接：原付费搬迁300G，焰火店50实际营业598G，恢复设施46的40点图纸/600G建设及库存强化；活动13的25人效果/冷载通过，见[本批](docs/stages/B1-playable-prototype.md#campaign-external-shop-access)。
 - [x] 四项条件及真实五星晋级/庆典/冷载已验，源收入73374G；配方36准确制造、领取、占卜屋2000G建设及任务库存强化已验，见[本批](docs/stages/B1-playable-prototype.md#campaign-fifth-star-pot36)。

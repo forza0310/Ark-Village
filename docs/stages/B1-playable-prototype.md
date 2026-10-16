@@ -9,6 +9,8 @@
 
 现3db316f底座以desktop-debug对月196根执行steam-natural-verify，通过phase2/continued_month195/总分154750冷载，9份玩家/系统/侧车输入逐字节未变；只认证新底座可读取该有效档，不新增经营月、配方18严格后继或精确随机资格。run-month.mjs沿已批准完整分段编排，改从当前SOURCES读取真实来源身份，仍6分钟/10000轮，旧报告不重签。玩家schema5、独立系统2和随机不保存政策保持；正常玩家档与research在途不写。
 
+代码checkpoint为028b70b；便携ZIP约16.68MiB、解压约27.56MiB，共783文件。PE依赖闭包、打包/解压后的资源检查、系统PATH下独立存档目录8帧启动及截图通过，音频26/26、failed0，已查看启动图；不据启动烟测声明自然经营完成。包与解压结果在上述批次目录的release-package-d9167697ee91495caea7ffc4929c69b1/，正式ZIP仅含Release玩家闭包，无研究/编译缓存。CI仍未运行，不推送。
+
 <a id="campaign-pot18-followup"></a>
 ## 2026-10-16：配方18与分月主动效果回执
 

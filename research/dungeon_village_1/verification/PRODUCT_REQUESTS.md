@@ -1,5 +1,7 @@
 # 产品研究需求回应与剩余交付
 
+2026-10-16接续补交[40赠礼人物目录](../ui/INFORMATION_MENU.md#steam40赠礼人物目录三页与35分开)：三页独立皮肤、真实入住D[2]、当前装备／属性和40→64沿现Owner，不套35四页，不新增持久字段。正常研究窗口与三页条件例图已接，pages／最终visuals短测通过，原字体／OS动态仍缺。同批纠正信息35／40／36／38箭头：common74／SEB3只供bounds，`SteamInformationDraw`新增显式`SteamManualArrowRequest`，消费者须执行共用buttoneffect helper并提供实际左右CheckTouch结果，不能继续把该SEB直接绘制或重画两遍；触摸引用顺序保持。旧收支图仅保正文布局，来源和接口变更见[箭头合同](../ui/INFORMATION_MENU.md#steam信息页标题箭头seb只供边界)，本会话未改产品适配。
+
 [实际法术归因请求](../../../docs/reference/RESEARCH_REQUESTS.md#spell-consumption-receipts)已补默认关闭的非持久回执：`StartupWorldRuntimeSession::update(true)`成功后返回`spell_consumption`，分别记录真实launch／contact／delayed_hit／healing及局部目标槽／累计前后值。完整候选转发、第二轮／日历／render-cache失败拒绝及字段限制见[主责合同](../rules/ai/COMBAT.md#spell-consumption-receipts)；Q槽是实际选择，不代表学习或职业来源。原type2没有effect／父ID／原瞄准，保留gap，不改原Owner／档案字段，也不替产品执行自然施法长跑。
 
 施工后继已补[完成／住宅／商品NEW合同](../ui/EQUIPMENT_FACILITY_RENDER.md#steam队首完成住宅与商品new)：`startup_world_facility_notice_draws`读取既有队首，0／7展开全部有效裁片，1–6复用原增长接口；正常研究窗口已改用完整入口。Steam图片68／150与APK像素不同，须连同`StartupVisualResource::steam_common`的直接裁片绑定迁入，不能继续指向original同名图或再次添加SEB偏移。真实完工／商品产生、队首年龄／退休与奖励仍沿原Owner；新查询不增加持久字段、随机或声音。根尺寸以外的语言加载／原OS动态及产品接入分别验收。

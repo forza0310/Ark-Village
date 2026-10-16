@@ -226,6 +226,28 @@ Owner真实初始化34统计及39冻结实例目录；空39执行原事件17后�
 
 Steam索引另有`wnd_lv.gif,e20x10`、`number06.gif,e128x22`、`icon_result00.gif,e63x48`后缀，实际PNG分别17×10、124×22、63×48；索引后缀消费者未展开，不能据后缀拉伸图片。facility数字helper沿用SEB12／15及money，另新增`number03`／`number11`资产对应SEB11／20，普通数步宽分别8／7，保留零值和原负帧请求，错误步宽及无对应帧的money／plus模式拒绝。information数字helper仍只处理正库存／正属性，本页通过有序`SteamFacilityNumber`请求使用通用展开器。空装备mode5在VA `1030CDB8–1030CE16`直接传dx／dy，无其它图标的−1偏移；经验条在VA `10334461–1033446F`调用整数RateConvert（RVA `2A4780`），按范围截限、整数乘除向零截断，不是浮点百分比。
 
+### Steam信息页标题箭头：SEB只供边界
+
+2026-10-16重新沿具名`Draw_titleBarArrow RVA30DB80`核：`1030DC3D／1030DC9A`只有两次GameView.AddTouch239950，没有DrawSeb。后继`2399B0`在`102399E7`仅取Seb.GetBoundingRect；common74／SEB3的frame3／0是触摸与图像几何输入，不能直接当箭头PNG帧画。`10239A48–10239ADF`针对component1／18查询实际CheckTouch(id,value)，按boundsframe及选中结果选择TEX0／1／2／3，随后DrawImage23A460→DrawScaledImage23A530，最后才_addTouch／SetPaint；真正素材是`buttoneffect.png`。这与[raw13箭头helper](../prototype/include/dungeon_village_prototype/steam_manual_skin.hpp)同链，不重建第二套GPU算法。
+
+正式信息35／40／36／38共用箭头已纠正为显式`SteamManualArrowRequest`，保持原位置、boundsframe、触摸索引和顺序；`arrow_selected`必须来自各次真实CheckTouch1/value16或18，不按鼠标悬停推导。调用方将request交`steam_manual_arrow_skin`并消费其最终源裁片／目标矩形，不能再额外画common74。研究静态例图没有触点时明确供给false；完整OS选中／注册退休仍待平台接线。旧[收支布局图](examples/steam-income.png)保留正文／布局参考，其箭头来自修正前适配，不再作为最终箭头像素oracle；本批40新例图消费修正后的helper。
+
+### Steam40赠礼人物目录：三页与35分开
+
+2026-10-16。固定Steam2.56 `_draw1_2` 的 `103349D2–10335780`独立核对，正常producer为raw4菜单tag9（`10327B75–10327B9A`），创建40后沿共同Push／RemoveAllMenuForms；不是装备目录38的选择后继。Init `10313753`与35同取定义原序presence非0名单，但不重算35贡献／成就，仅首次执行event98。现固定两版event98都是等待后对话，不含本事件直接随机／声音opcode；传递消费者仍各按自身合同。
+
+Window220×168标题沿`冒険者リスト <0>/<1>`传tab+1／3，Box边界(17,74,219,184)；标题箭头复用具名helper30DB80：a=3×((main%16)/8)，左右(26−a,55)／(214+a,55)，Touch1的SEB3 boundsframe3／0、value16／18。行底、Touch11、15×15头像clip、当前静态职业身体、NEW和手形与上节35同原序，不重建第二套底行算法。行Y=97+19×可见序号，手形仍取自身SEB当前帧而非main模数。
+
+| 页签 | 40专属表头及行内容 |
+| --- | --- |
+| 0 | 姓名(30,69)、装备(172,69,anchor2)；行姓名(48,Y)，当前四装备(141+18×slot,Y−3)，空槽沿原mode5，不能套35等级／经验页。 |
+| 1 | image38等级头(54,70)；JP居住(88,69)、满足(140,69)、努力(187,69)，后两anchor2；非JP三项临时字号10，位置(88,71)／(142,71)／(187,71)。等级SEB11右锚(67,Y)，10级用image129(52,Y+2)；仅D[2]==1画mode9/index5即image91源(80,0,16,16)于(91,Y−2)；满足／努力SEB12右锚(151／193,Y+1)。presence2不等于已入住。 |
+| 2 | 四战斗头mode8，英语x48否则53，各加36×slot、y67；获勋头mode6/index1于(199,67)。四值SEB15右锚(80+36×slot,Y+2)，获勋SEB12右锚(211,Y+1)。 |
+
+尾部Scroll2实参(221,85,4,111,first,count−1,5)；底部是普通`冒険者を選択してください`于(120,200,anchor2)，不是35的总人数富文本。Draw虽保留tab3分支，正常Update只模3，不把残留代码认证为可操作第四页。Update `1032388A–10323C9A`原序上下→五行首行追随→独立左右→确认／DEBUG门控→soft2，确认和取消均清全部冻结名单NEW；确认40压64并绑定所选人物，取消Pop，子页返回保留父选择／首行／页签。
+
+[正式纯皮肤](../prototype/include/dungeon_village_prototype/steam_information_skin.hpp)的`steam_present_directory_skin`复用现information Owner、当前人物详情和已出版资源，拒错页／缺键／错名单／第四页，不新增载荷或重做Init／事件／交易／贡献。三页源常量与实际居住独立测试，公共底框／头像仍由35主责；原字体、共享scratch附效、OS输入与原窗口动态未由研究绘制代替。
+
 <a id="steam3439完整局部绘制合同待维护皮肤"></a>
 
 ### Steam34／39完整局部绘制合同

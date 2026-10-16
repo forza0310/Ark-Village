@@ -1,5 +1,15 @@
 # 当前研究验证与历史索引
 
+## 赠礼人物40与共用信息箭头 2026-10-16
+
+接`7f667a6`，独立核Steam40真实raw4/tag9入口、首次98、三页Draw及40→64；三页按装备、等级／居住／满足／努力、战斗／获勋分别交付，不套35四页。`steam_present_directory_skin`沿现information Owner、当前人物详情与住宅D[2]只读；复用稳定底行／四装备helper，未增Owner／codec／schema或新target。现套件扩三页差异、presence与入住独立、冻结名单／缺键／错页／第四页拒绝及只读，保留35原底框／头像／NEW有效断言。正常研究窗口接正式计划和现唯一Owner输入，三个有界例图入口只注入名单／已见98条件；原字体／OS完整拖动及原动态另验。
+
+审查另沿30DB80→239950→2399B0确认common74／SEB3仅供bounds，修正35／40／36／38误当直接贴图的实现，改显式`SteamManualArrowRequest`与真实左右CheckTouch结果；原位置／boundsframe／触摸索引及资源oracle保留，复用已核buttoneffect helper，不重写底层算法。Windows单Release动态构建通过，pages **1/1通过3.43秒**；箭头修正后的最终visuals **1/1通过1.86秒**。没有构建三份他人在途存取测试或运行长跑，`--world --check`通过。三页及共享税收90条件窗口各8帧正常退出；[三页例图](ui/examples/steam-present-directory.png)已查看，税收首屏与既有正式图对应半幅逐像素相同。旧收支例图仅保正文／布局参考，不作箭头oracle。
+
+同批[脚本页面合同](ui/PAGES.md#steam脚本事件11报纸15与等待16)分开raw15真实6／7行分页、raw11的40分流与局部演出、raw16通用wait后value1倒计时；修正内框／clip、系统槽16与写值1的区别。15维护分页／皮肤和11完整演出仍未交，不能因源锚增加冒称全页完成。保存使能具名入口未取得新运行期writer，保留原缺口，不新增无证报告；APK历史缺图表改指当前合同，覆盖／阶段／队列合并。
+
+新正式三页拼图55675字节；assets仍872文件／9504668字节，Release1395文件／225370548字节。四份已消费截图159776字节已清理，未新增audit、指纹或过程报告。计划按次消费释放、无实体根或永久输出；合法历史不称永久有界。世界5／应用8／系统2、128MiB及普通档边界不变，原字体／完整平台动态未认证。全部本轮编译、短测、窗口和子任务已退出，仅白名单本地提交research，保留其它维护者、三份在途测试与待确认Rank设计，不推送。
+
 ## 公共对话纯计划与TextLayout计时 2026-10-16
 
 接`0ac41e6`，新增实际职责模块[steam_dialogue_skin](prototype/include/dungeon_village_prototype/steam_dialogue_skin.hpp)，显式加入现application target；复用现公共窗框及原素材，无新target。标准零坐标raw0按原序给正文实例Draw、固定三头像／当前人物／怪物请求、姓名布局及末Touch2；English专属字号10／恢复独立保留，Steam姓名x53已从实际float位型纠正。输入纯合同保留Frame→键查询→IsEnd→Flush／SetText／Pop，必须提供Frame后的真实观测，Pop返回未知、非−1续talk显式未支持；不接Owner或改变现有直接关闭，不把trace再执行成重复Frame。现启动公共皮肤套件集中补头像／几何／原序／隐藏／绑定拒绝、DEBUG短路及分段边界，单Release动态构建和visuals **1/1通过1.80秒**；新模块独立标准C++17严格语法检查通过。纯计划无渲染末端变化，不重复窗口或长跑，不编译三份他人在途存取测试。

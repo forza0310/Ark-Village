@@ -33,10 +33,10 @@ bool frame(SteamInformationSkinPlan &plan,const SteamStartupFramePlan &parts,int
     }
     return true;
 }
-void arrow(SteamInformationSkinPlan &plan,int x,int frame,int value,int y=51) {
+void arrow(SteamInformationSkinPlan &plan,int x,int frame,int value,bool selected,int y=51) {
     const auto index=plan.draws.size();
-    // Steam已核common image74/SEB3；SEB自身offset(0,-3)留给消费者且只加一次。
-    plan.draws.emplace_back(StartupSkinDraw{StartupSkinPackage::common,74,3,frame,0,{}, {x,y}});
+    // 30DB80→239950/2399B0：common74/SEB3只取bounds，实际贴图是GameView buttoneffect。
+    plan.draws.emplace_back(SteamManualArrowRequest{{x,y},frame,selected});
     plan.touches.push_back({{1,value,{},index,0},{},{}});
 }
 void sprite(SteamInformationSkinPlan &plan,int image,int seb,int frame,int x,int y) {
@@ -79,7 +79,7 @@ bool directory_frame(SteamInformationSkinPlan &plan,const SteamInformationSkinOp
     if(!options.title_widths)return false;
     for(const int width:*options.title_widths)if(width<0)return false;
     const auto outer=steam_startup_window_skin(
-        {220,168,0,0,SteamStartupTextRole::message_title,(raw==35||raw==38)?tab+1:0},options.view_y,options.title_widths);
+        {220,168,0,0,SteamStartupTextRole::message_title,(raw==35||raw==38||raw==40)?tab+1:0},options.view_y,options.title_widths);
     const auto inner=steam_startup_box_skin({17,74,219,184},options.view_y);
     plan.raw=raw;
     return outer&&inner&&frame(plan,*outer,tab)&&frame(plan,*inner,tab);
@@ -102,6 +102,38 @@ void heading_layout(SteamInformationSkinPlan &plan,Role role,int tab,int x,int y
 void number(SteamInformationSkinPlan &plan,SteamFacilityAsset asset,int value,int x,int y,
             SteamFacilityNumberKind kind=SteamFacilityNumberKind::number) {
     plan.draws.emplace_back(SteamFacilityNumber{kind,asset,value,{x,y},0,4,-1});
+}
+// 35/40实际相同的行底→Touch→裁剪静态身体→NEW→手形，不扩用到布局不同的目录。
+bool human_row(SteamInformationSkinPlan &plan,const StartupHumanInformation &entry,
+               int row,int y,int selection) {
+    if(row==selection)plan.draws.emplace_back(StartupSkinRect{{23,y-3,191,18},{255,153,55},false});
+    plan.touches.push_back({{11,0x20000|row,std::array<int,4>{3,y-3,231,18},{},0},{0,-20,0,0},{}});
+    plan.draws.emplace_back(StartupSkinRect{{29,y-2,16,16},{196,236,169},false});
+    // 原DrawRect的15是末端差；clip的15仍是实际尺寸。
+    plan.draws.emplace_back(StartupSkinRect{{29,y-2,16,16},{204,204,204},true});
+    plan.draws.emplace_back(SteamFacilityClip{SteamFacilityClipKind::push_intersect,{29,y-2,15,15}});
+    const auto body=startup_title_actor_skin(entry.details.profession,entry.details.sex,-1,0,1,false);
+    if(!body)return false;
+    plan.draws.emplace_back(SteamInformationHumanBody{body->body,{37,y+21}});
+    plan.draws.emplace_back(SteamFacilityClip{SteamFacilityClipKind::pop,{}});
+    if(entry.newly_unlocked)image(plan,147,20,9,10,y+2);
+    if(row==selection)sprite(plan,70,21,-1,21,y+8);
+    return true;
+}
+bool human_equipment(SteamInformationSkinPlan &plan,const StartupWorldRuntimeState &state,
+                     const StartupHumanDetails &human,int y) {
+    for(int slot=0;slot<4;++slot) {
+        const auto equipment=human.equipment[static_cast<std::size_t>(slot)];
+        if(equipment) {
+            if(!icons(plan,startup_world_equipment_icon_draws(state,slot==0?1:slot==3?3:2,*equipment),
+                      141+18*slot,y-3))return false;
+        } else {
+            if(slot==0)return false;
+            plan.draws.emplace_back(StartupSkinDraw{StartupSkinPackage::common,24,-1,0,0,
+                                                   {126,0,18,18},{141+18*slot,y-3}});
+        }
+    }
+    return true;
 }
 // 以下是子菜单实际逐行调用的原谓词，不使用raw3跨行NEW优先级或业务目录过滤。
 std::optional<bool> equipment_notice(const StartupWorldRuntimeState &s) {
@@ -504,7 +536,8 @@ std::optional<SteamInformationSkinPlan> steam_adventurer_information_skin(
     const int tab=view->selection_or_period;
     if(tab<0||tab>3||!directory_frame(plan,options,35,tab))return {};
     const int shift=3*((view->frame%16)/8);
-    arrow(plan,26-shift,3,16,55);arrow(plan,214+shift,0,18,55);
+    arrow(plan,26-shift,3,16,options.arrow_selected[0],55);
+    arrow(plan,214+shift,0,18,options.arrow_selected[1],55);
     if(tab==0) {
         text(plan,Role::name_header,tab,-1,30,69,{},brown);
         image(plan,38,17,10,133,70);
@@ -533,20 +566,7 @@ std::optional<SteamInformationSkinPlan> steam_adventurer_information_skin(
         const auto &entry=(*view->humans)[static_cast<std::size_t>(row)];
         const auto &human=entry.details;
         const int y=97+19*(row-view->first_visible);
-        if(row==view->selection)
-            plan.draws.emplace_back(StartupSkinRect{{23,y-3,191,18},{255,153,55},false});
-        plan.touches.push_back({{11,0x20000|row,std::array<int,4>{3,y-3,231,18},{},0},
-                               {0,-20,0,0},{}});
-        plan.draws.emplace_back(StartupSkinRect{{29,y-2,16,16},{196,236,169},false});
-        // Steam Graphics.DrawRect的15×15参数含端点，半开描边为16×16；clip仍15×15。
-        plan.draws.emplace_back(StartupSkinRect{{29,y-2,16,16},{204,204,204},true});
-        plan.draws.emplace_back(SteamFacilityClip{SteamFacilityClipKind::push_intersect,{29,y-2,15,15}});
-        const auto body=startup_title_actor_skin(human.profession,human.sex,-1,0,1,false);
-        if(!body)return {};
-        plan.draws.emplace_back(SteamInformationHumanBody{body->body,{37,y+21}});
-        plan.draws.emplace_back(SteamFacilityClip{SteamFacilityClipKind::pop,{}});
-        if(entry.newly_unlocked)image(plan,147,20,9,10,y+2);
-        if(row==view->selection)sprite(plan,70,21,-1,21,y+8);
+        if(!human_row(plan,entry,row,y,view->selection))return {};
         if(tab==0) {
             if(human.level<1||human.level>10||human.experience<0||human.threshold<=0)return {};
             text(plan,Role::row_name,tab,row,48,y,{},brown,0,human.name);
@@ -565,18 +585,7 @@ std::optional<SteamInformationSkinPlan> steam_adventurer_information_skin(
         } else if(tab==1) {
             number(plan,SteamFacilityAsset::number05,human.satisfaction,80,y+1);
             number(plan,SteamFacilityAsset::number05,human.effort,119,y+1);
-            for(int slot=0;slot<4;++slot) {
-                const auto equipment=human.equipment[static_cast<std::size_t>(slot)];
-                if(equipment) {
-                    if(!icons(plan,startup_world_equipment_icon_draws(state,slot==0?1:slot==3?3:2,*equipment),
-                              141+18*slot,y-3))return {};
-                } else {
-                    if(slot==0)return {};
-                    // Draw_icon mode5直接使用dx/dy；不能套普通道具mode1的背景(-1,-1)。
-                    plan.draws.emplace_back(StartupSkinDraw{StartupSkinPackage::common,24,-1,0,0,
-                                                           {126,0,18,18},{141+18*slot,y-3}});
-                }
-            }
+            if(!human_equipment(plan,state,human,y))return {};
         } else if(tab==2) {
             for(int slot=0;slot<4;++slot)
                 number(plan,SteamFacilityAsset::number08,human.combat[static_cast<std::size_t>(slot)],80+36*slot,y+2);
@@ -596,6 +605,60 @@ std::optional<SteamInformationSkinPlan> steam_adventurer_information_skin(
     footer.argument=count;
     return plan;
 }
+std::optional<SteamInformationSkinPlan> steam_present_directory_skin(
+    const StartupWorldRuntimeState &state,std::uint64_t page,const SteamInformationSkinOptions &options) {
+    const auto view=inspect_startup_world_information_page(state,page);
+    if(!view||view->raw!=40||!view->humans||view->humans->empty()||
+       view->humans->size()>static_cast<std::size_t>(std::numeric_limits<int>::max()))return {};
+    const int tab=view->selection_or_period;
+    SteamInformationSkinPlan plan;
+    if(tab<0||tab>2||!directory_frame(plan,options,40,tab))return {};
+    const int shift=3*((view->frame%16)/8);
+    arrow(plan,26-shift,3,16,options.arrow_selected[0],55);
+    arrow(plan,214+shift,0,18,options.arrow_selected[1],55);
+    if(tab==0) {
+        text(plan,Role::name_header,tab,-1,30,69,{},brown);
+        text(plan,Role::equipment_header,tab,-1,172,69,2,brown);
+    } else if(tab==1) {
+        image(plan,38,17,10,54,70);
+        const int y=options.japanese?69:71,size=options.japanese?0:10;
+        // 原40是三条普通DrawString；不能借35的TextLayout区域或English专属条件。
+        text(plan,Role::residence_header,tab,-1,88,y,{},brown,size);
+        text(plan,Role::satisfaction_header,tab,-1,options.japanese?140:142,y,2,brown,size);
+        text(plan,Role::effort_header,tab,-1,187,y,2,brown,size);
+    } else {
+        for(int slot=0;slot<4;++slot)sprite(plan,37,98,slot,(options.english?48:53)+36*slot,67);
+        plan.draws.emplace_back(StartupSkinDraw{StartupSkinPackage::common,35,-1,0,0,
+                                               {14,0,14,14},{199,67}});
+    }
+    const int count=static_cast<int>(view->humans->size());
+    for(int row=view->first_visible;row<count&&row-view->first_visible<5;++row) {
+        const auto &entry=(*view->humans)[static_cast<std::size_t>(row)];
+        const auto &human=entry.details;
+        const int y=97+19*(row-view->first_visible);
+        if(!human_row(plan,entry,row,y,view->selection))return {};
+        if(tab==0) {
+            text(plan,Role::row_name,tab,row,48,y,{},brown,0,human.name);
+            if(!human_equipment(plan,state,human,y))return {};
+        } else if(tab==1) {
+            if(human.level<1||human.level>10)return {};
+            if(human.level==10)image(plan,129,20,6,52,y+2);
+            else number(plan,SteamFacilityAsset::number03,human.level,67,y);
+            // Draw_icon mode9/index5，直接原裁片；不借某设施定义图标或人气/住宅类别猜入住。
+            if(human.resident)plan.draws.emplace_back(StartupSkinDraw{StartupSkinPackage::common,
+                91,-1,0,0,{80,0,16,16},{91,y-2}});
+            number(plan,SteamFacilityAsset::number05,human.satisfaction,151,y+1);
+            number(plan,SteamFacilityAsset::number05,human.effort,193,y+1);
+        } else {
+            for(int slot=0;slot<4;++slot)
+                number(plan,SteamFacilityAsset::number08,human.combat[static_cast<std::size_t>(slot)],80+36*slot,y+2);
+            number(plan,SteamFacilityAsset::number05,human.medals,211,y+1);
+        }
+    }
+    scroll(plan,count,view->first_visible,5,options.scroll_first_touch,111);
+    text(plan,Role::choose_adventurer,tab,-1,120,200,2,brown);
+    return plan;
+}
 std::optional<SteamInformationSkinPlan> steam_income_information_skin(
     const StartupWorldRuntimeState &state,std::uint64_t page,
     const SteamInformationSkinOptions &options) {
@@ -612,8 +675,8 @@ std::optional<SteamInformationSkinPlan> steam_income_information_skin(
     SteamInformationSkinPlan plan;
     if(!frame(plan,*outer,period) || !frame(plan,*inner,period))return {};
     const int shift=3*((view->frame%16)/8);
-    arrow(plan,22-shift,3,16);
-    arrow(plan,218+shift,0,18);
+    arrow(plan,22-shift,3,16,options.arrow_selected[0]);
+    arrow(plan,218+shift,0,18,options.arrow_selected[1]);
     // 页签先画；非日文仅接下来的收入/支出表头临时请求10字号。
     text(plan,Role::period,period,-1,options.japanese?28:26,65,{},brown);
     text(plan,Role::income_header,period,-1,options.japanese?121:108,65,{},gray,options.japanese?0:10);
@@ -708,7 +771,8 @@ std::optional<SteamInformationSkinPlan> steam_equipment_information_skin(
     const int tab=view->selection_or_period;
     if(!directory_frame(plan,options,38,tab))return {};
     const int shift=3*((view->frame%16)/8);
-    arrow(plan,26-shift,3,16,55);arrow(plan,214+shift,0,18,55);
+    arrow(plan,26-shift,3,16,options.arrow_selected[0],55);
+    arrow(plan,214+shift,0,18,options.arrow_selected[1],55);
     sprite(plan,128,88,tab+1,25,66);
     sprite(plan,37,98,equipment.attributes[0],137,67);
     sprite(plan,37,98,equipment.attributes[1],180,67);

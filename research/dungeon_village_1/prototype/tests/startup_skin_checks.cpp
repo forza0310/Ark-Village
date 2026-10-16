@@ -555,9 +555,9 @@ void income_skin(Checks &check,const std::filesystem::path &source_root) {
         const auto &touch=plan.touches[side];
         check(touch.component==1 && touch.value==(side==0?16:18) && touch.image_draw && !touch.rectangle,
               "箭头保留原SEB帮助器注册，不猜物理热区");
-        const auto &image=std::get<StartupSkinDraw>(plan.draws.at(*touch.image_draw));
-        check(image.image==74 && image.sprite==3 && image.frame==(side==0?3:0) &&
-                  image.offset==std::array<int,2>{side==0?22:218,51},"箭头原身份/帧/初始锚");
+        const auto &image=std::get<SteamManualArrowRequest>(plan.draws.at(*touch.image_draw));
+        check(image.bounds_frame==(side==0?3:0) && !image.selected &&
+                  image.position==std::array<int,2>{side==0?22:218,51},"箭头原SEB3 bounds帧/初始锚，实际贴图由GameView helper消费");
     }
     owner.page_phases.at(id)=1;owner.page_counters.at(id)=8;options.japanese=true;options.view_y=20;
     const auto year=*steam_income_information_skin(owner,id,options);
@@ -567,8 +567,8 @@ void income_skin(Checks &check,const std::filesystem::path &source_root) {
               labels(year,Role::profit_value)[0]->rgb==std::array<int,3>{0,100,255},
           "日文分支原表头与年统计正利润，未借非日文临时字体");
     check(labels(year,Role::title)[0]->position[1]==45 && labels(year,Role::category)[0]->position[1]==90 &&
-              std::get<StartupSkinDraw>(year.draws.at(*year.touches[0].image_draw)).offset==std::array<int,2>{19,51} &&
-              std::get<StartupSkinDraw>(year.draws.at(*year.touches[1].image_draw)).offset==std::array<int,2>{221,51},
+              std::get<SteamManualArrowRequest>(year.draws.at(*year.touches[0].image_draw)).position==std::array<int,2>{19,51} &&
+              std::get<SteamManualArrowRequest>(year.draws.at(*year.touches[1].image_draw)).position==std::array<int,2>{221,51},
           "VIEW_Y只进入窗口/内框帮助器，正文与16槽箭头不重复叠偏移");
     owner.scripts.pages.back().lifecycle=3;
     check(steam_income_information_skin(owner,id,options).has_value(),"挂起年页可只读绘制");
@@ -3460,6 +3460,95 @@ void adventurer_information_skin(Checks &check,const std::filesystem::path &root
     }
     options.title_widths.reset();
     check(!steam_adventurer_information_skin(owner,id,options),"35缺真实标题测宽拒绝而非猜字宽");
+    // 同一最小人物夹具的40条件页，只验证区别；35已主责公共行底/clip/NEW/身体原序。
+    auto present=owner;
+    present.scripts.pages.back().legacy_page=40;
+    present.human_presence.at(2)=2; // 原!=0含另一种presence；入住D[2]仍独立。
+    for(auto &home:present.human_homes)home.second[2]=0;
+    present.human_homes.at(1)[2]=1;
+    options.title_widths=std::array<int,2>{80,82};
+    options.arrow_selected={true,false};
+    const auto present_before=startup_world_state_digest(present);
+    const auto gifts=steam_present_directory_skin(present,id,options);
+    check(gifts&&gifts->raw==40&&gifts->touches.size()==9&&
+          label(*gifts,Role::name_header).position==std::array<int,2>{30,69}&&
+          label(*gifts,Role::equipment_header).position==std::array<int,2>{172,69}&&
+          label(*gifts,Role::equipment_header).mode==Mode::plain&&
+          label(*gifts,Role::choose_adventurer).position==std::array<int,2>{120,200}&&
+          label(*gifts,Role::choose_adventurer).mode==Mode::plain&&
+          label(*gifts,Role::choose_adventurer).anchor==2,
+          "40首格姓名+装备及普通选择提示，不借35等级/经验/人数富文本");
+    const auto &gift_left=std::get<SteamManualArrowRequest>(gifts->draws.at(*gifts->touches.at(0).image_draw));
+    const auto &gift_right=std::get<SteamManualArrowRequest>(gifts->draws.at(*gifts->touches.at(1).image_draw));
+    check(gift_left.position==std::array<int,2>{26,55}&&gift_left.bounds_frame==3&&gift_left.selected&&
+          gift_right.position==std::array<int,2>{214,55}&&gift_right.bounds_frame==0&&!gift_right.selected&&
+          gifts->touches.at(0).component==1&&gifts->touches.at(0).value==16&&
+          gifts->touches.at(1).component==1&&gifts->touches.at(1).value==18&&
+          std::none_of(gifts->draws.begin(),gifts->draws.end(),[](const auto &draw){
+              const auto *image=std::get_if<StartupSkinDraw>(&draw);return image&&image->image==74;
+          }),"40两原bounds请求分别携真实选中结果，不再重复画common74冒充buttoneffect");
+    check(std::none_of(gifts->draws.begin(),gifts->draws.end(),[](const auto &draw){
+        const auto *part=std::get_if<StartupSkinDraw>(&draw);return part&&part->image==87;
+    })&&gifts->touches.at(2).value==0x20000&&gifts->touches.at(2).rectangle==std::array<int,4>{3,94,231,18}&&
+          gifts->touches.at(7).scroll_arguments==std::array<int,3>{6,5,0x20000},
+          "40确无经验条且复用真实六人目录及18高行触摸，presence2不被排除");
+    for(int slot=1;slot<4;++slot) {
+        const auto empty=std::find_if(gifts->draws.begin(),gifts->draws.end(),[=](const auto &draw){
+            const auto *part=std::get_if<StartupSkinDraw>(&draw);
+            return part&&part->image==24&&part->crop==std::array<int,4>{126,0,18,18}&&
+                   part->offset==std::array<int,2>{141+18*slot,94};
+        });
+        check(empty!=gifts->draws.end(),"40页0实际沿当前四装备图标，不挪用35页0内容");
+    }
+    present.page_phases.at(id)=1;
+    const auto status=*steam_present_directory_skin(present,id,options);
+    check(image(status,38).offset==std::array<int,2>{54,70}&&
+          label(status,Role::residence_header).position==std::array<int,2>{88,71}&&
+          label(status,Role::satisfaction_header).position==std::array<int,2>{142,71}&&
+          label(status,Role::effort_header).position==std::array<int,2>{187,71}&&
+          label(status,Role::residence_header).font_size==10&&
+          number(status,Asset::number03,{67,97}).value==1&&
+          image(status,129).offset==std::array<int,2>{52,118}&&
+          image(status,91).crop==std::array<int,4>{80,0,16,16}&&image(status,91).offset==std::array<int,2>{91,95}&&
+          number(status,Asset::number05,{151,98}).value==present.shop_humans.at(1).satisfaction&&
+          number(status,Asset::number05,{193,98}).value==present.scene.world.world.ai.growth.at(1).definition.legacy_u,
+          "40页1独立等级/大师/居住/满足/努力坐标，居住图仅D[2]==1");
+    check(std::count_if(status.draws.begin(),status.draws.end(),[](const auto &draw){
+        const auto *part=std::get_if<StartupSkinDraw>(&draw);return part&&part->image==91;
+    })==1,"40 presence2但未入住者不画住宅，不能按presence推resident");
+    options.japanese=true;
+    const auto status_jp=*steam_present_directory_skin(present,id,options);
+    check(label(status_jp,Role::residence_header).position==std::array<int,2>{88,69}&&
+          label(status_jp,Role::satisfaction_header).position==std::array<int,2>{140,69}&&
+          label(status_jp,Role::effort_header).position==std::array<int,2>{187,69}&&
+          label(status_jp,Role::residence_header).font_size==0,"40日文表头不误套非JP字号/两像素偏移");
+    options.japanese=false;options.english=true;present.page_phases.at(id)=2;
+    const auto combat=*steam_present_directory_skin(present,id,options);
+    check(image(combat,37).offset==std::array<int,2>{48,67}&&
+          number(combat,Asset::number08,{80,99}).value==present.scene.world.world.ai.growth.at(1).derived.combat[0]&&
+          number(combat,Asset::number05,{211,98}).value==present.human_calendar.at(1).celebrations,
+          "40页2用当前战斗缓存/获勋，英语属性头专属48锚");
+    present.page_phases.at(id)=0;
+    present.information_page_data.at(id).selection=5;present.information_page_data.at(id).first_visible=1;
+    const auto last=*steam_present_directory_skin(present,id,options);
+    check(last.touches.at(2).value==0x20001&&last.touches.at(6).value==0x20005&&
+          last.touches.at(7).rectangle==std::array<int,4>{221,85,3,111},
+          "40保留真实首行及绝对选择，原111高滚动轨道不借110");
+    const auto frozen_before=startup_world_state_digest(present);
+    check(steam_present_directory_skin(present,id,options)&&startup_world_state_digest(present)==frozen_before,
+          "40查询不清NEW/重算贡献/发98/扣款/改随机或父子栈");
+    for(int fault=0;fault<4;++fault) {
+        auto bad=present;
+        if(fault==0)bad.page_phases.at(id)=3;
+        if(fault==1)bad.information_page_data.at(id).lists.front()[0]=7;
+        if(fault==2)bad.human_homes.erase(1);
+        if(fault==3)bad.scripts.pages.back().legacy_page=35;
+        const auto before=startup_world_state_digest(bad);
+        check(!steam_present_directory_skin(bad,id,options)&&startup_world_state_digest(bad)==before,
+              "40拒原不可达第四页/名单失配/缺当前住宅字段/错页，不修补字段");
+    }
+    present.information_page_data.at(id).selection=0;present.information_page_data.at(id).first_visible=0;
+    check(startup_world_state_digest(present)==present_before,"40三页及滚动条件恢复后完整Owner未被绘制改变");
     const auto assets=root.parent_path();
     for(const auto asset:{Asset::number03,Asset::number11}) {
         const int width=asset==Asset::number03?8:7;

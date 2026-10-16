@@ -3,6 +3,7 @@
 #include "dungeon_village_prototype/steam_startup_skin.hpp"
 #include "dungeon_village_prototype/steam_facility_skin.hpp"
 #include "dungeon_village_prototype/startup_title_actor_skin.hpp"
+#include "dungeon_village_prototype/steam_manual_skin.hpp"
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -19,7 +20,8 @@ enum class SteamInformationTextRole {
     village_name, town_stat_label, town_adventurer_count, town_equipment_count,
     town_equipment_kinds, facility_income_list, facility_profit_header,
     facility_name, facility_tracking_hint, menu_entry,
-    tax_title, tax_owner_header, tax_income_header, tax_total_label
+    tax_title, tax_owner_header, tax_income_header, tax_total_label,
+    residence_header, choose_adventurer
 };
 enum class SteamInformationTextMode { plain, layout, rich_text };
 struct SteamInformationText {
@@ -56,7 +58,7 @@ struct SteamInformationTouch : SteamStartupTouch {
     std::array<int,4> margin{}; // 保留原TouchOption.Margin，不提前混成OS热区。
     std::optional<std::array<int,3>> scroll_arguments; // count、可见行数、0x20000。
 };
-// Steam35及菜单摘要的静态职业身体：在有序clip内部消费human包SEB，offset仅加一次。
+// Steam35/40及菜单摘要的静态职业身体：在有序clip内部消费human包SEB，offset仅加一次。
 // 不创建W，不附武器/HP，不把共享scratch未知附加效果伪装成已还原。
 struct SteamInformationHumanBody {
     StartupTitleBodyDraw body;
@@ -70,7 +72,8 @@ struct SteamInformationImageClip {
 };
 using SteamInformationDraw = std::variant<StartupSkinRect,StartupSkinDraw,
     SteamInformationText,SteamInformationLine,SteamInformationNumber,
-    SteamFacilityClip,SteamInformationHumanBody,SteamFacilityNumber,SteamInformationImageClip>;
+    SteamFacilityClip,SteamInformationHumanBody,SteamFacilityNumber,SteamInformationImageClip,
+    SteamManualArrowRequest>;
 struct SteamInformationSkinPlan {
     std::vector<SteamInformationDraw> draws;
     // image_draw引用有序draws下标；目录行及两项滚动组件保留原矩形和附加参数。
@@ -124,6 +127,7 @@ struct SteamInformationSkinOptions {
     bool scroll_first_touch{}; // 平台实际CheckFirstTouch(12,0x40000)，非“鼠标悬停”。
     bool english{}; // Steam35属性标题独立En分支，不能由!japanese推导。
     std::optional<int> bottom_width{}; // 仅34必需：当前Font对底部原字符串的真实StringWidth。
+    std::array<bool,2> arrow_selected{}; // 原CheckTouch(1,value16/18)实际查询，不用鼠标悬停猜。
 };
 // raw90沿冻结居民引用读取当前G；皮肤不枚举入住资格，也不收税或刷新税额。
 struct SteamTaxInformationSkinRow {
@@ -148,6 +152,11 @@ std::optional<SteamInformationSkinPlan> steam_facility_information_skin(
     const SteamInformationSkinOptions &options);
 // Steam35四页完整局部计划；按有序draws执行clip/身体/文字/数字，不推进Owner。
 std::optional<SteamInformationSkinPlan> steam_adventurer_information_skin(
+    const StartupWorldRuntimeState &state, std::uint64_t page,
+    const SteamInformationSkinOptions &options);
+// Steam raw40真实赠礼人物目录，三页分别装备、等级/居住/满足/努力、战斗/获勋。
+// 复用已初始化40的冻结名单/选择/首行，不能用35页签内容或重算贡献代替；确认进入64由Owner负责。
+std::optional<SteamInformationSkinPlan> steam_present_directory_skin(
     const StartupWorldRuntimeState &state, std::uint64_t page,
     const SteamInformationSkinOptions &options);
 // 仅Steam raw36局部绘制：调用方安装SubForm原点，不能再给每条图元重复叠VIEW_Y。

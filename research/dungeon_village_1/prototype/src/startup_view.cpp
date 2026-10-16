@@ -1126,11 +1126,24 @@ std::optional<SteamInformationSkinPlan> window_tax_plan(const StartupWorldRuntim
     options.title_widths=std::array<int,2>{int(font.measure("税金收入")),int(font.measure("税金收入"))};
     return steam_tax_information_skin(state,page,options);
 }
-// 90研究执行器保持图元顺序；中文/字体与当前静态SEB手形帧仍属平台适配。
-void draw_tax_information(const SteamInformationSkinPlan &plan,SourceSprites &sprites,const ChineseFont &font,
+std::optional<SteamInformationSkinPlan> window_present_plan(const StartupWorldRuntimeState &state,
+    std::uint64_t page,const ChineseFont &font) {
+    const auto view=inspect_startup_world_information_page(state,page);
+    if(!view||view->raw!=40)return {};
+    const auto title="冒险者名单 "+std::to_string(view->selection_or_period+1)+"/3";
+    SteamInformationSkinOptions options;options.view_y=23;
+    // 窗口尚未交接原CheckTouch持续状态；显式未选中，不用鼠标悬停或目录游标推箭头TEX。
+    options.arrow_selected={false,false};
+    options.title_widths=std::array<int,2>{int(font.measure(title)),int(font.measure(title))};
+    return steam_present_directory_skin(state,page,options);
+}
+// 40/90共用有序目录图元；Noto、简化TextLayout及静态SEB手形帧均为维护适配，非Steam像素认证。
+void draw_information_directory(const SteamInformationSkinPlan &plan,SourceSprites &sprites,const ChineseFont &font,
                           Vector2 origin=human_overview_origin,int finger_frame=0) {
-    if(plan.raw!=90||plan.soft_labels!=std::array<int,2>{0,0}||finger_frame<0||finger_frame>5)
-        throw std::runtime_error("税收皮肤执行器来源拒绝");
+    if((plan.raw!=40&&plan.raw!=90)||
+       plan.soft_labels!=(plan.raw==90?std::array<int,2>{0,0}:std::array<int,2>{0,2})||
+       finger_frame<0||finger_frame>5)
+        throw std::runtime_error("信息目录执行器来源拒绝");
     const auto color=[](std::array<int,3> rgb){return Color{static_cast<unsigned char>(rgb[0]),
         static_cast<unsigned char>(rgb[1]),static_cast<unsigned char>(rgb[2]),255};};
     bool clipped=false;
@@ -1138,12 +1151,31 @@ void draw_tax_information(const SteamInformationSkinPlan &plan,SourceSprites &sp
         if(const auto *r=std::get_if<StartupSkinRect>(&draw)) {
             const Rectangle rectangle{origin.x+r->rect[0],origin.y+r->rect[1],float(r->rect[2]),float(r->rect[3])};
             if(r->outline)DrawRectangleLinesEx(rectangle,1,color(r->rgb));else DrawRectangleRec(rectangle,color(r->rgb));
+        } else if(const auto *request=std::get_if<SteamManualArrowRequest>(&draw)) {
+            if(plan.raw!=40)throw std::runtime_error("信息目录箭头请求来源拒绝");
+            const auto arrow=steam_manual_arrow_skin(*request,sprites.manual_arrow_bounds(request->bounds_frame),128);
+            if(!arrow)throw std::runtime_error("人物目录箭头效果计划拒绝");
+            const auto &crop=arrow->crop;const auto &destination=arrow->destination;
+            sprites.crop("steam-common/buttoneffect.png",
+                {float(crop[0]),float(crop[1]),float(crop[2]),float(crop[3])},
+                {origin.x+destination[0],origin.y+destination[1]},true,
+                Vector2{destination[2],destination[3]});
         } else if(const auto *image=std::get_if<StartupSkinDraw>(&draw)) {
             if(image->package!=StartupSkinPackage::common)throw std::runtime_error("税收资源组拒绝");
             if(image->image==103&&image->sprite==12)
                 sprites.facility_image({SteamFacilityAsset::number05,image->offset,image->frame,{}},origin);
             else if(image->image==70&&image->sprite==21)
                 sprites.facility_image({SteamFacilityAsset::finger,image->offset,image->frame<0?finger_frame:image->frame,{}},origin);
+            else if(plan.raw==40&&image->sprite<0) {
+                if(!image->crop[2]||!image->crop[3])continue;
+                const auto resource=steam_information_image(image->image);
+                if(!resource)throw std::runtime_error("人物目录裁片缺正式资源映射");
+                sprites.crop(std::string(*resource),{float(image->crop[0]),float(image->crop[1]),
+                    float(image->crop[2]),float(image->crop[3])},
+                    {origin.x+image->offset[0],origin.y+image->offset[1]},true);
+            } else if(plan.raw==40&&image->image==37&&image->sprite==98)
+                sprites.published_sprite(37,"steam-facility-common/original/common/icon_param00.png",
+                    "original/common/icon_param00.seb",image->offset,image->frame,{},origin);
             else {
                 if(image->sprite<0&&(!image->crop[2]||!image->crop[3]))continue;
                 sprites.visual({StartupVisualResource::common,image->sprite,image->image,image->frame,
@@ -1153,19 +1185,43 @@ void draw_tax_information(const SteamInformationSkinPlan &plan,SourceSprites &sp
             using R=SteamInformationTextRole;
             std::string value;
             switch(text->role) {
+            case R::title:
+                if(plan.raw!=40)throw std::runtime_error("目录标题角色来源拒绝");
+                value="冒险者名单 "+std::to_string(text->period+1)+"/3";break;
             case R::tax_title:value="税金收入";break;
             case R::tax_owner_header:value="住宅所有者";break;
             case R::tax_income_header:value="收入";break;
             case R::tax_total_label:value="合计";break;
+            case R::name_header:value="姓名";break;
+            case R::equipment_header:value="装备";break;
+            case R::residence_header:value="居住";break;
+            case R::satisfaction_header:value="满足";break;
+            case R::effort_header:value="努力";break;
+            case R::choose_adventurer:value="请选择冒险者";break;
             case R::row_name:value=text->value;break;
-            default:throw std::runtime_error("税收文字角色未接");
+            default:throw std::runtime_error("信息目录文字角色未接");
             }
-            if(text->mode!=SteamInformationTextMode::plain)throw std::runtime_error("税收文字方法拒绝");
+            const bool layout=text->mode==SteamInformationTextMode::layout;
+            if((plan.raw==90&&layout)||text->mode==SteamInformationTextMode::rich_text)
+                throw std::runtime_error("信息目录文字方法拒绝");
             const float size=text->font_size?float(text->font_size):12.F;
-            float x=origin.x+text->position[0];
-            if(text->anchor.value_or(0)&2)x-=font.measure(value,size)/2;
-            else if(text->anchor.value_or(0)&4)x-=font.measure(value,size);
-            font.text(value,x,origin.y+text->position[1],color(text->rgb),size);
+            float x=origin.x+text->position[0],y=origin.y+text->position[1];
+            const int anchor=text->anchor.value_or(0);
+            if(anchor&2)x+=(layout?float(text->extent[0])/2:0.F)-font.measure(value,size)/2;
+            else if(anchor&4)x+=(layout?float(text->extent[0]):0.F)-font.measure(value,size);
+            if(layout) {
+                if(clipped||text->extent[0]<=0||text->extent[1]<=0)
+                    throw std::runtime_error("人物目录文字裁剪载荷拒绝");
+                if(anchor&32)y+=(float(text->extent[1])-size)/2;
+                else if(anchor&64)y+=float(text->extent[1])-size;
+                BeginScissorMode(int(origin.x)+text->position[0],int(origin.y)+text->position[1],
+                    text->extent[0],text->extent[1]);
+                font.manual_text(value,x,y,float(text->extent[0]),size,text->line_space.value_or(0),color(text->rgb));
+                EndScissorMode();
+            } else {
+                if(plan.raw==40) {if(anchor&32)y-=size/2;else if(anchor&64)y-=size;}
+                font.text(value,x,y,color(text->rgb),size);
+            }
         } else if(const auto *clip=std::get_if<SteamFacilityClip>(&draw)) {
             if(clip->kind==SteamFacilityClipKind::push_intersect) {
                 if(clipped)throw std::runtime_error("税收头像嵌套裁剪未接");
@@ -1179,6 +1235,29 @@ void draw_tax_information(const SteamInformationSkinPlan &plan,SourceSprites &sp
     }
     if(clipped){EndScissorMode();throw std::runtime_error("税收头像裁剪未闭合");}
     // 原soft90两项皆空；Touch2无矩形，不在画面中伪造确定/返回按钮。
+    if(plan.raw==40)font.text("返回",188,272);
+}
+std::vector<SteamStartupTouch> information_directory_touches(
+    const SteamInformationSkinPlan &plan,SourceSprites &sprites) {
+    std::vector<SteamStartupTouch> result;
+    for(const auto &request:plan.touches) {
+        SteamStartupTouch touch=request;
+        if(!touch.rectangle&&touch.image_draw&&*touch.image_draw<plan.draws.size()) {
+            const auto *arrow_request=std::get_if<SteamManualArrowRequest>(&plan.draws[*touch.image_draw]);
+            if(!arrow_request)
+                throw std::runtime_error("人物目录箭头触摸来源拒绝");
+            const auto arrow=steam_manual_arrow_skin(*arrow_request,
+                sprites.manual_arrow_bounds(arrow_request->bounds_frame),128);
+            if(!arrow)throw std::runtime_error("人物目录箭头触区效果计划拒绝");
+            touch.rectangle=arrow->touch_rectangle;
+        }
+        if(touch.rectangle) {
+            auto &r=*touch.rectangle;r[0]+=request.margin[0];r[1]+=request.margin[2];
+            r[2]+=request.margin[1]-request.margin[0];r[3]+=request.margin[3]-request.margin[2];
+        }
+        result.push_back(touch);
+    }
+    return result;
 }
 std::optional<SteamInformationSkinPlan> tax_information_example(bool tail,const ChineseFont &font) {
     StartupSession initial;StartupWorldRuntimeSession runtime(initial.state(),ref::WorldRandomStream::from_java_seed(1));
@@ -1199,6 +1278,27 @@ std::optional<SteamInformationSkinPlan> tax_information_example(bool tail,const 
         if(input_startup_world_tax_page(state,id,input)!=StartupWorldRuntimeError::none)return {};
     }
     return window_tax_plan(state,id,font);
+}
+std::optional<SteamInformationSkinPlan> present_directory_example(int tab,const ChineseFont &font) {
+    if(tab<0||tab>2)return {};
+    StartupSession initial;StartupWorldRuntimeSession runtime(initial.state(),ref::WorldRandomStream::from_java_seed(1));
+    auto state=runtime.state();state.scripts.pages.front().lifecycle=3;state.scripts.executing_page.reset();
+    // 六定义仅作为已开放名单条件，含原p2；不造W、不赠装备、不修改库存或人物属性。
+    for(int row=0;row<6;++row)state.human_presence.at(row)=row==5?2:1;
+    state.scripts.event_calls[98]=1; // 本批只看目录，不用旧关闭适配跳过首次说明。
+    ref::WorldScriptPage page;page.kind=ref::WorldScriptPageKind::raw_page;page.legacy_page=40;page.lifecycle=0;
+    const auto opened=ref::prepare_world_script_page(startup_world_runtime_scripts(state),page);
+    if(!opened.candidate||opened.candidate->inserted_pages.size()!=1||
+       !write_startup_world_runtime_scripts(state,opened.candidate->state))return {};
+    const auto ready=prepare_startup_world_runtime(state);if(!ready.candidate)return {};
+    state=*ready.candidate;const auto id=state.scripts.pages.back().id;
+    StartupInformationInput input;input.select_row=5;
+    if(input_startup_world_information_page(state,id,input)!=StartupWorldRuntimeError::none)return {};
+    for(int step=0;step<tab;++step) {
+        input={};input.right=true;
+        if(input_startup_world_information_page(state,id,input)!=StartupWorldRuntimeError::none)return {};
+    }
+    return window_present_plan(state,id,font);
 }
 const char *human_overview_label(SteamHumanOverviewTextRole role,bool recovery,int argument) {
     switch(role) {
@@ -3280,6 +3380,7 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
     const bool residence_fixture=inspect_page=="residence-candidates"||inspect_page=="residence-completed"||inspect_page=="residence-reward";
     const bool award_fixture=inspect_page=="award-contribution"||inspect_page=="award-income"||inspect_page=="award-residents";
     const bool tax_fixture=inspect_page=="tax-income"||inspect_page=="tax-income-tail";
+    const bool present_fixture=inspect_page=="present-equipment"||inspect_page=="present-status"||inspect_page=="present-combat";
     const bool monster_fixture=inspect_page=="monster-introduction"||inspect_page=="monster-introduction-early";
     const bool monster_detail_fixture=inspect_page=="monster-detail"||inspect_page=="monster-detail-grown";
     const bool monster_notice_fixture=inspect_page=="monster-boss"||inspect_page=="monster-outbreak";
@@ -3359,8 +3460,9 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
         reputation_glyphs+="设施信息种类武器防具饰品出售中查看商品价格品质会给周围带来好的影响返回研究绘制夹具无自然触发认证";
         for(const auto &d:startup_world_rules().facilities)reputation_glyphs+=d.name;
     }
-    if(tax_fixture) {
+    if(tax_fixture||present_fixture) {
         reputation_glyphs+="税金收入住宅所有者合计研究绘制夹具无自然触发认证";
+        if(present_fixture)reputation_glyphs+="冒险者名单姓名装备居住满足努力请选择返回";
         for(const auto &human:startup_world_rules().humans)reputation_glyphs+=human.name;
     }
     if(monster_fixture||monster_detail_fixture||monster_notice_fixture) {
@@ -3372,7 +3474,7 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
         for(const auto &d:startup_world_rules().facilities)reputation_glyphs+=d.name;
     }
     ChineseFont font(font_path,reputation_glyphs);
-    if(magic_fixture||task_fixture||residence_fixture||award_fixture||tax_fixture||monster_fixture||monster_detail_fixture||monster_notice_fixture||effort_fixture||award_result_fixture||mastery_fixture||gift_claim_fixture||clear_fixture||new_game_fixture||config_fixture||commerce_fixture||commerce_result_fixture||commerce_item_fixture||commerce_facility_fixture||commerce_preview_fixture||facility_special_fixture||build_menu_fixture) {
+    if(magic_fixture||task_fixture||residence_fixture||award_fixture||tax_fixture||present_fixture||monster_fixture||monster_detail_fixture||monster_notice_fixture||effort_fixture||award_result_fixture||mastery_fixture||gift_claim_fixture||clear_fixture||new_game_fixture||config_fixture||commerce_fixture||commerce_result_fixture||commerce_item_fixture||commerce_facility_fixture||commerce_preview_fixture||facility_special_fixture||build_menu_fixture) {
         std::variant<SteamMagicPotPlan,SteamTaskSelectionPlan,SteamTaskRosterPlan,SteamTaskResultPlan,SteamTaskVictoryPlan,SteamTaskDeadlinePlan,SteamHumanOverviewPlan,SteamTownProgressPlan,SteamNewGamePlan,SteamConfigSkinPlan,SteamCommerceSkinPlan,SteamFacilityDetailSkinPlan,SteamInformationSkinPlan,SteamMonsterSkinPlan,SteamBuildMenuSkinPlan,SteamDungeonFooterPlan> plan;
         if(footer_fixture) {
             const auto value=dungeon_footer_example(inspect_page=="dungeon-footer-entry");
@@ -3392,6 +3494,9 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
         } else if(tax_fixture) {
             const auto value=tax_information_example(inspect_page=="tax-income-tail",font);
             if(!value)throw std::runtime_error("Tax income example rejected");plan=*value;
+        } else if(present_fixture) {
+            const auto value=present_directory_example(inspect_page=="present-status"?1:inspect_page=="present-combat"?2:0,font);
+            if(!value)throw std::runtime_error("Present directory example rejected");plan=*value;
         } else if(facility_special_fixture) {
             const auto value=facility_special_example(inspect_page,font);
             if(!value)throw std::runtime_error("Facility special example rejected");plan=*value;
@@ -3467,7 +3572,7 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
             BeginTextureMode(canvas.value);ClearBackground(Color{83,141,77,255});
             font.text("研究绘制夹具",8,10,WHITE,10);std::visit([&](const auto &value){
                 if constexpr(std::is_same_v<std::decay_t<decltype(value)>,SteamFacilityDetailSkinPlan>)draw_facility_detail(value,sprites,font);
-                else if constexpr(std::is_same_v<std::decay_t<decltype(value)>,SteamInformationSkinPlan>)draw_tax_information(value,sprites,font);
+                else if constexpr(std::is_same_v<std::decay_t<decltype(value)>,SteamInformationSkinPlan>)draw_information_directory(value,sprites,font);
                 else if constexpr(std::is_same_v<std::decay_t<decltype(value)>,SteamDungeonFooterPlan>)draw_dungeon_footer(value,sprites,human_overview_origin);
                 else draw_facility_ceremony(value,sprites,font,info_fixture?Vector2{0,0}:human_overview_origin);
             },plan);
@@ -3956,7 +4061,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
     };
     for (const auto &human : rules.humans)
         glyphs += human_name(human.identity); // 原字体目录外的自定义中文在载入后一次装入。
-    glyphs += "设备一般饮食撤除移动返回详细Ｇ"; // raw21正式皮肤的全角货币，不能退化为缺字问号。
+    glyphs += "设备一般饮食撤除移动返回详细Ｇ冒险者名单姓名装备居住满足努力请选择"; // 补正式皮肤标签字形，不改原人物属性。
     ChineseFont font(font_path, glyphs);
     const auto available_road = [](const StartupWorldRuntimeState &s) -> std::optional<int> {
         for (const auto &d : s.rules->facilities) {
@@ -4852,8 +4957,8 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     StartupInformationInput input;
                     input.up=IsKeyPressed(KEY_UP);input.down=IsKeyPressed(KEY_DOWN);
                     input.left=IsKeyPressed(KEY_LEFT);input.right=IsKeyPressed(KEY_RIGHT);
-                    input.confirm=IsKeyPressed(KEY_ENTER)||hit({166,258,66,22});
-                    input.cancel=IsKeyPressed(KEY_ESCAPE)||hit({8,258,62,22});
+                    input.confirm=IsKeyPressed(KEY_ENTER)||(raw!=40&&hit({166,258,66,22}));
+                    input.cancel=IsKeyPressed(KEY_ESCAPE)||hit(raw==40?Rectangle{176,265,58,24}:Rectangle{8,258,62,22});
                     if(raw==9 && !input.up&&!input.down&&!input.left&&!input.right&&!input.confirm&&!input.cancel)
                         if(const auto plan=window_navigation_plan(session.state(),page->id,font,true))
                             for(const auto &touch:plan->touches)if(touch.component==9 && touch.rectangle) {
@@ -4861,7 +4966,18 @@ int run_startup_world_window(const std::filesystem::path &assets,
                                 if(hit({float(plan->origin[0]+r[0]),float(plan->origin[1]+r[1]),float(r[2]),float(r[3])}))
                                     input.select_row=touch.value&0xffff;
                             }
-                    if(raw!=9 && raw!=34 && raw!=36 &&
+                    if(raw==40&&!input.up&&!input.down&&!input.left&&!input.right&&!input.confirm&&!input.cancel)
+                        if(const auto plan=window_present_plan(session.state(),page->id,font))
+                            for(const auto &touch:information_directory_touches(*plan,sprites))if(touch.rectangle&&
+                                (touch.component==11||touch.component==1)) {
+                                const auto &r=*touch.rectangle;
+                                if(hit({human_overview_origin.x+r[0],human_overview_origin.y+r[1],float(r[2]),float(r[3])})) {
+                                    if(touch.component==11)input.select_row=touch.value&0xffff;
+                                    else {input.left=touch.value==16;input.right=touch.value==18;}
+                                    pointer_consumed=true;
+                                }
+                            }
+                    if(raw!=9 && raw!=34 && raw!=36 && raw!=40 &&
                        !input.up&&!input.down&&!input.left&&!input.right&&!input.confirm&&!input.cancel) {
                         const auto count=view->humans?view->humans->size():view->items?view->items->size():
                             view->equipment?view->equipment->rows.size():view->facilities?view->facilities->size():0U;
@@ -6503,7 +6619,11 @@ int run_startup_world_window(const std::filesystem::path &assets,
             const auto plan=window_clear_score_plan(*session.application(),page->id,font);
             if(plan)draw_human_overview(*plan,sprites,font);
             else if(page->lifecycle!=0)throw std::runtime_error("Clear score drawing source rejected");
-        } else if (const auto page = top_page(); page && page->legacy_page>=34 && page->legacy_page<=40) {
+        } else if (const auto page = top_page(); page && page->legacy_page==40) {
+            const auto plan=window_present_plan(state,page->id,font);
+            if(plan)draw_information_directory(*plan,sprites,font);
+            else if(page->lifecycle!=0)throw std::runtime_error("人物赠礼目录正式皮肤载荷拒绝");
+        } else if (const auto page = top_page(); page && page->legacy_page>=34 && page->legacy_page<=39) {
             // 仅研究短适配：显示Owner真实行/页签，完整Steam详情字体与图元后端另批接入。
             DrawRectangle(5,42,230,247,paper);
             font.text(page->title+" / 研究适配",12,48,ink,11);
@@ -6851,7 +6971,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 else if(page->lifecycle!=0)throw std::runtime_error("怪物介绍正式皮肤载荷拒绝");
             } else if (page->legacy_page == 90) {
                 const auto plan=window_tax_plan(state,page->id,font,tax_scroll_drag&&tax_scroll_drag->page==page->id);
-                if(plan)draw_tax_information(*plan,sprites,font);
+                if(plan)draw_information_directory(*plan,sprites,font);
                 else if(page->lifecycle!=0)throw std::runtime_error("税收正式皮肤载荷拒绝");
             } else if (page->legacy_page == 81) {
                 font.text("设施升级", 17, 66);

@@ -83,6 +83,16 @@ raw19的`MakeNoMymenu RVA315A70`沿MakeDialog(text,“はい\tいいえ”)再�
 
 **维护缺口。** 现`WorldScriptPage`与opcode2／3已保存人物、替换文本、正文数组和legacy_tag，但通用`acknowledge_startup_world_runtime_page`仍直接关闭dialogue。原“先全文→换段→最终关闭”的Owner及完整TextLayout展开／精确恢复尚缺，纯计划通过不视为完整操作还原。本节不新增Owner或持久布局，不因raw2入口未证删除规则，也不改变原表。
 
+### Steam脚本事件11、报纸15与等待16
+
+2026-10-16固定DLL局部交叉。`AppData.ExecuteScript RVA255AB0`跳表`10256EF8`的opcode4／5／7分别到`1025600E`／`10256075`／`1025614E`。4先Push“みんなの冒険通信<br>が発行されました”提示，再MakeNews／Push报纸；5调用MakeEvent，7调用MakeWait，不能按相同脚本入口合成一种UI。现维护opcode4的提示／报纸顺序相符，未新增窗口动态。
+
+- **15 NEWS。** MakeNews315750只替换正文、标题不替换；空替换参数取村名。TextLayout159×106、RGB(37,35,54)、行距6；普通每页6行，泰语`th`或实际字号≤10时7行，页数整数表达式与特殊标题装饰尚待精核。新闻10构造时，`10315A1E–10315A4E`仅在系统整数槽16（`SYSSAVEI_REVIEW`）为0时置1，下标16不是写入值；它不是通用已读表。Update `1032630F–10326422`主钟另加一并模20，左右Repeat各自循环；确认前进一页、越尾Pop，soft2直接Pop。Draw `10354F9F–103554E5`是194×186窗、common125报纸、标题／页码，多页才有箭头和Touch1的16／18；`1035543A`调用DrawBox24B010的**边界**(31,82,210,209)，不是裁剪或宽高。正文在`103554DB`调用实例TextLayout.Draw(41,106,scrollV=page×rows×lineStep)，不把rows当像素。维护现只保存本条新闻内容、确认通用关闭，尚缺原分页／左右／皮肤与恢复；不能将news页存在说成操作已完成。
+- **11 EVENT。** MakeEvent315550按Tab分段、段内`&`形成命令／正文数组。Update `103271A0–10327285`读当前eventIds[page]；frame1的命令0／1分别发jingle4／6。确认在`10327207`查询，`1032725C–10327269`核同一frame_：未满40置40，已满转Pop，没有该确认分支page++；维护现时点一致。Draw `10355E38–10356599`局部：222×170事件窗→Box边界(15,139,224,202)→id0的event图9／其它图10于(30,67)→真clip(0,159,240,RateConvert(frame,5,40,0,48,true))→正文(28,159,182,h)，JP h49／anchor2、非JP h46／anchor34，行距6→PopClip。满40且frame%40>20画common72／SEB2 frame0于(213,204)；再clip(0,67,240,79)绘0开心／1悲伤三人，2不进入这两组三人；Happy另画event7烟花的两裁片。三人横坐标初始化数组及完整演出尚未核，不沿APK猜值，不补成正式全皮肤或额外奖励。
+- **16 WAIT。** MakeWait316050将传入n写`+160 wait_`。通用Update `10321B99–10321BC9`先DrawAllForms、减wait，仍正即返回；归零才进入raw16 `103262F7–1032630A`对默认0的`+B8 value1_`减一并Pop。正常fresh工厂因此是max(1,n)个获准轮，维护关闭时点相符；传入n不是直接写value1，维护elapsed也不认证通用主钟和原所有字段逐项一致。本页无输入或专属绘制，不增加取消钮。
+
+三类工厂提供主要载荷，Init没有专属内容初始化；共同wait／生命周期、SDK及原OS输入不由这些body局部代替。DEBUG额外按键不加入普通玩家输入，不把未核路径声明为不可达。
+
 <a id="steam-village-progress"></a>
 
 ## Steam村办、晋级与奖励小窗
@@ -561,21 +571,21 @@ Update `b/g.java:11468–11484`先以确认或右重复输入向后循环，再�
 因此固定APK静态证据可以解释其来源范围，但截图“收益3,720G”等仍不能认证为同一口径或同版数值。
 源码显示负净额使用取绝对值和不同数字样式，不假设一定绘制负号。
 
-## 无截图页面的静态补齐
+## APK缺图线索与当前合同
 
-以下不等待截图才登记源码事实，但不生成猜测画面，也不写成动态验收通过。
+以下保留固定APK的早期源锚，当前完成度由右列正式合同维护；不再将历史缺图状态当作Steam／维护缺口，也不以研究示例替代原动态。
 
 | 缺图页面/操作      | APK静态内容与出处                                                                                                                                                                                                                             | 仍需核对                                                          |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| 设施信息2/2        | [b/g:7006](../work/decompiled/sources/b/g.java)左“设施奖励”、右“维护费”o.a(3,m)；[b/g:7195](../work/decompiled/sources/b/g.java)Y列表，最多5行，行间距19，定义名加来源层级、价格/品质或魅力奖励；空列表“没有奖励”；底部“周围设施的奖励” | 标题/文案与截图版本、实际来源列表和字体；不能照抄截图第1页做第2页 |
-| 商品2/2            | [b/g:7441](../work/decompiled/sources/b/g.java)列头属性图标；[b/g:7518](../work/decompiled/sources/b/g.java)武器s[1]/s[3]，防具/饰品h[0]/h[2]，值大于0才画；同列表最多4行、行间距24                                                             | 装备属性图标的完整语义/本帧数据与截图外观                         |
-| 设施强化演出76     | [b/g:7558](../work/decompiled/sources/b/g.java)横向场景、设施图、人物与演出计数；[初始化3773](../work/decompiled/sources/b/g.java)执行改良helper                                                                                                | 精确动画帧/实际动态时长；不能把原计数当秒                         |
-| 强化结果77         | [b/g:7370](../work/decompiled/sources/b/g.java)“设施强化”，调用c/n设施属性结果绘制；[b/g:5609](../work/decompiled/sources/b/g.java)确认输入可跳到展示末段或关闭                                                                               | 属性结果图、回到详情的栈恢复；不预建二次确认弹窗                  |
-| 设施等级提升81     | [b/g:7815](../work/decompiled/sources/b/g.java)“等级上升”，两段正文/属性展示；[初始化3840](../work/decompiled/sources/b/g.java)执行升级helper，关闭5703清提示                                                                                 | 运行重入/完整输入与显示；S016住宅完成不能代替                     |
-| 建设设备分类       | [b/g:10647](../work/decompiled/sources/b/g.java)W[0]按状态过滤，插入-1撤除、条件k(32)插入-2配置更替；[绘制9688](../work/decompiled/sources/b/g.java)报价分别0/300                                                                               | 实际道路条目/开放存档、截图版命名；不由0报价推全部退款规则        |
+| 设施信息2/2        | [b/g:7006](../work/decompiled/sources/b/g.java)左“设施奖励”、右“维护费”o.a(3,m)；[b/g:7195](../work/decompiled/sources/b/g.java)Y列表，最多5行，行间距19，定义名加来源层级、价格/品质或魅力奖励；空列表“没有奖励”；底部“周围设施的奖励” | 普通74两页已交[正式合同](STEAM_FACILITY_DETAIL.md)；截图版本和字体仍分开 |
+| 商品2/2            | [b/g:7441](../work/decompiled/sources/b/g.java)列头属性图标；[b/g:7518](../work/decompiled/sources/b/g.java)武器s[1]/s[3]，防具/饰品h[0]/h[2]，值大于0才画；同列表最多4行、行间距24                                                             | 79／72已交[商品合同](../rules/COMMERCE.md)，原字体／OS动态另验                         |
+| 设施强化演出76     | [b/g:7558](../work/decompiled/sources/b/g.java)横向场景、设施图、人物与演出计数；[初始化3773](../work/decompiled/sources/b/g.java)执行改良helper                                                                                                | 76／77已交[正式道具演出](../rules/COMMERCE.md)；原计数不换秒                         |
+| 强化结果77         | [b/g:7370](../work/decompiled/sources/b/g.java)“设施强化”，调用c/n设施属性结果绘制；[b/g:5609](../work/decompiled/sources/b/g.java)确认输入可跳到展示末段或关闭                                                                               | 77有序结果、返回及恢复已交，详见[正式合同](STEAM_FACILITY_DETAIL.md)                  |
+| 设施等级提升81     | [b/g:7815](../work/decompiled/sources/b/g.java)“等级上升”，两段正文/属性展示；[初始化3840](../work/decompiled/sources/b/g.java)执行升级helper，关闭5703清提示                                                                                 | 81已有[独立结果合同](STEAM_FACILITY_DETAIL.md)，S016住宅完成不代替                     |
+| 建设设备分类       | [b/g:10647](../work/decompiled/sources/b/g.java)W[0]按状态过滤，插入-1撤除、条件k(32)插入-2配置更替；[绘制9688](../work/decompiled/sources/b/g.java)报价分别0/300                                                                               | 21完整三目录及输入见[建设业务](STEAM_BUILD_LIST_BUSINESS.md)，不由0报价推退款        |
 | 道路/撤除/移动提示 | [a/o:69](../work/decompiled/sources/a/o.java)8个模式提示；[b/g:11595](../work/decompiled/sources/b/g.java)进入模式3撤除、6移动、1道路起点、0建筑；[道路终点映射](#road-placement)已补预览/取消 | 撤除/移动完整预览、拒绝、确认/返回、动态报价和所有热区仍另待核对 |
-| 入住余额不足       | [b/g:5681](../work/decompiled/sources/b/g.java)余额不够调用消息11并返回false；[d/a:3968](../work/decompiled/sources/d/a.java)直接比较金币与费用                                                                                                 | 消息11正文资源、截图版拒绝画面；不由静态消息号编造中文提示        |
-| 设置页12           | [b/g:8794](../work/decompiled/sources/b/g.java)与8904两套语言布局，画面/速度/BGM/效果音/画面旋转，数值与选项组来自顶部数组                                                                                                                     | 实际语言分支、设置副作用与显示；未执行系统设置修改                |
+| 入住余额不足       | [b/g:5681](../work/decompiled/sources/b/g.java)余额不够调用消息11并返回false；[d/a:3968](../work/decompiled/sources/d/a.java)直接比较金币与费用                                                                                                 | 此11是消息表索引，非raw11事件类型；中文拒绝正文仍须按来源        |
+| 设置页12           | [b/g:8794](../work/decompiled/sources/b/g.java)与8904两套语言布局，画面/速度/BGM/效果音/画面旋转，数值与选项组来自顶部数组                                                                                                                     | 12布局／纯输入已交[设置合同](STEAM_INTERACTIONS.md#游戏设置与标题平台按钮)，跨局执行仍缺                |
 
 ### 强化列表不是精确增量展示
 

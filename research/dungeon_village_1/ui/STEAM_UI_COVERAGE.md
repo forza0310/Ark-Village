@@ -50,12 +50,12 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 8 | SETTING_MENU | 菜单 | 静态：FrameMenu／dialog回传及DrawMenu2(type1)菜单壳已核；目录及正常producer未核，不混作raw12设置，见[保留菜单](PAGES.md#保留菜单568的实际消费者) |
 | 9 | INFO_MENU | 菜单 | 静态：[五标签／输入、菜单及HUD摘要](INFORMATION_MENU.md)已核；维护：Owner、五行与HUD摘要只读计划已接。动态：无本页完整窗口认证；实际父原点、字体／触摸保护和一次性光标消费仍独立 |
 | 10 | SYSTEM_MENU | 菜单 | 静态：五tags20–24及type1已核，APK末项28差异保留；维护：真实Owner、14保存与13说明已接；设置／RankForm／结束平台闭环另验，见[菜单合同](PAGES.md) |
-| 11 | EVENT | 事件／系统 | 仅声明；更新／绘制／动态链待逐项 |
+| 11 | EVENT | 事件／系统 | 静态：真实opcode5工厂、首轮jingle4／6、40快进／再确认Pop及窗／正文／三人局部已核；三人横坐标及完整演出仍缺。维护已有奖励／确认时点，正式全皮肤未接，见[脚本页面](PAGES.md#steam脚本事件11报纸15与等待16) |
 | 12 | CONFIG | 事件／系统 | 静态：真实菜单入口、Init冻结画质、Jp／En绘制分派、高速Touch门控及返回仅SaveSystem已核，区别于标题平台按钮，见[设置生命周期](STEAM_INTERACTIONS.md#游戏设置与标题平台按钮)。维护：非日文四行纯皮肤、音量控件原图与源／实际热区及四态参考已交；平台键盘原图、固定热区与高亮原请求已接研究绘制；四行键盘纯候选已接方向原序、速度锁跳过查询、单次setter与保存／刷新／Pop请求；跨局权威设置／真实输出与快照未接，字体／OS／平台动作未验 |
 | 13 | MANUAL | 事件／系统 | 静态：Steam局部Draw、正文LT差异、人物冻结与箭头纹理已核；维护：真实菜单／Owner、正文／关于页和恢复已接。完整字体／TextLayout／OS动态另验，见[说明合同](PAGES.md#说明13固定正文输入消费与装饰随机) |
 | 14 | SAVE | 事件／系统 | 静态保存状态机与局部皮肤已核；维护：真实菜单应用保存及冷载已验；S041/S064仅原动态局部，不代表自动中断上游，见[保存合同](STEAM_SAVE_MENU.md) |
-| 15 | NEWS | 事件／系统 | 仅声明；更新／绘制／动态链待逐项 |
-| 16 | WAIT | 事件／系统 | 仅声明；更新／绘制／动态链待逐项 |
+| 15 | NEWS | 事件／系统 | 静态：opcode4先提示再报纸、6／7行条件、左右循环／确认逐页及绘制局部已核；页数／完整标题仍待细核。维护仅本条内容和确认关闭，分页／正式皮肤／恢复未接，见[脚本页面](PAGES.md#steam脚本事件11报纸15与等待16) |
+| 16 | WAIT | 事件／系统 | 静态：opcode7→MakeWait的wait_通用前缀、再value1_减一／Pop已核，无输入或专属Draw。维护fresh工厂max(1,n)时点吻合，不认证全部原字段恢复，见[脚本页面](PAGES.md#steam脚本事件11报纸15与等待16) |
 | 17 | CLEARPOINT | 事件／系统 | 静态：[计分规则](../rules/STARTUP_RECORDS.md#通关六类计分固定apk及steam有限交叉)与[Steam局部Draw](STARTUP_SKIN.md#steam计分17的独立绘制交叉)已核，独立主钟／阶段钟、六类空单位及Touch2分开。维护：正式Steam计划／应用只读桥／窗口、wait0自然入口的独立主钟和联合恢复已接，Init切BGM0一次；通用非零wait仍未接。动态：通关页、快速分支资格及真实输入仍缺 |
 | 18 | ENDING | 事件／系统 | 保留空内容类型：无专属Init；通用Update后进入Update2落空返回true，仍有通用钟／SEB／待发jingle。Draw在10353243–10353262显式直接返回；不是17计分页的别名。正常产生入口未核，不因直调用扫描未命中便认定全程序不可达 |
 | 19 | NO_MYMENU | 事件／系统 | 具名MakeNoMymenu工厂创建消息／是非窗，改type19；与1／14共用消息绘制，与1／2共用选项输入，确认“是”后还请求SITE_URL浏览器。只核静态消费者，未核正常工厂调用入口，不开放外链或凭名字猜用途；见[通用对话](PAGES.md#steam-common-dialog) |
@@ -79,7 +79,7 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 37 | INFO_ITEM | 情报／赠礼入口 | 静态：[正库存原序、空15、关闭清NEW及局部Draw](INFORMATION_MENU.md)已核；维护：Owner与五行／说明／滚动计划已接。动态：未全页认证；原字体、最终触摸与动态SEB执行仍独立 |
 | 38 | INFO_EQUIP | 情报／赠礼入口 | 静态：[Steam flags过滤、未知行、四页与局部Draw](INFORMATION_MENU.md)已核；维护：Owner与图标／属性／GET／滚动计划已接。动态：未全页认证；字体、实际点击和动态手形仍独立 |
 | 39 | INFO_TENANT | 情报／赠礼入口 | 静态：[kind3原序、编号／截至当月利润、scene7及局部Draw](INFORMATION_MENU.md)已核；维护：稳定ID目录／恢复、镜头交接及五行／正负金额计划已接。动态：未全页认证；字体／物理输入仍缺，确认不冒称打开商店详情 |
-| 40 | MEMBER_PRESENT | 情报／赠礼入口 | Steam页面仍仅声明；维护赠礼人物目录及进入64已有Owner消费者，不等于35皮肤自动适用于40。独立Steam绘制／输入与原动态待核，见[页面边界](PAGES.md) |
+| 40 | MEMBER_PRESENT | 情报／赠礼入口 | 静态：真实raw4入口、首次98、三页独立布局／输入／清NEW及40→64已核；维护沿现Owner交正式纯皮肤、严格三页／当前居住绑定，不套35四页。原字体／完整scratch／OS动态另验，见[40合同](INFORMATION_MENU.md#steam40赠礼人物目录三页与35分开) |
 | 41 | DEVELMP_TOP | 魔法壶 | [局部合同](STEAM_MAGIC_POT.md)：主页壶／知识／四元素、按钮及整轮输入已接；静态来源／维护短测与原窗口动态分开，字体／OS待证 |
 | 42 | DEVELMP_ITEMSELECT | 魔法壶 | [局部合同](STEAM_MAGIC_POT.md)：五行原序库存／元素等级、Steam独立margin及marker16已接；静态来源／维护短测与原窗口动态分开，字体／OS待证 |
 | 43 | DEVELMP_RECIPESELECT | 魔法壶 | [局部合同](STEAM_MAGIC_POT.md)：未知／已知两页、成本、无marker及上下后左右顺序已接；静态来源／维护短测与原窗口动态分开，字体／OS待证 |

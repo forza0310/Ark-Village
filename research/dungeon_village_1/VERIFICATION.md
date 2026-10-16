@@ -1,10 +1,14 @@
 # 当前研究验证与历史索引
 
-## 公共SubForm更新前段与文字数值边界 2026-10-16
+## 公共SubForm更新与文字渐显消费者 2026-10-16
 
 [公共前段](prototype/include/dungeon_village_prototype/steam_subform_update.hpp)接真实Update准入，交独立候选及重画／jingle／共享SEB22→21→23／页面分派原序。三钟精确保留int32回卷后signed余数，wait提前返回仍保留已更新双钟；wait1和箭头1的双重画不合并。实际声音／SEB和本页结果由后继消费，纯计划不冒称已安装Owner或原异常可回滚。[字体合同](ui/STEAM_FONT_CONSUMER.md#渐显时钟复位与完成资格)补最终块UTF-16长度、raw0快进不同时换段、裸TotalFrames回卷、signed64除法及blink边界，未新增排版／字体／持久状态认证。
 
 Windows单Release动态构建及新模块独立严格C++17语法检查通过；扩既有visuals套件，**1/1通过1.93秒**，覆盖回卷、负计数、早返、双重画、准入拒绝和输入不变；无新测试target，不编译三份他人在途住宅存取测试。无新增素材、Owner／codec或一次性核对产物；Release1400文件／226131176字节，assets872文件／9504668字节，无.pending，受限制两份AST保留。候选和有序请求按次消费，不持平台实体或永久历史；构建与短测进程已退出，产品及原档未改，仅白名单提交、不推送。
+
+接`4738db4`，新增[文字渐显数值模块](prototype/include/dungeon_village_prototype/steam_text_reveal.hpp)，按源顺序取得条件墙钟、两次独立TotalFrames、最终墙钟及末尾共同门槛。Frame保留int32／int64回卷、负上限及blink的signed余数；Flush先读墙钟再报速度0故障，Reset／SetText尾清理范围分开。独立源复核与严格C++17语法检查通过，最终Release动态构建及既有visuals **1/1通过1.87秒**；新增短测核时间倒退、重复应用帧、回卷／封顶、快进后回退、源读取每个位置抛错及输入不变，不重复世界轨迹。实际排块、字形、raw0逐字／分段Owner及精确恢复仍未接，不把数值候选称完整TextLayout。
+
+最终Release1401文件／226189519字节，assets保持872文件／9504668字节，无.pending；六份受影响文档本地链接均可解析。仅增加有主责的头／实现，既有target／套件登记，无核对脚本、素材、持久历史或新Owner；临时候选／blink副本按次消费并释放，不持原实例根。构建、短测及并行任务均已收齐，三份他人在途住宅测试仍未编译，产品／原档及待确认设计保持独立，不推送。
 
 ## 箭头实际surface时序、透明分支与有界示例 2026-10-16
 

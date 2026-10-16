@@ -3,6 +3,7 @@
 #include "dungeon_village_prototype/steam_manual_skin.hpp"
 #include "dungeon_village_prototype/steam_record_skin.hpp"
 #include "dungeon_village_prototype/steam_subform_update.hpp"
+#include "dungeon_village_prototype/steam_text_reveal.hpp"
 #include "dungeon_village_prototype/steam_font_metrics.hpp"
 #include "dungeon_village_prototype/steam_dialogue_skin.hpp"
 #include "dungeon_village_prototype/steam_event_skin.hpp"
@@ -118,6 +119,130 @@ void subform_update_prefix(Checks &check) {
             SteamSubformUpdateAdmission::unverified,static_cast<SteamSubformUpdateAdmission>(999)})
         check(!steam_subform_update_prefix({delayed.state,admission}),
               "无真实更新准入或未知资格拒绝，不从绘制次数补跑共同前段");
+}
+// 顺序源只供应实际外部观测；数值oracle在用例中独立写出，不复制渐显计算。
+struct TextRevealRead {char method;std::int64_t value;};
+struct TextRevealReadFailure {};
+class TextRevealSource final:public SteamTextRevealSource {
+public:
+    explicit TextRevealSource(std::vector<TextRevealRead> values,
+        std::size_t fail_at=std::numeric_limits<std::size_t>::max())
+        :values_(std::move(values)),fail_at_(fail_at) {}
+    std::int64_t current_time_millis() override {return take('t');}
+    std::int32_t total_frames() override {return static_cast<std::int32_t>(take('f'));}
+    bool common_frames_update() override {return take('c')!=0;}
+    bool done() const {return next_==values_.size();}
+    const std::string &trace() const {return trace_;}
+private:
+    std::int64_t take(char method) {
+        if(next_>=values_.size()||values_[next_].method!=method)
+            throw std::runtime_error("TextLayout外部观测次序或次数不符");
+        trace_+=method;
+        const auto index=next_++;
+        if(index==fail_at_)throw TextRevealReadFailure{};
+        return values_[index].value;
+    }
+    std::vector<TextRevealRead> values_;
+    std::size_t fail_at_,next_{};
+    std::string trace_;
+};
+void text_reveal(Checks &check) {
+    const auto same=[](const SteamTextRevealState &a,const SteamTextRevealState &b) {
+        return a.length==b.length&&a.pos==b.pos&&a.speed==b.speed&&a.time_offset==b.time_offset&&
+            a.frame==b.frame&&a.begin_time==b.begin_time&&a.last_app_frame==b.last_app_frame;
+    };
+    constexpr auto lo=std::numeric_limits<std::int32_t>::min();
+    constexpr auto hi=std::numeric_limits<std::int32_t>::max();
+    constexpr auto lo64=std::numeric_limits<std::int64_t>::min();
+    constexpr auto hi64=std::numeric_limits<std::int64_t>::max();
+    const SteamTextRevealState initial{8,0,1000,0,3,0,0};
+    const std::vector<SteamTextBlinkState> blocks{{2,3},{0,9},{-2,7}};
+    TextRevealSource normal({{'t',1000},{'f',7},{'f',8},{'t',1050},{'c',1}});
+    const auto first=steam_text_reveal_frame(initial,blocks,normal);
+    check(normal.done()&&normal.trace()=="tfftc"&&
+              same(first.candidate,{8,2000,1000,0,4,950,8})&&
+              first.blocks[0].counter==0&&first.blocks[1].counter==9&&first.blocks[2].counter==7&&
+              same(initial,{8,0,1000,0,3,0,0})&&blocks[0].counter==3,
+          "首次先条件墙钟再两次TotalFrames、墙钟、共同门槛，blink按序且输入不变");
+    TextRevealSource repeated({{'f',8},{'f',9},{'t',1050},{'c',0}});
+    const auto again=steam_text_reveal_frame(first.candidate,first.blocks,repeated);
+    check(repeated.done()&&repeated.trace()=="fftc"&&
+              same(again.candidate,{8,3000,1000,50,4,950,9})&&again.blocks[0].counter==1,
+          "同应用帧比较命中只加50偏移，第二次TotalFrames独立存储，共同门槛false不加动画钟");
+    TextRevealSource backwards({{'f',9},{'f',9},{'t',900},{'c',1}});
+    const auto rewound=steam_text_reveal_frame(again.candidate,again.blocks,backwards);
+    check(backwards.done()&&same(rewound.candidate,{8,1000,1000,100,5,950,9}),
+          "墙钟倒退可降低渐显pos，不能以旧pos作单调下限或以帧数替代时间");
+    TextRevealSource wrap32({{'f',5},{'f',6},{'t',1000},{'c',1}});
+    const auto limited=steam_text_reveal_frame({10,7,1000,hi-24,hi,1000,5},
+                                               {{hi,hi},{hi,2},{0,hi},{-1,7},{1073741825,hi}},wrap32);
+    check(wrap32.done()&&same(limited.candidate,{10,0,1000,-2147483623,hi,1000,6})&&
+              limited.blocks[0].counter==0&&limited.blocks[1].counter==1&&
+              limited.blocks[2].counter==hi&&limited.blocks[3].counter==7&&
+              limited.blocks[4].counter==-2,
+          "偏移及blink加倍/计数先int32回卷再signed余数，frame在INT_MAX封顶");
+    TextRevealSource wrap64({{'t',lo64+20},{'f',hi},{'f',lo},{'t',lo64+70},{'c',1}});
+    const auto crossed=steam_text_reveal_frame(initial,{},wrap64);
+    check(wrap64.done()&&same(crossed.candidate,{8,2000,1000,0,4,hi64-29,lo}),
+          "首次减50与后续时间差按int64位型回卷，两次应用帧仍保留各自signed32观测");
+    TextRevealSource multiply64({{'f',1},{'f',2},{'t',4611686018427387905LL},{'c',1}});
+    const auto product=steam_text_reveal_frame({10,99,4,0,lo,1,0},{},multiply64);
+    check(multiply64.done()&&product.candidate.pos==0&&product.candidate.frame==lo+1,
+          "elapsed乘speed也按int64回卷，不能换成无限精度乘法后再夹上限");
+    TextRevealSource wrapped_length({{'f',1},{'f',2},{'t',1000},{'c',0}});
+    const auto negative_limit=steam_text_reveal_frame({hi,0,1000,0,0,1000,0},{},wrapped_length);
+    check(wrapped_length.done()&&negative_limit.candidate.pos==-1000,
+          "length乘1000的int32负上限在先夹负pos后应用，不能重新把结果夹零");
+    const SteamTextRevealState before_flush{5,0,1000,0,4,1000,2};
+    TextRevealSource flush_source({{'t',2000}});
+    const auto flushed=steam_text_reveal_flush(before_flush,flush_source);
+    check(flush_source.done()&&flush_source.trace()=="t"&&
+              std::holds_alternative<SteamTextRevealState>(flushed)&&
+              same(std::get<SteamTextRevealState>(flushed),{5,5000,1000,0,4,1750,2})&&
+              same(before_flush,{5,0,1000,0,4,1000,2}),
+          "Flush只读一次墙钟、重定位begin并保留应用帧/动画钟，不把候选安装到输入");
+    TextRevealSource after_flush({{'f',3},{'f',4},{'t',1800},{'c',0}});
+    const auto unflushed=steam_text_reveal_frame(std::get<SteamTextRevealState>(flushed),{},after_flush);
+    check(after_flush.done()&&unflushed.candidate.pos==1000&&
+              !steam_text_reveal_is_end(unflushed.candidate),
+          "Flush不是永久完成锁，随后Frame仍可能回退到未结束");
+    TextRevealSource zero_speed({{'t',1234}});
+    const SteamTextRevealState stopped{5,7,0,9,4,1000,2};
+    const auto fault=steam_text_reveal_flush(stopped,zero_speed);
+    check(zero_speed.done()&&zero_speed.trace()=="t"&&
+              std::holds_alternative<SteamTextRevealFault>(fault)&&
+              std::get<SteamTextRevealFault>(fault)==SteamTextRevealFault::flush_divide_by_zero&&
+              same(stopped,{5,7,0,9,4,1000,2}),
+          "Flush速度0也先读取墙钟，再给具名除零故障，不发布写过pos的成功候选");
+    struct SpeedCase {std::int32_t input,expected;bool japanese;};
+    for(const auto c:std::array<SpeedCase,4>{{{-3,-3,true},{-3,-4,false},
+                                           {hi,1073741822,false},{lo,-1073741824,false}}}) {
+        auto expected=initial;expected.speed=c.expected;
+        check(same(steam_text_reveal_set_speed(initial,c.input,c.japanese),expected),
+              "SetSpeed保留日文原值，其他语言先int32乘三回卷再有符号除二截零");
+    }
+    const SteamTextRevealState old{8,777,33,55,9,111,222};
+    check(same(steam_text_reveal_set_text_tail(old,12),{12,0,33,0,9,0,222})&&
+              same(steam_text_reveal_reset(old),{8,0,33,0,9,0,0}),
+          "SetText数值尾换长度但保留last_app_frame，Reset保留长度而清last_app_frame，二者不清动画钟/速度");
+    check(steam_text_reveal_is_end({0,0})&&steam_text_reveal_is_end({3,-1})&&
+              !steam_text_reveal_is_end({3,2999})&&steam_text_reveal_is_end({3,3000}),
+          "空长度立即结束，负一是独立结束标记，其他pos按长度千倍边界比较");
+    for(std::size_t fail=0;fail<5;++fail) {
+        TextRevealSource source({{'t',1000},{'f',7},{'f',8},{'t',1050},{'c',1}},fail);
+        bool threw=false;
+        try {(void)steam_text_reveal_frame(initial,blocks,source);}
+        catch(const TextRevealReadFailure &) {threw=true;}
+        check(threw&&source.trace().size()==fail+1&&same(initial,{8,0,1000,0,3,0,0})&&
+                  blocks[0].counter==3&&blocks[1].counter==9&&blocks[2].counter==7,
+              "任一外部读取异常向上传播，晚共同门槛失败也不修改输入状态或blink块");
+    }
+    TextRevealSource failed_flush({{'t',1234}},0);
+    bool threw=false;
+    try {(void)steam_text_reveal_flush(stopped,failed_flush);}
+    catch(const TextRevealReadFailure &) {threw=true;}
+    check(threw&&failed_flush.done()&&same(stopped,{5,7,0,9,4,1000,2}),
+          "Flush墙钟先抛错时不伪装成随后才可能产生的除零故障，输入仍不变");
 }
 void touch_arrow_effect(Checks &check) {
     // 从现公共DOWN计划取得真实id0请求；不重放KeyDown或把绘制当作Frame。
@@ -2204,6 +2329,7 @@ int check_steam_startup_skin(const std::filesystem::path &root) {
     record_page(check);
     record_update(check);
     subform_update_prefix(check);
+    text_reveal(check);
     font_metrics(check);
     touch_commands(check);
     touch_arrow_effect(check);

@@ -172,7 +172,9 @@ SetText尾107CC699–107CC71A按**最终实际排版块**重算length：pic／bt
 Reset RVA7CBA00则清pos／begin／offset及lastAppFrame，不清speed、原块／长度、blink或动画计数；
 Init的默认speed1000不经过SetSpeed的非JP换算，其再Init与空SetText的分工仍沿下节，不能互换为完整复位。
 每次Frame随后按块序更新blink：仅period>0才按`wrap32(counter+1) % wrap32(2*period)`写signed余数（107CAE1A–1C），非正period保留计数。大正period的双倍可回卷为负，但必为非零偶数，不产生除0或MIN／−1商溢出；负余数仍保留，不按数学非负模修正。坏块引用可在渐显pos及前块已更新后失败，不能声称原过程回滚。全部块处理后107CAE5C才读commonFramesUpdate_，为真且frame_<INT_MAX才加1，负frame也照常加1，MAX保持。Draw自己的draw_（+5C）另在107CA11D–A128封顶递增，二者不是渐显时钟。
-以上只给外部时钟／实例读取合同，SDK时钟精度与跨线程可见性未验；raw0可消费真实Frame后的IsEnd结果，不据此新增Owner时钟、持久布局或像素认证。
+[数值消费者](../prototype/include/dungeon_village_prototype/steam_text_reveal.hpp)现接渐显状态、原序blink列表和显式Source，按上述顺序逐次调用墙钟／两次TotalFrames／末尾共同门槛；不从本机或世界tick补造观测。Frame返回独立候选，Flush速度0在取得墙钟后返回具名源故障且无成功候选；外部读取抛错直接传播，输入不变。这是维护安装安全，原入口此前可能已写pos／时钟／前块。整数回卷显式使用无符号位运算；Frame固定除50，Flush的int32位置乘1000达不到int64 MIN，因此这些实际算式无需执行MIN／−1的C++未定义除法。SetText尾只消费已完成真实排版所得length，Reset另清lastAppFrame，均不代替排版、重建块或动画实例生命周期。
+
+SDK时钟精度与跨线程可见性未验；raw0可消费真实Frame后的IsEnd结果，但尚未安装逐字／分段Owner和精确恢复，未新增持久布局或像素认证。Draw重排／draw钟、原字体／字形及失效块对象异常也不由数值DTO替代。
 
 ### 实例Draw重排与报纸分页
 

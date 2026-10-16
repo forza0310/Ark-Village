@@ -39,7 +39,7 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 
 | 页值 | Steam TYPE名称 | 功能组 | 当前Steam证据／缺口 |
 | --- | --- | --- | --- |
-| 0 | TALK | 对话 | 静态：[通用对话](PAGES.md#steam-common-dialog)已核构造、原TextLayout先Frame再快进／换段／Pop、五类speaker与有序绘制；固定两版talk目录next均−1。维护纯皮肤／有序输入请求已交，Owner确认仍直接关闭，逐字／分段及精确恢复尚未接；原窗口截图未绑定TYPE，字体／OS动态另验 |
+| 0 | TALK | 对话 | 静态：[通用对话](PAGES.md#steam-common-dialog)已核构造、原TextLayout先Frame再快进／换段／Pop、五类speaker与有序绘制；固定两版talk目录next均−1。维护纯皮肤／有序输入及[渐显数值候选](STEAM_FONT_CONSUMER.md#渐显时钟复位与完成资格)已交，后者保留逐次墙钟／双应用帧和回卷；Owner确认仍直接关闭，逐字／分段及精确恢复尚未接；原窗口截图未绑定TYPE，字体／OS动态另验 |
 | 1 | DIALOG | 对话 | raw20重开／删除询问的默认否、横向输入、父页结果及局部绘制已核，见[合同](STEAM_SAVE_MENU.md)；其它调用者／原窗口组合仍待逐项 |
 | 2 | DIALOG_CHARA | 对话 | 静态：与1／19共用右→左→确认→取消询问输入；Draw沿默认分派直接返回，无专属人物皮肤。正常产生者未核，见[通用对话](PAGES.md#steam-common-dialog)；不因枚举名补画或因有限扫描断言不可达 |
 | 3 | MAIN_MENU | 菜单 | 静态：缓存重入／目录／NEW／父位置／type0计划已核；维护：真实Owner与任务NEW／建设缓存已接。原字体、整栈输入和虚拟光标仍缺，见[菜单合同](PAGES.md#steam主菜单缓存输入与局部皮肤) |

@@ -168,7 +168,7 @@ Owner桥使用已有`scene.world.updates`（原p／cnt_dungeonBar，安装活动
 `dungeon_actors[id].percent/retreat_state/retreat_updates`，人物身体取当前职业／性别。
 不拿参与者定义列表代替实例引用，也不取设施百分比缓存代替g/h；重复占用引用保留。
 `scene.world.floating_notes`就是原aW；读前三槽且不修改尾槽，不足三槽显式拒绝。
-当前`progress_label231`仅输出到`dungeon_labels`，尚未接成aW生产者，故本批不宣称自然出现攻略特效。
+`progress_label231`现已在同一Owner事务追加aW，具体生产／退休及旧观察输出的边界见下节。
 
 宿主须先获准一次`prepare_startup_world_presentation`，然后将其candidate与plan一并投影；
 按page／facility／原挑战索引核抖动的数量和倒序，缺失、重复、错绑定／退休、坏定义及陈旧随机游标均拒绝。
@@ -196,7 +196,30 @@ root标签59×45；简繁语言图118×90并带INF逻辑尺度`e59x45`，各语�
 
 现任务皮肤功能套件主责几何／层序、跨条目dy、两次Pop、头像裁剪、g/h、平铺末片、
 Owner同次只读、拒绝及真实PNG／SEB映射；Owner随机／清理／回滚由现runtime_tasks套件负责。
-本批未接研究窗口或新增例图，也未认证原程序动态；现S032仍只作独立视觉参考。
+`dungeon-footer`／`dungeon-footer-entry`条件研究窗口独立消费此计划，头像临时裁剪与普通父clip分开恢复；
+不复用会清掉父clip的旧人物摘要执行器。只适配正常未翻转图元，不认证原ImageClip后端或GPU越界行为。
+两个窗口使用真实新局首访人物及任务工厂，指定挑战年龄／人物进退／页滑入与aW显示条件；
+保留初建g/h（h=0显示0%），未付款、自然出发或完成探索。它们仍不是正常世界窗口的自动表现接线，
+更不认证原程序动态；现S032仍只作独立视觉参考。
+
+### 攻略推进特效的生产与退休
+
+固定APK `c/n.java:865`与Steam `UserData.SetDungeonBarChargeEff`（RVA`2E6C40`）独立交叉：
+`102E6C89`读取人物当前攻略率，`102E6CA5–102E6CBD`进行原有界比例加16，
+`102E6CDC–102E6D18`向`db_chargeEff`追加`[0,x,231]`，没有随机调用。
+调用点`Tenant.Update`的`102C690B`处于挑战／占用者的原逆序：人物达挑战门槛且未撤退，
+设施主钟恰能被25整除时先减人物耐力与挑战剩余强度，再生产特效，之后才判击破／后退。
+不是按墙钟、绘制次数或人物全局主钟每25帧触发，也不是任务完成奖励。
+
+Steam共同前段`102EDDCA–102EDE1D`先倒序递增年龄并删除age≥8，后于`102EEDE7`调用设施AI；
+所以本轮AI新产效果仍为0，下一次获准共同前段才到1，年龄4换第二帧、8退休。
+维护`prepare_startup_world_runtime_dungeon_crew`直接复用既有请求`first`的x值，在私有next中追加
+`scene.world.floating_notes`；后续奖励／脚本失败则连同耐力、挑战、效果及随机一起丢弃。
+现共同调度已经负责推进／退休，不在皮肤里再加年龄或删除。
+
+既有`dungeon_labels`接口保留为**效果已应用的观察输出**，消费它不得再次追加aW；
+旧记录不补放，恢复也不从历史输出重新生成特效。它仍可能随历史增长，不能据aW八轮退休宣称整体输出永久有界。
+aW原容器已纳入codec／schema，本次没有新增持久字段、版本或旧格式迁移。
 
 ## 完成、奖励与验收边界
 

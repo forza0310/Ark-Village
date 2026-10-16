@@ -2,11 +2,13 @@
 
 ## Steam探索底栏冻结计划与Owner桥 2026-10-16
 
-接`b1f2403`，新增实际探索底栏职责的[只读模块](prototype/include/dungeon_village_prototype/steam_dungeon_footer_skin.hpp)，显式登记现application目标，扩现任务皮肤套件；没有新增测试target、Owner字段或存档身份。完整几何、两遍挑战／跨条目dy、人物内clip／ImageClip、独立aW及根资源路径见[合同](ui/DUNGEON_RENDER.md#steam底栏维护消费者与资源边界)。现cnt_dungeonBar／g/h／占用者／探索状态和保留根均由既有Owner读取，随机只消费同次表现plan；缺失、重复、错绑定、错页、退休和不可能抽数明确拒绝，不在查询里清理或重抽。
+接`b1f2403`，经`3db316f`完成实际探索底栏职责的[只读模块](prototype/include/dungeon_village_prototype/steam_dungeon_footer_skin.hpp)，显式登记现application目标，扩现任务皮肤套件；随后补aW同事务生产、外层设施回写及条件窗口。没有新增测试target、Owner字段或存档身份。完整几何、两遍挑战／跨条目dy、人物内clip／ImageClip及根资源见[合同](ui/DUNGEON_RENDER.md#steam底栏维护消费者与资源边界)。现cnt_dungeonBar／g/h／占用者／探索状态和保留根均由既有Owner读取，随机只消费同次表现plan；缺失、重复、错绑定、错页、退休和不可能抽数明确拒绝，不在查询里清理或重抽。
 
-Windows单Release动态构建通过；现visuals／runtime_tasks最终 **2/2通过1.83秒**，覆盖独立几何oracle、层序／两次Pop、平铺末片、保留人物重复引用、g/h非缓存、随机交接、输入只读、坏载荷及真实PNG／SEB映射；既有Owner随机、清理与回滚断言保留。C++17稳定ID仅定义相等，编译时修正误用不等运算后完成复验；未构建他人在途持久化套件或跑世界长测。
+Windows单Release动态构建通过；冻结计划首批visuals／runtime_tasks **2/2通过1.83秒**，补生产／窗口后最终visuals **1/1通过1.62秒**，修正新夹具漏计领队前进10后定向复验runtime_tasks **1/1通过0.23秒**。覆盖独立几何oracle、层序／两次Pop、平铺末片、保留人物重复引用、g/h非缓存、随机交接、真实PNG／SEB，以及实际crew与外层设施回写、age0→7／8退休、非触发轮和后续奖励失败整份回滚；既有断言保留。未构建他人在途持久化套件或跑世界长测。
 
-资源复核纠正“根素材缺失”的初判：现steam-common三文件就是Steam root原字节；7张common PNG、4个SEB及35组怪物脸图／SEB均可复用，未新增资源。语言变体／原Draw准入／GPU越界行为仍未知；自然aW生产接线及研究窗口尚未接，不以纯计划认证动态或完整皮肤。Release1379文件／145051383字节，assets863文件／9488214字节；新输出按值短期返回，向量预算4096，无积累队列或世界引用，合法历史仍不称永久有界。结果合现合同／索引，无新报告、audit、指纹或临时产物；构建／测试及子任务结束，白名单本地提交，保留他人修改、不推送。
+资源复核纠正“根素材缺失”的初判：现steam-common三文件就是Steam root原字节；7张common PNG、4个SEB及35组怪物脸图／SEB均可复用，未新增素材。`dungeon-footer`／`dungeon-footer-entry`最终各8帧退出、世界更新0；真实工厂／首访人物加明确姿态条件，不认证自然开始、付款或攻略。现[任务图例](ui/examples/steam-task-information.png)扩为960×740／28388字节，上方两图逐像素保留，下方两份原尺寸裁片与最终EXE截图逐像素一致，实际查看通过。正常世界窗口自动表现、语言变体／原Draw准入／GPU越界仍未齐。
+
+Steam推进火花生产与共同前段退休已独立定位，复用既有请求x并在同私有候选追加aW；观察输出`dungeon_labels`仍保留，不补放旧记录，也不称历史永久有界。Release1379文件／145408140字节，assets863文件／9488214字节；纯计划按值短期返回、向量预算4096，无世界根或等待绘制队列。结果合现合同／索引／例图，无新报告、audit或指纹；两张临时窗口图45826字节及目录已清理，构建／测试／窗口与子任务结束，白名单本地提交，保留他人修改、不推送。
 
 ## BOSS与群体通知正式皮肤 2026-10-16
 

@@ -37,6 +37,7 @@
 #include "dungeon_village_prototype/steam_main_menu_skin.hpp"
 #include "dungeon_village_prototype/steam_information_skin.hpp"
 #include "dungeon_village_prototype/steam_monster_skin.hpp"
+#include "dungeon_village_prototype/steam_dungeon_footer_skin.hpp"
 #include "dungeon_village_prototype/startup_world_tax.hpp"
 #include "dungeon_village_prototype/startup_world_village_activity.hpp"
 #include "dungeon_village_prototype/startup_world_visuals.hpp"
@@ -1363,6 +1364,63 @@ void draw_human_overview(const SteamHumanOverviewPlan &plan,SourceSprites &sprit
     else if(plan.soft_labels[0]==7)font.text("详细",18,272);
     if(plan.soft_labels[1]==2)font.text("返回",188,272);
 }
+// 探索底栏独立消费普通clip栈与临时头像ImageClip；后者结束时恢复外层，
+// 只模拟本计划正常未翻转图元，不认证原后端共享ImageClip/GPU越界行为。
+void draw_dungeon_footer(const SteamDungeonFooterPlan &plan,SourceSprites &sprites,Vector2 origin) {
+    std::vector<std::array<int,4>> clips;
+    const auto intersect=[](std::array<int,4> a,std::array<int,4> b) {
+        const int x=std::max(a[0],b[0]),y=std::max(a[1],b[1]);
+        return std::array<int,4>{x,y,std::max(0,std::min(a[0]+a[2],b[0]+b[2])-x),
+            std::max(0,std::min(a[1]+a[3],b[1]+b[3])-y)};
+    };
+    const auto apply=[&](std::optional<std::array<int,4>> image_clip={}) {
+        EndScissorMode();
+        auto r=image_clip;
+        if(!clips.empty())r=r?intersect(clips.back(),*r):clips.back();
+        if(r)BeginScissorMode(int(origin.x)+(*r)[0],int(origin.y)+(*r)[1],(*r)[2],(*r)[3]);
+    };
+    for(const auto &op:plan.operations)std::visit([&](const auto &v) {
+        using T=std::decay_t<decltype(v)>;
+        if constexpr(std::is_same_v<T,SteamHumanClip>) {
+            if(v.kind==SteamHumanClipKind::push_intersect)
+                clips.push_back(clips.empty()?v.rectangle:intersect(clips.back(),v.rectangle));
+            else {
+                if(clips.empty())throw std::runtime_error("探索底栏裁剪下溢");
+                clips.pop_back();
+            }
+            apply();
+        } else if constexpr(std::is_same_v<T,StartupSkinDraw>) {
+            const auto resource=steam_dungeon_footer_resource(v.image);
+            if(v.package!=StartupSkinPackage::common||!resource||resource->sprite!=v.sprite)
+                throw std::runtime_error("探索底栏素材身份拒绝");
+            if(v.image==97&&v.sprite==27) {
+                // 原宝箱显式替图97；SEB记录自身仍引用6，不能以同号身份检查丢掉它。
+                sprites.draw("treasure00.seb",v.frame,{origin.x+v.offset[0],origin.y+v.offset[1]},
+                    WHITE,SourceSprites::Binding::common,1,97);
+            } else sprites.published_sprite(v.image,resource->published_image,resource->published_sprite,
+                v.offset,v.frame,v.sprite<0?std::optional<std::array<int,4>>{v.crop}:std::nullopt,origin);
+        } else if constexpr(std::is_same_v<T,StartupSkinRect>) {
+            const auto &r=v.rect;const Color color{static_cast<unsigned char>(v.rgb[0]),
+                static_cast<unsigned char>(v.rgb[1]),static_cast<unsigned char>(v.rgb[2]),255};
+            if(v.outline)DrawRectangleLines(int(origin.x)+r[0],int(origin.y)+r[1],r[2],r[3],color);
+            else DrawRectangle(int(origin.x)+r[0],int(origin.y)+r[1],r[2],r[3],color);
+        } else if constexpr(std::is_same_v<T,SteamHumanPortrait>) {
+            if(!v.image_clip||!v.clip||v.actor.weapon||v.actor.shadow)
+                throw std::runtime_error("探索头像正常裁图前提拒绝");
+            apply(v.clip);
+            sprites.actor(false,v.actor.body.sprite,v.actor.body.image,v.actor.body.frame,
+                {origin.x+v.position[0],origin.y+v.position[1]});
+            apply();
+        } else if constexpr(std::is_same_v<T,SteamMonsterBody>) {
+            sprites.actor(true,v.sprite,v.image,v.frame,{origin.x+v.position[0],origin.y+v.position[1]});
+        } else if constexpr(std::is_same_v<T,SteamFacilityNumber>) {
+            const auto digits=steam_facility_number_draws(v,8);
+            if(!digits)throw std::runtime_error("探索百分比数字拒绝");
+            for(const auto &digit:*digits)sprites.facility_image(digit,origin);
+        }
+    },op);
+    if(!clips.empty())throw std::runtime_error("探索底栏裁剪未释放");
+}
 // 两种设施演出共用有序执行器，保留裁剪栈；每个variant恰消费一次。
 template<class Plan> void draw_facility_ceremony(const Plan &plan,SourceSprites &sprites,const ChineseFont &font,
     Vector2 origin=human_overview_origin,bool include_soft_labels=true) {
@@ -1613,6 +1671,39 @@ std::optional<SteamMonsterSkinPlan> monster_notice_example(bool boss,const Chine
         state=std::move(*next.candidate);
     }
     return window_monster_notice_plan(state,page.id,font);
+}
+std::optional<SteamDungeonFooterPlan> dungeon_footer_example(bool entering) {
+    StartupSession initial;
+    for(int n=0;n<420;++n)if(initial.update()!=StartupError::none)return {};
+    StartupWorldRuntimeSession world(initial.state(),ref::WorldRandomStream::from_java_seed(1));
+    auto s=world.state();
+    const auto made=ref::prepare_world_task_creation(startup_world_runtime_factory(s),0);
+    if(!made.candidate||!made.candidate->created_task||
+       !write_startup_world_runtime_factory(s,made.candidate->state))return {};
+    s.active_task=*made.candidate->created_task;
+    const auto facility=s.tasks.at(*s.active_task).facility;
+    if(!facility||s.scene.world.world.ai.human_order.empty())return {};
+    auto &progress=s.dungeon_facilities.at(*facility);
+    // 明确的显示调用点：保留真实工厂初建g/h，仅指定挑战年龄及人物撤退姿态。
+    // 初建h=0时显示0%，不为示例伪造已开始探索或补一个演示分母。
+    for(auto &c:progress.challenges) {
+        c[2]=c[1]==1?1:3;c[3]=25;
+    }
+    s.scene.world.world.facilities.at(*facility).occupants=s.scene.world.world.ai.human_order;
+    for(const auto id:s.scene.world.world.ai.human_order) {
+        const auto a=s.dungeon_actors.find(id);if(a==s.dungeon_actors.end())return {};
+        a->second.percent=50;a->second.retreat_state=entering?1:0;a->second.retreat_updates=12;
+    }
+    s.scene.world.updates=entering?9:18;
+    s.scene.world.floating_notes={{3,90,231},{4,120,231}};
+    s.scripts.executing_page.reset();s.scripts.pages.front().lifecycle=3;
+    StartupPresentationRequest request;request.ordinal=1;request.mode=StartupPresentationMode::full_redraw;
+    const auto pages=startup_world_presentation_pages(s,request.mode);if(!pages)return {};
+    request.expected_pages=*pages;
+    const auto presented=prepare_startup_world_presentation(s,request);
+    if(!presented.candidate||!presented.plan)return {};
+    return steam_dungeon_footer_skin(*presented.candidate,s.scripts.pages.front().id,*presented.plan,
+        {0,0,240,240},0,false);
 }
 std::optional<SteamMonsterSkinPlan> monster_introduction_example(bool early,const ChineseFont &font) {
     StartupSession startup;StartupWorldRuntimeSession world(startup.state(),ref::WorldRandomStream{});
@@ -3033,6 +3124,7 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
     const bool magic_fixture=inspect_page.rfind("magic-pot-",0)==0;
     const bool roster_fixture=inspect_page=="task-roster"||inspect_page=="task-extra"||inspect_page=="task-extra-stats"||inspect_page=="task-departure"||inspect_page=="task-departing";
     const bool info_fixture=inspect_page=="task-map-info"||inspect_page=="task-info";
+    const bool footer_fixture=inspect_page=="dungeon-footer"||inspect_page=="dungeon-footer-entry";
     const bool result_fixture=inspect_page=="task-battle-result"||inspect_page=="task-reward-result";
     const bool victory_fixture=inspect_page=="task-victory"||inspect_page=="task-victory-reputation";
     const bool deadline_fixture=inspect_page=="task-deadline"||inspect_page=="task-deadline-battle"||inspect_page=="task-deadline-continue";
@@ -3058,7 +3150,7 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
         inspect_page=="commerce-shop-preview"||inspect_page=="commerce-plant-preview";
     const bool gift_claim_fixture=inspect_page=="gift-facility"||inspect_page=="gift-profession"||inspect_page=="gift-equipment"||inspect_page=="gift-item";
     const bool award_result_fixture=inspect_page=="award-giving"||inspect_page=="award-lift"||inspect_page=="award-celebration"||inspect_page=="award-reward";
-    const bool task_fixture=info_fixture||result_fixture||victory_fixture||deadline_fixture||roster_fixture||inspect_page=="task-selection"||inspect_page=="task-offer"||inspect_page=="task-recruitment";
+    const bool task_fixture=footer_fixture||info_fixture||result_fixture||victory_fixture||deadline_fixture||roster_fixture||inspect_page=="task-selection"||inspect_page=="task-offer"||inspect_page=="task-recruitment";
     const bool management_fixture=inspect_page.rfind("village-",0)==0||inspect_page.rfind("town-",0)==0;
     const bool reputation_fixture=inspect_page=="facility-reputation"||inspect_page=="facility-reputation-result";
     std::string reputation_glyphs;
@@ -3126,8 +3218,11 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
     }
     ChineseFont font(font_path,reputation_glyphs);
     if(magic_fixture||task_fixture||residence_fixture||award_fixture||tax_fixture||monster_fixture||monster_detail_fixture||monster_notice_fixture||effort_fixture||award_result_fixture||mastery_fixture||gift_claim_fixture||clear_fixture||new_game_fixture||config_fixture||commerce_fixture||commerce_result_fixture||commerce_facility_fixture||commerce_preview_fixture||facility_special_fixture||build_menu_fixture) {
-        std::variant<SteamMagicPotPlan,SteamTaskSelectionPlan,SteamTaskRosterPlan,SteamTaskResultPlan,SteamTaskVictoryPlan,SteamTaskDeadlinePlan,SteamHumanOverviewPlan,SteamTownProgressPlan,SteamNewGamePlan,SteamConfigSkinPlan,SteamCommerceSkinPlan,SteamFacilityDetailSkinPlan,SteamInformationSkinPlan,SteamMonsterSkinPlan,SteamBuildMenuSkinPlan> plan;
-        if(build_menu_fixture) {
+        std::variant<SteamMagicPotPlan,SteamTaskSelectionPlan,SteamTaskRosterPlan,SteamTaskResultPlan,SteamTaskVictoryPlan,SteamTaskDeadlinePlan,SteamHumanOverviewPlan,SteamTownProgressPlan,SteamNewGamePlan,SteamConfigSkinPlan,SteamCommerceSkinPlan,SteamFacilityDetailSkinPlan,SteamInformationSkinPlan,SteamMonsterSkinPlan,SteamBuildMenuSkinPlan,SteamDungeonFooterPlan> plan;
+        if(footer_fixture) {
+            const auto value=dungeon_footer_example(inspect_page=="dungeon-footer-entry");
+            if(!value)throw std::runtime_error("Dungeon footer example rejected");plan=*value;
+        } else if(build_menu_fixture) {
             const auto value=build_menu_example(inspect_page,font);
             if(!value)throw std::runtime_error("Build menu example rejected");plan=*value;
         } else if(monster_notice_fixture) {
@@ -3215,9 +3310,10 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
             font.text("研究绘制夹具",8,10,WHITE,10);std::visit([&](const auto &value){
                 if constexpr(std::is_same_v<std::decay_t<decltype(value)>,SteamFacilityDetailSkinPlan>)draw_facility_detail(value,sprites,font);
                 else if constexpr(std::is_same_v<std::decay_t<decltype(value)>,SteamInformationSkinPlan>)draw_tax_information(value,sprites,font);
+                else if constexpr(std::is_same_v<std::decay_t<decltype(value)>,SteamDungeonFooterPlan>)draw_dungeon_footer(value,sprites,human_overview_origin);
                 else draw_facility_ceremony(value,sprites,font,info_fixture?Vector2{0,0}:human_overview_origin);
             },plan);
-            font.text("无自然触发认证",8,(new_game_fixture||build_menu_fixture)?300:260,WHITE,9);EndTextureMode();BeginDrawing();ClearBackground(BLACK);
+            font.text("无自然触发认证",8,(new_game_fixture||build_menu_fixture||footer_fixture)?300:260,WHITE,9);EndTextureMode();BeginDrawing();ClearBackground(BLACK);
             DrawTexturePro(canvas.value.texture,{0,0,width,-height},{0,0,width*scale,height*scale},{0,0},0,WHITE);
             EndDrawing();++count;
             if(count==frames&&screenshot) {

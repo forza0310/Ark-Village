@@ -53,6 +53,11 @@ h不含目标但旧位置在内且旧raw为DOWN0时是types0／5／1／3／6，�
 
 ## 任务底栏的绘制期业务副作用
 
+完整Steam底栏现有[冻结皮肤与Owner桥](DUNGEON_RENDER.md#steam底栏维护消费者与资源边界)，
+必须消费本节同次Owner表现结果，不能把一次raylib刷新自动当原准入请求。
+攻略推进火花另由设施AI生产到既有aW，沿共同前段推进／退休；`dungeon_labels`只是已应用效果的观察输出，
+不在重复Draw或旧输出消费时重新追加，见[生产／退休合同](DUNGEON_RENDER.md#攻略推进特效的生产与退休)。
+
 [本批窄证据与提案](../work/render-request-contract/README.md)只保存身份／引用和中文摘要：20窗口326局部行，11明确DEX方法共2442指令字节。
 没有提交原程序、复制新的源码片段或宣称原APK动态认证。
 

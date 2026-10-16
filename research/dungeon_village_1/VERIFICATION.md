@@ -1,5 +1,13 @@
 # 当前研究验证与历史索引
 
+## TextLayout实例Draw外层 2026-10-17
+
+接`240e62b`，现[文字模块](prototype/include/dungeon_village_prototype/steam_text_layout.hpp)新增`steam_draw_text_layout`，实际执行非等比补偿／局部坐标、设置栈、比例重排、诊断框、clip、块循环及正常尾；沿[原序合同](ui/STEAM_FONT_CONSUMER.md#实例draw重排与报纸分页)保留三次Font宽、两次字号及Rect分时读取，红框阈值／首块−1／基Font读取不合并。相同比例不复制旧文字或块，重排只交本次候选；成功后才交饱和draw，未新建Owner／codec。异常按成功取得义务尽力清理／保首错／不重试，并额外尽力PopClip，明确不同于原异常；已画内容、颜色及回调部分修改不回滚。后端仍须实际提供字体／Graphics／块绘制，不认证原窗口或字形已接。
+
+Windows单Release动态构建及实现／测试严格C++17语法通过，既有visuals **1/1通过2.31秒**。扩现文字套件，核完整有序轨迹、float32位级舍入、负／零补偿、首次废弃NaN、局部坐标后的绿红框／clip／块请求、0预算仍有外层效果、红框动态字号门、变比例不SetText及22处取得／释放故障、嵌套排块失败与清理多错。拒绝空Rect、零除数字号及成功返回坏坐标；原断言保留，无新target／世界长跑，三份他人在途住宅存取测试未编译。
+
+Release1411文件／230817463字节，assets872文件／9504668字节，无.pending；无新文件、素材、audit或指纹。现合同／模块导航与连续队列整合本批范围；临时Rect引用及新排块候选按调用释放，不保留绘制历史；实际后端缓存仍按其自身寿命。构建／短测已退出，独立静态与测试分工收齐后仅提交研究白名单，不推送。
+
 ## 公开文字准备、Console文案与Draw执行 2026-10-16
 
 接`0f852c8／7f04cfe`的公开准备／固定hash／ff／Draw重排，`2ee6a9d`已补[实际Console转换](prototype/include/dungeon_village_prototype/steam_text_layout.hpp)及x86提示显示资格；现补Draw真实消费量块循环，按源float32滚动但保持boxY，0消费仍进入下一块。完整外层的三次Font.GetWidth、局部坐标、重排／clip／诊断框及异常收尾合入[现字体合同](ui/STEAM_FONT_CONSUMER.md#实例draw重排与报纸分页)：Draw不另调StringWidth／对齐，原异常不保证PopClip或栈全恢复。实际表、文化比较、字形和Graphics末端仍须宿主供给，不把局部执行器称为完整实例Draw或窗口已接。

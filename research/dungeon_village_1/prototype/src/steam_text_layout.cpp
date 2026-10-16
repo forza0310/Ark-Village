@@ -636,4 +636,104 @@ std::optional<std::int32_t> steam_draw_text_block_sequence(
     }
     return budget;
 }
+
+std::optional<SteamTextInstanceDrawResult> steam_draw_text_layout(
+        const SteamTextLayoutInput &layout,const SteamTextLayoutResult &current,
+        const SteamTextInstanceDrawInput &in,SteamTextLayoutBackend &text,SteamTextDrawBackend &out) {
+    struct DrawScope {
+        SteamTextLayoutBackend &text;
+        SteamTextDrawBackend &out;
+        bool matrix{},coordinates{},automatic{},localize{},clip{};
+        void finish() {
+            // 正常序完全沿原helper及其后的PopClip；先撤义务，不重试已失败清理。
+            if(localize) {localize=false;text.pop_localize();}
+            if(coordinates) {coordinates=false;out.end_local_coordination();}
+            if(matrix) {matrix=false;out.pop_matrix();}
+            if(automatic) {automatic=false;text.pop_auto_text_layout();}
+            if(clip) {clip=false;out.pop_clip();}
+        }
+        void unwind() noexcept {
+            auto attempt=[](auto call) {try {call();}catch(...) {}};
+            if(localize) {localize=false;attempt([&]{text.pop_localize();});}
+            if(coordinates) {coordinates=false;attempt([&]{out.end_local_coordination();});}
+            if(matrix) {matrix=false;attempt([&]{out.pop_matrix();});}
+            if(automatic) {automatic=false;attempt([&]{text.pop_auto_text_layout();});}
+            if(clip) {clip=false;attempt([&]{out.pop_clip();});}
+        }
+    } scope{text,out};
+    try {
+        if(current.blocks.size()>block_budget)return {};
+        if(out.check_local_matrix()) {
+            (void)out.layout_font_width(); // 原首次结果丢弃；不拿它替代第二/第三次读取。
+            const auto reference_width=bounded(out.layout_font_width());
+            const auto first_size=out.layout_font_used_size();
+            if(first_size<0||first_size>65536)throw Rejected{};
+            auto rectangle=out.reference_rectangle(reference_width,static_cast<float>(first_size));
+            if(!rectangle)throw Rejected{};
+            const auto transformed_width=bounded(rectangle->width());
+            const auto font_width=bounded(out.layout_font_width());
+            const auto sx=bounded(f32(transformed_width/font_width));
+            const auto transformed_height=bounded(rectangle->height());
+            const auto second_size=out.layout_font_used_size();
+            if(second_size<=0||second_size>65536)throw Rejected{};
+            const auto sy=bounded(f32(transformed_height/static_cast<float>(second_size)));
+            const auto ratio=bounded(f32(sy/sx));
+            if(ratio<1.F) {out.push_horizontal_scale(ratio);scope.matrix=true;}
+        }
+        auto dx=bounded(in.dx),dy=bounded(in.dy);
+        out.begin_local_coordination(dx,dy);scope.coordinates=true;
+        (void)bounded(dx);(void)bounded(dy);
+        text.push_auto_text_layout(false);scope.automatic=true;
+        const auto graphics_scale=out.graphics_scale();
+        SteamTextDrawReflow reflow{layout.scale_ratio,{}};
+        if(graphics_scale!=layout.scale_ratio) {
+            // 相同比例不复制原文字或旧块；仅真实重排时准备当前宽/request投影。
+            auto actual=layout;
+            actual.previous_text_width=current.text_width;
+            actual.request_font_size=current.request_font_size;
+            auto next=steam_reflow_text_for_draw(actual,graphics_scale,text);
+            if(!next)throw Rejected{};
+            reflow=std::move(*next);
+        }
+        const auto &drawn=reflow.replacement?*reflow.replacement:current;
+        text.push_localize(false);scope.localize=true;
+        const auto japanese=out.japanese();
+        const float extra=!japanese&&layout.height>0?2.F:0.F;
+        const auto rectangle=[&](float expand) {
+            const auto x=bounded(f32(dx-expand)),y=bounded(f32(dy-expand));
+            const auto width=bounded(f32(layout.width+f32(2.F*expand)));
+            const auto height=bounded(f32(layout.height+f32(2.F*expand)));
+            out.draw_rectangle(x,y,width,height);
+        };
+        if(out.render_rect_visible()&&layout.width!=-1.F&&layout.height!=-1.F) {
+            out.set_color_rgb(0,255,0);rectangle(2.F);
+        }
+        if(in.text_check_size&&layout.auto_scale&&layout.width!=-1.F&&layout.height!=-1.F) {
+            auto threshold=in.text_check_size;
+            if(threshold==-1)threshold=out.layout_font_used_size(); // 即使块为空也先读。
+            if(!drawn.blocks.empty()) {
+                const auto &font=drawn.blocks.front().font;
+                if(!font)throw Rejected{};
+                const auto first_size=font->used_size();
+                if(first_size!=-1) {
+                    const auto base_size=out.layout_font_used_size(); // 先比相等，再比阈值。
+                    if(first_size!=base_size&&first_size<threshold) {
+                        out.set_color_rgb(255,0,0);rectangle(2.F);rectangle(3.F);
+                    }
+                }
+            }
+        }
+        if(drawn.over_area) {
+            const auto height=bounded(f32(layout.height+extra));
+            (void)bounded(layout.width);
+            out.push_clip(dx,dy,layout.width,height);scope.clip=true;
+        }
+        if(!steam_draw_text_block_sequence(drawn.blocks,in.pos,dx,dy,in.scroll_v,layout.height,out))
+            throw Rejected{};
+        scope.finish();
+        return SteamTextInstanceDrawResult{std::move(reflow),
+            in.draw<std::numeric_limits<std::int32_t>::max()?in.draw+1:in.draw};
+    } catch(const Rejected &) {scope.unwind();return {};}
+      catch(...) {scope.unwind();throw;}
+}
 } // namespace dungeon_village_prototype

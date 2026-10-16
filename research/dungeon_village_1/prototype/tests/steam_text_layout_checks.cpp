@@ -35,6 +35,7 @@ struct LayoutBackendFailure {std::string operation;};
 class FixtureBackend final:public SteamTextLayoutBackend {
 public:
     std::vector<std::string> calls;
+    std::vector<std::string> *shared_trace{}; // 外层Draw与排块共享一次原序轨迹，不新建持久记录器。
     std::vector<std::pair<int,int>> copies;
     std::vector<std::pair<int,int>> outside_copies; // SetText首排后备份，不能混同样本内工作/块复制。
     struct SizeCall {int identity{},request{};bool preset{};};
@@ -151,6 +152,7 @@ public:
 private:
     void call(const char *name) {
         calls.emplace_back(name);
+        if(shared_trace)shared_trace->emplace_back(name);
         if(fail_operation==name&&--fail_occurrence==0) {
             fail_operation.clear();throw LayoutBackendFailure{name};
         }
@@ -1023,6 +1025,288 @@ void draw_block_sequence(Checks &check) {
               FixtureBackend::font(blocks[0].font)->used==12&&blocks[1].kind==SteamLayoutBlockKind::pictograph,
           "晚期后端错误传播一次：前块回0后访问第二块失败，不重试或继续尾块；原布局/Font不改，已画图元不声称回滚");
 }
+class InstanceDrawFixture final:public SteamTextDrawBackend {
+    struct Rectangle final:SteamTextDrawRectangle {
+        InstanceDrawFixture &host;
+        explicit Rectangle(InstanceDrawFixture &value):host(value) {}
+        float width() override {host.call("draw:rectWidth");return host.rect_width;}
+        float height() override {host.call("draw:rectHeight");return host.rect_height;}
+    };
+public:
+    explicit InstanceDrawFixture(std::vector<std::string> &value):trace(value) {}
+    std::vector<std::string> &trace;
+    bool matrix{},jp{},visible{},null_rectangle{};
+    std::vector<float> widths{101.F,20.F,10.F};
+    std::vector<std::int32_t> sizes{16,8,12},receipts{2};
+    std::size_t width_at{},size_at{};
+    float rect_width{30.F},rect_height{12.F},scale{1.F},local_x{7.25F},local_y{8.5F};
+    std::vector<std::string> failures;
+    std::vector<float> matrix_scales;
+    std::vector<std::array<float,2>> rectangle_inputs,coordinate_inputs;
+    std::vector<std::array<float,4>> rectangles,clips;
+    std::vector<const SteamLayoutBlock *> blocks;
+    std::vector<SteamTextBlockDrawRequest> requests;
+    std::array<std::int32_t,3> color{-7,-8,-9};
+    std::vector<std::array<std::int32_t,3>> colors;
+    int matrix_depth{},coordinate_depth{},clip_depth{};
+    bool check_local_matrix() override {call("draw:checkMatrix");return matrix;}
+    float layout_font_width() override {
+        call("draw:fontWidth");
+        if(width_at==widths.size())throw std::runtime_error("Draw夹具缺少原序Font宽观测");
+        return widths[width_at++];
+    }
+    std::int32_t layout_font_used_size() override {
+        call("draw:fontUsed");
+        if(size_at==sizes.size())throw std::runtime_error("Draw夹具缺少原序Font字号观测");
+        return sizes[size_at++];
+    }
+    std::shared_ptr<SteamTextDrawRectangle> reference_rectangle(float width,float height) override {
+        call("draw:refRect");rectangle_inputs.push_back({width,height});
+        if(null_rectangle)return {};
+        return std::make_shared<Rectangle>(*this);
+    }
+    void push_horizontal_scale(float value) override {
+        call("draw:pushMatrix");matrix_scales.push_back(value);++matrix_depth;
+    }
+    void pop_matrix() override {call("draw:popMatrix");--matrix_depth;}
+    void begin_local_coordination(float &x,float &y) override {
+        call("draw:beginCoords");coordinate_inputs.push_back({x,y});
+        x=local_x;y=local_y;++coordinate_depth;
+    }
+    void end_local_coordination() override {call("draw:endCoords");--coordinate_depth;}
+    float graphics_scale() override {call("draw:scale");return scale;}
+    bool japanese() override {call("draw:japanese");return jp;}
+    bool render_rect_visible() override {call("draw:visible");return visible;}
+    void set_color_rgb(std::int32_t r,std::int32_t g,std::int32_t b) override {
+        call("draw:color");color={r,g,b};colors.push_back(color);
+    }
+    void draw_rectangle(float x,float y,float width,float height) override {
+        call("draw:rectangle");rectangles.push_back({x,y,width,height});
+    }
+    void push_clip(float x,float y,float width,float height) override {
+        call("draw:clipPush");clips.push_back({x,y,width,height});++clip_depth;
+    }
+    void pop_clip() override {call("draw:clipPop");--clip_depth;}
+    std::int32_t draw_block(const SteamLayoutBlock &block,const SteamTextBlockDrawRequest &request) override {
+        blocks.push_back(&block);requests.push_back(request);call("draw:block");
+        if(blocks.size()>receipts.size())throw std::runtime_error("Draw夹具缺少真实块消费回执");
+        return receipts[blocks.size()-1];
+    }
+    void call(const char *operation) {
+        trace.emplace_back(operation);
+        const auto failure=std::find(failures.begin(),failures.end(),operation);
+        if(failure!=failures.end()) {failures.erase(failure);throw LayoutBackendFailure{operation};}
+    }
+};
+
+SteamTextLayoutResult drawable_fixture(std::vector<std::string> &trace) {
+    SteamTextLayoutResult current;current.request_font_size=77;current.text_width=9.F;current.over_area=true;
+    SteamLayoutBlock block;block.font=input(u"").font;block.text=u"AB";
+    FixtureBackend::font(block.font)->used=8;
+    FixtureBackend::font(block.font)->used_probe=[&trace](const FixtureFont &) {trace.emplace_back("draw:firstUsed");};
+    current.blocks.push_back(std::move(block));return current;
+}
+SteamTextLayoutInput framed_fixture() {
+    auto layout=input(u"A");layout.width=40.F;layout.height=12.F;layout.auto_scale=true;return layout;
+}
+std::vector<std::string> draw_cleanup_calls(const std::vector<std::string> &trace) {
+    std::vector<std::string> result;
+    for(const auto &operation:trace)
+        if(operation=="localPop"||operation=="draw:endCoords"||operation=="draw:popMatrix"||
+           operation=="autoPop"||operation=="draw:clipPop")result.push_back(operation);
+    return result;
+}
+
+void instance_draw_normal_order(Checks &check) {
+    const std::vector<std::string> expected{
+        "draw:checkMatrix","draw:fontWidth","draw:fontWidth","draw:fontUsed","draw:refRect",
+        "draw:rectWidth","draw:fontWidth","draw:rectHeight","draw:fontUsed","draw:pushMatrix",
+        "draw:beginCoords","autoPush0","draw:scale","localPush0","draw:japanese","draw:visible",
+        "draw:color","draw:rectangle","draw:firstUsed","draw:fontUsed","draw:color","draw:rectangle",
+        "draw:rectangle","draw:clipPush","draw:block","localPop","draw:endCoords","draw:popMatrix",
+        "autoPop","draw:clipPop"
+    };
+    for(const bool zero_budget:std::array<bool,2>{false,true}) {
+        std::vector<std::string> trace;auto current=drawable_fixture(trace);const auto layout=framed_fixture();
+        FixtureBackend text;text.shared_trace=&trace;InstanceDrawFixture draw(trace);draw.matrix=true;draw.visible=true;
+        SteamTextInstanceDrawInput in;in.dx=100.F;in.dy=200.F;in.scroll_v=3;in.pos=zero_budget?0:2000;
+        in.draw=std::numeric_limits<std::int32_t>::max()-1;in.text_check_size=10;
+        const auto result=steam_draw_text_layout(layout,current,in,text,draw);
+        auto expected_trace=expected;
+        if(zero_budget)expected_trace.erase(std::find(expected_trace.begin(),expected_trace.end(),"draw:block"));
+        check(result&&result->draw==std::numeric_limits<std::int32_t>::max()&&!result->reflow.replacement&&
+                  trace==expected_trace&&draw.matrix_scales==std::vector<float>{0.5F}&&
+                  draw.rectangle_inputs==std::vector<std::array<float,2>>{{20.F,16.F}}&&
+                  draw.coordinate_inputs==std::vector<std::array<float,2>>{{100.F,200.F}}&&
+                  draw.rectangles==std::vector<std::array<float,4>>{{5.25F,6.5F,44.F,16.F},
+                      {5.25F,6.5F,44.F,16.F},{4.25F,5.5F,46.F,18.F}}&&
+                  draw.clips==std::vector<std::array<float,4>>{{7.25F,8.5F,40.F,14.F}}&&
+                  draw.colors==std::vector<std::array<std::int32_t,3>>{{0,255,0},{255,0,0}}&&
+                  draw.color==std::array<std::int32_t,3>{255,0,0}&&draw.blocks.size()==(zero_budget?0U:1U)&&
+                  text.cleaned()&&draw.matrix_depth==0&&draw.coordinate_depth==0&&draw.clip_depth==0,
+              "完整Draw原序：三宽两字号/Rect分时读取、.5横补偿、局部坐标后绿红框、非JP高+2 clip、正常尾原序清理；预算0仍画框且颜色不回滚");
+        if(!zero_budget)
+            check(draw.blocks[0]==&current.blocks[0]&&draw.requests[0].dx==7.25F&&draw.requests[0].dy==5.5F&&
+                      draw.requests[0].box_y==8.5F&&draw.requests[0].box_height==12.F&&draw.requests[0].budget==2,
+                  "同scale直接消费旧块引用，scroll仅移正文y，clip补高不倒改实际boxH或渐显预算");
+    }
+    std::vector<std::string> trace;FixtureBackend text;text.shared_trace=&trace;
+    InstanceDrawFixture draw(trace);draw.matrix=true;draw.widths={99.F,11.F,3.F};draw.sizes={13,5};
+    draw.rect_width=2.F;draw.rect_height=1.F;
+    const auto precise=steam_draw_text_layout(input(u""),{}, {},text,draw);
+    check(precise&&draw.matrix_scales==std::vector<float>{0.29999998211860657F}&&
+              draw.rectangle_inputs==std::vector<std::array<float,2>>{{11.F,13.F}}&&draw.width_at==3&&draw.size_at==2&&
+              trace[5]=="draw:rectWidth"&&trace[6]=="draw:fontWidth"&&trace[7]=="draw:rectHeight"&&
+              trace[8]=="draw:fontUsed"&&text.cleaned()&&draw.matrix_depth==0,
+          "逐次float32除法oracle为bits3E999999；合并有理数会成3E99999A，不能复用第二次宽/首次字号或提前读Rect高");
+    struct RatioCase {float first_width,height;std::vector<float> pushed;};
+    for(const auto &c:std::vector<RatioCase>{
+             {std::numeric_limits<float>::quiet_NaN(),12.F,{0.5F}},
+             {101.F,-12.F,{-0.5F}},{101.F,0.F,{0.F}},{101.F,24.F,{}},{101.F,36.F,{}}}) {
+        std::vector<std::string> ratio_trace;FixtureBackend ratio_text;
+        InstanceDrawFixture ratio_draw(ratio_trace);ratio_draw.matrix=true;
+        ratio_draw.widths={c.first_width,20.F,10.F};ratio_draw.sizes={16,8};ratio_draw.rect_height=c.height;
+        const auto p=steam_draw_text_layout(input(u""),{}, {},ratio_text,ratio_draw);
+        check(p&&ratio_draw.width_at==3&&ratio_draw.size_at==2&&ratio_draw.matrix_scales==c.pushed&&
+                  std::count(ratio_trace.begin(),ratio_trace.end(),"draw:popMatrix")==static_cast<int>(c.pushed.size())&&
+                  ratio_draw.matrix_depth==0&&ratio_text.cleaned(),
+              "首次GetWidth值丢弃故NaN不拒绝；有限负/零ratio原样压矩阵，恰1或更大不压亦不Pop，不补默认正比例");
+    }
+    for(const auto c:std::array<std::array<std::int32_t,2>,3>{{{-2,-1},
+             {std::numeric_limits<std::int32_t>::max()-1,std::numeric_limits<std::int32_t>::max()},
+             {std::numeric_limits<std::int32_t>::max(),std::numeric_limits<std::int32_t>::max()}}}) {
+        std::vector<std::string> count_trace;FixtureBackend count_text;InstanceDrawFixture count_draw(count_trace);
+        SteamTextInstanceDrawInput in;in.draw=c[0];const auto p=steam_draw_text_layout(input(u""),{},in,count_text,count_draw);
+        check(p&&p->draw==c[1]&&count_draw.matrix_scales.empty()&&count_draw.width_at==0&&count_draw.size_at==0,
+              "不在局部矩阵中跳过全部宽/字号查询；draw负值照加、MAX封顶，空正文仍有外层生命周期");
+    }
+}
+
+void instance_draw_gates_and_reflow(Checks &check) {
+    struct RedCase {bool empty;int first;std::vector<std::int32_t> sizes;std::size_t red;};
+    for(const auto &c:std::vector<RedCase>{{true,8,{12},0},{false,-1,{12},0},
+             {false,8,{3,12},0},{false,8,{12,8},0},{false,8,{12,12},2}}) {
+        std::vector<std::string> trace;auto current=drawable_fixture(trace);
+        if(c.empty)current.blocks.clear();else FixtureBackend::font(current.blocks[0].font)->used=c.first;
+        current.over_area=false;FixtureBackend text;text.shared_trace=&trace;InstanceDrawFixture draw(trace);draw.sizes=c.sizes;
+        SteamTextInstanceDrawInput in;in.text_check_size=-1;
+        const auto p=steam_draw_text_layout(framed_fixture(),current,in,text,draw);
+        check(p&&draw.size_at==c.sizes.size()&&draw.rectangles.size()==c.red&&text.cleaned()&&
+                  position(trace,"draw:fontUsed")<position(trace,"draw:firstUsed"),
+              "checkSize=-1先取当前Font阈值，即使块为空；首块字号-1短路，之后基Font仍先于阈值比较且不能偷用阈值读数");
+    }
+    struct Gate {bool automatic;float width,height;int check_size;};
+    for(const auto c:std::array<Gate,4>{{{false,40,12,10},{true,-1,12,10},
+             {true,40,-1,10},{true,40,12,0}}}) {
+        std::vector<std::string> trace;auto current=drawable_fixture(trace);current.over_area=false;current.blocks[0].font={};
+        auto layout=framed_fixture();layout.auto_scale=c.automatic;layout.width=c.width;layout.height=c.height;
+        FixtureBackend text;InstanceDrawFixture draw(trace);draw.sizes.clear();draw.visible=true;
+        SteamTextInstanceDrawInput in;in.text_check_size=c.check_size;
+        const auto p=steam_draw_text_layout(layout,current,in,text,draw);
+        check(p&&draw.size_at==0&&draw.rectangles.size()==(c.width!=-1&&c.height!=-1?1U:0U)&&text.cleaned(),
+              "红框须check非0/autoScale/两维非-1，失败不访问坏首Font；绿色独立沿visible与两维资格且无DEBUG门");
+    }
+    for(const bool jp:std::array<bool,2>{false,true}) {
+        std::vector<std::string> trace;auto current=drawable_fixture(trace);current.blocks.clear();
+        auto layout=framed_fixture();layout.height=-1.F;FixtureBackend text;InstanceDrawFixture draw(trace);draw.jp=jp;
+        const auto p=steam_draw_text_layout(layout,current,{},text,draw);
+        check(p&&draw.clips==std::vector<std::array<float,4>>{{7.25F,8.5F,40.F,-1.F}},
+              "overArea单独决定clip；盒高-1不增非JP的2，也不擅自豁免整个clip请求");
+    }
+    std::vector<std::string> trace;auto current=drawable_fixture(trace);current.text_width=42.F;
+    auto layout=framed_fixture();layout.height=1.F;layout.multi_line=false;layout.request_font_size=999;
+    FixtureBackend text;text.shared_trace=&trace;text.translation=u"ABCDE";
+    InstanceDrawFixture draw(trace);draw.scale=2.F;draw.receipts={1};
+    SteamTextInstanceDrawInput in;in.pos=1000;in.draw=9;in.scroll_v=3;
+    const auto p=steam_draw_text_layout(layout,current,in,text,draw);
+    check(p&&p->reflow.replacement&&p->reflow.replacement->request_font_size==77&&
+              p->reflow.replacement->text_width==60.F&&p->reflow.replacement->blocks[0].text==u"ABCDE"&&
+              FixtureBackend::font(p->reflow.replacement->blocks[0].font)->used==24&&p->draw==10&&
+              draw.blocks.size()==1&&draw.requests[0].budget==1&&draw.clips.empty()&&
+              text.outside_copies.empty()&&text.sizes.empty()&&text.cleaned()&&
+              current.text_width==42.F&&current.request_font_size==77&&current.blocks[0].text==u"AB"&&
+              layout.height==1.F&&layout.scale_ratio==1.F&&in.pos==1000&&in.draw==9&&
+              position(trace,"draw:scale")<position(trace,"begin")&&
+              position(trace,"end")<position(trace,"localPush0"),
+          "变比例只_make一次并用新overArea/块，旧current宽/request覆盖输入历史；不缩字备份、不重算渐显或改旧输入");
+}
+
+void instance_draw_fault_obligations(Checks &check) {
+    const std::vector<std::string> matrix_only{"draw:popMatrix"};
+    const std::vector<std::string> coordinates{"draw:endCoords","draw:popMatrix"};
+    const std::vector<std::string> automatic{"draw:endCoords","draw:popMatrix","autoPop"};
+    const std::vector<std::string> localized{"localPop","draw:endCoords","draw:popMatrix","autoPop"};
+    const std::vector<std::string> clipped{"localPop","draw:endCoords","draw:popMatrix","autoPop","draw:clipPop"};
+    struct FaultCase {const char *operation;std::vector<std::string> cleanup;};
+    const std::vector<FaultCase> cases{
+        {"draw:checkMatrix",{}},{"draw:fontWidth",{}},{"draw:fontUsed",{}},{"draw:refRect",{}},
+        {"draw:rectWidth",{}},{"draw:rectHeight",{}},{"draw:pushMatrix",{}},
+        {"draw:beginCoords",matrix_only},{"autoPush0",coordinates},{"draw:scale",automatic},
+        {"localPush0",automatic},{"draw:japanese",localized},{"draw:visible",localized},
+        {"draw:color",localized},{"draw:rectangle",localized},{"draw:clipPush",localized},
+        {"draw:block",clipped},{"localPop",clipped},{"draw:endCoords",clipped},
+        {"draw:popMatrix",clipped},{"autoPop",clipped},{"draw:clipPop",clipped}
+    };
+    for(const auto &c:cases) {
+        std::vector<std::string> trace;auto current=drawable_fixture(trace);const auto layout=framed_fixture();
+        FixtureBackend text;text.shared_trace=&trace;InstanceDrawFixture draw(trace);draw.matrix=true;draw.visible=true;
+        const std::string operation=c.operation;
+        if(operation.rfind("draw:",0)==0)draw.failures={operation};else text.fail_operation=operation;
+        SteamTextInstanceDrawInput in;in.pos=2000;in.draw=99;in.text_check_size=10;bool exact=false;
+        try {(void)steam_draw_text_layout(layout,current,in,text,draw);}
+        catch(const LayoutBackendFailure &error) {exact=error.operation==operation;}
+        check(exact&&draw_cleanup_calls(trace)==c.cleanup&&
+                  std::count(trace.begin(),trace.end(),operation)==1&&in.draw==99&&in.pos==2000&&
+                  current.blocks[0].text==u"AB"&&FixtureBackend::font(current.blocks[0].font)->used==8,
+              "Draw后端故障只清成功取得的义务，首错原样传播、失败清理不重试、无draw/输入安装");
+    }
+    for(const bool missing_rectangle:std::array<bool,2>{false,true}) {
+        std::vector<std::string> rejected_trace;FixtureBackend rejected_text;
+        InstanceDrawFixture rejected_draw(rejected_trace);rejected_draw.matrix=true;
+        rejected_draw.null_rectangle=missing_rectangle;rejected_draw.sizes={16,0};
+        const auto p=steam_draw_text_layout(input(u""),{}, {},rejected_text,rejected_draw);
+        check(!p&&draw_cleanup_calls(rejected_trace).empty()&&rejected_text.calls.empty()&&
+                  rejected_draw.coordinate_inputs.empty()&&rejected_draw.matrix_scales.empty()&&
+                  rejected_draw.size_at==(missing_rectangle?1U:2U),
+              "实际Rect缺失或第二字号0分母在取得矩阵/坐标前拒绝，不造参考矩形/默认字号或清理未取得的义务");
+    }
+    {
+        std::vector<std::string> coordinate_trace;FixtureBackend coordinate_text;
+        InstanceDrawFixture coordinate_draw(coordinate_trace);coordinate_draw.matrix=true;
+        coordinate_draw.local_x=std::numeric_limits<float>::quiet_NaN();
+        const auto p=steam_draw_text_layout(input(u""),{}, {},coordinate_text,coordinate_draw);
+        check(!p&&draw_cleanup_calls(coordinate_trace)==coordinates&&coordinate_text.calls.empty()&&
+                  coordinate_draw.matrix_depth==0&&coordinate_draw.coordinate_depth==0&&
+                  std::count(coordinate_trace.begin(),coordinate_trace.end(),"draw:scale")==0,
+              "BeginCoords成功取得义务后回传NaN需拒绝，只清坐标/先前矩阵，不Pop尚未取得的自动或本地化栈");
+    }
+    {
+        std::vector<std::string> make_trace;auto old=drawable_fixture(make_trace);
+        FixtureBackend make_text;make_text.shared_trace=&make_trace;make_text.fail_operation="width";
+        InstanceDrawFixture make_draw(make_trace);make_draw.matrix=true;make_draw.scale=2.F;
+        bool original=false;
+        try {(void)steam_draw_text_layout(framed_fixture(),old,{},make_text,make_draw);}
+        catch(const LayoutBackendFailure &error) {original=error.operation=="width";}
+        check(original&&draw_cleanup_calls(make_trace)==std::vector<std::string>{
+                      "autoPop","draw:endCoords","draw:popMatrix","autoPop"}&&
+                  std::count(make_trace.begin(),make_trace.end(),"begin")==1&&
+                  std::count(make_trace.begin(),make_trace.end(),"end")==1&&
+                  std::count(make_trace.begin(),make_trace.end(),"localPop")==0&&make_text.cleaned()&&
+                  make_draw.coordinate_depth==0&&make_draw.matrix_depth==0&&old.blocks[0].text==u"AB",
+              "嵌套_make在外层localize取得前失败，先释放其自身样本/自动栈，再清外层坐标/矩阵/自动栈，不误Pop尚未取得的本地化义务");
+    }
+    std::vector<std::string> trace;auto current=drawable_fixture(trace);FixtureBackend text;text.shared_trace=&trace;
+    text.fail_operation="localPop";InstanceDrawFixture draw(trace);draw.matrix=true;draw.visible=true;
+    draw.failures={"draw:block","draw:endCoords","draw:clipPop"};
+    SteamTextInstanceDrawInput in;in.pos=2000;in.text_check_size=10;bool first=false;
+    try {(void)steam_draw_text_layout(framed_fixture(),current,in,text,draw);}
+    catch(const LayoutBackendFailure &error) {first=error.operation=="draw:block";}
+    check(first&&draw_cleanup_calls(trace)==clipped&&
+              std::count(trace.begin(),trace.end(),"localPop")==1&&
+              std::count(trace.begin(),trace.end(),"draw:clipPop")==1&&
+              draw.matrix_depth==0&&text.auto_depth==0&&draw.color==std::array<std::int32_t,3>{255,0,0},
+          "块首错后多个清理同时失败仍尝试其余已取得义务，PopClip失败恰一次，已写红色不回滚为入场色");
+}
 } // namespace
 
 int steam_text_layout_checks() {
@@ -1032,6 +1316,7 @@ int steam_text_layout_checks() {
     console_text_consumer(check);console_preparation_bridge(check);
     public_text_preparation(check);public_text_rejection_and_faults(check);
     draw_scale_reflow(check);draw_block_sequence(check);
+    instance_draw_normal_order(check);instance_draw_gates_and_reflow(check);instance_draw_fault_obligations(check);
     // 逐字面代入固定RVA8E8770算式的独立oracle，不使用被测helper构造期望。
     struct HashCase {std::u16string text;std::int32_t hash;};
     for(const auto &c:std::vector<HashCase>{{u"",371857150},{u"A",372029405},

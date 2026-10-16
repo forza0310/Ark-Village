@@ -212,7 +212,9 @@ GetNextHeight的本地零begin并不初始化对象；重复查询仍会重新�
 
 `107CA040–C4`用signed截零的`pos/1000`作为预算，按块原序、每次预算>0才调用`TextBlock.Draw(g,dx,float32(dy−float32(scrollV)),boxY=dy,boxH=height,budget)`，扣**实际返回消费量**再取下一块，0消费仍继续；不按字符串长度统一扣、不按可见图元数量扣。滚动只移动文字Y，boxY与boxH均不滚动／不加extraBottom，此层不截整坐标。Draw正文和TextBlock.Draw均无StringWidth调用，也不读anchor／旧textWidth作额外对齐；宽查询是并列链。本局部没有共同世界随机调用，不外推外部后端无副作用。
 
-现`steam_draw_text_block_sequence`执行上述块循环并把真实调用交后端，保留float32滚动、有符号预算减法回卷及未用坐标短路，不复制布局／Font或累计历史。调用期布局必须稳定、块数≤8192、实际使用坐标有限为维护正常域；后端失败原样传播，已画图元不回滚。它不代替前置矩阵、重排／clip、字形、外层清理或Draw尾计数，不能把此局部消费者标成完整实例Draw／研究窗口已经接线。
+现`steam_draw_text_block_sequence`执行块循环，`steam_draw_text_layout`复用它与比例重排门，接上此前矩阵补偿、真实局部坐标、设置栈、诊断框、clip及尾计数。Rect宽／高、当前Font三次宽／两次字号与后继诊断字号均按指定时点查询，不合并成快照观测；重排以当前真实宽／request为历史输入，不误用调用方的陈旧值。相同比例不复制旧文字／块／Font，变比例只持本次新块候选；不调用SetText／Frame或增加Owner／codec、随机与长期历史。两后端必须绑定同一真实布局／Graphics，调用期布局稳定；块数≤8192、实际坐标／参考宽高／中间比例有限且绝对值≤2^24、补偿字号0…65536且除数字号为正是维护正常域，有限的负／零补偿不夹为1。字体／真实块绘制仍由宿主提供，接口正常域短验不认证原窗口／GPU已接。
+
+外层正常清理保持下述原序；拒绝／异常则只记录成功返回的本轮义务，撤义务后再清理，保首错、失败清理不重试，并继续尽力收齐其它义务及clip。只有整次成功才交重排／draw候选，输入不安装；回调抛错前的部分修改、已画图元／颜色及Font别名不承诺回滚。这是明确的维护资源策略，不能将“有失败清理”说成原finally已有事务保证。
 
 正常与body异常均调用helper RVA7BAFC0，原序为`PopLocalizeSetting→EndLocalCoordination→可选补偿矩阵Pop→PopAutoTextLayout`；它不按实际取得义务检查，也不逐项捕获，前项失败会阻断后项。clip仅在正常尾`107CA115`弹出；body异常、helper异常或前置try外失败不保证clip／矩阵全恢复。只有全部正常清理及PopClip成功后，`107CA11D–128`才将draw_小于INT_MAX时加1，负值也加、不夹0，渐显pos／length／时间不因此更新。因此已Flush的Draw仍有表现副作用；维护如额外尽力清理、保留首错或联合安装候选，须标为独立策略，不能反写成原版事务回滚。
 

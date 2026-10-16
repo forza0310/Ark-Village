@@ -204,4 +204,51 @@ public:
 std::optional<std::int32_t> steam_draw_text_block_sequence(
     const std::vector<SteamLayoutBlock> &,std::int32_t pos,float dx,float dy,
     std::int32_t scroll_v,float box_height,SteamTextBlockDrawBackend &);
+
+// 保留GetTransRectGUI的真实Rect对象；宽与高分别在源指定时点读取，不能提前合并。
+class SteamTextDrawRectangle {
+public:
+    virtual ~SteamTextDrawRectangle()=default;
+    virtual float width()=0;
+    virtual float height()=0;
+};
+class SteamTextDrawBackend:public SteamTextBlockDrawBackend {
+public:
+    virtual bool check_local_matrix()=0;
+    // 每次均读取当前同一布局的真实Font；不可合并三次宽/两次字号观测。
+    virtual float layout_font_width()=0;
+    virtual std::int32_t layout_font_used_size()=0;
+    virtual std::shared_ptr<SteamTextDrawRectangle> reference_rectangle(float width,float height)=0;
+    virtual void push_horizontal_scale(float)=0; // ScaleTemporary(ratio,1,0,0)再PushMatrix。
+    virtual void pop_matrix()=0;
+    virtual void begin_local_coordination(float &dx,float &dy)=0;
+    virtual void end_local_coordination()=0;
+    virtual float graphics_scale()=0;
+    virtual bool japanese()=0;
+    virtual bool render_rect_visible()=0;
+    virtual void set_color_rgb(std::int32_t r,std::int32_t g,std::int32_t b)=0;
+    virtual void draw_rectangle(float x,float y,float width,float height)=0;
+    virtual void push_clip(float x,float y,float width,float height)=0; // 原push=true。
+    virtual void pop_clip()=0;
+};
+struct SteamTextInstanceDrawInput {
+    float dx{},dy{};
+    std::int32_t scroll_v{},pos{},draw{},text_check_size{};
+};
+struct SteamTextInstanceDrawResult {
+    SteamTextDrawReflow reflow;
+    std::int32_t draw{};
+};
+// 实例Draw外层正常域：非等比补偿/局部坐标→两共享设置栈→比例重排→框/clip→
+// 真实块循环→原序正常清理→饱和draw计数。current提供真实旧块/宽/request/overArea，
+// 其中宽与request覆盖layout的同名历史输入；相同比例不复制旧块，不调用SetText/Frame。
+// 两后端必须对应同一实际Graphics/TextLayout；调用期布局稳定，不读取平台默认值。
+// 实际坐标/参考宽高及中间比率有限且绝对值<=2^24；补偿字号0..65536，
+// 除数字号须正，负/零有限补偿仍保留；文本/块预算沿现模块。
+// 异常/拒绝仅尽力清理成功取得的本轮义务、保首错、不重试失败清理，并额外PopClip；
+// 此维护策略不同于原finally。抛错前的回调部分修改、已绘像素/颜色/Font别名不回滚。
+// 成功结果才可安装重排及draw候选；不新建Owner/codec或认证真实字形/窗口后端。
+std::optional<SteamTextInstanceDrawResult> steam_draw_text_layout(
+    const SteamTextLayoutInput &,const SteamTextLayoutResult &current,
+    const SteamTextInstanceDrawInput &,SteamTextLayoutBackend &,SteamTextDrawBackend &);
 } // namespace dungeon_village_prototype

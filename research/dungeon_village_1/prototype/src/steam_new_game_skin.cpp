@@ -65,4 +65,34 @@ std::optional<SteamNewGamePlan> steam_new_game_skin(const SteamNewGameInput &in,
     plan.operations.emplace_back(SteamNewGameArrow{{{210,185},0,o.arrow_selected[1]},18,18,{5,20,20,4}});
     return plan;
 }
+std::optional<SteamNewGameUpdatePlan> steam_new_game_update(const SteamNewGameUpdateInput &in) {
+    if(in.selection<0||in.selection>3||in.sex<0||in.sex>1)return {};
+    SteamNewGameUpdatePlan plan;
+    plan.selection=in.selection;plan.sex=in.sex;
+    for(std::size_t n=0;n<in.early_pulses.size();++n) {
+        plan.checked_keys[n]=true;
+        if(in.early_pulses[n]) {plan.immediate_return=false;return plan;}
+    }
+    plan.checked_keys[4]=true;
+    if(in.up_pulse)plan.selection=(plan.selection+3)%4;
+    plan.checked_keys[5]=true;
+    if(in.down_pulse)plan.selection=(plan.selection+1)%4;
+    // 左右Repeat在所有行独立执行，不能按最终selection==2加资格或改为互斥。
+    plan.checked_keys[6]=true;
+    if(in.left_repeat)plan.sex=(plan.sex+1)%2;
+    plan.checked_keys[7]=true;
+    if(in.right_repeat)plan.sex=(plan.sex+3)%2;
+    plan.reset_default_name=plan.sex!=in.sex&&!in.change_name;
+    plan.checked_keys[8]=true;
+    if(in.confirm_pulse) {
+        if(plan.selection==0) {plan.action=SteamNewGameAction::edit_village;plan.editor_max_length=14;}
+        else if(plan.selection==1) {plan.action=SteamNewGameAction::edit_name;plan.editor_max_length=12;}
+        else if(plan.selection==3)plan.action=SteamNewGameAction::start_new_game;
+    } else {
+        plan.checked_keys[9]=true;
+        if(in.back_soft_label) {plan.action=SteamNewGameAction::pop;plan.page_result=-1;}
+    }
+    if(plan.action!=SteamNewGameAction::none)plan.immediate_return.reset();
+    return plan;
+}
 } // namespace dungeon_village_prototype

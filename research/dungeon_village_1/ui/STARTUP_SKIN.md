@@ -225,6 +225,23 @@ Init的`10312616`清0、通用Update的`10321B63–74`按INT_MAX取模推进，D
 维护profile／草稿原已允许合法空串，纯皮肤现同样保留空村名／姓名，只不画该字段文字，仍生成标签、人物与按钮，不补默认名或表现占位；这修正接口不一致，不证明原平台输入／正式开始的空串资格。
 来源核验未操作原窗口／原档；维护计划另经四个有界研究窗口检查，没有修改Owner／格式。
 
+### Steam91整轮输入：性别切换不限定当前行
+
+固定DLL的`SubForm.Update2 RVA317940`在`10317C91–10317C94`将91分派到`10318662`。2026-10-16从当前样本重新解码该局部，输入顺序为：
+
+| 次序 | 实际查询／效果 |
+| --- | --- |
+| 早返回 | `CheckKeyPulse(2)`→`8`→`128`→`512`依次短路，调用在`103186AC/CF/F5/1031871B`；任一为真都到`1031DADD`返回**false**，不再查本页导航、性别或确认。不能当作返回软键或成功Pop。 |
+| 行选择 | `10318741/10318781`独立检查上／下Pulse，分别令`selection +0x90=(selection+3)%4`／`(selection+1)%4`；两者可同轮执行，不能改成方向互斥或Repeat。 |
+| 性别与默认姓名 | 先取定义0旧性别，`10318801/10318840`独立检查左／右Repeat，分别加1／加3模2；**没有selection==2检查**，村名、姓名、开始行同样会处理。最终性别与旧值不同且`changeName +0x131==false`才在`103188CF`调用SetName安装该性别默认名；两方向同轮净值不变，不重设姓名。字段身份由同样本SubForm字段目录交叉。 |
+| 确认／返回 | `103188ED`先确认Pulse；未命中才在`1031890C`查soft2。返回先将本页`result_ +0x154`置−1再Pop，并返回实际Pop结果。确认按最终行分派：0／1请求MainPanel（maxLength参数14／12，不由此推出字符算法），2不再切性别，3调用AppData.NewGame；不能把确认性别行也补成一次切换。 |
+
+通用Update在`10321B63–10321B84`先推进主／副钟；wait>0时减一后若仍>0会提前返回true，减至0才继续待发jingle／SEB／Update2。因此纯候选明确要求已获准进入本分支，不模拟等待或再推进主钟；本局部早返回false也不撤销之前的通用更新。物理按键／鼠标合成、输入面板及成功编辑后的取消链仍沿已有证据限制。这里补的是Steam静态事实，不改用户已采用的草稿保留决策。
+
+确认0／1在`10318957–10318A39`／`10318A9E–10318B7C`依次将左右软标签置空串、另两项置null，调用Canvas.UpdateSoftLabel、创建MainPanel并请求面板、DrawAllForms；label槽独立解码为`街の名前`／`冒険者の名前`，defaultText分别取当前世界村名／定义0.GetName。收尾`10305C20–10305C6B`从已独立绑定的main.AppData静态softLabels取索引0／2，调用SetSoftLabel恢复左右标签，另两项为null；正常与捕获后收尾均到此helper，它没有再调用UpdateSoftLabel。姓名callback `RVA210AC0`仅在非null结果时SetName并置changeName=true，村名callback `RVA3178B0`仅在非null时经JString.New写世界村名；null不改值。该结果资格不等于已认证输入面板的空串／字符限制。确认3在`10318C31`完成NewGame后还到`1031AB51–1031AB7A`请求ChangeCurrentForm(app.mainForm,false)，正常返回true，不消费ChangeCurrentForm的bool；本页局部没有独立发声请求，通用待发jingle仍属上游。
+
+现[steam_new_game_update](../prototype/include/dungeon_village_prototype/steam_new_game_skin.hpp)以显式selection、性别、changeName和具名逻辑查询结果返回纯候选及编辑／开始／Pop请求。输出记录真正查询到的键；早返回false与正常true可直接给出，涉及外部动作时immediate_return为空，不能把计划生成当作动作成功。默认姓名以最终性别的reset请求表达，先于编辑／开始／Pop；不在此复制翻译名或调用应用setter。`Update2`入口至91分支只有类型分派，没有先读取Scroll／设备游标；Touch的`0x20000`类型由`SetTouchValue RVA317600`在`10317653–10317666`直接写select_，因此进入本轮的selection须已含此前合法Touch结果。纯候选不新增Owner／codec字段，也不执行上述面板、软标签、世界安装或切表单后继；抽象请求不能冒称精确副作用已齐。正式应用selection／主钟及覆盖恢复仍待其生命周期设计，不能用纯候选交付宣称完整91已接。
+
 ## 通关17：分阶段可见皮肤
 
 [b/g:9506](../work/decompiled/sources/b/g.java:9506)至9590及[低层分支](../work/world-page-fallback/GamePage.java:34186)

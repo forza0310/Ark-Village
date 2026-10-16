@@ -986,6 +986,70 @@ void steam_new_game_skin_checks(Checks &check) {
         if(fault==10){options.english=true;options.japanese=true;}if(fault==11)bad.name=std::string(4097,'a');
         check(!steam_new_game_skin(bad,options),"Steam91缺显式来源/错职业/越界/坏实测宽拒绝，不补默认W或猜资源");
     }
+    // 同页Update2的独立控制流oracle；平台编辑、通用主钟和新世界安装由各自Owner负责。
+    using Action=SteamNewGameAction;
+    for(int row=0;row<4;++row)for(int sex=0;sex<2;++sex)for(bool custom:{false,true}) {
+        constexpr std::array<std::array<bool,2>,4> directions{{{false,false},{true,false},{false,true},{true,true}}};
+        constexpr std::array<bool,4> toggles{false,true,true,false};
+        for(std::size_t n=0;n<directions.size();++n) {
+            SteamNewGameUpdateInput input;input.selection=row;input.sex=sex;input.change_name=custom;
+            input.left_repeat=directions[n][0];input.right_repeat=directions[n][1];
+            const auto result=steam_new_game_update(input);
+            check(result&&result->selection==row&&result->sex==(toggles[n]?1-sex:sex)&&
+                result->reset_default_name==(toggles[n]&&!custom)&&result->action==Action::none&&
+                result->immediate_return==std::optional<bool>(true)&&!result->editor_max_length&&!result->page_result&&
+                std::all_of(result->checked_keys.begin(),result->checked_keys.end(),[](bool b){return b;}),
+                "Steam91所有行左右独立切性别；双向不改名，自定义名保留，空输入正常true");
+        }
+    }
+    for(int first=0;first<4;++first) {
+        SteamNewGameUpdateInput input;input.selection=3;input.sex=1;
+        input.up_pulse=input.down_pulse=input.left_repeat=input.right_repeat=input.confirm_pulse=input.back_soft_label=true;
+        for(int n=first;n<4;++n)input.early_pulses[n]=true;
+        const auto result=steam_new_game_update(input);
+        check(result&&result->selection==3&&result->sex==1&&!result->reset_default_name&&
+            result->action==Action::none&&result->immediate_return==std::optional<bool>(false)&&
+            !result->editor_max_length&&!result->page_result,
+            "Steam91四早脉冲任一命中返回false，不当作取消/Pop或执行后续输入");
+        for(int n=0;n<10;++n)check(result->checked_keys[n]==(n<=first),
+            "Steam91早脉冲精确短路，后续查询结果不能生效");
+    }
+    constexpr std::array<std::array<int,4>,7> moves{{
+        {0,1,0,3},{3,0,1,0},{2,1,0,1},{1,0,1,2},{0,1,1,0},{3,1,1,3},{2,0,0,2}}};
+    for(const auto &move:moves) {
+        SteamNewGameUpdateInput input;input.selection=move[0];input.up_pulse=move[1]!=0;input.down_pulse=move[2]!=0;
+        const auto result=steam_new_game_update(input);
+        check(result&&result->selection==move[3],"Steam91上下Pulse各自执行且四行环绕，同轮相消");
+    }
+    constexpr std::array<Action,4> actions{Action::edit_village,Action::edit_name,Action::none,Action::start_new_game};
+    for(int row=0;row<4;++row) {
+        SteamNewGameUpdateInput input;input.selection=row;input.confirm_pulse=input.back_soft_label=true;
+        const auto result=steam_new_game_update(input);
+        check(result&&result->action==actions[row]&&result->sex==0&&!result->reset_default_name&&
+            !result->checked_keys[9]&&!result->page_result&&
+            result->immediate_return==(row==2?std::optional<bool>(true):std::nullopt)&&
+            result->editor_max_length==(row<2?std::optional<int>(row==0?14:12):std::nullopt),
+            "Steam91确认按最终行分派且压过soft2；性别行确认不切换，编辑14/12不充作字符算法");
+    }
+    SteamNewGameUpdateInput combined;combined.selection=0;combined.down_pulse=true;
+    combined.left_repeat=true;combined.confirm_pulse=true;combined.back_soft_label=true;
+    const auto edited=steam_new_game_update(combined);
+    check(edited&&edited->selection==1&&edited->sex==1&&edited->reset_default_name&&
+        edited->action==Action::edit_name&&edited->editor_max_length==12&&!edited->immediate_return,
+        "Steam91同轮先导航/性别/默认名请求，再按最终行编辑；没有提前执行平台动作");
+    combined.confirm_pulse=false;
+    const auto cancelled=steam_new_game_update(combined);
+    check(cancelled&&cancelled->selection==1&&cancelled->sex==1&&cancelled->reset_default_name&&
+        cancelled->action==Action::pop&&cancelled->page_result==-1&&!cancelled->editor_max_length&&
+        !cancelled->immediate_return&&cancelled->checked_keys[9],
+        "Steam91返回也保留当轮导航/性别候选，先置result=-1再请求Pop，不冒称Pop成功或回滚草稿");
+    for(int repeat=0;repeat<3;++repeat)check(steam_new_game_update(combined)->action==Action::pop&&
+        combined.selection==0&&combined.sex==0&&combined.down_pulse&&combined.left_repeat,
+        "Steam91纯更新重复计算不安装候选/消费设备脉冲或增长历史");
+    for(const auto bad:std::array<std::array<int,2>,4>{{{-1,0},{4,0},{0,-1},{0,2}}}) {
+        SteamNewGameUpdateInput input;input.selection=bad[0];input.sex=bad[1];input.early_pulses[0]=true;
+        check(!steam_new_game_update(input),"Steam91非法选择/性别先拒绝，不能靠早返回掩盖坏状态");
+    }
 }
 void steam_config_skin_checks(Checks &check) {
     // Steam DrawConfig_en及_addTouch的独立坐标；只测只读皮肤，不运行设置setter或保存。

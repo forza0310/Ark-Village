@@ -36,4 +36,27 @@ struct SteamNewGamePlan {
 // 不创建世界、修改草稿、推进随机/时钟或执行开始/取消。
 std::optional<SteamNewGamePlan> steam_new_game_skin(
     const SteamNewGameInput &input,const SteamNewGameOptions &options);
+
+// 已进入raw91 Update2分支后的逻辑查询结果；通用Update主钟已经由外层推进。
+// Pulse/Repeat/soft2分别供给，不把物理按键或Touch值直接当作原查询结果。
+struct SteamNewGameUpdateInput {
+    int selection{}, sex{};
+    bool change_name{};
+    std::array<bool,4> early_pulses{}; // 原键值2、8、128、512，依序短路。
+    bool up_pulse{}, down_pulse{}, left_repeat{}, right_repeat{}, confirm_pulse{}, back_soft_label{};
+};
+enum class SteamNewGameAction { none, edit_village, edit_name, start_new_game, pop };
+struct SteamNewGameUpdatePlan {
+    int selection{}, sex{};
+    bool reset_default_name{}; // 先按最终sex取原默认名，再执行action；不在计划中猜译名。
+    // 依序为四个early、上、下、左、右、确认、soft2；未查询项保持false。
+    std::array<bool,10> checked_keys{};
+    SteamNewGameAction action{SteamNewGameAction::none};
+    std::optional<int> editor_max_length; // MainPanel原参数14/12，不认证字符/字节算法。
+    std::optional<int> page_result; // 仅返回动作请求先置-1，再调用真实Pop。
+    std::optional<bool> immediate_return{true}; // 有外部动作时为空，不把请求当作执行成功。
+};
+// 纯候选：不改草稿/Owner、不调用编辑器/NewGame/Pop、不抽随机、不推进主钟。
+// 编辑及开始还须执行原标签/面板/切主Form副作用；其异常与结果由应用层负责。
+std::optional<SteamNewGameUpdatePlan> steam_new_game_update(const SteamNewGameUpdateInput &input);
 } // namespace dungeon_village_prototype

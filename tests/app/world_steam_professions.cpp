@@ -5,6 +5,7 @@
 #include <iostream>
 #include <limits>
 #include <numeric>
+#include <sstream>
 #include <stdexcept>
 #include <tuple>
 
@@ -80,6 +81,42 @@ bool same_stats(const ref::HumanDerivedStats &a, const ref::HumanDerivedStats &b
 }
 } // namespace
 
+void inspect_steam_professions(const State &s, int points, std::int64_t cash, std::ostream &out) {
+    require(s.rules != nullptr, "inspection needs actual profession definitions");
+    const auto definitions = catalogue(s);
+    out << "PROFESSION_BUDGET points=" << s.village_points << " reserved_points=" << points
+        << " cash_reserve=" << cash << " definitions=" << definitions.size() << '\n';
+    for (const auto &job : definitions) {
+        std::ostringstream eligible, funded, nonmaster;
+        for (const auto &[human, present] : s.human_presence) {
+            const auto info = present ? sim::startup_world_human_details(s, human) : std::nullopt;
+            const auto profile = info ? sim::startup_world_human_profile(s, human) : std::nullopt;
+            if (!info || !profile || !info->live_actor ||
+                s.scene.world.world.ai.battle.actors.at(*info->live_actor).control.state == 4)
+                continue;
+            const auto choices = ref::catalogue_human_professions(profile->sex, definitions);
+            const auto &g = s.scene.world.world.ai.growth.at(human).definition;
+            const auto gate = ref::check_human_profession_change(
+                ref::HumanProfessionEntry::confirmation62, g.current_profession,
+                s.human_calendar.at(human).celebrations, s.village_points, job);
+            if (!choices || std::find(choices->begin(), choices->end(), job.definition) == choices->end() ||
+                gate.error != ref::HumanGrowthError::none ||
+                gate.denial != ref::HumanManagementDenial::none)
+                continue;
+            eligible << human << ',';
+            if (affordable(s, human, job.definition, points, cash)) {
+                funded << human << ',';
+                if (g.profession_levels.at(g.current_profession) != 10)
+                    nonmaster << human << ',';
+            }
+        }
+        out << "PROFESSION_DEFINITION definition=" << job.definition
+            << " availability=" << job.availability << " quote=" << job.village_points
+            << " medals=" << job.medals << " source_live=" << eligible.str()
+            << " funded=" << funded.str() << " funded_nonmaster=" << nonmaster.str() << '\n';
+    }
+}
+
 IncomeDecision SteamProfessionStrategy::next(const State &s, int reserved_points,
                                              std::int64_t cash_reserve, bool start) {
     const auto *p = top(s);
@@ -89,14 +126,17 @@ IncomeDecision SteamProfessionStrategy::next(const State &s, int reserved_points
         if (!start || p->kind != ref::WorldScriptPageKind::scene || s.scene.scene_state != 0 ||
             s.build_definition || s.build_mode)
             return {};
+        const bool directed = target_pending(s);
         std::optional<std::tuple<bool, std::int64_t, int, int>> best;
         for (const auto &[human, presence] : s.human_presence) {
+            if (target_ && (directed ? human != target_->first : human == target_->first))
+                continue;
             const auto details = sim::startup_world_human_details(s, human);
             if (!presence || !details || !details->live_actor ||
                 s.scene.world.world.ai.battle.actors.at(*details->live_actor).control.state == 4)
                 continue;
             const auto &g = s.scene.world.world.ai.growth.at(human);
-            if (g.definition.profession_levels.at(g.definition.current_profession) != 10)
+            if (!directed && g.definition.profession_levels.at(g.definition.current_profession) != 10)
                 continue;
             const auto old = ref::derive_human_stats(g.definition, s.scene.world.world.ai.professions);
             const auto profile = sim::startup_world_human_profile(s, human);
@@ -104,7 +144,7 @@ IncomeDecision SteamProfessionStrategy::next(const State &s, int reserved_points
                                          : std::nullopt;
             require(old.candidate && choices, "mastered human has invalid source stats or catalogue");
             for (const int job : *choices) {
-                if (g.definition.profession_levels.at(job) >= 10 ||
+                if ((directed ? job != target_->second : g.definition.profession_levels.at(job) >= 10) ||
                     !affordable(s, human, job, reserved_points, cash_reserve))
                     continue;
                 const auto preview = ref::preview_human_profession_change(
@@ -121,7 +161,7 @@ IncomeDecision SteamProfessionStrategy::next(const State &s, int reserved_points
                 for (std::size_t n = 0; n < 4; ++n)
                     new_spell |= !old.candidate->available_spells[n] &&
                                  stats.candidate->available_spells[n];
-                if (gain <= 0 && !new_spell)
+                if (!directed && gain <= 0 && !new_spell)
                     continue;
                 // Source order breaks exact ties; neither ID, quote nor directory index is rank.
                 const auto priority = std::make_tuple(!new_spell, -gain, human, job);
@@ -192,6 +232,25 @@ IncomeDecision SteamProfessionStrategy::next(const State &s, int reserved_points
     return {true, s.page_counters.at(p->id) >= 197
                       ? std::optional<app::WorldCommand>{input(p->id, Human::confirm)}
                       : std::nullopt};
+}
+
+void SteamProfessionStrategy::set_target(const State &s, int human, int job) {
+    require(!flow_ && s.rules && s.human_presence.count(human) &&
+                human >= 0 && job >= 0 && std::size_t(job) < s.rules->jobs.size(),
+            "explicit target cannot replace an active flow or use an unknown definition");
+    require(!target_ || !target_pending(s) || *target_ == std::make_pair(human, job),
+            "cannot replace an unfinished explicit profession target");
+    const auto profile = sim::startup_world_human_profile(s, human);
+    const auto choices = profile ? ref::catalogue_human_professions(profile->sex, catalogue(s))
+                                 : std::nullopt;
+    require(choices && std::find(choices->begin(), choices->end(), job) != choices->end(),
+            "explicit target is not in the source gender/opening catalogue");
+    target_ = std::make_pair(human, job);
+}
+
+bool SteamProfessionStrategy::target_pending(const State &s) const {
+    return target_ && s.scene.world.world.ai.growth.at(target_->first).definition.current_profession !=
+                          target_->second;
 }
 
 void SteamProfessionStrategy::observe(const State &before, const app::WorldCommand &c,

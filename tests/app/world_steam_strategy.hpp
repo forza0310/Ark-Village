@@ -17,6 +17,9 @@ struct SteamVillageStats {
 class SteamVillageStrategy {
   public:
     void reconcile(const app::WorldState &state);
+    void set_profession_target(const app::WorldState &state, int human, int job) {
+        people_.set_profession_target(state, human, job);
+    }
     std::optional<app::WorldCommand> next(const app::WorldState &state,
                                           std::optional<SteamEquipmentSlot> retained = {},
                                           std::optional<SteamEquipmentGoal> goal = {});

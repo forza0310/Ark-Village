@@ -1162,6 +1162,7 @@ int main(int argc, char **argv) {
                 "Expected campaign phase, isolated directory and optional mode-specific argument");
         const std::string mode = argv[1];
         std::optional<int> requested_recipe;
+        std::optional<std::pair<int, int>> requested_profession;
         if (argc == 4 && mode == "steam-pot-equipment-month") {
             const std::string option = argv[3], prefix = "--recipe=";
             int id{};
@@ -1173,6 +1174,19 @@ int main(int argc, char **argv) {
                         id >= 0 && id < 40,
                     "invalid explicit recipe identity");
             requested_recipe = id;
+        } else if (argc == 4 && (mode == "steam-natural-month" || mode == "steam-continue-month")) {
+            const std::string option = argv[3], prefix = "--profession=";
+            const auto colon = option.find(':', prefix.size());
+            require(option.compare(0, prefix.size(), prefix) == 0 && colon != std::string::npos,
+                    "profession coverage expects --profession=HUMAN:JOB");
+            int human{}, job{};
+            const auto h = std::from_chars(option.data() + prefix.size(), option.data() + colon, human);
+            const auto j = std::from_chars(option.data() + colon + 1, option.data() + option.size(), job);
+            require(h.ec == std::errc{} && h.ptr == option.data() + colon &&
+                        j.ec == std::errc{} && j.ptr == option.data() + option.size() &&
+                        human >= 0 && human < 25 && job >= 0 && job < 23,
+                    "invalid explicit profession identity");
+            requested_profession = std::make_pair(human, job);
         } else
             require(argc == 3 ||
                         (mode == "steam-observe" && std::string(argv[3]) == "--trace-activity"),
@@ -1226,6 +1240,9 @@ int main(int argc, char **argv) {
                     mode == "steam-natural-month" || mode == "steam-pot-equipment-month" ||
                         mode == "steam-pot-spell-month" || mode == "steam-pot-discover-month" ||
                         mode == "steam-pot-facility-month");
+                if (requested_profession)
+                    run.strategy.set_profession_target(run.state, requested_profession->first,
+                                                        requested_profession->second);
                 if (mode == "steam-pot-facility-month") {
                     if (run.pot_equipment)
                         require(run.pot_equipment->certified(),
@@ -1412,6 +1429,9 @@ int main(int argc, char **argv) {
                 ark::test::inspect_income(state, std::cout);
                 ark::test::inspect_campaign_progress(state, std::cout);
                 ark::test::inspect_steam_magic_pot(state, std::cout);
+                ark::test::inspect_steam_professions(
+                    state, ark::test::steam_point_reserve(state),
+                    ark::test::steam_operating_reserve(state), std::cout);
             } else {
                 steam_campaign.emplace(load<ark::test::SteamVillageStrategy>(directory, 1));
                 require(steam_campaign->strategy.complete(steam_campaign->state),

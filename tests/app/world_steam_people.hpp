@@ -29,6 +29,7 @@ struct SteamEquipmentGoal {
 // this controller never changes character, inventory or random state itself.
 class SteamPeopleStrategy {
   public:
+    void set_profession_target(const app::WorldState &state, int human, int job);
     IncomeDecision next(const app::WorldState &state, int reserved_points,
                         std::int64_t cash_reserve, bool start,
                         std::optional<SteamEquipmentSlot> retained = {},

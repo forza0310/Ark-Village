@@ -115,6 +115,11 @@ std::optional<int> award_index(const State &s, const std::vector<int> &ranked) {
 }
 } // namespace
 
+void SteamPeopleStrategy::set_profession_target(const State &s, int human, int job) {
+    require(!active(), "cannot retarget an active human-management flow");
+    professions_.set_target(s, human, job);
+}
+
 IncomeDecision SteamPeopleStrategy::next(const State &s, int reserved_points,
                                          std::int64_t cash_reserve, bool start,
                                          std::optional<SteamEquipmentSlot> retained,
@@ -151,6 +156,11 @@ IncomeDecision SteamPeopleStrategy::next(const State &s, int reserved_points,
         }
         if (!start || s.scene.scene_state != 0 || s.build_definition || s.build_mode)
             return {};
+        if (professions_.target_pending(s)) {
+            const auto directed = professions_.next(s, reserved_points, cash_reserve, true);
+            if (directed.handled)
+                return directed;
+        }
         const auto cultivation_budget = paid_budget(s, cash_reserve);
         std::optional<std::tuple<bool, int, std::int64_t, int, int, int>> priority;
         for (const auto &[person, presence] : s.human_presence) {
@@ -481,6 +491,72 @@ void steam_people_contract() {
                 s.scene.world.world.ai.human_order.empty(),
             "pending profession cannot enter the unchanged sidecar or mutate the source new-world "
             "Owner");
+    // Explicit coverage can use an unmastered source-qualified person without
+    // changing the ordinary gain policy or either financial reserve.
+    auto directed_state = training;
+    directed_state.scene.world.world.ai.growth.at(human).definition.profession_levels.at(0) = 9;
+    for (auto &[person, present] : directed_state.human_presence)
+        present = person == human ? 1 : 0;
+    for (int scenario = 0; scenario < 4; ++scenario) {
+        SteamPeopleStrategy player;
+        if (scenario != 0)
+            player.set_profession_target(directed_state, human, 5);
+        const auto before = sim::startup_world_state_digest(directed_state);
+        const auto selected = player.next(directed_state, scenario == 2 ? 1000 : 0,
+                                           scenario == 3 ? cash(directed_state) + 1 : 0, true);
+        require(scenario == 1 ? selected.handled && selected.command &&
+                                    selected.command->kind == Kind::open_human &&
+                                    selected.command->definition == human
+                              : !selected.handled && !player.active(),
+                "directed profession changed normal mastery policy or bypassed reserves");
+        require(sim::startup_world_state_digest(directed_state) == before,
+                "profession selection changed Owner or random state before a real command");
+        if (scenario == 1) {
+            bool denied{};
+            try {
+                player.set_profession_target(directed_state, human, 4);
+            } catch (const std::runtime_error &) {
+                denied = true;
+            }
+            require(denied && player.active(), "active profession objective was replaced");
+        }
+    }
+    SteamPeopleStrategy retained_profession;
+    auto already_target = directed_state;
+    already_target.scene.world.world.ai.growth.at(human).definition.current_profession = 5;
+    already_target.scene.world.world.ai.growth.at(human).definition.profession_levels.at(5) = 10;
+    retained_profession.set_profession_target(already_target, human, 5);
+    require(!retained_profession.next(already_target, 0, 0, true).handled &&
+                !retained_profession.active(),
+            "retained target must neither pay twice nor leave that person's profession");
+    std::ostringstream configured, unconfigured;
+    retained_profession.encode(configured);
+    SteamPeopleStrategy{}.encode(unconfigured);
+    require(configured.str() == unconfigured.str(),
+            "process-only profession directive must not change the old sidecar format");
+    SteamProfessionStrategy waiting_target;
+    waiting_target.set_target(directed_state, human, 5);
+    bool waiting_retarget_refused{};
+    try {
+        waiting_target.set_target(directed_state, human, 4);
+    } catch (const std::runtime_error &) {
+        waiting_retarget_refused = true;
+    }
+    require(waiting_retarget_refused && !waiting_target.target_pending(already_target),
+            "an unpaid waiting objective changed after a rejected replacement");
+    for (const auto &invalid : std::vector<std::pair<int, int>>{{-1, 5}, {25, 5}, {human, 23},
+                                                               {human, 22}}) {
+        auto unopened = directed_state;
+        unopened.scripts.professions.at(22).status = 0;
+        SteamPeopleStrategy rejected;
+        bool denied{};
+        try {
+            rejected.set_profession_target(unopened, invalid.first, invalid.second);
+        } catch (const std::runtime_error &) {
+            denied = true;
+        }
+        require(denied && !rejected.active(), "unknown or unopened profession objective accepted");
+    }
     // Isolated gift-selection inputs: retaining a worn test slot must not pause
     // other slots or people, and must not change the source Owner or gift history.
     auto retention = training;

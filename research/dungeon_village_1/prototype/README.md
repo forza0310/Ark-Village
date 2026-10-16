@@ -20,6 +20,7 @@
 | `steam_startup_skin` | Steam共用窗框、标题菜单／选档局部及背景→upper→演员插入点→草／Logo的有序前段；整场组合仍待接；[标题绘制](../ui/STEAM_TITLE_DRAW.md) |
 | `steam_platform_button_skin` | 平台绑定／键盘／语言按钮及NEW原序请求、控制器后备及glyph矩阵几何；语言普通结果输出安装／成功条件共享回调／Pop次序，不调用Steam、安装包或发现设备；[按钮及glyph](../ui/STEAM_FONT_CONSUMER.md#内嵌按钮提示)、[语言结果](../ui/STEAM_LANGUAGE_INSTALL.md#语言页的选择结果与标题回调) |
 | `steam_font_metrics` | 原字号preset／实例整数比例、本地化准入及float32派生请求；不选字形、不改Owner或模拟平台线程；[字体数值合同](../ui/STEAM_FONT_CONSUMER.md#可直接消费的字号数值接口) |
+| `steam_font_draw` | 已准备普通GUI请求的真实有序后端：条件测宽、参考矩形、字体／样式缓存、字号及非等比Y补偿、skin同步、点映射／clip、临时色、字符转换→分组→Label及正常清理。宿主供实际Font／矩阵／绘制，Source异常不冒称整段回滚；不接Image／GLText／纹理或新增Owner；[绘制合同](../ui/STEAM_FONT_DRAW.md) |
 | `steam_text_reveal` | TextLayout渐显／快进／完成、blink及复位数值候选；Source逐次供墙钟、两次应用帧与末尾共同门槛。普通块预算保留隐藏消费、UTF-16前缀及纵视口／测宽资格；高度查询分别保持全块浮点高度、独立32位预测时间／逐块截整和首块行高，空目录交真实字体fallback请求。不实现排块／字形或新增持久状态；[时钟](../ui/STEAM_FONT_CONSUMER.md#渐显时钟复位与完成资格)、[块预算](../ui/STEAM_FONT_CONSUMER.md#textlayout渐显块的测宽)、[高度](../ui/STEAM_FONT_CONSUMER.md#内容高度下一高度与行高并非同一查询) |
 | `steam_subform_update` | 一次真实获准Update的共同前段候选：双钟、等待早返、重画、jingle、22／21／23及本页分派原序；后继成功才安装，不执行平台声音／SEB或新增持久状态；[共同调度合同](../ui/INPUT_RENDER_REQUESTS.md#steam公共subform单轮页面钟手形与待发jingle) |
 | `steam_config_skin` | 设置12四行皮肤／键盘候选及setter有序后继：区分P12／P13、J3／J4，声音改值去重与画质同值重绘；仅交属性／声音／Canvas请求，不写文件或代替应用联合提交；[设置合同](../ui/STEAM_INTERACTIONS.md#游戏设置与标题平台按钮) |

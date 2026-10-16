@@ -36,7 +36,7 @@ SetDefaultFont的原生包装先处理对象桥接，各条正常分支交helper
 
 Internal_GetDefaultSkin的包装RVA`14DA80`将当次整数交helper `869C30`；后者调用`867AF0`取得皮肤对象，再处理其对象状态／引用桥接。已核`867AF0`完整正常体不读取传入的skinMode，先检查缓存`11569020`及其对象有效性，缺失／失效才经`103E0450`请求**原字面路径`GameSkin/GameSkin.guiskin`**，成功后更新缓存。失败侧原字面为`Failed to find default skin in editor resources!`，不能仅凭这个错误文本把当前player路径说成Editor专用。此处已取得固定player的具名资源请求与缓存供给，仍未把返回实例ID直接配对为磁盘path10102的Font，更未取得中文glyph来源。
 
-本样本仅导出UnityMain；PE调试目录指向`UnityPlayer_Win32_player_il2cpp_x86.pdb`，研究副本未附该PDB／map。现有iced解码足以沿上述注册表闭合入口及局部指针／资源请求，但没有具名字形解析符号或实际运行对象来认证fallback列表。二进制中虽有Font的OS字体枚举及fontNames访问器注册字符串，它们只能证明接口存在，不能证明某段中文实际使用哪项。本批不调用这些枚举、不读系统字库／偏好，也不盲扫全引擎；未知继续限定为真实Font实例、fallback供给及单串glyph选择。
+本样本仅导出UnityMain；PE调试目录指向`UnityPlayer_Win32_player_il2cpp_x86.pdb`，研究副本未附该PDB／map。后继已沿真实调用闭合下节缺字fallback名单及OS字体供给，不再仅据接口字符串登记“未知”；仍没有具名字形解析符号或实际运行face。静态供给次序与某段中文最终使用哪项分别认证，本研究没有执行这些枚举、读取本机字体／偏好或导出字体。
 
 ### 普通测宽的原生Font对象选择
 
@@ -45,6 +45,16 @@ Internal_GetDefaultSkin的包装RVA`14DA80`将当次整数交helper `869C30`；�
 文字消费者8680E0在`1086825E／1086828E`调用原生helper867750，按以下顺序寻找有效Font对象：当前native GUIStyle +FC→原生默认引用11568F54→独立兜底缓存11568F58→请求字面`Arial.ttf`并缓存返回对象+4引用。首项字段由注册索引115的`GUIStyle.set_font`→RVA14B590交叉：`1014B62C–1014B637`处理输入对象后写同一+FC。有效性经过200F50／D5C20及必要的2266C0对象解析，不是只判引用非零；失效引用继续兜底，最终仍可能返回null并记录`Couldn't load default font or font material!`。
 
 资源请求`1085A6D0–1085A707`交已有资源入口3E02B0／3E0450，字符串1131AAEC为精确`Arial.ttf`。这是引擎内建资源请求，未与磁盘Font path10102或任何系统字体文件直接配对。此前SetDefaultFont(null)的合同不变：setter只写引用，兜底发生在**后续测宽消费者**。该对象级顺序不等于中文缺字的glyph／family回退；本链未认证中文字形文件、kerning／baseline或非BMP栅格化。GUIContent包装保留字符串对象，不能因未见主动拆代理对就宣称完整非BMP支持；原图、维护Noto及真实字形证据仍分开。
+
+### 缺字family候选与OS字体供给
+
+2026-10-16沿同一文字服务的真实调用继续核对：8683A0→服务首槽852BB0→859870→8594C0→852730→858A30，局部文字循环未在已有字形缓存85C0F0取得结果时，经857750→859E40→85A720寻找实际face。85A720先消费当前Font的family名单（+5C）与引用列表（+6C）、style及字符；85A83F／85ACD2调用85AE50尝试名称，还会移除源匹配的` Bold`／` Italic`并分别合入style bit1／2后重试。候选style非0时也有清style重试同名的后继，不能将一个family名直接等同某一份固定字形文件。
+
+自家名单全败后，85AD4A调用84E790懒建引擎全局名单，85AD81按其原序尝试，首成功返回：**Arial → Arial Unicode MS → Helvetica Neue → Microsoft Sans Serif → Microsoft YaHei → Malgun Gothic → Gulim → MS Gothic → Nirmala UI → LastResort**。该次序由84E790–84EB09的实际字符串构造／追加与字面113AD070…113AD0F4交叉，不是按安装包名称或字体覆盖范围猜排序。85AE50先经85AF10取得face，再于85AE73调用CFCC50取当前字符索引；CFCC50读face+5C的charmap并调用其class+0C函数，返回索引还须小于face+10，否则归0。非0才通过该资格；“glyph索引”是结构／行为识别，未据此认证具体字库库名或完整栅格化。
+
+85AF10先查当前face map（85AF26），再遍历引用Font的face map（85AF70–85B055），最后才查全局11568C9C；全局未准备时85B068调用85E270→84EB10→85C910建索引。84EC04／84ECF6经真实IAT112811F0调用`KERNEL32!GetWindowsDirectoryW`，成功后追加字面`Fonts`；该API失败时采用固定`C:\Windows\Fonts`，不是由研究环境路径补出的值。84F09A调用目录枚举helper，84F129／14D／172／195筛ttf／ttc／otf／dfont；85C981按完整文件路径和从0递增的face index交CFD610打开，再读取face+14／+18的family／style建立索引。实际命中后85B138按登记路径及face index重新打开。这里已取得**系统目录→文件→face→字符索引**的正常局部供给链，不再把它笼统留在托管Font对象边界；未覆盖用户级字体目录、注册表或其它注册／平台路径，也没有实际读取本机系统字体。
+
+如果全部候选仍失败，859E40在859E9E／859EAE通过原资源系统请求`Arial.ttf`，取所返Font+30再调用85A720，仍失败返回0。它与先前GUIStyle对象级默认回退及上述OS目录供给属于不同层，不合并成无条件“中文换微软雅黑”。本机候选是否安装、当前Font自己的family／引用及某字符最终命中face仍须一次真实观测；代理对组合、kerning／baseline及最终像素也未由这个局部UTF-16访问链认证。最小动态证据是固定中文串、实际Font对象、最终family／文件与face index、字符索引，不需要重复整套窗口流程或为研究另发一份字体包。
 
 ## OnGUI与DrawString的字体交接
 
@@ -143,4 +153,4 @@ Image构造7A1CF0在+A0建立零长任务数组，+A4计数采用零初值。Add
 
 产品可按上述契约区分字体对象、后端开关、临时GUIStyle与外层GUISkin恢复，避免SetFont误改后端或认为一次DrawString已恢复所有外部状态。默认资源的Arial引用可用于后续取证，不能直接作为中文字体交付或以另选系统字体冒充原样。
 
-仍缺：真实当前GUI.skin、原生默认皮肤返回对象及中文glyph fallback提供者、DefaultUseFontTexture其它间接／反射／原生写者及真实运行值、纹理实际回收时刻与全局持有者，以及完整游戏窗框的全部页面使用资格。默认开关的具名正常初始化及Config反射目的、缓存年龄退休、Updated事件入口、UI任务消费及Unity销毁请求已核，不能继续将它们整体列为未知；同样不能宣称缓存永久有界。托管空font到原生默认字体的交接已核，不再列为完全未知。TextLayout的14项标签局部生产／消费、普通断行及空串字段分工已有[字体合同](STEAM_FONT_CONSUMER.md)，全部语言禁则、运行注册绑定和实际字形仍未认证。普通位置变换见[文字绘制](STEAM_FONT_DRAW.md)，GUI组／clip见[窗框](STEAM_WINDOW_FRAME.md)，GLText最终消费者／保留对象见[生命周期](STEAM_GLTEXT_LIFECYCLE.md)。窗口观察可补最终画面尺寸和字形表现，但单张截图仍不能证明font对象身份。后续继续静态缩小这些边界，必要动态由既有外部提示词分支取得。
+仍缺：真实当前GUI.skin、原生默认皮肤返回对象及中文字符最终命中face、DefaultUseFontTexture其它间接／反射／原生写者及真实运行值、纹理实际回收时刻与全局持有者，以及完整游戏窗框的全部页面使用资格。对象级默认回退、缺字family次序及Windows字体文件／face／字符索引供给已静态闭合，不再整体标“提供者未知”；当前实际命中和最终字形仍需证据。默认开关的具名正常初始化及Config反射目的、缓存年龄退休、Updated事件入口、UI任务消费及Unity销毁请求已核，同样不能宣称缓存永久有界。TextLayout的14项标签局部生产／消费、普通断行及空串字段分工已有[字体合同](STEAM_FONT_CONSUMER.md)，全部语言禁则、运行注册绑定和实际字形仍未认证。普通位置变换及有序后端接口见[文字绘制](STEAM_FONT_DRAW.md)，GUI组／clip见[窗框](STEAM_WINDOW_FRAME.md)，GLText最终消费者／保留对象见[生命周期](STEAM_GLTEXT_LIFECYCLE.md)。窗口观察可补最终画面尺寸和字形表现，单张截图不能证明face身份；必要动态沿既有外部提示词分支取得。

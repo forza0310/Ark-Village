@@ -54,14 +54,14 @@ helper从调用者传入的三个局部引用读取Graphics、本次锁标志和
 
 W来自Font RVA0x77E770的共享入口；methods索引中`StringWidthF(string)`与`StringWidthF2(string)`共用该机器码地址，不能凭反汇编打印最后一个别名强行择其一。它是字体测宽结果，不是字符数乘半个字号。上述F相关项先整数除法再整数除2，按向零截断；不能改成完整浮点除法，或与前一节本地化字号差补偿合并舍入。
 
-最后的GUI位置为：
+锚点尚不是最终映射点。完成下节字号设置及非等比变换的额外Y补偿后，GUI位置才为：
 
 ```text
-(PX,PY) = screenMatrix.MapPoints(锚点X,锚点Y)
+(PX,PY) = screenMatrix.MapPoints(锚点X,补偿后Y)
 (GUIX,GUIY) = (PX − clipRegion.left, PY − clipRegion.top)
 ```
 
-先锚点、后当前screenMatrix、再减整数裁剪区域左／上。不能直接从窗口截图宽高求一个倍率替代这条路径，也不能在矩阵已经包含平移时再加世界坐标。
+先锚点和字号／Y补偿、再当前screenMatrix、最后减整数裁剪区域左／上。CENTER／RIGHT才分别真实调用StringWidthF，CENTER优先（10766804／10766820／10766864）；其它水平位不测宽。不能为统一入口无条件测宽，也不能在矩阵已经包含平移时再加世界坐标。
 
 ### DrawText宽度重载的垂直锚定
 
@@ -76,12 +76,21 @@ Graphics.DrawText(string,x,y,width,anchor) RVA7688A0转7688E0；10768B37读取Fo
 ```text
 sx = A / (U/2)
 sy = B / U
-GUIStyle.fontSize = trunc(float32(U × min(sx,sy) + float32(0.001)))
+M = min(sx,sy)
+P = float32(float32(U) × M)
+GUIStyle.fontSize = trunc(float32(P + float32(0.001)))
+Y = float32(Y + float32(float32(float32(U) − float32(P/sy)) × 0.5f))
 ```
 
-0.001是位型`0x3A83126F`的float32，不是精确十进制或四舍五入。GUIStyle字体对象／样式有`fontKeep_`缓存分支；实际字体来源与空font回退仍沿前页边界，不因此认证当前中文字体已定位。
+0.001是位型`0x3A83126F`的float32，不是精确十进制或四舍五入。最后一行是10766B6E–10766BA2的额外Y补偿，**使用尚未截整的P**，不能用已写GUI字号逆推或在非等比矩阵下删除。比如U12、A6、B24时sx1／sy2、P12，Y另加3；这只是源公式条件输入，不是原窗口尺寸测量。
 
-非font-texture且非glRender路径先调用UpdateGUIGroup，转换文本`UnicodeToChanakya`，最终`GUI.Label`收到矩形`(GUIX,GUIY,1,2×B)`、文本和GUIStyle。宽1是此原调用矩形参数，不能推成“文字只绘制一像素宽”：实际overflow、padding、clip和字形排版还由GUIStyle／GUI组决定。
+fontKeep_为false时，先真实Font.GetFont→GUIStyle.font、再GetFontStyle→GUIStyle.fontStyle，最后置fontKeep=true（10766AB1–10766B12）；为true跳过这两组调用，**每次仍写fontSize**（10766B35–55）。补偿后先把GUI.skin.font与style.font同步（10766BB4–C56），才MapPoints并减clip（10766CCD–D64）。实际默认字体与缺字供给见[字体后端](STEAM_FONT_BACKEND.md)，未认证当前会话中文最终face。
+
+随后保存GUIStyle.normal.textColor（10766D7A–D9F）。仅renderOperator为0／1且renderSrcRatio<255时再读取一次当前normal色并临改：0对RGB各执行`float32(float32(ratio×通道)/255)`、保留alpha；1只对alpha同式处理（10766DA3–EE4）。不把这次读取替换成先前保存值，也不自行把负ratio夹零；其它operator或ratio≥255不作这次临改。正常绘制后仍恢复保存色。
+
+**先**`UnicodeToChanakya`（10766F05），再分字体纹理、GLText及普通GUI路径。二者均否时才`UpdateGUIGroup`（10766F3A），最终`GUI.Label`收到矩形`(GUIX,GUIY,1,float32(2×B))`、已转换文本和当前GUIStyle（10766FEC）；原“先分组再转换”叙述据此更正。宽1是原调用矩形参数，不能推成文字只绘一像素；overflow／padding／clip和实际字形仍交GUIStyle／引擎。正常尾先恢复normal色，再将非空GUI.skin.font清null（10767480／107674A2–D9），不恢复进入前font；最后才到前述外层矩阵／本地化锁／请求字号清理。
+
+[普通GUI执行接口](../prototype/include/dungeon_village_prototype/steam_font_draw.hpp)接已完成上游翻译、TextFormat、临时字号及BeginRenderMatrix的真实上下文，按上述顺序调用显式Backend，最终执行Label及正常清理；保留条件测宽、fontKeep、两次颜色读取和字符转换结果。接口仅接实际isGUI=true、useFontTexture=false、glRender=false的获准分支，不能把Image或GLText当普通GUI重放。后端供实际Font、矩阵、GUI对象／分组和绘制，接口不安装字形、写Owner、抽随机或增加持久状态。维护正常域U1..65536、文本转换前后各≤4096字节、输入及映射点有限且绝对值≤65536、参考尺寸(0,65536]、有效正比率；TOP字号补偿才要求F非0。clip原点允许全int32，最后Label坐标不受65536限制，高可至131072。退化／非有限及转换超预算明确拒绝，不夹分母；后端可能已改样式或画图，拒绝／异常不回滚源副作用、不能盲重放。外层EndRenderMatrix／锁／请求字号恢复仍由实际调用者负责；这不是原请求整体事务保证或原生字形等价认证。
 
 本批认证到GUI.Label参数和调用边界；字形ascent/descent、真正baseline、kerning、抗锯齿及系统fallback仍未认证。`Font.GetOffset()`在前页已核返回公式，但本主方法没有直接调用它；不能在这里自行再加一遍requestFontOffset。它的其它间接消费位置仍需另批研究。
 

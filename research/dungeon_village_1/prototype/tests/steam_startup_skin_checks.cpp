@@ -5,6 +5,7 @@
 #include "dungeon_village_prototype/steam_subform_update.hpp"
 #include "dungeon_village_prototype/steam_text_reveal.hpp"
 #include "dungeon_village_prototype/steam_font_metrics.hpp"
+#include "dungeon_village_prototype/steam_font_draw.hpp"
 #include "dungeon_village_prototype/steam_dialogue_skin.hpp"
 #include "dungeon_village_prototype/steam_event_skin.hpp"
 #include "dungeon_village_prototype/startup_world_persistence.hpp"
@@ -1389,6 +1390,131 @@ void event_card(Checks &check,const std::filesystem::path &root) {
               "59桥拒缺钟/孤立副载荷/错类型/退休/重复页/缺当前外观及非法装备，不补默认值");
     }
 }
+struct GuiTextBackendFailure {};
+class RecordingGuiTextBackend final:public SteamGuiTextBackend {
+public:
+    std::vector<std::string> trace;
+    std::array<float,2> extent{6.F,24.F},reference{},map_input{};
+    std::array<float,2> map_scale{1.F,2.F};
+    SteamGuiTextColor saved{0.2F,0.4F,0.6F,0.8F},second{1.F,0.5F,0.25F,0.75F};
+    std::vector<SteamGuiTextColor> colors;
+    std::vector<std::int32_t> sizes;
+    std::array<float,4> labelled_rect{};
+    std::string measured_text,converted_text,labelled_text;
+    float width{8.F};
+    std::size_t fail_at{std::numeric_limits<std::size_t>::max()},color_reads{},labels{};
+    float string_width_f(const std::string &text) override {
+        step("width");measured_text=text;return width;
+    }
+    std::array<float,2> reference_rect_size(float w,float h) override {
+        step("ref");reference={w,h};return extent;
+    }
+    void copy_font_to_gui_style() override {step("font");}
+    void copy_font_style_to_gui_style() override {step("style");}
+    void set_font_keep() override {step("keep");}
+    void set_gui_font_size(std::int32_t n) override {step("size");sizes.push_back(n);}
+    void synchronize_skin_font() override {step("sync");}
+    std::array<float,2> map_screen_point(float x,float y) override {
+        step("map");map_input={x,y};return {x*map_scale[0]+5.F,y*map_scale[1]+7.F};
+    }
+    SteamGuiTextColor normal_text_color() override {
+        step("color");return color_reads++==0?saved:second;
+    }
+    void set_normal_text_color(const SteamGuiTextColor &c) override {step("setColor");colors.push_back(c);}
+    std::string unicode_to_chanakya(const std::string &text) override {
+        step("unicode");converted_text=text;return "converted-label";
+    }
+    void update_gui_group() override {step("group");}
+    void label(const std::array<float,4> &rect,const std::string &text) override {
+        step("label");++labels;labelled_rect=rect;labelled_text=text;
+    }
+    void clear_skin_font_if_nonnull() override {step("clear");}
+private:
+    void step(const char *name) {
+        trace.emplace_back(name);
+        if(trace.size()-1==fail_at)throw GuiTextBackendFailure{};
+    }
+};
+void ordinary_gui_text(Checks &check) {
+    SteamGuiTextInput input;
+    input.admission=SteamGuiTextAdmission::prepared_ordinary_gui;
+    input.translated_text="translated-input";input.x=100.F;input.y=20.F;
+    input.anchor=6;input.used_size=12;input.clip_origin={10,20};
+    input.render_operator=0;input.render_src_ratio=51;
+    const std::vector<std::string> expected{"width","ref","font","style","keep","size","sync",
+        "map","color","color","setColor","unicode","group","label","setColor","clear"};
+    RecordingGuiTextBackend backend;
+    const auto plan=steam_draw_ordinary_gui_text(input,backend);
+    check(plan&&backend.trace==expected&&backend.reference==std::array<float,2>{6.F,12.F}&&
+              backend.map_input==std::array<float,2>{96.F,23.F}&&
+              plan->rectangle==std::array<float,4>{91.F,33.F,1.F,48.F}&&
+              backend.labelled_rect==plan->rectangle&&plan->gui_font_size==12&&
+              backend.sizes==std::vector<std::int32_t>{12}&&backend.labels==1&&
+              backend.measured_text==input.translated_text&&backend.converted_text==input.translated_text&&
+              backend.labelled_text=="converted-label"&&backend.colors.size()==2&&
+              backend.colors[0]==SteamGuiTextColor{0.2F,0.1F,0.05F,0.75F}&&
+              backend.colors[1]==backend.saved,
+          "正常GUI实际有序调用，CENTER优先RIGHT，非等比补Y3后映射再减clip，Label消费转换文本且临改RGB后恢复首读颜色");
+    auto left=input;left.anchor=17;left.render_operator=1;left.font_keep=true;
+    RecordingGuiTextBackend fractional;fractional.extent={6.375F,24.F};fractional.map_scale={1.0625F,2.F};
+    const auto fractional_plan=steam_draw_ordinary_gui_text(left,fractional);
+    check(fractional_plan&&fractional.trace==std::vector<std::string>{"ref","size","sync","map",
+              "color","color","setColor","unicode","group","label","setColor","clear"}&&
+              fractional_plan->gui_font_size==12&&fractional.map_input==std::array<float,2>{100.F,22.8125F}&&
+              fractional.colors[0]==SteamGuiTextColor{1.F,0.5F,0.25F,0.15F}&&
+              fractional.colors[1]==fractional.saved,
+          "左对齐不测宽，fontKeep只省字体/style/keep，字号仍设置；Y用未截整12.75而非GUI字号12，op1仅改alpha");
+    auto top=left;top.font_scale_offset=true;top.font_scale=70;
+    RecordingGuiTextBackend top_backend;
+    const auto top_plan=steam_draw_ordinary_gui_text(top,top_backend);
+    check(top_plan&&top_backend.map_input==std::array<float,2>{100.F,25.F},
+          "TOP先按1200/70取整17再将差5整除2补2，不能补浮点2.5");
+    auto combined=top;combined.anchor=6|32|64;combined.font_scale=0;
+    RecordingGuiTextBackend combined_backend;
+    const auto combined_plan=steam_draw_ordinary_gui_text(combined,combined_backend);
+    check(combined_plan&&combined_backend.map_input==std::array<float,2>{96.F,17.F},
+          "组合锚先CENTER与垂直CENTER，短路BOTTOM和TOP补偿，不消费未用的零F");
+    for(const auto pair:std::array<std::array<int,2>,2>{{{2,0},{0,255}}}) {
+        auto plain=left;plain.render_operator=pair[0];plain.render_src_ratio=pair[1];
+        RecordingGuiTextBackend original;
+        check(steam_draw_ordinary_gui_text(plain,original).has_value()&&original.color_reads==1&&
+                  original.colors==std::vector<SteamGuiTextColor>{original.saved},
+              "其他RenderMode或ratio255不二读/临改颜色，正常尾仍恢复首读原色并清skin字体");
+    }
+    auto kept=left;kept.render_operator=2;
+    RecordingGuiTextBackend repeated;
+    const auto once=steam_draw_ordinary_gui_text(kept,repeated);
+    const auto twice=steam_draw_ordinary_gui_text(kept,repeated);
+    check(once&&twice&&repeated.sizes==std::vector<std::int32_t>{12,12}&&repeated.labels==2&&
+              std::count(repeated.trace.begin(),repeated.trace.end(),"font")==0,
+          "同上下文fontKeep两次仍各设字号和绘制，不把字号更新误缓存到首次");
+    auto unverified=input;unverified.admission=SteamGuiTextAdmission::unverified;
+    auto bad_coordinate=input;bad_coordinate.y=std::numeric_limits<float>::quiet_NaN();
+    auto bad_size=input;bad_size.used_size=0;
+    for(const auto &bad:std::array<SteamGuiTextInput,3>{unverified,bad_coordinate,bad_size}) {
+        RecordingGuiTextBackend denied;
+        check(!steam_draw_ordinary_gui_text(bad,denied)&&denied.trace.empty()&&denied.labels==0,
+              "缺正常GUI准入或维护坏输入在后端前拒绝，不制造Label");
+    }
+    RecordingGuiTextBackend degenerate;degenerate.extent={0.F,24.F};
+    check(!steam_draw_ordinary_gui_text(input,degenerate)&&degenerate.labels==0&&
+              degenerate.trace==std::vector<std::string>{"width","ref"},
+          "退化基准矩形在字体及Label前拒绝，不夹缩放分母制造成功");
+    auto zero_scale=input;zero_scale.font_scale_offset=true;zero_scale.font_scale=0;
+    RecordingGuiTextBackend no_top_scale;
+    check(!steam_draw_ordinary_gui_text(zero_scale,no_top_scale)&&no_top_scale.labels==0&&
+              no_top_scale.trace==std::vector<std::string>{"width"},
+          "实际走TOP补偿时零F拒绝，保留此前测宽已发生而不绘制");
+    for(std::size_t fail=0;fail<expected.size();++fail) {
+        RecordingGuiTextBackend failing;failing.fail_at=fail;
+        bool threw=false;
+        try {(void)steam_draw_ordinary_gui_text(input,failing);}
+        catch(const GuiTextBackendFailure &) {threw=true;}
+        check(threw&&failing.trace==std::vector<std::string>(expected.begin(),expected.begin()+fail+1)&&
+                  failing.labels<=1,
+              "任一后端调用异常原样传播，保留已执行前缀，不自动恢复/重放或宣称GUI副作用回滚");
+    }
+}
 // 字体请求数值与本地化准入独立于字形后端，不以渲染截图生成这些期望值。
 void font_metrics(Checks &check) {
     struct Size {int request,scale;bool preset;int used;};
@@ -2461,6 +2587,7 @@ int check_steam_startup_skin(const std::filesystem::path &root) {
     text_plain_budget(check);
     text_height_queries(check);
     font_metrics(check);
+    ordinary_gui_text(check);
     touch_commands(check);
     touch_arrow_effect(check);
     touch_arrow_pool(check);

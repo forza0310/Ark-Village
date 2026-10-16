@@ -25,7 +25,7 @@ APK75的行注册在`b/g.java:7258–7287`，左右margin均29；[Steam合同](S
 
 ## 建设候选定位与提交
 
-以下先由固定APK普通Java有限窗口定位，再以[四小方法DEX](../work/render-request-contract/INPUT_DEX_EVIDENCE.json)补证触摸UP／CANCEL和候选推进。
+以下先由固定APK普通Java有限窗口定位，再以同一APK的classes.dex补证触摸UP／CANCEL和候选推进：`Lc/a;::c()V`、`Lc/a;::d()V`、`Lkairo/android/h/a;::a(Lkairo/android/h/f;)Z`、`Lkairo/android/h/b;::a(Lkairo/android/h/a;Landroid/view/MotionEvent;)V`。身份沿[证据入口](../EVIDENCE.md)，不依赖临时核对JSON作为正式文档入口。
 四方法共5226指令字节；主场景旋转所在方法7618字节仅登记身份，加入会超过8KiB单批预算，语义仍保留普通Java等级。
 
 | 原路径 | 已证顺序 | 当前维护边界 |
@@ -143,15 +143,6 @@ ordinal及请求夹入位置归独立控制器持久化；Owner只验非零ordin
 
 ## 输入来源身份
 
-均相对固定APK普通生成目录`work/decompiled/sources/`，只读定位／hash；未生成新源码摘录。
-
-| 文件 | SHA-256 |
-| --- | --- |
-| kairo/android/ui/a.java | dd73565d32da52e1ac9b67082e6935402978042f3024c059423917c77db7e5e9 |
-| kairo/android/h/b.java | 19c42c22745800865196c6dbde355c0cb264198f31093105b96a64891d64536d |
-| kairo/android/h/a.java | 3397d4014523aca84718001a000a31d66e5c0c2aae7aa8c8555887cd7a2277ac |
-| f/b.java | 455e25be211840df61fd39fc311167736cc5370be8b18d2551fe298c5e8c2b88 |
-| b/c.java | c6aa0357013ba19f4236631b44fca7e79e10f97693fcbff3d362b509642b7fa0 |
-| c/a.java | b392d8cf68277af430c9d36d8ac5d2681edbc03962cc6181b370b9e48120c135 |
+固定APK身份沿[证据入口](../EVIDENCE.md)，上文源路径均相对只读生成目录`work/decompiled/sources/`。本页涉及`kairo/android/ui/a.java`、`kairo/android/h/b.java`、`kairo/android/h/a.java`、`f/b.java`、`b/c.java`与`c/a.java`；方法及有限DEX补核等级按对应正文，不重复保存派生Java文件的指纹清单，也不将反编译失真升级为DEX事实。
 
 输入合同的完整原APK动态、拖出／取消、精确光标插值与焦点仍待认证。Steam既有输入事实保持其独立来源等级。

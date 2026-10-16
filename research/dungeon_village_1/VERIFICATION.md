@@ -1,5 +1,13 @@
 # 当前研究验证与历史索引
 
+## 普通GUI绘制后端与原生缺字供给 2026-10-16
+
+[有序执行接口](prototype/include/dungeon_village_prototype/steam_font_draw.hpp)补已准备的普通GUI文字链：条件测宽、参考矩形、字体／样式缓存、每次字号设置、非等比Y补偿、skin同步、Map→clip、normal色两次读取及按operator临改、Chanakya→分组→Label→恢复色／清skin。后端实际执行，错误不冒称整段回滚，外层矩阵／锁／请求字号清理与Image／GLText／纹理分支分别保留。[绘制合同](ui/STEAM_FONT_DRAW.md)纠正此前遗漏的未截整Y补偿和转换／分组倒序；没有把接口短验当作真实中文字形或窗口认证。
+
+[原生字体合同](ui/STEAM_FONT_BACKEND.md#缺字family候选与os字体供给)沿实际服务调用闭合family／引用、字符索引非0资格、十项引擎fallback次序及Windows字体目录→文件→face索引→字符的正常供给；资源Arial.ttf兜底另分一层。原生调用与名单构造、十项实际字符串经独立读取交叉，不因存在Microsoft YaHei便宣布本机中文实际命中它；未运行原游戏、读取本机系统字体、复制字体或原档。字体总入口及连续队列同步收窄未知项，移除GLText临时专题包指向、输入核对JSON入口及六项重复Java指纹，保留具名DEX方法／等级与固定输入身份，不触碰运行身份、存档校验或有效断言。
+
+Windows单Release动态构建、新模块严格C++17语法及独立源复核通过；扩现visuals套件，最终 **1/1通过1.82秒**。录制后端验证实际Label／转换结果及全有序轨迹、非等比与未截整补偿、整数TOP／组合锚短路、颜色、缓存与每步异常前缀；正常矩阵夹具及字面oracle分开，不新增target或世界长跑，三份他人在途住宅存取测试未编译。Release1402文件／226322740字节，assets保持872文件／9504668字节，无.pending；只新增有实际职责的头／实现，没有素材、核对产物、Owner／codec或持久队列。结果只含数值，临时转换串按调用释放；后端池／实际glyph缓存寿命由其消费者负责，不宣称原全局face缓存永久有界。构建、短测及并行任务已收齐，仅研究白名单本地提交，不推送，产品及其他维护者改动保留。
+
 ## 公共SubForm更新与文字渐显消费者 2026-10-16
 
 [公共前段](prototype/include/dungeon_village_prototype/steam_subform_update.hpp)接真实Update准入，交独立候选及重画／jingle／共享SEB22→21→23／页面分派原序。三钟精确保留int32回卷后signed余数，wait提前返回仍保留已更新双钟；wait1和箭头1的双重画不合并。实际声音／SEB和本页结果由后继消费，纯计划不冒称已安装Owner或原异常可回滚。[字体合同](ui/STEAM_FONT_CONSUMER.md#渐显时钟复位与完成资格)补最终块UTF-16长度、raw0快进不同时换段、裸TotalFrames回卷、signed64除法及blink边界，未新增排版／字体／持久状态认证。

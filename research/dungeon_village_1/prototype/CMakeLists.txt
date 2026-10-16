@@ -92,7 +92,7 @@ add_library(dungeon_village_startup_application src/startup_application.cpp src/
     src/startup_title_actor_skin.cpp src/steam_startup_skin.cpp src/steam_manual_skin.cpp
     src/steam_clear_score_skin.cpp src/steam_monster_skin.cpp
     src/steam_new_game_skin.cpp src/steam_record_skin.cpp src/steam_font_metrics.cpp src/steam_font_draw.cpp src/steam_text_reveal.cpp src/steam_dialogue_skin.cpp
-    src/steam_event_skin.cpp src/steam_news_skin.cpp
+    src/steam_event_skin.cpp src/steam_news_skin.cpp src/steam_text_layout.cpp
     src/steam_config_skin.cpp src/steam_platform_button_skin.cpp src/steam_cursor_skin.cpp src/steam_joystick_prompts.cpp
     src/steam_touch_commands.cpp src/steam_subform_update.cpp
     src/steam_commerce_skin.cpp src/steam_build_menu_skin.cpp
@@ -180,7 +180,7 @@ add_executable(dungeon_village_startup_world_visuals_tests tests/startup_world_v
     tests/startup_skin_checks.cpp tests/steam_startup_skin_checks.cpp tests/steam_facility_skin_checks.cpp
     tests/steam_village_skin_checks.cpp tests/steam_town_progress_skin_checks.cpp
     tests/steam_magic_pot_skin_checks.cpp tests/steam_task_selection_skin_checks.cpp
-    tests/steam_human_skin_checks.cpp
+    tests/steam_human_skin_checks.cpp tests/steam_text_layout_checks.cpp
     ../tools/src/sprite.cpp ../tools/src/table.cpp)
 target_include_directories(dungeon_village_startup_world_visuals_tests PRIVATE ../tools/include)
 target_link_libraries(dungeon_village_startup_world_visuals_tests PRIVATE dungeon_village_startup_application

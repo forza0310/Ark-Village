@@ -26,6 +26,7 @@
 #include <utility>
 
 using namespace dungeon_village_prototype;
+int steam_text_layout_checks();
 namespace {
 struct Checks {
     int count{};
@@ -2596,5 +2597,5 @@ int check_steam_startup_skin(const std::filesystem::path &root) {
     dialogue_page(check);
     event_card(check,root);
     news_page(check);
-    return check.count;
+    return check.count+steam_text_layout_checks();
 }

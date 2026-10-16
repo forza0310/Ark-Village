@@ -1,0 +1,397 @@
+// 固定Steam TextLayout._makeTextBlocks RVA7CD750的维护消费者。
+// 后端提供真实字体/语言；这里保持UTF-16扫描、重复测宽及源范围重建的原顺序。
+#include "dungeon_village_prototype/steam_text_layout.hpp"
+
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <exception>
+#include <limits>
+#include <utility>
+
+namespace dungeon_village_prototype {
+namespace {
+static_assert(sizeof(float)==4&&std::numeric_limits<float>::is_iec559);
+constexpr std::size_t text_budget=4096,block_budget=8192;
+struct Rejected {};
+float f32(float value) {volatile float out=value;return out;}
+float bounded(float value) {
+    if(!std::isfinite(value)||std::abs(value)>16777216.0f)throw Rejected{};
+    return value;
+}
+std::int32_t signed32(std::uint32_t bits) {
+    return bits<=0x7fffffffU?static_cast<std::int32_t>(bits):
+        static_cast<std::int32_t>(static_cast<std::int64_t>(bits)-0x100000000LL);
+}
+std::int32_t add32(std::int32_t a,std::int32_t b) {
+    return signed32(static_cast<std::uint32_t>(a)+static_cast<std::uint32_t>(b));
+}
+std::int32_t sub32(std::int32_t a,std::int32_t b) {
+    return signed32(static_cast<std::uint32_t>(a)-static_cast<std::uint32_t>(b));
+}
+std::int32_t integer(float value) {
+    if(!std::isfinite(value)||static_cast<double>(value)<std::numeric_limits<std::int32_t>::min()||
+       static_cast<double>(value)>std::numeric_limits<std::int32_t>::max())throw Rejected{};
+    return static_cast<std::int32_t>(value);
+}
+int used(const SteamLayoutFontRef &font) {
+    if(!font)throw Rejected{};
+    const auto size=font->used_size();
+    if(size<0||size>65536)throw Rejected{};
+    return size;
+}
+bool prefix_at(const std::u16string &text,std::size_t index,const std::u16string &prefix) {
+    return index<=text.size()&&text.compare(index,prefix.size(),prefix)==0;
+}
+const std::array<std::u16string,14> tags{u"<co=>",u"</co>",u"<si=>",u"</si>",
+    u"<st=>",u"</st>",u"<bl=>",u"</bl>",u"<po=>",u"<pic=>",u"<bo=>",u"</bo>",
+    u"<btn=>",u"<ff>"};
+
+// 正常尾按原序清理。异常时尽力收齐本消费者已取得的栈，保留首个后端错误；
+// 这是维护策略，不把原来的部分赋值或后端图形/语言副作用描述为事务回滚。
+struct Scope {
+    SteamTextLayoutBackend &backend;
+    SteamLayoutFontRef entry;
+    bool sample{},chanakya_tail{},auto_layout{},localize_off{},localized_off{},installed{},disabled{};
+    void inner() {
+        if(disabled) {disabled=false;backend.set_layout_disabled(false);}
+        if(localized_off) {localized_off=false;backend.pop_localize();}
+        if(installed) {installed=false;backend.install_layout_font(entry);}
+        if(localize_off) {localize_off=false;backend.pop_localize();}
+        if(auto_layout) {auto_layout=false;backend.pop_auto_text_layout();}
+    }
+    void outer() {
+        if(chanakya_tail) {chanakya_tail=false;backend.set_chanakya_enabled(true);}
+        if(sample) {sample=false;backend.end_sample();}
+    }
+    void unwind() noexcept {
+        // 单项清理失败也继续收齐其它已取得资源；不得重放失败操作。
+        auto attempt=[](auto call) {try {call();}catch(...) {}};
+        if(disabled) {disabled=false;attempt([&]{backend.set_layout_disabled(false);});}
+        if(localized_off) {localized_off=false;attempt([&]{backend.pop_localize();});}
+        if(installed) {installed=false;attempt([&]{backend.install_layout_font(entry);});}
+        if(localize_off) {localize_off=false;attempt([&]{backend.pop_localize();});}
+        if(auto_layout) {auto_layout=false;attempt([&]{backend.pop_auto_text_layout();});}
+        if(chanakya_tail) {chanakya_tail=false;attempt([&]{backend.set_chanakya_enabled(true);});}
+        if(sample) {sample=false;attempt([&]{backend.end_sample();});}
+    }
+};
+
+class Scanner {
+public:
+    Scanner(const SteamTextLayoutInput &input,SteamTextLayoutBackend &backend,
+            SteamLayoutFontRef base,SteamTextLayoutResult &result):
+        in(input),out(backend),base_font(std::move(base)),result(result) {}
+
+    void run() {
+        work=clone(base_font);
+        out.adjust_font_size(work,in.scale_ratio);
+        (void)used(work);
+        row_height=used(base_font); // 初始高来自activeBase，之后换行才取工作Font。
+        color=in.color;horizontal=in.anchor&7;vertical=in.anchor&0x70;
+        text=out.translate_text(in.text,true);
+        if(text.size()>text_budget)throw Rejected{};
+        text=out.unicode_to_chanakya(text);
+        if(text.size()>text_budget)throw Rejected{};
+        out.set_chanakya_enabled(false);
+        for(std::size_t at=0;(at=text.find(u"<br>",at))!=std::u16string::npos;++at)
+            text.replace(at,4,u"\n");
+        result.text_width=0;
+        scan();
+        finish();
+    }
+    bool word_enabled{}; // 入口一次真实IsJapaneseStyle/原串空格查询的结果。
+
+private:
+    const SteamTextLayoutInput &in;
+    SteamTextLayoutBackend &out;
+    SteamLayoutFontRef base_font,work;
+    SteamTextLayoutResult &result;
+    std::u16string text;
+    std::optional<std::size_t> current;
+    std::size_t row_start{};
+    float row_width{},y{};
+    std::int32_t row_height{},color{},blink{},border{-1};
+    int horizontal{},vertical{};
+    bool new_block{true},word_head{true},pending_ff{},bold{};
+
+    SteamLayoutFontRef clone(const SteamLayoutFontRef &font) {
+        auto copy=out.copy_font(font);
+        if(!copy||copy==font)throw Rejected{};
+        (void)used(copy);
+        return copy;
+    }
+    float width(const std::u16string &value) {
+        return bounded(out.string_width_f(work,value));
+    }
+    void append_block() {
+        if(result.blocks.size()>=block_budget)throw Rejected{};
+        SteamLayoutBlock block;
+        block.font=clone(work);block.color=color;block.blink=blink;
+        block.bold=bold;block.border_color=border;
+        result.blocks.push_back(std::move(block));current=result.blocks.size()-1;
+    }
+    void increase(float delta) {
+        row_width=bounded(f32(row_width+delta));
+        if(row_width>result.text_width)result.text_width=row_width;
+    }
+    float row_x(float center_width) const {
+        if(horizontal==2)return in.width==-1?-f32(center_width*0.5f):
+            bounded(f32(f32(in.width*0.5f)-f32(center_width*0.5f)));
+        if(horizontal==4)return in.width==-1?-row_width:bounded(f32(in.width-row_width));
+        return 0;
+    }
+    void place_row(float center_width) {
+        auto x=row_x(center_width);
+        for(auto i=row_start;i<result.blocks.size();++i) {
+            auto &block=result.blocks[i];block.x=x;
+            x=bounded(f32(x+block.width));
+            const auto half=sub32(row_height,used(block.font))/2;
+            block.y=bounded(f32(y+static_cast<float>(half)));
+        }
+    }
+    void advance_row() {
+        const auto step=add32(row_height,in.line_space);
+        const auto c=static_cast<float>(step);
+        if(pending_ff&&!in.auto_scale) {
+            if(step==0)throw Rejected{};
+            const auto n=integer(f32(f32(in.height+static_cast<float>(in.line_space))/c));
+            if(n==0)throw Rejected{};
+            auto remainder=[&] {
+                const auto value=integer(f32(f32(y/c)+0.1f));
+                // MIN/-1的原signed除法异常不在C++里执行未定义运算。
+                if(value==std::numeric_limits<std::int32_t>::min()&&n==-1)throw Rejected{};
+                return value%n;
+            };
+            std::size_t attempts=0;
+            while(remainder()!=0) {
+                const auto next=bounded(f32(y+c));
+                if(next==y||++attempts>65536)throw Rejected{};
+                y=next;
+            }
+            y=bounded(f32(y-c));y=bounded(f32(y+c));
+        } else y=bounded(f32(y+c));
+        new_block=true;row_height=used(work);pending_ff=false;
+    }
+    bool tag(std::size_t &index,char16_t character,SteamLayoutBlockKind &kind,
+             std::int32_t &special,std::vector<std::u16string> &parameters) {
+        if(character!=u'<')return false;
+        const auto end=text.find(u'>',index);
+        if(end==std::u16string::npos)return false;
+        if(end-index>32) {++index;return true;}
+        const auto candidate=text.substr(index,end-index+1);
+        std::size_t number=0;
+        for(;number<tags.size();++number) {
+            const auto &pattern=tags[number];
+            if(out.compare_to(pattern,candidate)==0)break;
+            const auto equals=pattern.find(u'=');
+            if(equals!=std::u16string::npos&&candidate.find(u'=')!=std::u16string::npos&&
+               out.starts_with(candidate,pattern.substr(0,equals+1)))break;
+        }
+        // CDD5F直接跳CE224；未知TAG仍从原'<'逐单元走普通路径。
+        if(number==tags.size())return false;
+        index=end;
+        std::u16string parameter;
+        std::int32_t decimal=0,hex=0;
+        const auto equals=candidate.find(u'=');
+        if(equals!=std::u16string::npos) {
+            parameter=candidate.substr(equals+1,candidate.size()-equals-2);
+            decimal=out.try_parse_integer(parameter,10).value_or(0);
+            hex=out.try_parse_integer(parameter,16).value_or(0);
+            if((number==0||number==10)&&hex==0&&parameter.find(u',')!=std::u16string::npos) {
+                const auto values=out.split_parameters(parameter);
+                std::uint32_t rgb=0;
+                for(std::size_t i=0;i<values.size()&&i<3;++i)
+                    rgb|=static_cast<std::uint32_t>(out.parse_decimal(values[i]))<<(16-8*i);
+                hex=signed32(rgb);
+            }
+        }
+        switch(number) {
+        case 0:color=out.rgb_color(hex);break;
+        case 1:color=in.color;break;
+        case 2:out.set_size(work,decimal,true);row_height=std::max(row_height,used(work));break;
+        case 3:out.set_size(work,base_font->request_size(),true);
+               row_height=std::max(row_height,used(work));break;
+        case 4:out.set_style(work,decimal);break;
+        case 5:out.set_style(work,base_font->style());break;
+        case 6:blink=decimal;break;
+        case 7:blink=0;break;
+        case 8:
+            if(parameter.find(u'l')!=std::u16string::npos)horizontal=1;
+            if(parameter.find(u'c')!=std::u16string::npos)horizontal=2;
+            if(parameter.find(u'r')!=std::u16string::npos)horizontal=4;
+            if(parameter.find(u't')!=std::u16string::npos)vertical=16;
+            if(parameter.find(u'm')!=std::u16string::npos)vertical=32;
+            if(parameter.find(u'b')!=std::u16string::npos)vertical=64;
+            y=0;break;
+        case 9:
+            kind=SteamLayoutBlockKind::pictograph;
+            parameters=out.split_parameters(parameter);
+            special=out.pictograph_layout_width(parameters,work);break;
+        case 10:border=out.rgb_color(hex);bold=true;break;
+        case 11:bold=false;break;
+        case 12:
+            kind=SteamLayoutBlockKind::button;special=add32(used(work),2);
+            parameters=out.split_parameters(parameter);break;
+        case 13:pending_ff=true;break;
+        }
+        new_block=true;
+        if(kind==SteamLayoutBlockKind::ordinary) {++index;return true;}
+        return false; // 特殊块仍经同一溢出/整词/行提交；character保持最初的'<'。
+    }
+    bool word_prefix(std::size_t limit) {
+        for(std::size_t i=0;i<limit;++i) {
+            if(i>=in.text.size())throw Rejected{}; // 原串/处理串没有索引映射。
+            const auto character=in.text[i];
+            if(out.trim_is_empty(character))continue;
+            if(character!=u'<')return true;
+            const auto end=text.find(u'>',i+1);
+            if(end==std::u16string::npos)return false;
+            i=end;
+        }
+        return false;
+    }
+    void lookahead(std::size_t index,char16_t character,bool special_block,
+                   std::int32_t special,bool &line_break) {
+        if(!word_enabled||!word_head||character==u' ')return;
+        const auto start=index+(special_block?1:0);
+        auto end=start;
+        while(end<text.size()&&text[end]!=u' '&&text[end]!=u'\n'&&!prefix_at(text,end,u"<br>"))++end;
+        if(end>start) {
+            float predicted=special_block?static_cast<float>(special):0;
+            for(auto i=start;i<end;++i) {
+                const auto character_to_measure=text[i];
+                if(character_to_measure==u'<') {
+                    const auto close=text.find(u'>',i+1);
+                    if(close!=std::u16string::npos)i=close;
+                    bool skip=false;
+                    for(const auto *prefix:{u"<co=",u"<si=",u"<st=",u"<po=",u"<bl=",u"<bo=",u"<ff>",u"</",u"<br>"})
+                        if(prefix_at(text,i,prefix)) {skip=true;break;}
+                    if(skip)continue;
+                    if(prefix_at(text,i,u"<pic=")||prefix_at(text,i,u"<btn="))
+                        predicted=bounded(f32(predicted+static_cast<float>(special)));
+                }
+                predicted=bounded(f32(predicted+width(std::u16string(1,character_to_measure))));
+            }
+            if(in.width!=-1&&f32(row_width+predicted)>in.width) {
+                if(word_prefix(start))line_break=true;
+                else word_enabled=false;
+            }
+        }
+        word_head=false;
+    }
+    void scan() {
+        for(std::size_t index=0;index<text.size();) {
+            const auto old_width=row_width;
+            const auto character=text[index];
+            auto kind=SteamLayoutBlockKind::ordinary;
+            std::int32_t special=0;
+            std::vector<std::u16string> parameters;
+            if(tag(index,character,kind,special,parameters))continue;
+            const bool special_block=kind!=SteamLayoutBlockKind::ordinary;
+            const auto threshold=out.language_code()==u"hi"?128:255;
+            bool combine=false,combine_three=false;
+            if(index>0&&text[index-1]>threshold&&text[index]>threshold) {
+                const auto pair=width(text.substr(index-1,2));
+                const auto first=width(text.substr(index-1,1));
+                combine=pair==first;
+                if(combine&&index+1<text.size()&&text[index+1]>threshold) {
+                    const auto triple=width(text.substr(index-1,3));
+                    const auto again=width(text.substr(index-1,1));
+                    combine_three=triple==again;
+                }
+            }
+            float delta=0;
+            if(special_block)delta=static_cast<float>(special);
+            else if(character!=u'\n'&&character!=u'\r'&&!combine)
+                delta=current?f32(width(result.blocks[*current].text+character)-result.blocks[*current].width):
+                    width(std::u16string(1,character));
+            bool line_break=character==u'\n';
+            if(!line_break&&in.width!=-1&&!combine&&f32(row_width+delta)>in.width&&in.multi_line) {
+                if(in.format&&(character==u'\u3001'||character==u'\u3002'))delta=0;
+                else line_break=true;
+            }
+            lookahead(index,character,special_block,special,line_break);
+            if(!out.japanese_style_text_layout()&&character==u' ') {
+                word_head=true;
+                if(line_break)delta=0;
+            }
+            const auto accept_delta=delta;
+            if(line_break) {
+                place_row(old_width);row_width=0;row_start=result.blocks.size();advance_row();
+            }
+            if(new_block&&(delta>0||combine||special_block)) {append_block();new_block=false;}
+            if(special_block) {
+                if(!current)throw Rejected{};
+                auto &block=result.blocks[*current];block.kind=kind;block.parameters=std::move(parameters);
+                block.bold=false;block.width=bounded(static_cast<float>(special));
+                increase(block.width);append_block(); // 真正普通空块，不能仅设new_block或删除。
+            } else if(accept_delta>0||combine) {
+                if(!current)throw Rejected{};
+                auto &block=result.blocks[*current];
+                if(!combine)delta=f32(width(block.text+character)-block.width);
+                if(block.start==-1)block.start=static_cast<std::int32_t>(index);
+                block.length=static_cast<std::int32_t>(index)-block.start+1+(combine_three?1:0);
+                if(!combine)block.text+=character;
+                block.width=bounded(f32(block.width+delta));increase(delta);
+            }
+            index+=combine_three?2:1;
+        }
+    }
+    void finish() {
+        auto total=y;
+        if(row_start<result.blocks.size()) {place_row(row_width);total=bounded(f32(y+static_cast<float>(row_height)));}
+        float offset=0;
+        if(vertical==32)offset=in.height==-1?-f32(total*0.5f):f32(f32(in.height-total)*0.5f);
+        else if(vertical==64)offset=in.height==-1?-total:f32(in.height-total);
+        if(in.height!=-1&&offset<0)offset=0;
+        for(auto &block:result.blocks) {
+            block.y=bounded(f32(block.y+offset));
+            if(block.start!=-1) {
+                const auto start=static_cast<std::size_t>(block.start),length=static_cast<std::size_t>(block.length);
+                if(start>text.size()||length>text.size()-start)throw Rejected{};
+                block.text=text.substr(start,length); // 不重测；中间CR/零宽单元可重新进入最终串。
+            }
+        }
+    }
+};
+} // namespace
+
+std::optional<SteamTextLayoutResult> steam_make_text_blocks(
+        const SteamTextLayoutInput &in,SteamTextLayoutBackend &out) {
+    if(in.text.size()>text_budget)return {};
+    SteamTextLayoutResult result;result.text_width=in.previous_text_width;
+    result.request_font_size=in.request_font_size;
+    if(in.text.empty())return result; // 不读Font、不清旧宽、不压栈或切换全局开关。
+    Scope scope{out,in.font};
+    try {
+        (void)bounded(in.width);(void)bounded(in.height);(void)bounded(in.scale_ratio);
+        (void)used(in.font);
+        out.begin_sample();scope.sample=true;scope.chanakya_tail=true;
+        out.push_auto_text_layout(false);scope.auto_layout=true;
+        const bool word_enabled=!out.japanese_style_text_layout()&&in.multi_line&&
+            in.text.find(u' ')!=std::u16string::npos;
+        if(!in.localize_font_enable) {out.push_localize(false);scope.localize_off=true;}
+        auto base=in.font;
+        if(out.needs_localize(in.font)) {
+            base=out.copy_font(in.font);
+            if(!base||base==in.font)throw Rejected{};
+            out.install_layout_font(base);scope.installed=true;
+            out.set_size(base,out.localized_request(base),true);
+            out.push_localize(false);scope.localized_off=true;
+        }
+        if(result.request_font_size==-1)result.request_font_size=used(base);
+        out.set_layout_disabled(true);scope.disabled=true;
+        Scanner scanner(in,out,base,result);scanner.word_enabled=word_enabled;scanner.run();
+        scope.inner();
+        // 原尾只看右/下边；height=-1没有免检，空特殊后继也遍历。
+        if(in.width!=-1&&!in.auto_scale)for(const auto &block:result.blocks)
+            if(f32(block.x+block.width)>in.width||f32(block.y+static_cast<float>(used(block.font)))>in.height) {
+                result.over_area=true;break;
+            }
+        scope.outer();
+        return result;
+    } catch(const Rejected &) {scope.unwind();return {};}
+      catch(...) {scope.unwind();throw;}
+}
+} // namespace dungeon_village_prototype

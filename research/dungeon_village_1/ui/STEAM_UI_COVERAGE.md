@@ -123,7 +123,7 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 81 | TENANT_LVUP_ANIME | 设施 | 静态：[Init真正升级、40／55确认、独立frame2及完整局部Draw](STEAM_FACILITY_UPGRADE.md)已核；维护：Owner与数字动画／角色／框及触摸计划已接。动态：无连续原窗口认证；原字体、平台热区仍独立 |
 | 82 | TENANT_STREN_BONUS | 设施 | 静态及维护：两阶段口碑／人气、有序皮肤、独立双钟／恢复与条件参考已交付；未认证自然36个月触发、完整scratch或原OS动态，见[效果合同](../rules/FACILITY_EFFECTS.md) |
 | 83 | SHOPPING_TOP | 商会 | Steam完整局部合同、只读皮肤／Owner NEW查询及同轮输入已接研究窗口：三入口、等级、私有南瓜、两NEW、上→下→确认优先返回；见[合同](../rules/COMMERCE.md#steam-commerce-top)与[接口](../prototype/include/dungeon_village_prototype/steam_commerce_skin.hpp)。字体／共享手形调度及原OS动态独立，未由条件图认证 |
-| 84 | SHOPPING_ITEMSELECT | 商会 | Steam局部Init／输入／绘制与APK差异见[目录合同](../rules/COMMERCE.md#steam-commerce-items)。交易Owner现冻结实际成交额，86覆盖、反馈到期／确认释放及精确恢复已接；窗口读取实际金额。整轮先减反馈再确认的源输入接线仍待补，原动态未验 |
+| 84 | SHOPPING_ITEMSELECT | 商会 | [目录合同](../rules/COMMERCE.md#steam-commerce-items)、正式有序皮肤及整轮Update已接；先减反馈再导航／确认，1／2边界、独立尾首行、冻结成交额、86覆盖／退休及应用晚期回滚已短验。窗口同计划输入／绘制，四态有界图例及两张参考图已交；中文说明／设备脉冲属维护适配，原OS动态与全语言字体未认证 |
 | 85 | SHOPPING_TENANT | 商会 | Steam三行／Mapchip2／点价／滚动／NEW、详情74及先扣点再93领取已核，见[设施合同](../rules/COMMERCE.md#steam-commerce-facilities)。维护原序皮肤／三行滚动／marker接线与同轮Owner输入已接，保留p0策略及85付点→93独立领取。普通／装备店／植物74定义预览已接独立皮肤与只读桥，原动态未验 |
 | 86 | SHOPPING_ACT_AFTER | 商会 | Steam完整局部已核：已交易后创建，下一获准更新直接Pop，虽画了解但不等待确认；所持金标签旁实际绘本笔差额。见[反馈合同](../rules/COMMERCE.md#steam-commerce-result)。维护只读皮肤／真实图标／实际测宽及研究窗口已接，保留原自动关闭；原动态未验 |
 | 87 | MEDAL_LIST | 授勋／怪物／住宅 | [合同与计划](PAGES.md#steam住宅候选80与授勋目录87)已接Owner五行／三页签、两类真实raw1问答、父恢复后一次奖励及详情60返回；应用／窗口只读皮肤和整轮Owner输入已接。恢复／拒绝／回滚／退休短验，原OS动态未认证 |

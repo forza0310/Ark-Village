@@ -93,8 +93,8 @@ class StartupWindowHost {
             throw std::runtime_error(result.error.empty()?"表现提交缺少计划":result.error);
         return std::move(*result.plan);
     }
-    StartupWindowUpdate update(bool clear_confirm = false) {
-        return std::visit([clear_confirm](auto &owner) -> StartupWindowUpdate {
+    StartupWindowUpdate update(bool clear_confirm = false,const StartupCommerceItemInput *commerce_input = nullptr) {
+        return std::visit([clear_confirm,commerce_input](auto &owner) -> StartupWindowUpdate {
             if constexpr (std::is_same_v<std::decay_t<decltype(owner)>, StartupApplication>) {
                 if (clear_confirm) {
                     if (!owner.world() || owner.page() != StartupApplicationPage::world)
@@ -106,11 +106,11 @@ class StartupWindowHost {
                         page->legacy_page != 17)
                         throw std::runtime_error("计分确认只能提交给活动raw17");
                 }
-                checked(owner.update(clear_confirm));
+                checked(owner.update(clear_confirm,commerce_input));
                 return {true};
             } else {
                 if (clear_confirm) throw std::runtime_error("独立Session没有应用计分确认消费者");
-                const auto result = owner.update();
+                const auto result = owner.update(false,commerce_input);
                 return {result.candidate.has_value(), result.error, result.scene_error, result.world_error};
             }
         }, owner_);

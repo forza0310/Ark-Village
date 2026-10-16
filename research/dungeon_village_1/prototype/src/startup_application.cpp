@@ -2,6 +2,7 @@
 #include "dungeon_village_prototype/startup_world_inheritance.hpp"
 #include "dungeon_village_prototype/startup_world_save.hpp"
 #include "dungeon_village_prototype/startup_world_manual.hpp"
+#include "dungeon_village_prototype/startup_world_commerce.hpp"
 #include <algorithm>
 #include <limits>
 #include <stdexcept>
@@ -217,9 +218,20 @@ std::string StartupApplication::commit_world(StartupWorldRuntimeSession candidat
     world_ = std::move(candidate); audio_requests_ = std::move(audio); return {};
 
 }
-std::string StartupApplication::update(bool confirm) {
+std::string StartupApplication::update(bool confirm, const StartupCommerceItemInput *commerce_input) {
     if (!error_.empty()) return error_;
     if (!world_ || page_ != Page::world) return "当前没有活动世界";
+    if (commerce_input) {
+        const auto &state = world_->state();
+        const auto *page = top(state);
+        if (confirm || !commerce_input->page || state.scene.framework_paused || !page || page->id != commerce_input->page ||
+            page->kind != ref::WorldScriptPageKind::raw_page || page->legacy_page != 84 ||
+            page->lifecycle != 2 || !state.commerce_pages_initialized.count(page->id) ||
+            !valid_startup_world_commerce_page(state, *page) ||
+            std::count_if(state.scripts.pages.begin(), state.scripts.pages.end(),
+                          [&](const auto &p) { return p.id == commerce_input->page; }) != 1)
+            return "商会整轮输入需要未暂停且已就绪的当前84页，不能与通用确认合并";
+    }
     if (is_clear(top(world_->state()))) return update_clear(confirm);
     if (clear_) return "计分页引用已不匹配";
     const auto *save_page = top(world_->state());
@@ -233,7 +245,7 @@ std::string StartupApplication::update(bool confirm) {
         const auto *p = top(world_->state());
         return p ? acknowledge_page(p->id) : "世界无页面";
     }
-    auto result = prepare_startup_world_runtime(world_->state());
+    auto result = prepare_startup_world_runtime(world_->state(), false, commerce_input);
     if (!result.candidate) return runtime_error(result.error).empty() ? "世界候选缺失" : runtime_error(result.error);
     // 与Session::update同一轮末消费者；这些缓存还决定下一轮人物/命中声音资格。
     // 只写私有候选，失败不能安装世界、消费随机或触发系统纪录落盘。

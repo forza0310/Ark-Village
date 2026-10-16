@@ -6,7 +6,7 @@
 
 2026-10-16接[新建植物路径投影差异](../../../docs/reference/RESEARCH_REQUESTS.md#plant-route-projection-gap)：已核APK创建／完工／刷新／加载与Steam创建绑定，植物kind2在绑定时即为state2／blocked，不等施工。正式维护修正`install_facility`遗漏，现建设套件短验真实66新建、更新、刷新、普通存读与继续更新；66／74均无flags64，不伪造施工过程。普通维护文件不改布局、不迁移或偷偷修复历史误写格值，原加载重建与维护精确格保存分开，见[路径合同](../rules/MAP_ACCESS.md)。产品真实74取得／建设仍由产品验证。
 
-当前回应[启动Owner／字体缺口](../../../docs/reference/RESEARCH_REQUESTS.md#startup-owner-font-gaps)：91纯皮肤已修正为接收维护合法空村名／姓名并原样留空，产品无需再填占位后还原；这不是原平台空串输入资格的新认证。选择／主钟的Owner载荷仍未交付，80／87目录／问答和84反馈金额的具体设计已获用户批准，待实现与短验。
+当前回应[启动Owner／字体缺口](../../../docs/reference/RESEARCH_REQUESTS.md#startup-owner-font-gaps)：91纯皮肤已修正为接收维护合法空村名／姓名并原样留空，产品无需再填占位后还原；这不是原平台空串输入资格的新认证。91选择／主钟的Owner载荷仍未交付。80／87目录、问答及84真实反馈金额已由`d8d38e1`交付；后继84整轮Update／应用与窗口接线、五行目录与成交反馈皮肤已定向短验，见[商会合同](../rules/COMMERCE.md)。反馈1可同轮再次交易，反馈2确认只清反馈；不能在独立act后再Update重复减钟。
 
 设置12主体及平台键盘参考已交（`2d8745a`／`b230c2c`），真实设置输出／跨局持久仍独立；字体新增bo／ff／btn／pic局部消费者，以[字体合同](../ui/STEAM_FONT_CONSUMER.md)明确边界，不据静态合同宣称现产品parser已支持。剩余玩家页面的当前状态统一查[覆盖表](../ui/STEAM_UI_COVERAGE.md)，下方记录保留其各自提交时范围，不把历史“未开放”重复列为当前缺口。
 

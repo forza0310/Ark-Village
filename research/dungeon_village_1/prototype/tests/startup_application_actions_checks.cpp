@@ -6,6 +6,7 @@
 #include "dungeon_village_prototype/startup_world_menu.hpp"
 #include "dungeon_village_prototype/startup_world_manual.hpp"
 #include "dungeon_village_prototype/startup_world_save.hpp"
+#include "dungeon_village_prototype/startup_world_commerce.hpp"
 #include "startup_application_natural_replay.hpp"
 #include "../src/startup_window_host.hpp"
 #include "support/audio_requests.hpp"
@@ -15,6 +16,10 @@
 #include <algorithm>
 #include <tuple>
 #include <type_traits>
+#ifdef _WIN32
+#define NOMINMAX
+#include <windows.h>
+#endif
 
 using namespace dungeon_village_prototype;
 std::array<std::filesystem::path, 4> create_application_action_entry_fixtures(
@@ -801,7 +806,60 @@ void save_page_bridges(const std::filesystem::path &root) {
                 bytes(paused_paths.root / "system.avr") == paused_system && no_world_blobs(paused_paths),
             "paused application phase1 update freezes request and does not publish world storage");
 }
+// 84的上层只验单轮接线/系统提交失败，与其它管理功能共用本套件。
+void commerce_round_bridge(const std::filesystem::path &root,const std::filesystem::path &entry) {
+    // 上层只验证84整轮输入跨应用/宿主接线；完整交易边界由pages/restore主责。
+    const auto trade_files=paths(root,"commerce-round");
+    StartupApplication trading(trade_files,ref::WorldRandomStream::from_java_seed(1));
+    good(trading.load_world_replay(entry,"application-action-entry-fixture-v1"));
+    trading.take_audio_requests();auto runtime=*trading.world();
+    auto result=runtime.update();
+    compare_command(trading,runtime,trading.update(),result.error);
+    const auto id=top(*trading.world())->id;
+    StartupCommerceTopInput sell;sell.selection=1;sell.confirm=true;
+    auto error=runtime.input_commerce_top(id,sell);
+    compare_command(trading,runtime,trading.input_commerce_top(id,sell),error);
+    result=runtime.update();
+    compare_command(trading,runtime,trading.update(),result.error);
+    const auto directory=top(*trading.world())->id;
+    require(top(*trading.world())->legacy_page==84,"real83 selling choice produces84");
+    StartupCommerceItemInput stale;stale.page=directory+1;stale.confirm=true;
+    const auto before_input=management_observation(trading);
+    require(!trading.update(false,&stale).empty()&&management_observation(trading)==before_input,
+            "application stale84 whole input rejects without consuming or advancing");
+    StartupCommerceItemInput input;input.page=directory;input.confirm=true;
+    require(!trading.update(true,&input).empty()&&management_observation(trading)==before_input,
+            "generic confirmation cannot silently replace84 whole input");
+#ifdef _WIN32
+    {
+        const auto system=trade_files.root/"system.avr";const auto saved=bytes(system);
+        struct LockedSystem { HANDLE value;~LockedSystem(){if(value!=INVALID_HANDLE_VALUE)CloseHandle(value);} } lock{
+            CreateFileW(system.c_str(),GENERIC_READ,FILE_SHARE_READ,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr)};
+        require(lock.value!=INVALID_HANDLE_VALUE,"lock own commerce system fixture");
+        require(!trading.update(false,&input).empty()&&management_observation(trading)==before_input&&bytes(system)==saved,
+                "late cash-record publication failure rolls back the entire84 frame and pending outputs");
+    }
+#endif
+    StartupWindowHost host(std::move(trading));
+    result=runtime.update(false,&input);
+    require(result.error==StartupWorldRuntimeError::none&&host.update(false,&input).committed,
+            "application window host consumes84 whole input once");
+    const auto output=runtime.take_audio_requests();
+    require(output.size()==1&&host.take_audio_requests()==output&&host.take_audio_requests().empty(),
+            "host transfers actual trade sound once");
+    require(startup_world_session_digest(host.runtime())==startup_world_session_digest(runtime),
+            "Host and Session install identical single-update transaction");
+}
 } // namespace
+
+// 供集中短验选择84跨层合同，不另建可执行target或复制断言。
+int run_startup_application_commerce_round_checks(const std::filesystem::path &parent,
+                                                const std::filesystem::path &entry) {
+    const auto before=checks;
+    const OwnedDirectory owned(parent/"commerce-round-bridges");
+    commerce_round_bridge(owned.path,entry);
+    return checks-before;
+}
 
 int run_startup_application_actions_checks(const std::filesystem::path &parent) {
     checks = 0;
@@ -826,6 +884,8 @@ int run_startup_application_actions_checks(const std::filesystem::path &parent) 
                 clear_host.application()->clear_page()->stage==0 &&
                 clear_host.application()->clear_page()->counter==1,
             "one early window confirmation enters application score exactly once without skipping its gate");
+    require(clear_host.take_audio_requests()==std::vector<StartupAudioRequest>{{StartupAudioOperation::replace_bgm,0}},
+            "score Init emits BGM0 once; consume it before testing a later update for no new sound");
     require(clear_host.update().committed && clear_host.application()->clear_page()->counter==2 &&
                 save_business(*clear_host.application())==clear_business &&
                 bytes(clear_files.root/"system.avr")==clear_system && clear_host.take_audio_requests().empty(),
@@ -874,6 +934,7 @@ int run_startup_application_actions_checks(const std::filesystem::path &parent) 
         } else if (i == 1) {
             require(!expected.state().commerce_pages_initialized.count(id),
                     "uninitialized commerce cancellation fixture");
+            commerce_round_bridge(root,entries[i]);
             const auto expected_error = expected.cancel_page(id);
             compare_command(app, expected, app.leave_commerce_page(id), expected_error);
             require(app.world()->state().commerce_page_data.empty() &&

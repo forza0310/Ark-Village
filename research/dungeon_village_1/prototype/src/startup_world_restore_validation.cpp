@@ -1023,8 +1023,11 @@ struct Validation {
                                : facilities.count(a[4]) && p.legacy_r == 3)) ||
                    fail("commerce page: 条目绑定非法");
         const auto list = get(s.commerce_page_lists, id);
-        if (!list || list->empty() || a[4] != -1 ||
-            !scrolling(a[2], a[3], list->size(), raw == 85 ? 3 : 5) ||
+        // 84普通导航只修五行可见窗，允许独立尾首行；仅真实交易后另夹目录尾部。
+        const bool cursor = list && (raw == 84 ?
+            selected(a[2],list->size()) && a[3]>=0 && a[3]<=a[2] && a[2]-a[3]<5 :
+            scrolling(a[2],a[3],list->size(),3));
+        if (!list || list->empty() || a[4] != -1 || !cursor ||
             !unique_references(*list, [&](int n) {
                 return raw == 84 ? items.count(n) != 0 : facilities.count(n) != 0;
             }))

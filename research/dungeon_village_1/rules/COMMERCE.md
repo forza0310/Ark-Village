@@ -97,7 +97,7 @@ Steam85在`10319B9E`检查村点，足额`10319BC5`先扣点，`10319BE7–19C05
 | 具名绘制／输入 | Steam实际消费者；APK差异单列 |
 | --- | --- |
 | 表头 | 名称(30,69)普通字；购买page0“残り”始终TextLayout(137,69,40,13,anchor32,lineSpace0)，价格JP185／非JP179；购买page1仅“所持”JP185／非JP175；出售“所持”JP137／非JP128，价格JP185／非JP179。此处无额外临时字号。APK买剩余普通字x134、卖持有JP134／非JP125，不套其位置。 |
-| 五行原序 | 从first最多五行，Y=97+19×(absolute−first)。选中底FillRect(23,Y−2,191,16)，先底→Touch→NEW→手形→道具图标→名称→数量／价格。此页NEW读isShopSee而非new_；false就画common147@(10,Y+2)，不因state或买卖mode隐藏。手形common SEB21当前帧@(21,Y+8)；mode1道具两层图标@(30,Y−2)，读取ItemData.icon_，见[共享图标](../ui/ITEM_ICON_RENDER.md)。 |
+| 五行原序 | 从first最多五行，Y=97+19×(absolute−first)。选中底FillRect(23,Y−2,191,16)，先底→Touch→NEW→手形→道具图标→名称→数量／价格。此页NEW读isShopSee而非new_；false就画common147@(10,Y+2)，不因state或买卖mode隐藏。手形common SEB21当前帧@(21,Y+8)；图标helper的type1指普通道具，两种买卖模式均画两层图标@(30,Y−2)，读取ItemData.icon_，见[共享图标](../ui/ITEM_ICON_RENDER.md)。 |
 | 行Touch | SLIST组件11、base(23,Y−2,191,16)、value=`0x20000\|absolute`，TouchOption flag16及Margin(29,0,0,0)，实参顺序为left／right／top／bottom。APK同处Margin(29,29,0,0)。保留首次仅标记资格，不能照79或83取消marker，也不将base＋margin当最终OS实测热区。 |
 | 名称 | JP普通DrawString(50,Y)。非JP是继承当前字号的TextLayout(50,Y−3,85,17,anchor32,lineSpace0)，本分支未SetFontSize。APK则临时字号10、普通字(50,Y+1)，两者不能合并为同一消费者。 |
 | 数量／钱 | 购买page0：restNum_用Draw_count(161,Y+1,SEB12)，售价Draw_money(210,Y+1)足额15／不足19；购买page1：只读haveNum_并Draw_count(210,Y+1,SEB12)，不改交易方向或跳过付款。出售：haveNum_在161，向零半价金额在210、SEB15，不检查购买预算。APK第一数量锚158。count先Comma右锚dx−10再SEB76/frame2单位；买入持有展示的0合法，不能复用只收1..999的正库存接口而改成1。 |
@@ -107,7 +107,11 @@ Steam85在`10319B9E`检查村点，足额`10319BC5`先扣点，`10319BE7–19C05
 
 文字槽按usage5独立核：购买标题`110FC3D8`、名称`110F5D68`、持有`110F6E48`、价格`110F4CB4`、剩余`110F7FD8`、交易反馈`110F1CA4`；对应字面见上文。当前语言转换、真正字体度量、继承字号／SEB当前帧、所有TextLayout排版及触控到OS的投递不由这批机器码／PNG关系证明。资源均沿现出版common图标、数字／单位、手形、箭头和南瓜肖像，不新复制图集；本次只交静态合同，没有新增84研究窗口认证。
 
-现Owner的`commerce_page_data[id]={mode,tab,selection,first,binding−1,feedbackCounter}`、`commerce_page_lists[id]`原序ID、初始化集合及page_counters已持久；库存／货源／已读、现金与月桶已有唯一消费者。2026-10-16按批准设计新增`commerce_page_feedback_amount`：成功交易且目录非空时冻结实际成交价，86覆盖保留，反馈到0／确认清除及Finish同事务释放。查询与窗口只读`StartupCommerceView.feedback_amount`，不根据当前选择重算；正反馈缺金额、负值、错页、孤立键以及关闭待退休缺键均拒绝，旧布局不迁移，见[维护存取](../prototype/PERSISTENCE.md#商会84交易反馈金额设计待确认)。当前逐action API仍需整轮输入及反馈先减的次序接线；金额与精确恢复完成不等于该输入时序或原OS动态已完成。普通档／安全校验不因皮肤查询放宽。
+现Owner的`commerce_page_data[id]={mode,tab,selection,first,binding−1,feedbackCounter}`、`commerce_page_lists[id]`原序ID、初始化集合及page_counters已持久；库存／货源／已读、现金与月桶使用唯一消费者。2026-10-16批准的`commerce_page_feedback_amount`冻结实际成交价，86覆盖保留，反馈到0／确认清除及Finish同事务释放；正反馈缺金额、负值、错页、孤立键以及关闭待退休缺键均拒绝，旧布局不迁移，见[维护存取](../prototype/PERSISTENCE.md#商会84交易反馈金额设计待确认)。
+
+完整整轮入口现为`StartupCommerceItemInput`，仅当轮借用，必须绑定当前已Init生命周期2的唯一84；通过Runtime／Session／Application的既有Update统一消费，先主钟推进及反馈递减，再滚动／设备选择、上→下、买入左→右、五行追随、确认优先返回。反馈1可当轮再次成交，2仅清反馈；卖出忽略左右。旧逐action保留兼容，不冒充这条源调度。所有迟发失败沿完整候选回滚，包含系统现金纪录发布失败；不增加Owner／codec字段或持久“已减”标记。84恢复允许原合法独立尾首行，85三行边界保持。
+
+正式`steam_commerce_item_skin`读取同一Owner和当前语言标题／表头、真实测宽选项；交付五行、单侧marker16、原数量／金额、两个买入展示页／出售、实际选中说明及冻结成交反馈的有序计划。Steam尾部窄核`1034DAAA–DAB6`／`1034DB45–DB51`及`1034DBB4–DBC8`确认正负金额和frame20单位均锚`(201,200)`，没有86式的单位x+1。图标type1对买卖均适用。正常说明复用既有中文维护helper，不认证所有语言翻译或字体后端；研究窗口短期合并设备脉冲到下一获准轮，切页／暂停／失焦释放，不持第二个业务游标，也不认证原OS仲裁。参考见[普通目录](../ui/examples/steam-commerce-items.png)及[实际反馈](../ui/examples/steam-commerce-items-feedback.png)。
 
 <a id="steam-commerce-facilities"></a>
 

@@ -4024,6 +4024,108 @@ void commerce_transactions() {
           last.commerce_page_lists.at(last_page).empty()&&last.commerce_page_data.at(last_page)[5]==0&&
           !last.commerce_page_feedback_amount.count(last_page),
           "last stock trade closes exhausted84 without creating an invisible feedback amount");
+
+    // 84整轮调用点：只补八项真实货源，不改定义、价格、资金或随机；旧act不充当本轮Update。
+    using Input=StartupCommerceItemInput;
+    auto round=fixture(84);const auto round_id=round.scripts.pages.back().id;
+    for(int entry=0;entry<8;++entry)round.shop_item_stock.at(entry).quantity=2;
+    check(initialize_startup_world_commerce_pages(round)&&round.commerce_page_lists.at(round_id).size()==8,
+          "84 round fixture freezes eight actual item definitions");
+    round.commerce_page_data.at(round_id)[5]=2;round.commerce_page_feedback_amount[round_id]=400;
+    const int initial_counter=round.page_counters.at(round_id);
+    Input input;input.page=round_id;
+    const auto idle=update_startup_world_commerce_page(round,round_id,&input);
+    check(idle&&idle->page_counters.at(round_id)==initial_counter+1&&
+          idle->commerce_page_data.at(round_id)[5]==1&&idle->commerce_page_feedback_amount.at(round_id)==400&&
+          idle->scene.world.world.ai.accounting.funds()==5000,
+          "empty84 DTO advances its only main clock and feedback exactly once");
+    input.up=input.down=input.left=input.right=input.confirm=input.cancel=true;
+    const auto cleared=update_startup_world_commerce_page(round,round_id,&input);
+    check(cleared&&cleared->commerce_page_data.at(round_id)[2]==0&&cleared->commerce_page_data.at(round_id)[1]==0&&
+          cleared->commerce_page_data.at(round_id)[5]==0&&!cleared->commerce_page_feedback_amount.count(round_id)&&
+          cleared->page_counters.at(round_id)==initial_counter+1&&
+          cleared->scene.world.world.ai.accounting.funds()==5000&&cleared->scripts.pages.back().id==round_id,
+          "feedback2 decrements to1; independent opposite repeats cancel, then confirm clears before cancel");
+    const auto purchased=update_startup_world_commerce_page(*idle,round_id,&input);
+    check(purchased&&purchased->page_counters.at(round_id)==initial_counter+2&&
+          purchased->commerce_page_data.at(round_id)[5]==20&&purchased->commerce_page_feedback_amount.at(round_id)==400&&
+          purchased->scene.world.world.ai.accounting.funds()==4600&&purchased->items.at(0).inventory==3&&
+          purchased->shop_item_stock.at(0).quantity==1&&purchased->scripts.pages.back().legacy_page==86&&
+          purchased->scene.random.draws()==0,
+          "feedback1 expires before same-round confirm and exactly one real trade installs fresh20 feedback");
+    auto covered_input=input;covered_input.page=purchased->scripts.pages.back().id;
+    check(!update_startup_world_commerce_page(*purchased,round_id,&input)&&
+          !update_startup_world_commerce_page(*purchased,covered_input.page,&covered_input),
+          "84 DTO cannot target a covered parent or the actual86 result");
+
+    input={};input.page=round_id;input.selection=5;input.left=true;
+    const auto navigated=update_startup_world_commerce_page(round,round_id,&input);
+    check(navigated&&navigated->commerce_page_data.at(round_id)[2]==5&&
+          navigated->commerce_page_data.at(round_id)[3]==1&&navigated->commerce_page_data.at(round_id)[1]==1&&
+          navigated->commerce_page_data.at(round_id)[5]==1&&navigated->commerce_page_feedback_amount.at(round_id)==400,
+          "positive feedback still permits device selection, left tab and five-row follow after one decrement");
+    auto tail=*cleared;tail.commerce_page_data.at(round_id)[2]=7;tail.commerce_page_data.at(round_id)[3]=7;
+    input={};input.page=round_id;
+    const auto held=update_startup_world_commerce_page(tail,round_id,&input);
+    check(held&&held->commerce_page_data.at(round_id)[2]==7&&held->commerce_page_data.at(round_id)[3]==7,
+          "84 independently retained last first-row remains legal without count-minus-five tail clamp");
+    input.scroll=Input::Scroll{false,std::numeric_limits<int>::min()};
+    const auto head=update_startup_world_commerce_page(tail,round_id,&input);
+    check(head&&head->commerce_page_data.at(round_id)[2]==0&&head->commerce_page_data.at(round_id)[3]==0,
+          "84 relative INT_MIN scroll uses wide selected-row arithmetic and follows to head");
+    input.scroll=Input::Scroll{true,100};
+    const auto last_row=update_startup_world_commerce_page(*head,round_id,&input);
+    check(last_row&&last_row->commerce_page_data.at(round_id)[2]==7&&last_row->commerce_page_data.at(round_id)[3]==3,
+          "84 absolute component selection clamps to last item then follows five-row window");
+    input.scroll=Input::Scroll{true,0};input.selection=1;input.up=true;input.down=true;
+    const auto ordered=update_startup_world_commerce_page(tail,round_id,&input);
+    check(ordered&&ordered->commerce_page_data.at(round_id)[2]==1&&ordered->commerce_page_data.at(round_id)[3]==1,
+          "84 component precedes device selection, independent up/down and a single window repair");
+
+    for(int fault=0;fault<12;++fault) {
+        auto broken=round;Input rejected;rejected.page=round_id;rejected.down=true;rejected.right=true;rejected.confirm=true;
+        if(fault==0)rejected.page=round_id+1;
+        if(fault==1)rejected.selection=8;
+        if(fault==2)rejected.scroll=Input::Scroll{true,std::numeric_limits<int>::max()};
+        if(fault==3)broken.scene.framework_paused=true;
+        if(fault==4)broken.scripts.pages.back().lifecycle=0;
+        if(fault==5)broken.commerce_pages_initialized.erase(round_id);
+        if(fault==6)broken.commerce_page_data.erase(round_id);
+        if(fault==7)broken.page_counters.erase(round_id);
+        if(fault==8)broken.commerce_page_feedback_amount.erase(round_id);
+        if(fault==9)broken.commerce_page_data.at(round_id)[3]=1;
+        if(fault==10)broken.page_counters.at(round_id)=std::numeric_limits<int>::max();
+        if(fault==11)broken.scripts.pages.back().legacy_page=83;
+        const auto before=startup_world_state_digest(broken);
+        check(!update_startup_world_commerce_page(broken,round_id,&rejected)&&startup_world_state_digest(broken)==before,
+              "84 invalid DTO/page/lifecycle/payload or clock overflow rejects before any decrement, navigation or output");
+    }
+    auto late_round=*cleared;late_round.scripts.next_page_id=std::numeric_limits<std::uint64_t>::max();
+    input={};input.page=round_id;input.selection=1;input.down=true;input.right=true;input.confirm=true;input.cancel=true;
+    const auto late_before=startup_world_state_digest(late_round);
+    check(!update_startup_world_commerce_page(late_round,round_id,&input)&&
+          startup_world_state_digest(late_round)==late_before,
+          "84 late86 insertion rolls back the whole clock, navigation, tab, payment, stock and pending outputs");
+
+    auto sale_round=fixture(84);sale_round.scripts.pages.back().legacy_f=1;
+    const auto sale_id=sale_round.scripts.pages.back().id;
+    check(initialize_startup_world_commerce_pages(sale_round),"84 actual sale directory initializes for round input");
+    input={};input.page=sale_id;input.left=true;input.confirm=true;
+    const auto sold=update_startup_world_commerce_page(sale_round,sale_id,&input);
+    check(sold&&sold->commerce_page_data.at(sale_id)[1]==0&&sold->items.at(0).inventory==1&&
+          sold->commerce_page_feedback_amount.at(sale_id)==200&&sold->scene.world.world.ai.accounting.funds()==5200,
+          "84 sale ignores left tab input and sells once using the actual200 half price");
+    input={};input.page=round_id;input.cancel=true;
+    const auto cancelled=update_startup_world_commerce_page(round,round_id,&input);
+    check(cancelled&&cancelled->commerce_page_data.at(round_id)[5]==1&&
+          cancelled->commerce_page_feedback_amount.at(round_id)==400&&
+          std::all_of(cancelled->commerce_page_lists.at(round_id).begin(),cancelled->commerce_page_lists.at(round_id).end(),
+              [&](int entry){return cancelled->item_commerce_read.at(entry);}),
+          "84 cancel follows its one decrement and marks only the frozen remaining directory read");
+    auto retired=*cancelled;page_tick(retired);
+    check(!retired.commerce_pages_initialized.count(round_id)&&!retired.commerce_page_lists.count(round_id)&&
+          !retired.commerce_page_data.count(round_id)&&!retired.commerce_page_feedback_amount.count(round_id)&&
+          !retired.page_counters.count(round_id),"84 round retirement releases directory, six slots, feedback and clock");
 }
 void commerce_facility_and_projection() {
     using A = StartupCommerceAction;

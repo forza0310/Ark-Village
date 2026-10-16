@@ -435,7 +435,17 @@ StartupWorldRuntimeError act_startup_world_runtime_rank_page(StartupWorldRuntime
                                                              std::uint64_t page, int selection = 0,
                                                              bool cancel = false);
 std::optional<StartupWorldRuntimeState>
-update_startup_world_runtime_page(const StartupWorldRuntimeState &state);
+update_startup_world_runtime_page(const StartupWorldRuntimeState &state,
+                                 const struct StartupCommerceItemInput *commerce_input = nullptr);
+// raw84一次获准Update的已解析输入；只在调用期借用，不存Owner/codec或跨轮队列。
+// page绑定当前已Init目录，保证先递减一次反馈，再按原序导航及确认。
+struct StartupCommerceItemInput {
+    std::uint64_t page{};
+    bool up{}, down{}, left{}, right{}, confirm{}, cancel{};
+    std::optional<int> selection{};
+    struct Scroll { bool absolute{}; int value{}; };
+    std::optional<Scroll> scroll{};
+};
 struct StartupWorldRuntimeResult {
     StartupWorldRuntimeError error{StartupWorldRuntimeError::none};
     std::optional<StartupWorldRuntimeState> candidate;
@@ -478,13 +488,15 @@ std::optional<int> startup_world_actor_direction(const StartupWorldRuntimeState 
 std::optional<ref::DropSelectionInput>
 startup_world_drop_selection(const StartupWorldRuntimeState &state, ref::CharacterId actor);
 StartupWorldRuntimeResult prepare_startup_world_runtime(const StartupWorldRuntimeState &state,
-                                                       bool observe_spell_consumption = false);
+                                                       bool observe_spell_consumption = false,
+                                                       const StartupCommerceItemInput *commerce_input = nullptr);
 
 class StartupWorldRuntimeSession {
   public:
     StartupWorldRuntimeSession(const StartupState &startup, ref::WorldRandomStream random);
     const StartupWorldRuntimeState &state() const;
-    StartupWorldRuntimeResult update(bool observe_spell_consumption = false); // 原1/2轮与日历27；观察默认关闭。
+    StartupWorldRuntimeResult update(bool observe_spell_consumption = false,
+                                    const StartupCommerceItemInput *commerce_input = nullptr); // 原1/2轮与日历27；观察默认关闭。
     StartupPresentationResult present(const StartupPresentationRequest &request);
     void set_paused(bool paused);
     void set_speed(int setting); // 只恰1双轮；不是人物位移乘二。

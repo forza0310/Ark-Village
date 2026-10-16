@@ -113,7 +113,7 @@ class StartupApplication {
     StartupRecordView record_view() const;
     std::optional<StartupTitleReplay> capture_title_replay() const;
     std::string restore_title_replay(const StartupTitleReplay &snapshot);
-    std::string update(bool confirm = false);
+    std::string update(bool confirm = false,const StartupCommerceItemInput *commerce_input = nullptr);
     // 实际重绘先经应用Owner提交表现副作用；返回计划仅供本次只读绘制。
     StartupApplicationPresentationResult present_world(const StartupPresentationRequest &request);
     // 窗口桥仅提交明确设置，不开放可写Session；同值输入通过资格检查后不复制世界。

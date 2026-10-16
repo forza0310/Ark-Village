@@ -152,6 +152,8 @@ Options parse_options(int argc, char **argv) {
             options.inspect_page != "new-game-sex" && options.inspect_page != "new-game-start" &&
             options.inspect_page != "commerce-buy" && options.inspect_page != "commerce-sell" && options.inspect_page != "commerce-facility" &&
             options.inspect_page != "commerce-bought" && options.inspect_page != "commerce-sold" &&
+             options.inspect_page != "commerce-items-buy" && options.inspect_page != "commerce-items-owned" &&
+             options.inspect_page != "commerce-items-sell" && options.inspect_page != "commerce-items-feedback" &&
             options.inspect_page != "commerce-buildings" && options.inspect_page != "commerce-buildings-funded" && options.inspect_page != "commerce-buildings-tail" &&
             options.inspect_page != "commerce-building-preview" &&
             options.inspect_page != "build-menu-equipment" && options.inspect_page != "build-menu-general" &&

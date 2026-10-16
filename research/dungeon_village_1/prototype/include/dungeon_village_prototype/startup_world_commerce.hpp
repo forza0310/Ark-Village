@@ -59,5 +59,6 @@ StartupWorldRuntimeError act_startup_world_commerce_page(StartupWorldRuntimeStat
                                                          StartupCommerceAction action,
                                                          int selection = 0);
 std::optional<StartupWorldRuntimeState>
-update_startup_world_commerce_page(const StartupWorldRuntimeState &state, std::uint64_t page);
+update_startup_world_commerce_page(const StartupWorldRuntimeState &state, std::uint64_t page,
+                                 const StartupCommerceItemInput *input = nullptr);
 } // namespace dungeon_village_prototype

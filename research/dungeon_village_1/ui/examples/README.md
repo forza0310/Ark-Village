@@ -1,5 +1,7 @@
 # 产品侧小窗 UI 示例
 
+[商会买入目录](steam-commerce-items.png)与[实际成交反馈](steam-commerce-items-feedback.png)（各480×640，共64974字节）：`--inspect-page commerce-items-buy`／`commerce-items-feedback --frames 8`，不加`--world`，两个完整研究窗口原尺寸无损重编码。真实新局经83→84，仅明确开放商会、已阅教程及前六定义货源2；不注入资金或玩家库存。反馈图由实际400G买入、86自动返回产生，冻结−400G、剩余货源1，不重算当前选中行价格。另`commerce-items-owned`／`commerce-items-sell`各8帧短验，合法持有0及新局马铃薯2／药草3来自真实状态，不增加重复例图。五行、双页签、Touch11／滚条、NEW、type1普通道具图标、正文及金额同锚单位消费[正式皮肤与整轮输入合同](../../rules/COMMERCE.md)；中文Noto、研究背景／画布与PC手势属于适配，不认证原字体、原OS仲裁或自然商会解锁。
+
 [Steam设施完成／住宅／商品NEW](steam-facility-notices.png)（480×640／7744字节）：`--inspect-page facility-notices --frames 8`，不加`--world`。上、中排是队首kind0年龄0／8／16，分别用普通SEB68与住宅SEB91；下排kind7年龄0／6／12展示两档上下偏移。每行只画对应队首，右列完成星爆已消失，不继承前帧。消费完整[通知查询](../EQUIPMENT_FACILITY_RENDER.md#steam队首完成住宅与商品new)与两张Steam差异图；原尺寸窗口像素无损重编码，已逐像素核对。现有实例／原表定义只用于绘制条件，没有完成施工、发奖、产生商品或推进世界；绿底、英文说明／数字及raylib像素字仅为例图标注，不是原版窗口、字体、场景深度或自然触发认证。
 
 [Steam纪录两页](steam-record-pages.png)（960×640／118885字节）：`record-score`／`record-cash`两个480×640研究窗口各8帧、0世界更新，不加`--world`。按Steam原序消费两次木框、buttoneffect箭头、event9背景、当前初装人物及文字；非日文分数只显示0，资金显示0Ｇ。两个0及“没有记录”来自维护默认系统纪录，未借世界5000G或造通关分数；frame19、冻结定义0／1、空父背景演员是显示条件，不代表原Init抽选／自然纪录。中文/Noto、VIEW_Y23及mdpi按钮图为适配；底部软标签0／2和触区仅记录请求，未接物理返回／翻页、完整字体、联网getter或独立动画钟恢复。见[Steam局部合同与模块](../STARTUP_SKIN.md#steam纪录的独立绘制交叉)。

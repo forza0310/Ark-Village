@@ -1885,7 +1885,7 @@ int check_startup_world_restore_contracts(
         using E=p::StartupWorldRuntimeError;using A=p::StartupCommerceAction;
         const auto require=[&](bool ok,const char *why){++checks;if(!ok)throw std::runtime_error(std::string("restore commerce feedback: ")+why);};
         auto state=p::test_support::page_fixture(84);state.scripts.executing_page.reset();
-        const auto parent=state.scripts.pages.back().id;state.shop_item_stock.at(0).quantity=2;
+        const auto parent=state.scripts.pages.back().id;state.shop_item_stock.at(0).quantity=3;
         require(p::initialize_startup_world_commerce_pages(state),"actual84 Init");
         require(p::act_startup_world_commerce_page(state,parent,A::confirm)==E::none,"actual400G purchase");
         const auto result=state.scripts.pages.back().id;
@@ -1916,10 +1916,47 @@ int check_startup_world_restore_contracts(
         require(!p::prepare_startup_world_runtime(missing).candidate,"closed84 missing amount refuses before cleanup");
         replay(closed,tick,"closed84 Finish releases frozen actual amount");tick(closed);
         require(!closed.commerce_page_feedback_amount.count(parent),"closed84 amount retired");
+        for(const int feedback:{1,2}) {
+            auto boundary=state;boundary.commerce_page_data.at(parent)[5]=feedback;
+            p::StartupCommerceItemInput input;input.page=parent;input.confirm=true;
+            const auto cash=boundary.scene.world.world.ai.accounting.funds();
+            const auto stock=boundary.shop_item_stock.at(0).quantity;
+            const auto counter=boundary.page_counters.at(parent);
+            const auto frame=[&](auto &s){
+                const auto result=p::prepare_startup_world_runtime(s,false,&input);
+                require(result.candidate.has_value(),"qualified full84 input update");s=*result.candidate;
+                require(s.page_counters.at(parent)==counter+1,"same round advances main once");
+                require(s.scene.world.world.ai.accounting.funds()==cash-(feedback==1?400:0)&&
+                            s.shop_item_stock.at(0).quantity==stock-(feedback==1?1:0),
+                        "feedback1 expires before real purchase, feedback2 only clears");
+                require(s.commerce_page_data.at(parent)[5]==(feedback==1?20:0)&&
+                            (feedback==1?s.commerce_page_feedback_amount.at(parent)==400:
+                                         !s.commerce_page_feedback_amount.count(parent)),
+                        "feedback expiry and actual amount remain atomic");
+            };
+            replay(boundary,frame,"84 restored whole input at feedback1/2 source boundary");
+        }
+        {
+            p::StartupCommerceItemInput stale;stale.page=parent+1;stale.confirm=true;
+            const auto bytes=p::persistence_detail::encode_state(state);
+            require(!p::prepare_startup_world_runtime(state,false,&stale).candidate&&
+                        p::persistence_detail::encode_state(state)==bytes,"stale whole-frame input cannot advance or clean pages");
+        }
         // 使用原反馈门槛的定向夹具，不把逻辑tick换算为秒。
         state.commerce_page_data.at(parent)[5]=1;
         replay(state,tick,"feedback1 ends and releases frozen amount atomically");tick(state);
         require(!state.commerce_page_feedback_amount.count(parent),"no expired amount");
+        auto tail=p::test_support::page_fixture(84);tail.scripts.executing_page.reset();
+        for(int item=0;item<7;++item)tail.shop_item_stock.at(item).quantity=1;
+        const auto directory=tail.scripts.pages.back().id;
+        require(p::initialize_startup_world_commerce_pages(tail),"real seven-row84 Init");
+        tail.commerce_page_data.at(directory)[2]=6;tail.commerce_page_data.at(directory)[3]=6;
+        replay(tail,[&](auto &s){p::StartupCommerceItemInput up;up.page=directory;up.up=true;
+            const auto moved=p::prepare_startup_world_runtime(s,false,&up);
+            require(moved.candidate.has_value(),"84 tail cursor source navigation");s=*moved.candidate;
+            require(s.commerce_page_data.at(directory)[2]==5&&s.commerce_page_data.at(directory)[3]==5,
+                    "ordinary up follows first without transaction-only count-minus-five clamp");
+        },"84 independent tail first survives codec and qualified full input");
     }
     {
         // 明确源码合同夹具：world_dungeon_finish::restore_site与runtime_deadline::restore_site

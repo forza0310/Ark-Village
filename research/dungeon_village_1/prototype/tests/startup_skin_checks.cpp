@@ -1341,6 +1341,131 @@ void steam_commerce_result_skin_checks(Checks &check) {
         }
     }
 }
+void steam_commerce_item_skin_checks(Checks &check) {
+    SteamCommerceItemOptions options;options.finger_frame=4;
+    options.text={"南瓜商会 1/2","道具","剩余","持有","价格","多谢惠顾!",std::array<int,2>{72,74}};
+    options.item_explanation.item_explain_widths={24,36,48};
+    const auto fixture=[](int mode) {
+        auto s=test_support::page_fixture(84);s.scripts.pages.back().legacy_f=mode;
+        for(auto &stock:s.shop_item_stock)stock.second.quantity=0;
+        // 独立六行几何夹具同时限定出售目录，不能漏入真实新局的其它初始持有物。
+        for(auto &owned:s.items) {owned.second.inventory=0;s.catalog.at({0,owned.first})=owned.second;}
+        for(int id=0;id<6;++id) {
+            s.shop_item_stock.at(id).quantity=2;
+            s.items.at(id).inventory=mode==1?2:0;
+            s.catalog.at({0,id})=s.items.at(id);
+        }
+        return s;
+    };
+    for(int mode=0;mode<2;++mode)for(int tab=0;tab<(mode==0?2:1);++tab) {
+        auto s=fixture(mode);const auto id=s.scripts.pages.back().id;
+        check(!steam_commerce_item_skin(s,id,options),"Steam84查询不补Init或目录");
+        check(initialize_startup_world_commerce_pages(s),"Steam84条件目录沿真实商会Init");
+        check(s.commerce_page_lists.at(id)==std::vector<int>({0,1,2,3,4,5}),
+              "Steam84几何夹具冻结恰六行原序定义，不混入其它新局持有物");
+        auto &cursor=s.commerce_page_data.at(id);cursor[1]=tab;cursor[2]=1;cursor[3]=1;
+        s.page_counters.at(id)=8;s.item_commerce_read.at(1)=false;
+        const auto before=startup_world_state_digest(s);
+        const auto result=steam_commerce_item_skin(s,id,options);
+        check(bool(result),"Steam84买两页/卖一页接受独立first与已核中文测宽");
+        std::vector<SteamHumanEquipmentRow> rows;std::vector<SteamHumanImage> icons;
+        std::vector<SteamFacilityNumber> numbers;std::vector<SteamHumanOverviewText> texts;
+        std::vector<SteamFacilityArrowTouch> arrows;std::optional<SteamHumanCatalogueScroll> scroll;
+        std::size_t selection=0,touch=0,new_icon=0,finger=0,first_icon=0,name=0;
+        for(std::size_t n=0;n<result->operations.size();++n) {
+            const auto &op=result->operations[n];
+            if(const auto *r=std::get_if<SteamStartupFrameDraw>(&op))if(const auto *v=std::get_if<StartupSkinRect>(r))
+                if(v->rect==std::array<int,4>{23,95,191,16})selection=n;
+            if(const auto *r=std::get_if<SteamHumanEquipmentRow>(&op)){if(rows.empty())touch=n;rows.push_back(*r);}
+            if(const auto *i=std::get_if<SteamHumanImage>(&op)) {
+                icons.push_back(*i);
+                if(i->asset==SteamHumanAsset::catalogue_new&&i->position==std::array<int,2>{10,99})new_icon=n;
+                if(i->asset==SteamHumanAsset::equipment_background&&i->position==std::array<int,2>{29,94})first_icon=n;
+            }
+            if(const auto *i=std::get_if<SteamFacilityImage>(&op))
+                if(i->asset==SteamFacilityAsset::finger)finger=n;
+            if(const auto *v=std::get_if<SteamHumanOverviewText>(&op)) {
+                texts.push_back(*v);if(v->rectangle==std::array<int,4>{50,94,85,17})name=n;
+            }
+            if(const auto *v=std::get_if<SteamFacilityNumber>(&op))numbers.push_back(*v);
+            if(const auto *v=std::get_if<SteamFacilityArrowTouch>(&op))arrows.push_back(*v);
+            if(const auto *v=std::get_if<SteamHumanCatalogueScroll>(&op))scroll=*v;
+        }
+        check(rows.size()==5&&rows[0].touch.value==(0x20000|1)&&
+              rows[0].touch.rectangle==std::optional<std::array<int,4>>({23,95,191,16})&&
+              rows[0].touch.option==16&&rows[0].margin==std::array<int,4>{29,0,0,0},
+              "Steam84保留五行Touch11 marker16及Steam单侧Margin，不套APK双侧");
+        check(selection<touch&&touch<new_icon&&new_icon<finger&&finger<first_icon&&first_icon<name,
+              "Steam84选中底→行Touch→NEW→手形→两层图标→姓名沿真实绘制顺序");
+        check(std::count_if(icons.begin(),icons.end(),[](const auto &v){return v.asset==SteamHumanAsset::item_icon;})==5,
+              "Steam84图标helper类型1对买卖均绘实际道具图标");
+        check((mode==0&&arrows.size()==2&&arrows[0].position==std::array<int,2>{23,55}&&
+              arrows[0].frame==3&&arrows[0].value==16&&arrows[1].position==std::array<int,2>{217,55}&&
+              arrows[1].frame==0&&arrows[1].value==18)||(mode==1&&arrows.empty()),
+              "Steam84只有购买有原title箭头，phase8保留3像素位移");
+        check(scroll&&scroll->arguments==std::array<int,3>{6,5,0x20000}&&
+              scroll->touch.rectangle==std::optional<std::array<int,4>>({221,85,3,110})&&
+              scroll->rectangles[1].rect==std::array<int,4>{220,103,5,92},
+              "Steam84滚动条110高，真实first1与五行比例，不借79的111");
+        check(std::any_of(texts.begin(),texts.end(),[&](const auto &v){return v.value==s.rules->items.at(1).name&&
+              v.rectangle==std::array<int,4>{50,94,85,17}&&v.layout&&v.font_size==0;}),
+              "Steam84非日文姓名继承字号，沿85×17TextLayout不套APK字号10");
+        if(mode==0&&tab==1) {
+            check(numbers.size()==5&&std::all_of(numbers.begin(),numbers.end(),[](const auto &v){
+                      return v.kind==SteamFacilityNumberKind::count&&v.value==0&&v.position[0]==210;}),
+                  "Steam84买入持有页只画合法零库存，不偷偷抬成1或显示售价");
+            const auto zero=steam_facility_number_draws(numbers.front(),8);
+            check(zero&&zero->size()==2&&zero->front().frame==0&&
+                  zero->back().asset==SteamFacilityAsset::inventory_unit&&zero->back().frame==2,
+                  "Steam84零数量真实展开0与SEB76单位帧2");
+        } else check(numbers.size()==10&&numbers[0].kind==SteamFacilityNumberKind::count&&
+                      numbers[0].position==std::array<int,2>{161,98}&&numbers[1].kind==SteamFacilityNumberKind::money&&
+                      numbers[1].position==std::array<int,2>{210,98},
+                      "Steam84买剩余/卖持有与钱数独立右锚161/210");
+        for(int n=0;n<8;++n)check(steam_commerce_item_skin(s,id,options).has_value(),"Steam84重复查询有合法固定规模输出");
+        check(startup_world_state_digest(s)==before,"Steam84有序计划不改游标/金额/库存/随机/页面");
+    }
+    auto s=fixture(0);const auto id=s.scripts.pages.back().id;
+    check(initialize_startup_world_commerce_pages(s),"Steam84反馈测试Init真实目录");
+    s.commerce_page_data.at(id)[5]=20;s.commerce_page_feedback_amount.emplace(id,123);
+    auto feedback=options;feedback.item_explanation.item_explain_widths={};
+    for(int mode=0;mode<2;++mode) {
+        s.scripts.pages.back().legacy_f=mode;s.commerce_page_data.at(id)[0]=mode;
+        if(mode==1)for(int item:s.commerce_page_lists.at(id)) {s.items.at(item).inventory=2;s.catalog.at({0,item})=s.items.at(item);}
+        for(int selected:{0,4}) {
+            s.commerce_page_data.at(id)[2]=selected;
+            const auto plan=steam_commerce_item_skin(s,id,feedback);
+            check(bool(plan),"Steam84正反馈不要求未消费的道具说明测宽");
+            const auto &amount=std::get<SteamFacilityNumber>(plan->operations[plan->operations.size()-2]);
+            const auto &unit=std::get<SteamFacilityImage>(plan->operations.back());
+            check(amount.value==123&&amount.kind==(mode?SteamFacilityNumberKind::plus_value:SteamFacilityNumberKind::minus_value)&&
+                  amount.asset==(mode?SteamFacilityAsset::number05:SteamFacilityAsset::number12)&&
+                  amount.position==std::array<int,2>{201,200}&&unit.asset==amount.asset&&unit.frame==20&&
+                  unit.position==amount.position,"Steam84冻结本笔123，不随选中商品重算；Steam钱数→单位同锚201/200");
+            const auto &pumpkin=std::get<SteamCommerceImage>(plan->operations[plan->operations.size()-4]);
+            check(pumpkin.asset==SteamCommerceAsset::private_pumpkin&&pumpkin.position==std::array<int,2>{30,223},
+                  "Steam84反馈南瓜复用真实私有SEB与18×18底栏裁剪");
+        }
+    }
+    s=fixture(0);check(initialize_startup_world_commerce_pages(s),"Steam84拒绝测试Init");
+    s.commerce_page_data.at(id)[2]=5;s.commerce_page_data.at(id)[3]=5;
+    const auto tail=steam_commerce_item_skin(s,id,options);
+    check(tail&&std::count_if(tail->operations.begin(),tail->operations.end(),[](const auto &op){return std::holds_alternative<SteamHumanEquipmentRow>(op);})==1&&
+          s.commerce_page_data.at(id)[3]==5,"Steam84尾部不足五项的独立首行合法，查询不夹到count−5");
+    for(int fault=0;fault<7;++fault) {
+        auto bad=s;auto o=options;
+        if(fault==0)bad.commerce_page_data.erase(id);
+        if(fault==1)bad.item_commerce_read.erase(5);
+        if(fault==2)o.text.title_widths.reset();
+        if(fault==3)o.item_explanation.item_explain_widths={};
+        if(fault==4){bad.commerce_page_data.at(id)[5]=1;bad.commerce_page_feedback_amount.erase(id);}
+        if(fault==5){bad.commerce_page_data.at(id)[5]=1;bad.commerce_page_feedback_amount[id]=-1;}
+        if(fault==6)bad.commerce_page_feedback_amount[id]=400;
+        const auto before=startup_world_state_digest(bad);
+        check(!steam_commerce_item_skin(bad,id,o)&&startup_world_state_digest(bad)==before,
+              "Steam84缺载荷/已读/标题或效果测宽/反馈金额配对拒绝且无修补");
+    }
+}
 void steam_commerce_facility_skin_checks(Checks &check,const std::filesystem::path &root) {
     auto initial=test_support::page_fixture(85);const auto id=initial.scripts.pages.back().id;
     initial.rank=5; // 已知星级条件夹具，不宣称自然升星/解锁路线。
@@ -4026,6 +4151,7 @@ int check_startup_skin(const std::filesystem::path &source_root,
     steam_config_skin_checks(check);
     steam_commerce_skin_checks(check,source_root);
     steam_commerce_result_skin_checks(check);
+    steam_commerce_item_skin_checks(check);
     steam_commerce_facility_skin_checks(check,source_root);
     steam_platform_skin_checks(check,source_root);
     steam_joystick_prompt_checks(check);

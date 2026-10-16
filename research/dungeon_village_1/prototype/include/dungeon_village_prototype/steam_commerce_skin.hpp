@@ -39,7 +39,8 @@ struct SteamCommerceSkinOptions {
 };
 using SteamCommerceOperation=std::variant<SteamStartupFrameDraw,SteamCommerceImage,
     SteamFacilityImage,SteamFacilityNumber,SteamHumanImage,SteamHumanOverviewText,
-    SteamStartupTouch,SteamHumanClip,SteamFacilityMapchip2,SteamHumanEquipmentRow,SteamHumanCatalogueScroll>;
+    SteamStartupTouch,SteamHumanClip,SteamFacilityMapchip2,SteamHumanEquipmentRow,SteamHumanCatalogueScroll,
+    SteamFacilityArrowTouch,SteamHumanLearningText>;
 struct SteamCommerceSkinPlan {
     std::string title;
     std::array<int,2> soft_labels{0,2};
@@ -65,6 +66,21 @@ struct SteamCommerceResultOptions {
 std::optional<SteamCommerceSkinPlan> steam_commerce_result_skin(
     const StartupWorldRuntimeState &state,std::uint64_t page,
     const SteamCommerceResultOptions &options);
+struct SteamCommerceItemTextInput {
+    std::string title, name_header, remaining_header, owned_header, price_header, feedback;
+    std::optional<std::array<int,2>> title_widths; // 当前tab标题的两次真实测宽。
+};
+struct SteamCommerceItemOptions {
+    int view_y{}, finger_frame{};
+    bool japanese{}, scroll_first_touch{};
+    SteamCommerceItemTextInput text; // 页面字面由当前语言适配显式提供。
+    SteamHumanOverviewOptions item_explanation; // 复用现普通道具中文适配与实际测宽；不猜原语言。
+};
+// raw84只读已初始化当前目录，保留Owner独立first，不在绘制时修游标或尾部夹限。
+// 数量0合法；正反馈只用本笔冻结金额，反馈0按真实选中定义生成原效果说明。
+// 输出顺序包含两页箭头、marker16/左Margin29行Touch及110高滚动，不代替OS输入认证。
+std::optional<SteamCommerceSkinPlan> steam_commerce_item_skin(
+    const StartupWorldRuntimeState &state,std::uint64_t page,const SteamCommerceItemOptions &options);
 struct SteamCommerceFacilityTextInput {
     std::string title, facility_header, price_header, explanation;
     std::optional<std::array<int,2>> title_widths;

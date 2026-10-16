@@ -112,7 +112,8 @@ bool payload(const State &s, const Page &p) {
         return false;
     const int rows = raw == 85 ? 3 : 5;
     const int count = static_cast<int>(list->second.size());
-    if (v[2] >= count || v[3] > v[2] || v[2] - v[3] >= rows || v[3] > std::max(0, count - rows) ||
+    if (v[2] >= count || v[3] > v[2] || v[2] - v[3] >= rows ||
+        (raw == 85 && v[3] > std::max(0, count - rows)) ||
         (raw == 84 && v[0] != p.legacy_f))
         return false;
     std::set<int> seen;
@@ -177,6 +178,13 @@ void scroll(std::array<int, 6> &v, int count, int rows) {
     if (v[3] + rows <= v[2])
         v[3] = v[2] - rows + 1;
 }
+// 原84普通导航只保证选择可见；交易后才沿scroll()修正目录尾部。
+void item_window(std::array<int, 6> &v) {
+    if (v[3] > v[2])
+        v[3] = v[2];
+    if (v[2] - v[3] >= 5)
+        v[3] = v[2] - 4;
+}
 bool cash(State &s, int amount, bool sale) {
     const int raw_month = s.scene.calendar.month;
     if (amount < 0 || raw_month < 0 || raw_month >= 12)
@@ -198,6 +206,61 @@ bool cash(State &s, int amount, bool sale) {
         s.cash_peak_village = s.scripts.village_name;
     }
     return true;
+}
+// 已验证84候选的交易叶段；整轮Update与旧单动作共享它，不在此重复推进时钟或反馈。
+Error item_action(State &s, std::uint64_t id, Action action) {
+    auto &v = s.commerce_page_data.at(id);
+    auto &list = s.commerce_page_lists.at(id);
+    if (action == Action::cancel) {
+        for (int entry : list)
+            s.item_commerce_read.at(entry) = true;
+        return close(s, id) ? Error::none : Error::script_failed;
+    }
+    if (action != Action::confirm)
+        return Error::invalid_page;
+    if (v[5] > 0) {
+        v[5] = 0;
+        s.commerce_page_feedback_amount.erase(id);
+        return Error::none;
+    }
+    const int entry = list[v[2]];
+    const bool sale = v[0] == 1;
+    const int price = item(s, entry)->commerce_price / (sale ? 2 : 1);
+    if (!sale && s.scene.world.world.ai.accounting.funds() < price)
+        return event(s, 11) ? Error::none : Error::script_failed;
+    if (!cash(s, price, sale))
+        return Error::missing_source;
+    auto &owned = s.items.at(entry);
+    auto &stock = s.shop_item_stock.at(entry);
+    if (sale)
+        --owned.inventory;
+    else {
+        --stock.quantity;
+        owned.inventory = std::min(999, owned.inventory + 1);
+        if (owned.status == 0) {
+            owned.status = 1;
+            owned.unlock_counter = 0;
+            owned.newly_unlocked = true;
+        }
+    }
+    s.catalog.at({0, entry}) = owned;
+    stock.presence = owned.status;
+    stock.legacy_q = owned.unlock_counter;
+    stock.newly_available = owned.newly_unlocked;
+    if ((sale ? owned.inventory : stock.quantity) == 0)
+        list.erase(list.begin() + v[2]);
+    scroll(v, static_cast<int>(list.size()), 5);
+    if (!open(s, 86, v[0], entry))
+        return Error::script_failed;
+    s.sound_requests.push_back({StartupAudioOperation::ordinary_play, 25}); // 固定APK d/a.B初值0，A[0]。
+    if (list.empty()) {
+        if (!event(s, sale ? 14 : 13) || !close(s, id))
+            return Error::script_failed;
+    } else {
+        v[5] = 20;
+        s.commerce_page_feedback_amount.emplace(id, price);
+    }
+    return Error::none;
 }
 // 仅由已验证85载荷的Owner候选调用；旧单动作和整轮输入共享付款、已读及插页顺序。
 Error facility_action(State &s, std::uint64_t id, Action action) {
@@ -341,8 +404,10 @@ Error act_startup_world_commerce_page(State &s, std::uint64_t id, Action action,
         if (chosen < 0 || chosen >= count)
             return Error::invalid_page;
         v[2] = chosen;
-        if (raw != 83)
-            scroll(v, count, raw == 85 ? 3 : 5);
+        if (raw == 84)
+            item_window(v);
+        else if (raw == 85)
+            scroll(v, count, 3);
     } else if (action == Action::previous_tab || action == Action::next_tab) {
         if (raw != 84 || v[0] != 0)
             return Error::invalid_page;
@@ -356,69 +421,21 @@ Error act_startup_world_commerce_page(State &s, std::uint64_t id, Action action,
     } else if (action == Action::cancel) {
         if (raw != 83 && raw != 84 && raw != 85)
             return Error::invalid_page;
-        if (raw == 85) {
-            const auto result = facility_action(next, id, action);
+        if (raw == 85 || raw == 84) {
+            const auto result = raw == 85 ? facility_action(next, id, action) : item_action(next, id, action);
             if (result != Error::none)
                 return result;
-        } else {
-            if (raw == 84)
-                for (int entry : next.commerce_page_lists.at(id))
-                    next.item_commerce_read.at(entry) = true;
-            if (!close(next, id))
-                return Error::script_failed;
-        }
+        } else if (!close(next, id))
+            return Error::script_failed;
     } else if (action != Action::confirm)
         return Error::invalid_page;
     else if (raw == 83) {
         if (!open(next, v[2] == 2 ? 85 : 84, v[2] == 1 ? 1 : 0))
             return Error::script_failed;
     } else if (raw == 84) {
-        if (v[5] > 0) {
-            v[5] = 0;
-            next.commerce_page_feedback_amount.erase(id);
-        } else {
-            auto &list = next.commerce_page_lists.at(id);
-            const int entry = list[v[2]];
-            const bool sale = v[0] == 1;
-            const int price = item(next, entry)->commerce_price / (sale ? 2 : 1);
-            if (!sale && next.scene.world.world.ai.accounting.funds() < price) {
-                if (!event(next, 11))
-                    return Error::script_failed;
-            } else {
-                if (!cash(next, price, sale))
-                    return Error::missing_source;
-                auto &owned = next.items.at(entry);
-                auto &stock = next.shop_item_stock.at(entry);
-                if (sale)
-                    --owned.inventory;
-                else {
-                    --stock.quantity;
-                    owned.inventory = std::min(999, owned.inventory + 1);
-                    if (owned.status == 0) {
-                        owned.status = 1;
-                        owned.unlock_counter = 0;
-                        owned.newly_unlocked = true;
-                    }
-                }
-                next.catalog.at({0, entry}) = owned;
-                stock.presence = owned.status;
-                stock.legacy_q = owned.unlock_counter;
-                stock.newly_available = owned.newly_unlocked;
-                if ((sale ? owned.inventory : stock.quantity) == 0)
-                    list.erase(list.begin() + v[2]);
-                scroll(v, static_cast<int>(list.size()), 5);
-                if (!open(next, 86, v[0], entry))
-                    return Error::script_failed;
-                next.sound_requests.push_back({StartupAudioOperation::ordinary_play, 25}); // 固定APK d/a.B初值0，A[0]。
-                if (list.empty()) {
-                    if (!event(next, sale ? 14 : 13) || !close(next, id))
-                        return Error::script_failed;
-                } else {
-                    v[5] = 20;
-                    next.commerce_page_feedback_amount.emplace(id, price);
-                }
-            }
-        }
+        const auto result = item_action(next, id, action);
+        if (result != Error::none)
+            return result;
     } else if (raw == 85) {
         const auto result = facility_action(next, id, action);
         if (result != Error::none)
@@ -497,7 +514,8 @@ Error input_startup_world_commerce_facility(State &s,std::uint64_t id,const Star
     s=std::move(next);
     return Error::none;
 }
-std::optional<State> update_startup_world_commerce_page(const State &s, std::uint64_t id) {
+std::optional<State> update_startup_world_commerce_page(const State &s, std::uint64_t id,
+                                                       const StartupCommerceItemInput *input) {
     const auto p = top(s);
     if (!p || p->id != id || p->kind != ref::WorldScriptPageKind::raw_page ||
         !supported(p->legacy_page))
@@ -505,6 +523,18 @@ std::optional<State> update_startup_world_commerce_page(const State &s, std::uin
     if ((s.commerce_pages_initialized.count(id) && !payload(s, *p)) ||
         (!s.commerce_pages_initialized.count(id) && s.commerce_page_feedback_amount.count(id)))
         return {};
+    // 非空DTO只消费当前已Init的84；先验证输入，再推进主钟、反馈、付款和输出。
+    if (input) {
+        if (!id || std::count_if(s.scripts.pages.begin(),s.scripts.pages.end(),
+                                [=](const auto &page){return page.id==id;})!=1 ||
+            s.scene.framework_paused || input->page != id || p->legacy_page != 84 || p->lifecycle != 2 ||
+            !s.commerce_pages_initialized.count(id) || !payload(s, *p))
+            return {};
+        const int count = static_cast<int>(s.commerce_page_lists.at(id).size());
+        if ((input->selection && (*input->selection < 0 || *input->selection >= count)) ||
+            (input->scroll && input->scroll->value == std::numeric_limits<int>::max()))
+            return {};
+    }
     if (s.scene.framework_paused)
         return s;
     auto next = s;
@@ -529,6 +559,31 @@ std::optional<State> update_startup_world_commerce_page(const State &s, std::uin
             --feedback;
             if (feedback == 0)
                 next.commerce_page_feedback_amount.erase(id);
+        }
+        if (input) {
+            auto &v = next.commerce_page_data.at(id);
+            const int count = static_cast<int>(next.commerce_page_lists.at(id).size());
+            if (input->scroll) {
+                const auto wanted = input->scroll->absolute ? std::int64_t(input->scroll->value) :
+                    std::int64_t(v[2]) + input->scroll->value;
+                v[2] = static_cast<int>(std::clamp(wanted, std::int64_t(0), std::int64_t(count - 1)));
+            }
+            if (input->selection)
+                v[2] = *input->selection;
+            if (input->up)
+                v[2] = v[2] == 0 ? count - 1 : v[2] - 1;
+            if (input->down)
+                v[2] = v[2] == count - 1 ? 0 : v[2] + 1;
+            if (v[0] == 0) {
+                if (input->left)
+                    v[1] = 1 - v[1];
+                if (input->right)
+                    v[1] = 1 - v[1];
+            }
+            item_window(v);
+            if ((input->confirm || input->cancel) &&
+                item_action(next, id, input->confirm ? Action::confirm : Action::cancel) != Error::none)
+                return {};
         }
         if (original.legacy_page == 86 && !close(next, id))
             return {};

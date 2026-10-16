@@ -1132,7 +1132,21 @@ StartupWorldRuntimeError StartupWorldRuntimeSession::act_rank_page(std::uint64_t
 StartupWorldRuntimeError StartupWorldRuntimeSession::input_rank_page(std::uint64_t page,const StartupTownRankInput &input) {
     return input_startup_world_runtime_rank_page(state_,page,input);
 }
-StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s, bool observe_spell_consumption) {
+StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s, bool observe_spell_consumption,
+                                                       const StartupCommerceItemInput *commerce_input) {
+    if (commerce_input) {
+        const auto page = std::find_if(s.scripts.pages.rbegin(), s.scripts.pages.rend(),
+                                       [](const auto &p) { return p.lifecycle != 4; });
+        // 输入必须在Finish/Init之前绑定当前已就绪页，不能借框架清理变成另一次合法输入。
+        if (!commerce_input->page || s.scene.framework_paused || page == s.scripts.pages.rend() || page->id != commerce_input->page ||
+            page->kind != ref::WorldScriptPageKind::raw_page || page->legacy_page != 84 || page->lifecycle != 2 ||
+            !s.commerce_pages_initialized.count(page->id) ||
+            std::count_if(s.scripts.pages.begin(), s.scripts.pages.end(),
+                          [&](const auto &p) { return p.id == commerce_input->page; }) != 1)
+            return {StartupWorldRuntimeError::invalid_page, {}, {}, {}, {}};
+        if (!valid_startup_world_commerce_page(s, *page))
+            return {StartupWorldRuntimeError::missing_source, {}, {}, {}, {}};
+    }
     if (!valid_startup_world_human_profiles(s))
         return {StartupWorldRuntimeError::invalid_initial_state, {}, {}, {}, {}};
     // 原30/67/88/96载荷在producer已完整安装；退休前拒绝损坏，不以清理掩盖半载荷。
@@ -1385,7 +1399,7 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s, bool obs
                     ref::WorldScheduleError::none,
                     {}};
         }
-        auto updated = update_startup_world_runtime_page(admitted);
+        auto updated = update_startup_world_runtime_page(admitted, commerce_input);
         if (updated)
             updated->scripts.executing_page.reset();
         return updated ? StartupWorldRuntimeResult{StartupWorldRuntimeError::none,
@@ -1437,8 +1451,9 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s, bool obs
     return {StartupWorldRuntimeError::none, std::move(next), ref::WorldSceneError::none,
             ref::WorldScheduleError::none, std::move(checkpoints),std::move(receipts)};
 }
-StartupWorldRuntimeResult StartupWorldRuntimeSession::update(bool observe_spell_consumption) {
-    auto result = prepare_startup_world_runtime(state_,observe_spell_consumption);
+StartupWorldRuntimeResult StartupWorldRuntimeSession::update(bool observe_spell_consumption,
+                                                            const StartupCommerceItemInput *commerce_input) {
+    auto result = prepare_startup_world_runtime(state_,observe_spell_consumption,commerce_input);
     if (result.candidate) {
         if (!update_startup_world_render_cache(*result.candidate))
             return {StartupWorldRuntimeError::missing_source,

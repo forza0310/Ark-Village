@@ -1316,7 +1316,19 @@ Error input_startup_world_runtime_rank_page(State &s,std::uint64_t id,const Star
     s=std::move(next);return Error::none;
 }
 
-std::optional<State> update_startup_world_runtime_page(const State &state) {
+std::optional<State> update_startup_world_runtime_page(const State &state,
+                                                     const StartupCommerceItemInput *commerce_input) {
+    if (commerce_input) {
+        const auto page = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
+                                       [](const auto &p) { return p.lifecycle != 4; });
+        if (!commerce_input->page || state.scene.framework_paused || page == state.scripts.pages.rend() ||
+            page->id != commerce_input->page || page->kind != ref::WorldScriptPageKind::raw_page ||
+            page->legacy_page != 84 || page->lifecycle != 2 ||
+            !state.commerce_pages_initialized.count(page->id) ||
+            !valid_startup_world_commerce_page(state, *page) ||
+            std::count_if(state.scripts.pages.begin(), state.scripts.pages.end(),
+                          [&](const auto &p) { return p.id == commerce_input->page; }) != 1) return {};
+    }
     const auto notice=std::find_if(state.scripts.pages.rbegin(),state.scripts.pages.rend(),
         [](const auto &p){return p.lifecycle!=4;});
     if(notice!=state.scripts.pages.rend()&&notice->kind==ref::WorldScriptPageKind::raw_page&&
@@ -1444,7 +1456,8 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
         return update_startup_world_facility_catalog_page(state, top->id);
     if (top->kind == ref::WorldScriptPageKind::raw_page &&
         ((top->legacy_page >= 83 && top->legacy_page <= 86) || top->legacy_page == 93))
-        return update_startup_world_commerce_page(state, top->id);
+        return update_startup_world_commerce_page(state, top->id,
+                                                  top->legacy_page == 84 ? commerce_input : nullptr);
     if (top->kind == ref::WorldScriptPageKind::raw_page &&
         ((top->legacy_page >= 60 && top->legacy_page <= 66) || top->legacy_page == 68 ||
          top->legacy_page == 69 || top->legacy_page == 70 || top->legacy_page == 73))

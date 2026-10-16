@@ -7,9 +7,11 @@
 
 产品a9dc1bd从月167有效档沿真实经营/转职进入年末raw87，第1861轮更新拒绝runtime2/scene2。失败根为`build/validation/business-liquidity/steam-natural-month-month168-goal-461fbc3dbb414a8d9424e39117361ed3/`，保留原玩家/策略输入、month.log及完整Owner/随机failure-state.bin/txt；没有月168玩家档，失败观察不认证职业0后继。用当前Debug或Release的`ark_world_campaign_tests-<配置>.exe replay-failure <失败根>`可单轮精确复现，输入Owner/随机保持；日志在`build/validation/research-a9dc1bd-integration/award87-exact-replay-{debug,release}.log`。
 
-次级只读投影调用正式`prepare_world_award_page_initialization`，未初始化页39、主钟0、勋章3，返回WorldAwardError::overflow。25人的年度消费合计569204、整数均值22768，离均差平方和2424293360，在最后定义24时超过int32上限2147483647；击杀项平方和8328正常。最小实际数值见同目录`award87-contribution-INPUT.json`。现`example/src/world_award_page.cpp`对平方累加要求fits(int32)，从a9dc1bd到正式a378818未改；d8d38e1的目录Owner不直接修正该规则。
+次级只读投影调用正式`prepare_world_award_page_initialization`，未初始化页39、主钟0、勋章3，返回WorldAwardError::overflow。25人的年度消费合计569204、整数均值22768，离均差平方和2424293360，在最后定义24时超过int32上限2147483647；年度获得村点项平方和8328正常（原诊断曾误称击杀项）。最小实际数值见同目录`award87-contribution-INPUT.json`。当时`example/src/world_award_page.cpp`对平方累加要求fits(int32)，从a9dc1bd到正式a378818未改；d8d38e1的目录Owner不直接修正该规则。
 
 请核固定APK和Steam贡献消费者在平方、累加、方差、sqrt及转换的实际数值语义，区分原算术与维护拒绝预算，交付能处理该真实合法群体的定向修正和短边界/回滚检查。保留有效overflow拒绝或按新来源明确其适用范围，不能只扩大整数类型、夹值或删断言凑通过。产品暂不改冻结规则、不改消费历史来掩盖故障；修后从失败快照核单轮，再从月167有效玩家前缀复验经营/授勋/保存与冷载，研究无需重跑世界长链。
+
+正式6cbfdf3已回应：APK原int32回卷使本群体消费平方和成为−1870673936、整数方差−74826957；sqrt/映射的NaN按Java转0，越界饱和，不能用维护overflow拒绝阻断。已交25人独立oracle、总和/单项平方/差值边界及87 Owner联合提交短验，身份/空群体、奖章与奖励的有效拒绝保留。Steam异常浮点转换与APK不同，仅作为[版本边界](../../research/dungeon_village_1/rules/ai/WORLD_SCHEDULE.md#steam贡献异常数值的版本边界)登记；产品规则继续APK基线。当前仅只读审阅，尚未导入，也未复验上述玩家后继；该修正不混入待批d4ed6be 29目标或已通过的经营结果。
 
 <a id="plant-route-projection-gap"></a>
 ## 新建植物的路径格投影差异（2026-10-16）

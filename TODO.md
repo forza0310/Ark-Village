@@ -14,7 +14,7 @@
 - [ ] 从有效父世界月196接续：18已实际制造/装配，完整后继月197两次耗尽6分钟、未认证；可选预算待确认，见[本批](docs/stages/B1-playable-prototype.md#campaign-pot18-followup)。32/33完整后继冷载、52实际营业7115G保持；继续1/2/3/37/39等产物，39缺四元素6/0/5/10。17的独立分支资格不改签主线；29未开放，20付款排队不当人气兑现。保留两月现金及图纸预算、40配方与775分母，实际施法不以学习/Q替代。
 - [ ] 4魔法实际施放、投射/延迟伤害等待d4ed6be导入，物理武器另需局部归因，见[研究请求](docs/reference/RESEARCH_REQUESTS.md#spell-consumption-receipts)；Q可用、装配属性及退休现金均不替代实际作用。
 - [ ] 继续23职业的显式消费分支和后继。职业0/1/2/3/7已有合法付款、原三阶段、完整后继营业及冷载；木匠/商人效果见[经营效果](docs/stages/B1-playable-prototype.md#campaign-profession-economy)，职业0实收住宅税560G及月148后继见[税收](docs/stages/B1-playable-prototype.md#campaign-profession-tax)。独立培养分支已验真实付费、任务73胜利及月153冷载，两名职业8升9级、职业5升7级；5/6/8/15仍未开放，见[培养](docs/stages/B1-playable-prototype.md#campaign-profession-training)。植物实付、其它职业税收、剩余收费及精通后继待核，不把普通策略跳过标作不可达。
-- [ ] 修复正常经营跨年授勋：月167→168在raw87贡献平方和超int32时拒绝；已有完整Owner/随机的双配置单轮复现与[最小研究请求](docs/reference/RESEARCH_REQUESTS.md#award-contribution-overflow)，等待正式数值语义修正后复验玩家路线。职业0的独立跨年前分支通过，不替代该失败后继认证。
+- [ ] 优先接入正式6cbfdf3的跨年贡献修正：APK按int32回卷及Java转整处理，保留有效身份/奖章/奖励拒绝；先从月167→168失败Owner/随机快照单轮复验，再验玩家经营/授勋/保存冷载，见[研究回应](docs/reference/RESEARCH_REQUESTS.md#award-contribution-overflow)。当前产品尚未修正，职业0的独立跨年前分支通过不替代失败后继认证。
 
 ## 表现与研究边界
 

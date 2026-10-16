@@ -548,6 +548,128 @@ void prepared_text_failures(Checks &check) {
     }
 }
 
+// 只记录本次访问的真实候选key；返回值按具名用例供给，不复制被测剥标签/归一算法。
+class ConsoleTextFixture final:public SteamConsoleTextBackend {
+public:
+    bool table{true},shown{true};
+    std::int32_t count{1};
+    std::vector<std::string> calls;
+    std::vector<std::u16string> keys,position_queries;
+    std::vector<SteamConsoleTextLookup> answers;
+    std::string fail_operation;
+    int fail_occurrence{1};
+    bool has_table() override {call("table");return table;}
+    std::int32_t table_count() override {call("count");return count;}
+    bool joystick_is_shown() override {call("shown");return shown;}
+    bool starts_with_position_tag(const std::u16string &text) override {
+        call("position");position_queries.push_back(text);
+        // 仅这些具名样本的区分大小写文化结果；不冒充任意.NET文化比较。
+        return text.size()>=4&&text.compare(0,4,u"<po=")==0;
+    }
+    SteamConsoleTextLookup lookup(const std::u16string &key) override {
+        call("lookup");keys.push_back(key);
+        if(keys.size()>answers.size())throw std::runtime_error("Console夹具收到多余查询");
+        return answers[keys.size()-1];
+    }
+private:
+    void call(const char *name) {
+        calls.emplace_back(name);
+        if(fail_operation==name&&--fail_occurrence==0)throw LayoutBackendFailure{name};
+    }
+};
+
+void console_text_consumer(Checks &check) {
+    struct Gate {bool table;int count;bool shown;std::vector<std::string> calls;};
+    for(const auto &c:std::vector<Gate>{{false,1,true,{"table"}},
+             {true,0,true,{"table","count"}},
+             {true,1,false,{"table","count","shown"}}}) {
+        ConsoleTextFixture backend;backend.table=c.table;backend.count=c.count;backend.shown=c.shown;
+        const auto p=steam_translate_console_text({},backend);
+        check(p&&!p->translated&&!p->out_text&&backend.calls==c.calls&&backend.keys.empty(),
+              "console资格原序短路，禁用路径可保留null，不读取后续表/Joystick/位置或key");
+    }
+    ConsoleTextFixture negative;negative.count=-1;
+    check(!steam_translate_console_text(u"A",negative)&&negative.calls==std::vector<std::string>{"table","count"},
+          "坏Count拒绝，不伪装成空表或继续Joystick查询");
+    ConsoleTextFixture null_enabled;
+    check(!steam_translate_console_text({},null_enabled)&&
+              null_enabled.calls==std::vector<std::string>{"table","count","shown"},
+          "启用路径null在位置查询前拒绝，区别于禁用路径原样null");
+    struct Case {
+        const char *name;
+        std::u16string input;
+        std::vector<std::u16string> keys;
+        std::vector<SteamConsoleTextLookup> answers;
+        bool translated;
+        std::optional<std::u16string> output;
+    };
+    // key/输出直接按固定VA各分支登记，不调用维护替换/Regex方法生成期望。
+    const std::vector<Case> cases{
+        {"空key两查不Last",u"",{u"",u""},{{false,{}},{false,{}}},false,u""},
+        {"空key真命中",u"",{u""},{{true,u"T"}},true,u"T"},
+        {"合法prefix",u"<po=x>A</po>",{u"A"},{{true,u"T"}},true,u"<po=x>T"},
+        {"非开头不Regex",u"A<po=x>B</po>",{u"A<po=x>B</po>"},{{true,u"T"}},true,u"T"},
+        {"缺结束符不prefix",u"<po=x",{u"<po=x"},{{true,u"T"}},true,u"T"},
+        {"大写标签不门控",u"<PO=x>A</PO>",{u"<PO=x>A</PO>"},{{true,u"T"}},true,u"T"},
+        {"大写值不剥开标签",u"<po=X>A</po>",{u"<po=X>A"},{{true,u"T"}},true,u"<po=X>T"},
+        {"数字值不剥开标签",u"<po=1>A</po>",{u"<po=1>A"},{{true,u"T"}},true,u"<po=1>T"},
+        {"Unicode值不剥开标签",u"<po=甲>A</po>",{u"<po=甲>A"},{{true,u"T"}},true,u"<po=甲>T"},
+        {"空值不剥开标签",u"<po=>A</po>",{u"<po=>A"},{{true,u"T"}},true,u"<po=>T"},
+        {"门内移除全部匹配",u"<po=x>A<po=y>B</po></po>",{u"AB"},{{true,u"T"}},true,u"<po=x>T"},
+        {"CR裁后命中",u"A\r\r",{u"A\r\r",u"A"},{{false,{}},{true,u"T"}},true,u"T"},
+        {"第三查保留原CR键",u"A\n\r\r",{u"A\n\r\r",u"A\n",u"A<br>\r\r"},
+             {{false,{}},{false,{}},{true,u"T"}},true,u"T"},
+        {"第四查只裁尾CR",u"A\r\n\r\r",{u"A\r\n\r\r",u"A\r\n",u"A<br>\r\r",u"A<br>"},
+             {{false,{}},{false,{}},{false,{}},{true,u"T"}},true,u"T"},
+        {"全miss保原串",u"<po=x>A\n</po>",{u"A\n",u"A<br>"},
+             {{false,{}},{false,{}}},false,u"<po=x>A\n</po>"},
+        {"无prefix命中null",u"A",{u"A"},{{true,{}}},true,{}},
+        {"有prefix命中null",u"<po=x>A</po>",{u"A"},{{true,{}}},true,u"<po=x>"},
+        {"无prefix命中空",u"A",{u"A"},{{true,u""}},true,u""},
+        {"有prefix命中空",u"<po=x>A</po>",{u"A"},{{true,u""}},true,u"<po=x>"}
+    };
+    for(const auto &c:cases) {
+        ConsoleTextFixture backend;backend.answers=c.answers;
+        const std::optional<std::u16string> source=c.input;
+        const auto p=steam_translate_console_text(source,backend);
+        if(!p||p->translated!=c.translated||p->out_text!=c.output||backend.keys!=c.keys||
+           backend.position_queries!=std::vector<std::u16string>{c.input}||source!=c.input)
+            throw std::runtime_error(std::string("Console具名oracle：")+c.name);
+        check(backend.calls.size()==4+c.keys.size()&&
+                  std::vector<std::string>(backend.calls.begin(),backend.calls.begin()+4)==
+                      std::vector<std::string>{"table","count","shown","position"}&&
+                  std::count(backend.calls.begin(),backend.calls.end(),"lookup")==static_cast<int>(c.keys.size()),
+              "console原序资格与实际候选key逐项一致，无多余查询或持久化副作用");
+    }
+    ConsoleTextFixture expansion;expansion.answers={{true,u"T"}};
+    const std::u16string linefeeds(1025,u'\n');
+    check(!steam_translate_console_text(linefeeds,expansion)&&expansion.keys==std::vector<std::u16string>{linefeeds},
+          "已命中仍执行换行归一，1025个LF扩为4100超过维护预算必须拒绝，不能直接交T");
+    ConsoleTextFixture large_value;large_value.answers={{true,std::u16string(4097,u'T')}};
+    check(!steam_translate_console_text(u"A",large_value),"实际命中值超4096拒绝，不截短或发布原输入");
+    ConsoleTextFixture prefix_budget;prefix_budget.answers={{true,std::u16string(4096,u'T')}};
+    check(!steam_translate_console_text(u"<po=x>A</po>",prefix_budget),"prefix与value各自合法但Concat总长超限也拒绝");
+    ConsoleTextFixture oversized;oversized.table=false;
+    check(!steam_translate_console_text(std::u16string(4097,u'A'),oversized)&&oversized.calls.empty(),
+          "维护原输入预算先拒绝，不借禁用表吞掉超限输入");
+    for(const auto *operation:{"table","count","shown","position","lookup"}) {
+        ConsoleTextFixture backend;backend.answers={{false,{}},{true,u"T"}};backend.fail_operation=operation;
+        bool exact=false;
+        try {(void)steam_translate_console_text(u"A\r",backend);}
+        catch(const LayoutBackendFailure &failure) {exact=failure.operation==operation;}
+        check(exact&&backend.calls.back()==operation&&
+                  std::count(backend.calls.begin(),backend.calls.end(),operation)==1,
+              "真实供给首错原样传播且无后继访问或重放，不能包装成未翻译成功");
+    }
+    ConsoleTextFixture later;later.answers={{false,{}},{true,u"T"}};
+    later.fail_operation="lookup";later.fail_occurrence=2;bool exact=false;
+    try {(void)steam_translate_console_text(u"A\r",later);}
+    catch(const LayoutBackendFailure &failure) {exact=failure.operation=="lookup";}
+    check(exact&&later.keys==std::vector<std::u16string>{u"A\r"}&&
+              std::count(later.calls.begin(),later.calls.end(),"lookup")==2,
+          "CR后继查询故障保留真实前缀，仅首查询有完成的key记录，不重试失败查表");
+}
+
 // 这里只对ASCII样本提供具名文化夹具；hash是宿主给定回执，不实现.NET散列。
 class TextInputFixture final:public SteamTextInputBackend {
 public:
@@ -563,6 +685,7 @@ public:
     const std::u16string hash_input;
     static constexpr std::int32_t receipt=-2000000077;
     std::optional<SteamConsoleTextResult> console;
+    SteamConsoleTextBackend *actual_console{}; // 一条真实消费者接线，仍使用显式运行表夹具。
     std::vector<std::string> calls;
     std::vector<Query> queries;
     std::string fail_operation;
@@ -574,6 +697,11 @@ public:
     SteamConsoleTextResult translate_console_text(const std::u16string &text) override {
         call("console");
         if(text!=hash_input)throw std::runtime_error("公开文字夹具：console必须读取原序Replace完成的串");
+        if(actual_console) {
+            const auto result=steam_translate_console_text(text,*actual_console);
+            if(!result)throw std::runtime_error("公开文字夹具：真实console供给拒绝");
+            return *result;
+        }
         return console?*console:SteamConsoleTextResult{false,text};
     }
     bool contains(const std::u16string &text,const std::u16string &needle,SteamTextComparison comparison) override {
@@ -605,6 +733,28 @@ private:
         return text;
     }
 };
+
+void console_preparation_bridge(Checks &check) {
+    ConsoleTextFixture table;table.answers={{true,u"B<ff>C"}};
+    TextInputFixture backend(u"A");backend.actual_console=&table;
+    const auto prepared=steam_prepare_text(u"source",{{u"source",u"A"}},backend);
+    check(prepared&&prepared->text==u"B<br><ff><br>C"&&prepared->hash==TextInputFixture::receipt&&
+              table.keys==std::vector<std::u16string>{u"A"}&&
+              backend.calls[0]=="hash"&&backend.calls[1]=="console"&&
+              backend.queries.front().text==u"B<ff>C",
+          "真实console消费者接公开原序Replace/hash，再把实际out交ff重组，不重算处理串hash");
+    ConsoleTextFixture null_table;null_table.answers={{true,{}}};
+    TextInputFixture null_backend(u"A");null_backend.actual_console=&null_table;
+    check(!steam_prepare_text(u"A",{},null_backend)&&null_table.keys==std::vector<std::u16string>{u"A"}&&
+              null_backend.calls==std::vector<std::string>{"hash","console"},
+          "console无prefix命中null本身成功，随后公开准备才因实际out为null拒绝，不调用ff或伪造空串");
+    // 同一供给再次调用只依赖本次input/当前表；清的是夹具观测，不是被测长期状态。
+    table.calls.clear();table.keys.clear();table.position_queries.clear();
+    const auto repeated=steam_prepare_text(u"source",{{u"source",u"A"}},backend);
+    check(repeated&&repeated->text==u"B<br><ff><br>C"&&
+              repeated->hash==TextInputFixture::receipt&&table.keys==std::vector<std::u16string>{u"A"},
+          "重复准备不积累隐式已翻译状态或省略当前表查询，没有新增跨调用持久历史");
+}
 
 void public_text_preparation(Checks &check) {
     const auto ignore=SteamTextComparison::current_culture_ignore_case;
@@ -782,6 +932,7 @@ int steam_text_layout_checks() {
     Checks check;ordinary_and_source_ranges(check);fonts_and_tags(check);
     combination_words_and_empty(check);boundaries_and_cleanup(check);
     prepared_text_outer(check);prepared_text_failures(check);
+    console_text_consumer(check);console_preparation_bridge(check);
     public_text_preparation(check);public_text_rejection_and_faults(check);
     draw_scale_reflow(check);
     // 逐字面代入固定RVA8E8770算式的独立oracle，不使用被测helper构造期望。

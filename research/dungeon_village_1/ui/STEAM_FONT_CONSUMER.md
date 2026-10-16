@@ -259,11 +259,15 @@ Steam私有SetText的非空／空串共同上游还包括字号准备与自适�
 
 固定DLL的`System.String.GetHashCode`与`GetLegacyNonRandomizedHashCode`同为RVA8E8770；虚槽2正对应上述调用的`class+CC`。`108E8770–87BF`完整实现无调用／seed读取／平台分派：h1=h2=5381，交替取UTF-16单元执行`h=wrap32(h×33) XOR unit`，任一单元为0即停，最后低32位返回`h1+h2×0x5D588B65`。它不读String.Length，因此`A\0B`与`A`同hash，不能把hash当作正文唯一身份。维护`steam_text_string_hash`按无符号回卷与显式signed转换实现，作为准备后端默认方法；独立源算式字面oracle包含空串371857150、AB为−331290873、中文1842450162和代理对1126268081。此算法只认证固定样本，不外推其它.NET／Unity版本，也不代替文件SHA或存档身份。
 
-私有入口`107CC28A`忽略`Language.TranslateConsoleText`的bool，消费out串；null out走源异常，不归空。console转换 RVA820860要求console表非null且Count>0、Joystick.IsShown为真，否则原样输出。启用时保存开头`<po=...>`到首个`>`的原前缀，用默认Regex `(<po=[a-z]+>|</po>)`移除标签作lookup key；先查原key，失败且末尾CR才TrimEnd(CR)重查。之后无论已否命中均计算`CRLF→<br>`再`LF→<br>`的key；仅此前失败才查新key及其末CR裁尾版本。命中才输出前缀加表值，未命中输出原input，不泄漏lookup归一串。空key的Last<char>等原异常资格未被维护字典默认值修补。表的具名生产者在`MakeBuiltInMultiLangTable` RVA8172E0，当前语言／实际表值及Joystick运行门仍须真实供给。
+私有入口`107CC28A`忽略`Language.TranslateConsoleText`的bool，消费out串；null out走源异常，不归空。console转换 RVA820860在`1082091A–982`依次要求console表非null、Count>0、Joystick.IsShown为真，否则原样输出／false，后继查询短路。启用时`1082099F–A24`先以无comparison参数的StartsWith检查`<po=`，**只有命中且存在首个`>`时**，保存开头至该`>`的原前缀，并用无额外options的Regex `(<po=[a-z]+>|</po>)`剥离所有匹配作lookup key；不符合入口资格的正文连`</po>`也不剥离。前缀本身允许非小写／数字等不匹配Regex的内容，此时它保留在lookup key中，不能用HTML解析器修正源行为。
+
+`10820A4E–B07`先查key，失败且**非空**、末尾CR才用TrimEnd(CR)结果重查；裁尾实参不覆盖原key。随后`10820B11–B47`无论已否命中，均从未裁尾原key计算`CRLF→<br>`再`LF→<br>`；仅此前失败才查归一key及其非空末CR裁尾版本。两处Last<char>均有Length>0守卫（`A74／B9E`），此前空key异常表述已纠正：空key可查两次且不触发Last异常。`10820C35–C58`命中才输出值／前缀Concat值，未命中保持原input，不泄漏查找串。无前缀命中null仍输出null／true，有前缀命中null或空值则按真实Concat输出前缀，由上层分别处理；不能将命中null统一改成未命中或提前补空成功。
 
 随后`107CC29D–2B3`以CurrentCultureIgnoreCase=1检测`<ff>`。命中才按**精确**`<ff>`与`<FF>`两个string分隔（RemoveEmptyEntries，不Trim），不把混合`<Ff>`统一成分隔符。每个保留片，非首且既不StartsWith(br,ignoreCase)也不StartsWith(LF)才前加br；非末且既不EndsWith(br,ignoreCase)也不EndsWith(LF)才后加br，片间追加小写ff。连续／首尾空片丢弃，仅ff可变空；混合大小写可触发入口而保留在整片中。`107CC4A6–4BF`先安装最后text，再写入**公开Replace结果hash**，不会为console／ff结果重算hash；没有同串相等早退，之后才复位渐显与排块。
 
-维护`steam_prepare_text`接null归空、实际稳定枚举的ordinal替换、后端真实hash与console-out、文化查询和上述ff重组，再把text交`steam_set_prepared_text`。接口不代替Console表／Regex／Joystick后端，不用std::hash或假恒等转换；hash字段须保留其原串身份，不能用于认定最终正文相等。文本／单词4096 UTF-16单元、表4096项、替换65536次为维护预算；空oldStr、不前进／超预算／null out拒绝，后端首错原样传播，不安装共享text或hash。逐次替换串／分片仅本次持有，不添加持久缓存或原始代码副本。
+维护`steam_prepare_text`接null归空、实际稳定枚举的ordinal替换、后端真实hash与console-out、文化查询和上述ff重组，再把text交`steam_set_prepared_text`。现`steam_translate_console_text`可作真实console后端：执行资格短路、固定ASCII Regex模式、至多四次查找及原序归一，不用std::regex冒充任意.NET Regex；宿主提供实际表／Joystick及文化StartsWith，不复制或假定当前表为空。各实际中间串／最终串4096 UTF-16单元为维护预算，启用null输入拒绝，禁用时可原样返回null；已命中仍须完成两次归一，若其超预算也拒绝，不提前返回成功。实际查表首错传播，不安装共享状态、重试失败查询或承诺后端副作用回滚。具名表生产者为`MakeBuiltInMultiLangTable` RVA8172E0，当前语言／表值及运行门的实际供给仍独立。
+
+公开准备的hash字段保留原串身份，不能用于认定最终正文相等；不用std::hash或假恒等转换。文本／单词4096 UTF-16单元、替换表4096项、替换65536次为维护预算；空oldStr、不前进／超预算／null out拒绝，后端首错原样传播，不安装共享text或hash。逐次替换串／分片仅本次持有，不添加持久缓存或原始代码副本。
 
 Init RVA7CB430是另一组赋值：重建Font，text设空、清渐显时间／位置、width_/height_设−1，并在107CB570将textWidth清0；**没有写textBlocks或length_**。新构造RVA7CD4A0先在107CD4CC–4E3建零长块数组，再内联同Init赋值，不能由新对象的零状态推断对旧对象再Init会联合清空所有字段。若仅重复Init而未SetText／重排，旧块及length仍在、GetHeight仍读那些块，但pos0暂不消费文字；没有据此认证原页面真的执行这种复用链。固定APK `aa.a(String)`（744行起）同样归一null、置文本／pos、调用f，再清总长度并按块求和；f的空串早退留下旧m宽，b()按空块返回高度0。APK构造初始化空块／m0，但没有此Steam独立Init入口；其失真的非空换行循环不参与上述小型调用链结论。
 
@@ -373,6 +377,37 @@ DLL中Add入口绝对VA的唯一四字节匹配在`.data`的1112D608；邻项依
 
 `ClearSoftLabelTable` RVA`80CB80`和`ClearTextTable` RVA`80CBE0`分别只清静态`+0x14／+0x18`引用；它们以及已核Set／Make方法体没有显式调用翻译缓存清理、`TextLayout.ClearCache`或翻译委托，也不清内置`+0x38`。因此“退休当前表”不证明旧缓存译串已经失效，引用置空也不证明无其它持有者或立即释放。产品若将原表转换成不可变索引、先验证再发布、随语言代际清缓存，应明确登记为维护策略，不能把这些事务保证反写成原版行为。实际语言切换的Boot重载仍沿[语言安装合同](STEAM_LANGUAGE_INSTALL.md)，本节不证明运行时列内容、当前字体或全部线程可见性。
 
+### Console表供给、覆盖与设备资格
+
+`MakeBuiltInMultiLangTable` RVA8172E0先取当前原语言码，另以ToLower后的码分类：`^ja`→0、`^en(-us)?$`→1、`^zh(-cn|-sg)`→2、`^zh(-tw|-hk|-mo)?`→3、`^ko`→4、`^th`→5；未命中才按Language.Get非0→1／否则0（`108174E1–108176DB`）。`10817903–947`先分配新字典并立即替换console表引用，再填内容，没有整体事务保证。固定Config.get_Platform RVA39E1A0的机器体恒返回4（x86），故正常进入Console填表支路；不得把共享地址的其它具名别名当作平台getter。
+
+填表次序为以下三层，后写同键覆盖。`10817A12–AA7`把**全部16行**内置`row[0]→row[1]`依序写入，不按当前语言筛选；下表直接来自cctor `10831C6C–1083233B`，键均不同，12／13与14／15分别共享目标值。尖括号保持原文字标签，法文目标中`travail`与`!`之间是U+00A0。
+
+| 原序 | 原键 | 目标值 |
+| ---: | --- | --- |
+| 0 | `おつかれさまでした。<br>ここでLite版は終了となります` | `おつかれさまでした。<br>ここで体験版は終了となります` |
+| 1 | `Well done. You've finished the Lite version.` | `Well done. You've finished the Demo version.` |
+| 2 | `Gute Arbeit! Du hast die Lite-Version beendet.` | `Gute Arbeit!<br>Du hast die Demo-Version beendet.` |
+| 3 | `Bien hecho. Has completado la versión Lite.` | `¡Bien hecho!<br>Has terminado la versión demo.` |
+| 4 | `Joli travail. Vous avez terminé la version Lite.` | `Joli travail !<br>Vous avez terminé la démo.` |
+| 5 | `बहुत बढिया। आपने लाइट वर्जन पूरा कर लिया है।` | `बहुत बढिया।<br>अपने डेमो वर्जन पूरा कर लिया है।` |
+| 6 | `Ottimo lavoro! Hai completato la versione Lite.` | `Ottimo lavoro!<br>Hai completato la versione Demo.` |
+| 7 | `Parabéns! Você terminou a versão Lite.` | `Parabéns!<br>Você terminou a versão demo.` |
+| 8 | `Отлично! Вы прошли сокращенную версию игры.` | `Отлично!<br>Вы прошли демо-версию игры.` |
+| 9 | `ทำดีมาก ท่านเล่นจบเวอร์ชั่นไลท์แล้ว` | `คุณได้จบการเล่นในเวอร์ชั่นทดลองแล้ว<br>ขอบคุณที่เล่นเกมของเรา` |
+| 10 | `Aferin. Hafif sürümü bitirdin.` | `Aferin!<br>Demo sürümü tamamladın.` |
+| 11 | `感谢您的游玩。<br>精简版至此结束。` | `您辛苦了。<br>体验版到今天将迎来尾声。` |
+| 12 | `辛苦您了。<br>Lite版的內容於此結束。` | `您辛苦了。<br>Demo版到今天便結束了。` |
+| 13 | `您辛苦了。<br>體驗版到今天便結束了。` | `您辛苦了。<br>Demo版到今天便結束了。` |
+| 14 | `고생하셨습니다.<br>여기에서 Lite판은 종료됩니다` | `고생하셨습니다.<br>Demo판은 여기서 종료됩니다.` |
+| 15 | `수고하셨습니다.<br>체험판은 여기서 종료됩니다.` | `고생하셨습니다.<br>Demo판은 여기서 종료됩니다.` |
+
+第二层`10817AAC–C99`按分类0…5取`ja／en／zh-cn／zh／ko／th`后缀，从Storage media3读取`console_后缀.txt`。有内容才解码、去CR并按LF拆，逐行Trim，跳空及`//`注释；行以`<po=`开头且有`>`才去前缀。非跳过行成对，前行为键、后行为值，奇数末键不写。第三层`10817CC4–1081803D`改取`ja／en／sc／tc／ko／th`前缀，读取`language.dat`内`cstext.txt`；按LF拆后取匹配当前前缀的行，从**首个冒号之后、最后一个`=>`**分键值，再Trim空白／双引号和剥定位标签；value非空才覆盖。两层中文后缀不是同一命名政策，不能共用一个猜测路径。
+
+`Language.Init`在`10811C8C`触发重建；`TranslateBuiltInMultiLangText`在已存语言码非null且不同于当前码时于`10820756`重建。TranslateConsoleText自身不检查码或重建，不能把语言切换与表更新当作联合事务。当前有限资源复核：四个Unity容器中仅resources.assets有25个TextAsset，其language归档12条均为`DungeonVillage_*.csv`，未见上述可选覆盖；副本实体目录亦未见相关文件。这不覆盖动态资源、公共字段后写或当前原会话，不宣称运行表必恒16，也不将“Console表”误说成只有手柄按键文案。
+
+`Joystick.IsShown` RVA7A7F10读Config.UNITY_EDITOR（静态+28）；true在固定平台4直接返回true，false则先取Canvas.GetInstance并读取`lastInputDevice_ +C4`，Unknown0或Joystick4为真，Touch1／Keyboard2／Mouse3及其它非0／4整数为假（`107A7F5C–107A8097`）。缺Canvas走原错误，不当作无手柄；该资格不等于HasController。源码保留的其它平台／语言模拟支路在固定getter4下不可达，不额外依赖当前语言模拟设置。现`steam_joystick_is_shown`以真实设备观测返回候选，编辑器分支不要求Canvas，非编辑器缺观测明确拒绝；不读取OS、发现设备或持有第二份输入状态。
+
 ## 仍需闭合及产品使用边界
 
 已核资源查找、GUIStyle切换、本地化公式、两种测宽链、14项TAG局部生产／消费，以及普通溢出／LF行提交、整词前瞻、末行对齐、format标点／CR等零增量单元的最终块字符串范围和SetText／Init空串字段分工。仍缺当前语言与实际翻译串样本、当前会话Font及字符最终命中、局部开关／scale／offset完整设置来源、全部语言禁则覆盖、具体运行图标注册与素材绑定，以及真实字形宽度／baseline；已核原串与处理后串混用索引及字符串重建不等于这些运行输入／像素已验。[文字后端](STEAM_FONT_BACKEND.md)已补原生缺字候选／OS供给及开关／栈恢复，[普通DrawString](STEAM_FONT_DRAW.md)已有有序后端接口、锚点／字号补偿／矩阵→clip→GUI位置；这些不代替当前运行face和字形度量。
@@ -381,4 +416,4 @@ DLL中Add入口绝对VA的唯一四字节匹配在`.data`的1112D608；邻项依
 
 ## 来源与解析限制
 
-本合同沿固定具名入口独立核PE映射及方法边界，12入口共6416字节（含异常尾和填充），并交叉6个字符串使用槽、7个float32常量及ResourceManager首表1251行；不由字节总数声称所有分支完成。ResourceManager同路径可分别引用Font／Material／Texture2D，必须保留原序并以路径＋file_id＋path_id辨别，不按路径单值覆盖。首表结束于对象内63852，2352字节尾部未解析，不影响已核首表引用但不构成完整格式认证。IL2CPP共享地址的方法别名须结合接收对象／参数判断，invalidFontNames的泛型名单维护仍未命名。具体RVA及消费者就在上述章节，旧核对脚本／指纹不是产品运行依赖，不再另保过程报告。
+本合同按具名入口核PE映射、方法边界及字符串／数值使用槽，不由读取字节数推断完整覆盖。ResourceManager首表1251行中，同路径可分别引用Font／Material／Texture2D，须保留原序并以路径＋file_id＋path_id辨别，不按路径单值覆盖；首表结束于对象内63852，2352字节尾部未解析，不构成完整格式认证。IL2CPP共享地址别名须结合接收对象／参数判断；invalidFontNames的Add／单次Remove已具名，泛型字符串比较仍保留限制。具体RVA及消费者就在各节，旧核对脚本／指纹不是产品运行依赖，不再另保过程报告。

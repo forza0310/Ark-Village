@@ -4,6 +4,11 @@
 #include "dungeon_village_prototype/steam_cursor_skin.hpp"
 
 namespace dungeon_village_prototype {
+// 固定Steam x86样本Joystick.IsShown；不是HasController或提示登记表是否非空。
+// 原Config.get_Platform恒4：编辑器直接true，否则需真实Canvas.lastInputDevice_。
+// 缺Canvas观测明确拒绝；0(Unknown)/4(Joystick)真，其余完整signed32值假。
+std::optional<bool> steam_joystick_is_shown(
+    bool unity_editor,const std::optional<std::int32_t> &last_input_device);
 // Canvas平台提示登记表，独立于世界/人物/游戏存档；按原插入顺序保留旧项。
 struct SteamJoystickPromptEntry {
     int button{}, registration{-1};

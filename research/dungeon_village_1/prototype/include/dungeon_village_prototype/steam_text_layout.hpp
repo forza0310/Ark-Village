@@ -124,6 +124,29 @@ struct SteamConsoleTextResult {
     bool translated{}; // 私有SetText忽略该返回值，实际消费out_text。
     std::optional<std::u16string> out_text;
 };
+struct SteamConsoleTextLookup {
+    bool found{};
+    std::optional<std::u16string> value; // 命中null与未命中不同；不以空串补齐。
+};
+// 当前Language.consoleTextTable_与Joystick的实际供给。只按需查表，不复制全表；
+// 首个StartsWith沿源无comparison参数的文化语义，由宿主提供而非猜成ordinal。
+class SteamConsoleTextBackend {
+public:
+    virtual ~SteamConsoleTextBackend()=default;
+    virtual bool has_table()=0;
+    virtual std::int32_t table_count()=0;
+    virtual bool joystick_is_shown()=0;
+    virtual bool starts_with_position_tag(const std::u16string &)=0; // 源参数为"<po="。
+    virtual SteamConsoleTextLookup lookup(const std::u16string &)=0;
+};
+// 固定Steam TranslateConsoleText：资格短路、条件定位标签剥离、至多四次查找，
+// 保留未裁尾原key作换行归一；命中后仍归一，未命中返回原input。
+// 固定无options的ASCII Regex模式独立实现，不使用std::regex模拟任意.NET Regex。
+// 各实际中间串/最终串<=4096 UTF-16单元为维护预算；启用时null明确拒绝，
+// 禁用时可原样返回null。命中null无前缀仍返回null，有前缀按Concat返回前缀。
+// 后端异常传播，成功候选不代表安装共享状态，也不回滚已发生的后端操作。
+std::optional<SteamConsoleTextResult> steam_translate_console_text(
+    const std::optional<std::u16string> &,SteamConsoleTextBackend &);
 // 固定Steam String.GetHashCode RVA8E8770：双5381累加器交替取UTF-16，遇NUL止，
 // 低32位回卷后按有符号返回；不外推其它.NET/Unity版本，也不是文件身份摘要。
 std::int32_t steam_text_string_hash(const std::u16string &);

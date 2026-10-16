@@ -2036,6 +2036,16 @@ void steam_platform_skin_checks(Checks &check,const std::filesystem::path &sourc
 }
 // 平台登记表只验证调用计划；原GetJoystickUp、SDK图标及窗口输入另有消费者。
 void steam_joystick_prompt_checks(Checks &check) {
+    check(steam_joystick_is_shown(true,{})==std::optional<bool>{true}&&
+          !steam_joystick_is_shown(false,{}),
+          "固定x86编辑器不读Canvas；非编辑器缺真实设备状态拒绝，不猜成未连接手柄");
+    struct Visibility {std::int32_t device;bool shown;};
+    for(const auto c:std::array<Visibility,9>{{{0,true},{1,false},{2,false},{3,false},{4,true},
+            {5,false},{-1,false},{std::numeric_limits<std::int32_t>::min(),false},
+            {std::numeric_limits<std::int32_t>::max(),false}}})
+        check(steam_joystick_is_shown(false,c.device)==std::optional<bool>{c.shown}&&
+              steam_joystick_is_shown(true,c.device)==std::optional<bool>{true},
+              "固定平台4以Unknown或Joystick判显示资格，其余设备及未定义值为假，不夹到合法枚举");
     const auto same=[](const SteamJoystickPromptState &a,const SteamJoystickPromptState &b) {
         if(a.table_present!=b.table_present||a.entries.size()!=b.entries.size())return false;
         for(std::size_t i=0;i<a.entries.size();++i) {

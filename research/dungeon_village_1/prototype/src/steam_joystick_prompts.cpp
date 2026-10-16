@@ -22,6 +22,12 @@ bool dimensions(const std::optional<std::array<int,2>> &size) {
     return size&&(*size)[0]>0&&(*size)[0]<=65536&&(*size)[1]>0&&(*size)[1]<=65536;
 }
 }
+std::optional<bool> steam_joystick_is_shown(
+        bool unity_editor,const std::optional<std::int32_t> &last_input_device) {
+    if(unity_editor)return true; // 原此分支不取Canvas；固定平台4也不问语言模拟。
+    if(!last_input_device)return {};
+    return *last_input_device==0||*last_input_device==4;
+}
 std::optional<SteamJoystickRegisterResult> steam_joystick_register(
     const SteamJoystickPromptState &s,const SteamJoystickRegisterInput &in) {
     if(!valid(s))return {};

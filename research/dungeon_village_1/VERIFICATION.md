@@ -1,12 +1,12 @@
 # 当前研究验证与历史索引
 
-## 公开文字准备与Draw重排 2026-10-16
+## 公开文字准备、Console文案与Draw重排 2026-10-16
 
-接`0f852c8`，在既有[文字模块](prototype/include/dungeon_village_prototype/steam_text_layout.hpp)补`steam_prepare_text`和`steam_reflow_text_for_draw`：实际枚举原序的ordinal替换、hash／Console-out交接、文化入口与精确ff分隔的区别、br／LF短路；Draw仅在比例变化时执行一次_make，保留SetText独有的长度／渐显／框高政策。独立反汇编及metadata复核进一步闭合固定`System.String.GetHashCode`，已提供低32位回卷／内嵌零终止的默认实现。Console当前表／Regex／Joystick、文化后端和原Font仍由真实宿主供给；没有将准备接口或ASCII比较夹具当作完整原文字运行。`SetTextCheckSize`只写DEBUG诊断字段及其红框资格已合入[字体合同](ui/STEAM_FONT_CONSUMER.md)，不为它新造缩字规则／Owner状态。
+接`0f852c8／7f04cfe`，既有[文字模块](prototype/include/dungeon_village_prototype/steam_text_layout.hpp)已交公开原序替换／固定hash／ff重组和Draw比例重排，现补实际Console文案消费者：表／设备短路、条件定位标签剥离、至多四次查找、保原key换行归一及null值Concat。独立源复核纠正空key的旧异常表述：两处Last均有非空守卫，空key仍可重复查表；前两查命中也必须归一，不能提前成功。实际表、Joystick、文化StartsWith及原Font仍由宿主供给，不把ASCII夹具当原文字运行；具体VA、预算和分层拒绝合入[主责合同](ui/STEAM_FONT_CONSUMER.md#公开文本准备平台文案与hash身份)。
 
-Windows单Release动态构建及头／实现／测试严格C++17语法检查通过；扩现visuals，最终 **1/1通过1.81秒**。覆盖null、替换原序／不递归／null键值与空旧词拒绝、hash早于转换／保留原串身份、false但非null Console-out、ff大小写／空片／空白、查询短路、4096／65536预算、后端首错、同／变比例、±0、NaN、空串旧宽及失败清理；固定hash用八组源算式字面值覆盖普通／中文／代理对／内嵌零。没有新增target、Owner／codec或世界长跑，三份他人在途住宅存取测试未编译。文本准备的串／分片按调用释放，相同比例不复制旧块或持有新字体引用；真实后端可有的缓存不由此保证永久有界。
+Windows单Release动态构建与头／实现／测试严格C++17语法通过，现visuals最终 **1/1通过1.83秒**。保留此前替换／hash／ff／Draw有效断言，新增19个独立key／输出用例及资格短路、CR查找顺序、null／空值、命中后归一超预算、Concat总预算和真实后端首错；一条实际Console→公开准备→ff组合与重复调用验证分层消费。固定x86的IsShown消费者另覆盖编辑器短路、缺Canvas和完整signed32设备资格，不将Unknown当“有手柄”。没有新target、Owner／codec或世界长跑，三份他人在途住宅存取测试未编译。临时key／归一串按次释放，不复制全表或增加隐式历史；后端缓存不由此保证永久有界。
 
-Release1411文件／230400384字节，assets仍872文件／9504668字节，无.pending。新增外部文字观察提示词仅在忽略work，包含15分钟现成正文／说明／可选报纸边界，未执行原窗口、购买、网络或档案操作；动态结果仍待用户转交。91新增持久载荷方案本批已具体征询，未收到批准不编码该分支。文档并入现入口，差异／本地链接检查通过；构建、短测及并行任务已结束，仅本批研究白名单提交，不推送。
+Release1411文件／230570210字节，assets仍872文件／9504668字节，无.pending；无新增文件、audit或指纹。Console的16条内置文案、两层可选覆盖／语言后缀、重建时点与有限资源缺席范围合入现字体合同；旧名单helper未知表述及阶段矩阵的旧设置缺口已清理。外部文字观察提示词仍仅在忽略work，未执行原窗口、购买、网络或档案操作；动态结果待转交。91新增持久载荷方案仍待具体批准；设置分支已交系统3，不重复实施。构建／短测与静态子任务均已收齐，仅研究白名单提交，不推送。
 
 ## SetText自适应外层与预留保存使能 2026-10-16
 

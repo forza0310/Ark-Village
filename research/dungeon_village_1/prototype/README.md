@@ -22,7 +22,7 @@
 | `steam_font_metrics` | 原字号preset／实例整数比例、本地化准入及float32派生请求；不选字形、不改Owner或模拟平台线程；[字体数值合同](../ui/STEAM_FONT_CONSUMER.md#可直接消费的字号数值接口) |
 | `steam_font_draw` | 已准备普通GUI请求的真实有序后端：条件测宽、参考矩形、字体／样式缓存、字号及非等比Y补偿、skin同步、点映射／clip、临时色、字符转换→分组→Label及正常清理。宿主供实际Font／矩阵／绘制，Source异常不冒称整段回滚；不接Image／GLText／纹理或新增Owner；[绘制合同](../ui/STEAM_FONT_DRAW.md) |
 | `steam_text_reveal` | TextLayout渐显／快进／完成、blink及复位数值候选；Source逐次供墙钟、两次应用帧与末尾共同门槛。普通块预算保留隐藏消费、UTF-16前缀及纵视口／测宽资格；高度查询分别保持全块浮点高度、独立32位预测时间／逐块截整和首块行高，空目录交真实字体fallback请求。不实现排块／字形或新增持久状态；[时钟](../ui/STEAM_FONT_CONSUMER.md#渐显时钟复位与完成资格)、[块预算](../ui/STEAM_FONT_CONSUMER.md#textlayout渐显块的测宽)、[高度](../ui/STEAM_FONT_CONSUMER.md#内容高度下一高度与行高并非同一查询) |
-| `steam_text_layout` | 公开文本准备／hash与console交接、SetText字号适配、完整_make及实例Draw比例重排门；保留Font／14TAG／组合／整词、实际测宽、源范围和两种重排的区别。后端供原字体、当前表／文化／hash及pic宽；不创建Owner，原Unity／研究窗口后端仍待接；[完整入口与边界](../ui/STEAM_FONT_CONSUMER.md#完整扫描入口尾部与维护消费者) |
+| `steam_text_layout` | 公开文本准备／固定hash、Console文案资格／定位标签／四步查找、SetText字号适配、完整_make及实例Draw比例重排门；保留Font／14TAG／组合／整词、实际测宽、源范围和两种重排的区别。后端供原字体、当前表／Joystick／文化及pic宽；不创建Owner，原Unity／研究窗口后端仍待接；[完整入口与边界](../ui/STEAM_FONT_CONSUMER.md#完整扫描入口尾部与维护消费者) |
 | `steam_subform_update` | 一次真实获准Update的共同前段候选：双钟、等待早返、重画、jingle、22／21／23及本页分派原序；后继成功才安装，不执行平台声音／SEB或新增持久状态；[共同调度合同](../ui/INPUT_RENDER_REQUESTS.md#steam公共subform单轮页面钟手形与待发jingle) |
 | `startup_world_config`、`startup_application_config` | 设置12四行选择／双步钟、跨局即时值与系统3联合提交、失败回滚及完整恢复；实际平台执行独立，[持久合同](PERSISTENCE.md#设置12的跨局权威与系统格式3待确认) |
 | `steam_config_skin`、`steam_config_update` | 设置12四行皮肤／键盘候选及setter有序后继：区分P12／P13、J3／J4，声音改值去重与画质同值重绘；纯层交属性／声音／Canvas请求，应用层沿上列模块联合提交；[设置合同](../ui/STEAM_INTERACTIONS.md#游戏设置与标题平台按钮) |
@@ -30,7 +30,7 @@
 | `steam_cursor_skin` | 虚拟光标的按下图资格、原SEB两帧、平台坐标补偿和恢复缩放／混合的有序纯计划；不合成Touch或推进平台状态；[原输入与绘制合同](../ui/STEAM_INTERACTIONS.md#虚拟屏幕光标模式位置与合成touch) |
 | `steam_touch_commands` | 已准入组件的公共按键／属性写入及箭头反馈、主菜单切换与解除标记纯请求；列表／滚动使用SteamTouchFlow逐请求临时续体，等真实Set完成再取下一观测；保留触发边沿、绑定目标、查询短路、扩展原序与顶页截获，不执行OS命中、Canvas或业务；[公共输入合同](../ui/STEAM_INTERACTIONS.md#公共触摸分派与请求边界) |
 | `steam_manual_skin`公共箭头 | 静态箭头与动态id0分开；独立Init／Frame／绘制计划及SteamTouchArrowEffects复用池保留墙钟、密度、float几何、active逆序更新／正序绘制和按surface退休；失败整池不提交，不持平台对象或文件状态。`touch-arrow-effects`有界示例消费正常年龄的条件混合计划，普通窗口完整输入／池及GPU动态仍待接；[箭头合同](../ui/STEAM_INTERACTIONS.md#箭头toucheffect-id0资源墙钟与退休) |
-| `steam_joystick_prompts` | 平台提示表的登记／复用、Reset／Raise／释放及有序DrawButtons计划；保留button7软标签与0..3自动取消请求。`title-platform-prompts`／`title-platform-prompts-faded`有界窗口消费8/9原包后备和局部矩阵，不接SDK、世界Owner或持久格式；[生命周期合同](../ui/STEAM_INTERACTIONS.md)、[四态示例](../ui/examples/steam-title-platform.png) |
+| `steam_joystick_prompts` | 固定x86的IsShown设备资格、平台提示表登记／复用、Reset／Raise／释放及有序DrawButtons计划；保留button7软标签与0..3自动取消请求。`title-platform-prompts`／`title-platform-prompts-faded`有界窗口消费8/9原包后备和局部矩阵，不接SDK、世界Owner或持久格式；[生命周期合同](../ui/STEAM_INTERACTIONS.md)、[四态示例](../ui/examples/steam-title-platform.png) |
 | `startup_world_persistence`／codec／restore_validation | [正常文件、精确回放及字段政策](PERSISTENCE.md) |
 | `startup_world_presentation`／`visuals`、`startup_view`／`startup_window_host` | [显式表现请求](../ui/INPUT_RENDER_REQUESTS.md)、只读计划与平台执行；[声音一次输出](AUDIO_REQUESTS.md) |
 

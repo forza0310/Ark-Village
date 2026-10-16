@@ -477,6 +477,72 @@ std::optional<SteamTextSetResult> steam_set_prepared_text(
       catch(...) {cleanup();throw;}
 }
 
+std::optional<SteamConsoleTextResult> steam_translate_console_text(
+        const std::optional<std::u16string> &input,SteamConsoleTextBackend &out) {
+    if(input&&input->size()>text_budget)return {};
+    if(!out.has_table())return SteamConsoleTextResult{false,input};
+    const auto count=out.table_count();
+    if(count<0)return {}; // 原字典Count不能为负，不把坏供给当空表。
+    if(!count||!out.joystick_is_shown())return SteamConsoleTextResult{false,input};
+    if(!input)return {}; // 原启用路径在StartsWith前解引用，不能补空成功。
+    auto key=*input;
+    std::optional<std::u16string> prefix;
+    if(out.starts_with_position_tag(key)) {
+        const auto end=key.find(u'>');
+        if(end!=std::u16string::npos) {
+            prefix=key.substr(0,end+1);
+            std::u16string stripped;
+            // 无options的固定模式(<po=[a-z]+>|</po>)，只在上述资格内应用。
+            for(std::size_t at=0;at<key.size();) {
+                if(prefix_at(key,at,u"</po>")) {at+=5;continue;}
+                if(prefix_at(key,at,u"<po=")) {
+                    auto last=at+4;
+                    while(last<key.size()&&key[last]>=u'a'&&key[last]<=u'z')++last;
+                    if(last>at+4&&last<key.size()&&key[last]==u'>') {at=last+1;continue;}
+                }
+                stripped+=key[at++];
+            }
+            key=std::move(stripped);
+        }
+    }
+    auto trim_cr=[](std::u16string value) {
+        while(!value.empty()&&value.back()==u'\r')value.pop_back();
+        return value;
+    };
+    auto hit=out.lookup(key);
+    // 10820A74/10820B9E先查Length>0再Last<char>；空key仍查表但不会抛Last异常。
+    if(!hit.found&&!key.empty()&&key.back()==u'\r')hit=out.lookup(trim_cr(key));
+    // 10820B11–B47即使命中也执行。不得以已Trim的第二查实参覆盖原key。
+    auto replace=[](const std::u16string &text,const std::u16string &old_word)
+            ->std::optional<std::u16string> {
+        std::u16string next;
+        for(std::size_t at=0;at<text.size();) {
+            if(prefix_at(text,at,old_word)) {next+=u"<br>";at+=old_word.size();}
+            else next+=text[at++];
+            if(next.size()>text_budget)return {};
+        }
+        return next;
+    };
+    auto normalized=replace(key,u"\r\n");
+    if(!normalized)return {};
+    normalized=replace(*normalized,u"\n");
+    if(!normalized)return {};
+    if(!hit.found) {
+        hit=out.lookup(*normalized);
+        if(!hit.found&&!normalized->empty()&&normalized->back()==u'\r')
+            hit=out.lookup(trim_cr(*normalized));
+    }
+    if(!hit.found)return SteamConsoleTextResult{false,input};
+    if(hit.value&&hit.value->size()>text_budget)return {};
+    if(prefix) {
+        // String.Concat(prefix,null)为prefix；无prefix时原out可保持null。
+        if(hit.value&&hit.value->size()>text_budget-prefix->size())return {};
+        if(hit.value)*prefix+=*hit.value;
+        return SteamConsoleTextResult{true,std::move(prefix)};
+    }
+    return SteamConsoleTextResult{true,std::move(hit.value)};
+}
+
 std::int32_t steam_text_string_hash(const std::u16string &text) {
     std::uint32_t first=5381U,second=5381U;
     bool to_second=false;

@@ -287,7 +287,11 @@ void inspect_campaign_progress(const app::WorldState &s, std::ostream &out) {
         out << " available=";
         for (const bool available : growth.derived.available_spells)
             out << available;
-        out << '\n';
+        const auto threshold = sim::rules::human_growth_threshold(
+            growth.definition.profession_levels.at(job), ai.professions.at(job).difficulty);
+        out << " experience=" << growth.experience << " pending=" << growth.pending.amount
+            << " pending_counter=" << growth.pending.counter
+            << " threshold=" << threshold.value_or(-1) << '\n';
     }
     for (const auto &[id, actor] : ai.battle.actors) {
         const bool human = actor.kind == sim::rules::ActorKind::human;

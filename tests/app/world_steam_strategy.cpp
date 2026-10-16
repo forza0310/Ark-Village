@@ -678,6 +678,14 @@ void SteamVillageStrategy::observe(const State &before, const Command &c,
         require(after.participants == expected &&
                     cash(before) - cash(after) == before.human_calendar.at(human).continuation_cost,
                 "paid hiring did not append once and charge its cached source quote");
+        const auto &growth = before.scene.world.world.ai.growth.at(human).definition;
+        const int job = growth.current_profession;
+        std::cout << "TASK_HIRE human=" << human << " job=" << job
+                  << " level=" << growth.profession_levels.at(job)
+                  << " profession_open=" << before.scripts.professions.at(job).status
+                  << " members_before=" << before.participants.size()
+                  << " members_after=" << after.participants.size()
+                  << " fee=" << cash(before) - cash(after) << '\n';
     }
     people_.observe(before, c, r, after,
                     [&](const CampaignReceipt &receipt) { pending.push_back(receipt); });

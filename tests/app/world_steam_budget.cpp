@@ -98,8 +98,7 @@ std::optional<int> steam_task_extra_human(const State &s, std::uint64_t page) {
     if (list == s.task_extra_pages.end() || cash(s) < reserve)
         return {};
     const auto budget = cash(s) - reserve;
-    std::optional<int> best;
-    std::int64_t score{};
+    std::optional<std::tuple<bool, int, std::int64_t, int>> best;
     for (const int human : list->second) {
         if (!s.human_presence.at(human) ||
             std::find(s.participants.begin(), s.participants.end(), human) != s.participants.end())
@@ -108,15 +107,21 @@ std::optional<int> steam_task_extra_human(const State &s, std::uint64_t page) {
         require(fee >= 0, "initialized extra-member quote cannot be negative");
         if (fee > budget)
             continue;
+        const auto &growth = s.scene.world.world.ai.growth.at(human);
         std::int64_t strength{};
-        for (const int value : s.scene.world.world.ai.growth.at(human).derived.combat)
+        for (const int value : growth.derived.combat)
             strength += value;
-        if (!best || strength > score || (strength == score && human < *best)) {
-            best = human;
-            score = strength;
-        }
+        const int job = growth.definition.current_profession;
+        const int level = growth.definition.profession_levels.at(job);
+        // Test-player policy: retain the first five combat members, then train holders of
+        // unopened professions. Opening still requires their actual source mastery consumer.
+        const bool cultivate = s.participants.size() >= 5 &&
+                               s.scripts.professions.at(job).status == 0 && level < 10;
+        const auto priority = std::make_tuple(!cultivate, cultivate ? -level : 0, -strength, human);
+        if (!best || priority < *best)
+            best = priority;
     }
-    return best;
+    return best ? std::optional<int>{std::get<3>(*best)} : std::nullopt;
 }
 
 bool steam_optional_activity_affordable(const State &s) {
@@ -426,6 +431,34 @@ void steam_budget_contract() {
     extras.scene.world.world.ai.accounting = ref::PeriodAccounting(crew_buffer + 199);
     require(!steam_task_extra_human(extras, 91) && !steam_task_extra_human(extras, 92),
             "unaffordable or uninitialized recruitment must wait");
+    // Qualification fixtures only: source mastery, actual fees and task outcomes are not
+    // simulated by this read-only selection policy. Keep the preceding combat/budget checks.
+    auto &trainee = extras.scene.world.world.ai.growth.at(1).definition;
+    trainee.current_profession = 8;
+    for (const auto &[members, level, open, fee, expected] :
+         std::vector<std::tuple<int, int, int, int, int>>{
+             {4, 9, 0, 200, 2}, {5, 9, 0, 200, 1}, {5, 9, 1, 200, 2},
+             {5, 10, 0, 200, 2}, {5, 9, 0, 202, 2}}) {
+        extras.participants = {3, 4, 5, 6};
+        if (members == 5)
+            extras.participants.push_back(7);
+        trainee.profession_levels.at(8) = level;
+        extras.scripts.professions.at(8).status = open;
+        extras.human_calendar.at(1).continuation_cost = fee;
+        // This fixture changes current profession, which also changes the wage buffer.
+        extras.scene.world.world.ai.accounting =
+            ref::PeriodAccounting(steam_operating_reserve(extras) + 201);
+        const auto digest = sim::startup_world_state_digest(extras);
+        const auto selected = steam_task_extra_human(extras, 91);
+        const auto context = "training members=" + std::to_string(members) +
+                             " level=" + std::to_string(level) + " open=" + std::to_string(open) +
+                             " fee=" + std::to_string(fee) + " selected=" +
+                             std::to_string(selected.value_or(-1)) +
+                             " expected=" + std::to_string(expected);
+        require(selected == expected &&
+                    sim::startup_world_state_digest(extras) == digest,
+                context.c_str());
+    }
     const std::uint64_t task = 1;
     ref::DungeonFinishTask offered;
     offered.identity = task;

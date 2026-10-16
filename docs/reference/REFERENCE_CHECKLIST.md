@@ -23,6 +23,7 @@
 | 通用对话raw0 | 7f667a6 | [只读皮肤与有序输入请求](../../research/dungeon_village_1/ui/PAGES.md#steam-common-dialog)已交；逐字/分段Owner及精确恢复仍缺，不能把Frame/Flush接成一次确认关闭 |
 | 赠礼40与信息翻页 | a378818 | 目录、实际换页箭头和固定缺帧空绘制已交 |
 | 事件11、新闻15 | 0d68301 | 11严格Owner桥/原序皮肤及短恢复检查已交；15只有实际TextLayout观测驱动的纯尺寸/翻页/绘制合同，未提供正文Owner或原字体后端 |
+| 人物解锁59 | 7c56f57 | 当前职业/武器、入场/气泡纯计划及严格Owner恢复已交；1声/60气泡/70确认分开，平台成就仍非产品接入范围 |
 
 接续顺序为规则/观察底座→住宅/授勋及商会→具备Owner前提的应用表现，继续保持无倍速、无Steam服务及既有玩家存档政策。跨年贡献溢出见[定向请求](RESEARCH_REQUESTS.md#award-contribution-overflow)，不以目录Owner交付代替算术修正。
 

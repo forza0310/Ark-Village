@@ -90,7 +90,9 @@ fontKeep_为false时，先真实Font.GetFont→GUIStyle.font、再GetFontStyle�
 
 **先**`UnicodeToChanakya`（10766F05），再分字体纹理、GLText及普通GUI路径。二者均否时才`UpdateGUIGroup`（10766F3A），最终`GUI.Label`收到矩形`(GUIX,GUIY,1,float32(2×B))`、已转换文本和当前GUIStyle（10766FEC）；原“先分组再转换”叙述据此更正。宽1是原调用矩形参数，不能推成文字只绘一像素；overflow／padding／clip和实际字形仍交GUIStyle／引擎。正常尾先恢复normal色，再将非空GUI.skin.font清null（10767480／107674A2–D9），不恢复进入前font；最后才到前述外层矩阵／本地化锁／请求字号清理。
 
-[普通GUI执行接口](../prototype/include/dungeon_village_prototype/steam_font_draw.hpp)接已完成上游翻译、TextFormat、临时字号及BeginRenderMatrix的真实上下文，按上述顺序调用显式Backend，最终执行Label及正常清理；保留条件测宽、fontKeep、两次颜色读取和字符转换结果。接口仅接实际isGUI=true、useFontTexture=false、glRender=false的获准分支，不能把Image或GLText当普通GUI重放。后端供实际Font、矩阵、GUI对象／分组和绘制，接口不安装字形、写Owner、抽随机或增加持久状态。维护正常域U1..65536、文本转换前后各≤4096字节、输入及映射点有限且绝对值≤65536、参考尺寸(0,65536]、有效正比率；TOP字号补偿才要求F非0。clip原点允许全int32，最后Label坐标不受65536限制，高可至131072。退化／非有限及转换超预算明确拒绝，不夹分母；后端可能已改样式或画图，拒绝／异常不回滚源副作用、不能盲重放。外层EndRenderMatrix／锁／请求字号恢复仍由实际调用者负责；这不是原请求整体事务保证或原生字形等价认证。
+原普通TextBlock给Font.Draw／DrawStringBold传原System.String或按原len取得的Substring；直到本层GUI.Label仍是UTF-16引用，没有窄串转换，渐显可以切开代理对。Font.Draw RVA77D320把同一字符串交closure，UI线程直接执行，否则RunOnUiThread；`Font.<>c__DisplayClass38_0.<Draw>b__0` RVA792C10仍以同一引用执行PushFont→Graphics.DrawString→PopFont，不能在研究接线时偷偷补U+FFFD、按码点截取或在内嵌NUL处截断。真实原生／窗口桥的编码与字形行为另验，这里不把完整代码单元传递提升为像素等价。
+
+[普通GUI执行接口](../prototype/include/dungeon_village_prototype/steam_font_draw.hpp)现统一使用`std::u16string`，修正早期窄串载体；接已完成翻译、TextFormat、临时字号及BeginRenderMatrix的真实上下文，保留条件测宽、fontKeep、两次颜色读取、字符转换→Label及正常清理。仅接isGUI=true、useFontTexture=false、glRender=false；后端供真实Font／矩阵／GUI，不能把Image或GLText混入。转换前后各≤4096 UTF-16单元沿现TextLayout维护预算，不作为原版长度上限，也不改变Owner／codec或128MiB边界。其余正常域为U1..65536、输入／映射点有限且绝对值≤65536、参考尺寸(0,65536]及有效正比率，TOP补偿才要求F非0；clip原点允许全int32，最终Label坐标不受65536限制，高可至131072。拒绝／异常不回滚已改样式或已画内容，不得盲重放；外层矩阵／锁／请求字号恢复仍归调用者，不认证原生字形等价。
 
 本批认证到GUI.Label参数和调用边界；字形ascent/descent、真正baseline、kerning、抗锯齿及系统fallback仍未认证。`Font.GetOffset()`在前页已核返回公式，但本主方法没有直接调用它；不能在这里自行再加一遍requestFontOffset。它的其它间接消费位置仍需另批研究。
 

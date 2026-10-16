@@ -1401,10 +1401,11 @@ public:
     std::vector<SteamGuiTextColor> colors;
     std::vector<std::int32_t> sizes;
     std::array<float,4> labelled_rect{};
-    std::string measured_text,converted_text,labelled_text;
+    std::u16string measured_text,converted_text,labelled_text;
+    std::optional<std::u16string> converted_output;
     float width{8.F};
     std::size_t fail_at{std::numeric_limits<std::size_t>::max()},color_reads{},labels{};
-    float string_width_f(const std::string &text) override {
+    float string_width_f(const std::u16string &text) override {
         step("width");measured_text=text;return width;
     }
     std::array<float,2> reference_rect_size(float w,float h) override {
@@ -1422,11 +1423,11 @@ public:
         step("color");return color_reads++==0?saved:second;
     }
     void set_normal_text_color(const SteamGuiTextColor &c) override {step("setColor");colors.push_back(c);}
-    std::string unicode_to_chanakya(const std::string &text) override {
-        step("unicode");converted_text=text;return "converted-label";
+    std::u16string unicode_to_chanakya(const std::u16string &text) override {
+        step("unicode");converted_text=text;return converted_output?*converted_output:u"converted-label";
     }
     void update_gui_group() override {step("group");}
-    void label(const std::array<float,4> &rect,const std::string &text) override {
+    void label(const std::array<float,4> &rect,const std::u16string &text) override {
         step("label");++labels;labelled_rect=rect;labelled_text=text;
     }
     void clear_skin_font_if_nonnull() override {step("clear");}
@@ -1439,7 +1440,7 @@ private:
 void ordinary_gui_text(Checks &check) {
     SteamGuiTextInput input;
     input.admission=SteamGuiTextAdmission::prepared_ordinary_gui;
-    input.translated_text="translated-input";input.x=100.F;input.y=20.F;
+    input.translated_text=u"translated-input";input.x=100.F;input.y=20.F;
     input.anchor=6;input.used_size=12;input.clip_origin={10,20};
     input.render_operator=0;input.render_src_ratio=51;
     const std::vector<std::string> expected{"width","ref","font","style","keep","size","sync",
@@ -1452,7 +1453,7 @@ void ordinary_gui_text(Checks &check) {
               backend.labelled_rect==plan->rectangle&&plan->gui_font_size==12&&
               backend.sizes==std::vector<std::int32_t>{12}&&backend.labels==1&&
               backend.measured_text==input.translated_text&&backend.converted_text==input.translated_text&&
-              backend.labelled_text=="converted-label"&&backend.colors.size()==2&&
+              backend.labelled_text==u"converted-label"&&backend.colors.size()==2&&
               backend.colors[0]==SteamGuiTextColor{0.2F,0.1F,0.05F,0.75F}&&
               backend.colors[1]==backend.saved,
           "正常GUI实际有序调用，CENTER优先RIGHT，非等比补Y3后映射再减clip，Label消费转换文本且临改RGB后恢复首读颜色");
@@ -1514,6 +1515,35 @@ void ordinary_gui_text(Checks &check) {
         check(threw&&failing.trace==std::vector<std::string>(expected.begin(),expected.begin()+fail+1)&&
                   failing.labels<=1,
               "任一后端调用异常原样传播，保留已执行前缀，不自动恢复/重放或宣称GUI副作用回滚");
+    }
+    // UTF-16载体oracle逐单元给定；固定测宽回执仍是夹具，不认证这些字符的真实字形宽度。
+    const std::vector<std::u16string> units{u"中文",u"\U0001F600",
+        std::u16string{static_cast<char16_t>(0xd83d)},std::u16string{static_cast<char16_t>(0xde00)},
+        std::u16string{u'A',0,u'B'}};
+    for(const auto &text:units) {
+        auto unicode=input;unicode.translated_text=text;RecordingGuiTextBackend recorded;recorded.converted_output=text;
+        const auto p=steam_draw_ordinary_gui_text(unicode,recorded);
+        check(p&&recorded.trace==expected&&recorded.measured_text==text&&recorded.converted_text==text&&
+                  recorded.labelled_text==text&&recorded.labels==1&&
+                  p->rectangle==std::array<float,4>{91.F,33.F,1.F,48.F},
+              "中文/完整代理对/孤立高低代理及内嵌NUL逐代码单元传测宽、转换和Label，不补FFFD或在NUL截断");
+    }
+    std::u16string maximum(4094,u'中');maximum+=u"\U0001F600";
+    for(const bool converted_boundary:std::array<bool,2>{false,true}) {
+        auto boundary=input;boundary.translated_text=converted_boundary?u"A":maximum;
+        RecordingGuiTextBackend accepted;accepted.converted_output=maximum;
+        check(steam_draw_ordinary_gui_text(boundary,accepted)&&accepted.trace==expected&&accepted.labels==1&&
+                  accepted.measured_text==boundary.translated_text&&accepted.converted_text==boundary.translated_text&&
+                  accepted.labelled_text==maximum&&accepted.labelled_text.size()==4096,
+              "原串/转换串各4096 UTF16单元允许，末尾完整代理对计2而非UTF8字节数或单码点");
+        RecordingGuiTextBackend denied;
+        if(converted_boundary)denied.converted_output=maximum+u"A";
+        else boundary.translated_text=maximum+u"A";
+        check(!steam_draw_ordinary_gui_text(boundary,denied)&&denied.labels==0&&
+                  denied.trace==(converted_boundary?
+                      std::vector<std::string>(expected.begin(),expected.begin()+12):std::vector<std::string>{})&&
+                  (converted_boundary?(denied.converted_text==u"A"&&denied.colors.size()==1):denied.colors.empty()),
+              "原串4097在后端前拒绝；转换串4097在实际转换后拒绝，不请求group/Label或伪装颜色/字体副作用回滚");
     }
 }
 // 字体请求数值与本地化准入独立于字形后端，不以渲染截图生成这些期望值。

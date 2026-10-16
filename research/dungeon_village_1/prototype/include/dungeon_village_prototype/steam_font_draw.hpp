@@ -10,7 +10,7 @@ using SteamGuiTextColor=std::array<float,4>;
 enum class SteamGuiTextAdmission { unverified, prepared_ordinary_gui };
 struct SteamGuiTextInput {
     SteamGuiTextAdmission admission{SteamGuiTextAdmission::unverified};
-    std::string translated_text; // 已通过上游翻译/TextFormat/临时字号；Chanakya转换仍在本链内。
+    std::u16string translated_text; // 原System.String代码单元；上游翻译/TextFormat已完成。
     float x{}, y{}; // BeginRenderMatrix后坐标，不再次平移原始世界坐标。
     std::int32_t anchor{0x11}, used_size{}, font_scale{};
     bool font_scale_offset{}, font_keep{};
@@ -23,7 +23,7 @@ struct SteamGuiTextInput {
 class SteamGuiTextBackend {
 public:
     virtual ~SteamGuiTextBackend()=default;
-    virtual float string_width_f(const std::string &)=0;
+    virtual float string_width_f(const std::u16string &)=0;
     // 原基准Rect(0,0,width,height)经GetTransRectGUI后的实际宽/高。
     virtual std::array<float,2> reference_rect_size(float width,float height)=0;
     virtual void copy_font_to_gui_style()=0; // 当前Font.GetFont -> GUIStyle.font。
@@ -34,9 +34,9 @@ public:
     virtual std::array<float,2> map_screen_point(float x,float y)=0;
     virtual SteamGuiTextColor normal_text_color()=0;
     virtual void set_normal_text_color(const SteamGuiTextColor &)=0;
-    virtual std::string unicode_to_chanakya(const std::string &)=0;
+    virtual std::u16string unicode_to_chanakya(const std::u16string &)=0;
     virtual void update_gui_group()=0;
-    virtual void label(const std::array<float,4> &rectangle,const std::string &)=0;
+    virtual void label(const std::array<float,4> &rectangle,const std::u16string &)=0;
     virtual void clear_skin_font_if_nonnull()=0; // 原尾部清null，不能恢复入场前font。
 };
 struct SteamGuiTextResult {
@@ -45,7 +45,10 @@ struct SteamGuiTextResult {
 };
 // 执行Graphics.DrawString正常GUI局部链，不是全部DrawString入口或世界事务。
 // 准入要求实际isGUI=true/useFontTexture=false/glRender=false及上游已准备完成。
-// 正常域：U1..65536，输入及转换后文本各<=4096字节；消费的x/y、映射点有限且
+// 字符串始终为UTF-16，允许原逐单元Substring留下的单独代理单元和内嵌NUL；
+// 不在此转窄串、补U+FFFD或将代码单元合为码点。真实GUI/native桥须另定编码边界。
+// 正常域：U1..65536，输入及转换后文本各<=4096 UTF-16单元（沿TextLayout预算）；
+// 消费的x/y、映射点有限且
 // 绝对值<=65536，测宽0..65536、参考尺寸(0,65536]，实际比率/中间值有限且sy>0。
 // clip原点允许全int32；最终Label坐标不受65536限制，高度2B可至131072。
 // TOP字号补偿才要求F非0，保留int32回卷与整数除法。退化/越界显式拒绝，不夹分母。

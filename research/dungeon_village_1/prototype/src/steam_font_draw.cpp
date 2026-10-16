@@ -1,5 +1,6 @@
 // 固定Steam Graphics.DrawString RVA7663D0的正常GUI阶段10766804–107674D9。
 // Source实际供给字体/矩阵/GUI及绘制；本层保持查询与副作用顺序，不模拟原生字形。
+// 测宽、字符转换与Label均保留原UTF-16单元，不在此修补被渐显切开的代理对。
 #include "dungeon_village_prototype/steam_font_draw.hpp"
 
 #include <cmath>

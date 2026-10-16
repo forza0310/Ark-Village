@@ -96,6 +96,8 @@ raw19的`MakeNoMymenu RVA315A70`沿MakeDialog(text,“はい\tいいえ”)再�
 
 原三类工厂提供主要载荷，原Init没有专属内容初始化；维护raw11的life0初始化仅建立现有phase／main镜像，不能倒推原Init新增业务。共同wait／生命周期、SDK及原OS输入不由这些body局部代替。DEBUG额外按键不加入普通玩家输入，不把未核路径声明为不可达；维护字体仍为适配。
 
+11的无option命令与15的Create2命令保留原调用请求，登记后ID2还会追加SAME_ID；surface命令区、UP产生逻辑键及页面输入guard分别见[公共触摸合同](STEAM_INTERACTIONS.md#无矩形命令触摸与登记后flags)，不在纯计划预烘最终flags或猜OS全屏范围。
+
 <a id="steam-human-unlock"></a>
 ### Steam人物解锁通知59
 

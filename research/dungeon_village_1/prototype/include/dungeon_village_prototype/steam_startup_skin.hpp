@@ -78,7 +78,8 @@ struct SteamStartupTouch {
     int component{}, value{};
     std::optional<std::array<int, 4>> rectangle;
     std::optional<std::size_t> image_draw; // 箭头由原SEB helper注册，引用其图块，不猜热区尺寸。
-    int option{}; // 普通行无option；raw20全局KEYCLICK明确为2。
+    int option{}; // 原显式TouchOption.Create(flags)参数；0也可表示无option重载，不是登记后的最终flags。
+    // 原_addTouch的ID2另加SAME_ID1024；raw20的ID_KEYCLICK4显式传MIN_PRIORITY2。
 };
 struct SteamStartupSkinPlan {
     std::array<int, 2> origin{};

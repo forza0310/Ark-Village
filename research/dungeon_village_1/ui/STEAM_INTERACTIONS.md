@@ -226,6 +226,14 @@ Unity KeyCode 经允许的焦点Keypad写入 `1 << keyID`，再由 `DecideKeySta
 物理键到上述基础逻辑位已有静态证据；实际窗口投递、全部手柄别名和每个页面的返回软件键仍分别待验证。
 产品消费时应保留“选择／确认／返回”语义，并按目标平台适配输入；Steam键位不直接赋给固定APK。
 
+### 无矩形命令触摸与登记后flags
+
+2026-10-16沿11与59的真实尾部有限交叉。raw11调用`AddTouch(2)`重载RVA239EE0；raw59／NEWS15／怪物通知的相关尾部显式`TouchOption.Create(2)`后调用另一重载。这里的2是`FLAG_MIN_PRIORITY`，不是组件号或确认键；`ID_DLGCMD=2`、raw20的`ID_KEYCLICK=4`与此flags分属不同域。raw20尾`10356DB2–10356DDA`确实以组件4、value22、Create(2)登记，不应将公共注释读成KEYCLICK组件号为2。
+
+两种命令重载都向`_addTouch RVA23E010`传null图像、x／y／value0和虚拟GetGameWidth／Height。`1023E0B5–1023E0F2`的ID2分支在option为null时新建TouchOption，随后无条件追加`FLAG_SAME_ID=1024`：11最终flags1024，59及上述Create2命令最终1026。当前纯计划的`SteamStartupTouch.option`保存**调用前参数**，0也可表示未显式传option，不是最终flags；保持helper层级，不能预先把所有2写成1026。ID2默认margin六项`{31,31,18,18,1,1}`由cctor `102402C7–10240303`安装，`1023F1AD–1023F1ED`扩边后再经`1023F4A7–1023F534`屏幕限制、surface比例及裁边。因此无矩形DTO、虚拟视口基础范围和最终OS命中范围不能混称“全屏点击”；研究窗口只映射已明确的确认语义，物理投递仍待证。
+
+ID2的实际事件入口`1023C9CD`在ENTER2／UP1写选择值，只有UP1才于`1023CA22–1023CA33`默认发`KeyClick(0x100000)`；option自定义keys非空时采用首键。这与ID_KEYCLICK的CLICK5分支不同，也不是“按下即确认”。后续`CheckKeyPulse`于`10747EA1`先查`CheckInputGuard 107479E0`：任意键保护、未到期时间或顶页仍在保护名单均可在查询底层脉冲前返回false，模式4退休页另从名单移除。登记命令区、产生逻辑KeyClick、本轮页面真正消费确认是三个时点；本次没有认证完整命中优先级或OS动态。
+
 ### 虚拟屏幕光标：模式、位置与合成Touch
 
 2026-10-14补固定Steam2.56具名静态分支，不操作窗口。这里的`screenCursor_`是Canvas内部虚拟光标，区别于物理鼠标／Unity Touch。真正生产者为`DecideKeyState` RVA`748780`经`RunOnUiThread(wait=true)`提交的`<DecideKeyState>b__325_0` RVA`752BB0`；实际委托槽`110FB634`独立解码为metadata method7605，与具名入口交叉。`OnInputUpdate`的物理Touch循环不能代替这条生产链。

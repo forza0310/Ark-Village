@@ -68,6 +68,7 @@ template <class Owner> struct WorldRuntimeAdapter {
     std::function<std::optional<OwnedWorldSceneStep<Owner>>(const Owner &, const WorldSceneCall &)>
         scene_other;
     bool observe_spell_consumption{};
+    bool observe_physical_consumption{};
 };
 
 namespace world_runtime_detail {
@@ -237,6 +238,7 @@ prepare_owned_world_runtime_domain(const Owner &state, const WorldScheduleCall &
     }
     auto nonactors = adapter.nonactors;
     nonactors.observe_spell_consumption=adapter.observe_spell_consumption;
+    nonactors.observe_physical_consumption=adapter.observe_physical_consumption;
     nonactors.other = {}; // 到访/人气/设施已在上方实际路由，禁止互相递归兜底。
     if (!adapter.read_random || !adapter.write_random || !nonactors.read_routes ||
         !nonactors.write_routes)
@@ -368,6 +370,7 @@ WorldRuntimeResult<Owner> prepare_owned_world_runtime_with_calendar(
             next = std::move(*prefix);
             auto actors = adapter.actors;
             actors.observe_spell_consumption=adapter.observe_spell_consumption;
+            actors.observe_physical_consumption=adapter.observe_physical_consumption;
             if (!adapter.read_random || !adapter.write_random || !actors.read_routes ||
                 !actors.write_routes)
                 return {};

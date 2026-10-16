@@ -185,6 +185,9 @@ void configure_startup_world_runtime_nonactor_adapter(ref::WorldRuntimeAdapter<S
         if (weapon == s.rules->equipment.end())
             return {};
         input.current_weapon_kind = weapon->battle.kind;
+        // 原N()在碰撞轮解析当前装备；不能据此倒填箭矢的发射武器。
+        if (caster->kind == ref::ActorKind::human)
+            input.resolved_weapon_definition = weapon->shop.id;
         input.drop_selection = startup_world_drop_selection(s, caster->id);
         if (!input.drop_selection)
             return {};

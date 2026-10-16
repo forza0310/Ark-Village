@@ -182,6 +182,18 @@ void drop_chain() {
               state.battle.actors.at({2}).hp.target == 1 && state.battle.objects.empty(),
           "actual direct lethal chain: damage span, chance100, equipment100, rank60, nonempty "
           "selection");
+    PrivateDraw observed_draw({0, 0, 99, 30, 0});
+    input.draw = observed_draw.provider();
+    input.observe_physical_consumption = true;
+    input.resolved_weapon_definition = 37;
+    const auto observed = prepare_world_attack_control(state, input);
+    check(observed.candidate && result.candidate->physical_consumption.empty() &&
+              observed.candidate->physical_consumption.size() == 1 &&
+              observed_draw.bounds == draw.bounds && observed_draw.stream.draws() == draw.stream.draws() &&
+              observed.candidate->objects == result.candidate->objects &&
+              observed.candidate->state.battle.actors.at({2}).hp.target ==
+                  result.candidate->state.battle.actors.at({2}).hp.target,
+          "physical observation leaves lethal draw order, drop allocation and target result unchanged");
     for (bool first_visit : {false, true}) {
         auto guarded = state;
         guarded.battle.actors.at({1}).miss = !first_visit;
@@ -262,12 +274,26 @@ void projectiles() {
     check(result.candidate && result.candidate->step.damage_target == CharacterId{2} &&
               contact.bounds == std::vector<int>{24},
           "arrow actual collision derives current physical base120/span24, not launch jitter");
+    PrivateDraw observed_contact({0});
+    input.draw = observed_contact.provider();
+    input.observe_physical_consumption = true;
+    const auto observed = prepare_world_projectile(state, input);
+    check(observed.candidate && result.candidate->physical_consumption.empty() &&
+              observed.candidate->physical_consumption.size() == 1 &&
+              !observed.candidate->physical_consumption.front().weapon_definition &&
+              observed.candidate->physical_consumption.front().prior_launch_unavailable &&
+              observed_contact.bounds == contact.bounds &&
+              observed_contact.stream.draws() == contact.stream.draws() &&
+              observed.candidate->state.battle.actors.at({2}).hp.target ==
+                  result.candidate->state.battle.actors.at({2}).hp.target,
+          "arrow observation preserves physical random cursor and does not infer missing current weapon identity");
     auto far = state;
     far.battle.actors.at({2}).position.x = 1000;
     PrivateDraw no_contact({0});
     input.draw = no_contact.provider();
     result = prepare_world_projectile(far, input);
-    check(result.candidate && !result.candidate->step.damage_target && no_contact.bounds.empty(),
+    check(result.candidate && !result.candidate->step.damage_target && no_contact.bounds.empty() &&
+              result.candidate->physical_consumption.empty(),
           "travelling projectile consumes no damage/drop RNG before collision");
 }
 void group_before_event() {

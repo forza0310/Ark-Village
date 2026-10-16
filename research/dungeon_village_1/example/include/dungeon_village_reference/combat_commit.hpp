@@ -57,6 +57,8 @@ struct WorldAttackInput {
     WorldCombatEventConsumer event{};           // 原hit内131/217同步脚本，typed全球/I写回。
     WorldCombatFacingConsumer facing_for{}; // 仅真实发射目标确定之后调用，不能按旧j复用。
     bool observe_spell_consumption{};
+    bool observe_physical_consumption{};
+    std::optional<int> resolved_weapon_definition{}; // 本次攻击入口已解析的N()身份；不按属性反查。
 };
 struct WorldAttackCandidate {
     AiRewardState state;
@@ -70,6 +72,7 @@ struct WorldAttackCandidate {
     std::vector<WorldAttackRequest> requests; // Display/sound/face-position adapters stay explicit.
     std::optional<std::vector<std::array<int, 3>>> popularity_queue{};
     std::vector<SpellConsumptionReceipt> spell_consumption{};
+    std::vector<PhysicalConsumptionReceipt> physical_consumption{};
 };
 struct WorldAttackResult {
     AiRewardError error{AiRewardError::none};

@@ -72,6 +72,24 @@ bool hit(WorldAttackCandidate &c, const WorldAttackInput &i, CharacterId target)
     if (!damage.candidate)
         return false;
     c.physical_damage = damage.candidate;
+    std::optional<PhysicalConsumptionReceipt> observed;
+    if (i.observe_physical_consumption) {
+        const auto &attacker = c.state.battle.actors.at(i.actor);
+        const auto &victim = *resolve(c.state, target);
+        PhysicalConsumptionReceipt receipt;
+        receipt.kind = PhysicalConsumptionKind::melee;
+        receipt.attacker = i.actor;
+        receipt.attacker_definition = attacker.definition;
+        receipt.aimed_target = receipt.actual_target = target;
+        receipt.target_definition = victim.definition;
+        if (attacker.kind == ActorKind::human)
+            receipt.weapon_definition = i.resolved_weapon_definition;
+        receipt.amount = damage.candidate->value;
+        receipt.target_delta = SpellLocalTargetDelta{
+            victim.hp.target, 0, victim.damage_total, 0, victim.hit_count, 0,
+            victim.state_counter, 0};
+        observed = std::move(receipt);
+    }
     const auto previous_object = c.state.battle.next_object_id;
     const bool retired = !c.state.battle.actors.count(target);
     if (retired)
@@ -92,6 +110,16 @@ bool hit(WorldAttackCandidate &c, const WorldAttackInput &i, CharacterId target)
         return false;
     c.hit = result.candidate->hit;
     c.state.battle = result.candidate->state;
+    if (observed) {
+        const auto &after = c.state.battle.actors.at(target);
+        auto &delta = *observed->target_delta;
+        delta.hp_after = after.hp.target;
+        delta.damage_after = after.damage_total;
+        delta.hits_after = after.hit_count;
+        delta.down_counter_after = after.state_counter;
+        observed->landed = c.hit->landed;
+        c.physical_consumption.push_back(std::move(*observed));
+    }
     if (retired) {
         c.state.retired_actors.at(target) = c.state.battle.actors.at(target);
         c.state.battle.actors.erase(target);
@@ -399,6 +427,17 @@ WorldAttackResult prepare_world_attack_control(const AiRewardState &s, const Wor
             !launch(c, i.actor, *c.target, ProjectileKind::arrow,
                     i.facing_for ? i.facing_for(i.actor, *c.target) : i.facing))
             return fail(AiRewardError::preparation_failed);
+        if (frame.candidate->request_arrow && i.observe_physical_consumption) {
+            PhysicalConsumptionReceipt receipt;
+            receipt.kind = PhysicalConsumptionKind::arrow_launch;
+            receipt.attacker = i.actor;
+            receipt.attacker_definition = original.definition;
+            receipt.aimed_target = c.target;
+            receipt.target_definition = resolve(c.state, *c.target)->definition;
+            receipt.weapon_definition = i.resolved_weapon_definition;
+            receipt.projectile = c.projectile;
+            c.physical_consumption.push_back(std::move(receipt));
+        }
     } else if (opcode == 15 || opcode == 16) {
         if (original.kind != ActorKind::human || !s.growth.count(original.definition))
             return fail(AiRewardError::invalid_input);

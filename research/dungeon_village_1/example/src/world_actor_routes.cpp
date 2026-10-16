@@ -606,6 +606,8 @@ WorldActorControlResult prepare_world_actor_control(const WorldActorRoutesState 
                                          r.candidate->requests.end());
             audit.spell_consumption.insert(audit.spell_consumption.end(),
                 r.candidate->spell_consumption.begin(), r.candidate->spell_consumption.end());
+            audit.physical_consumption.insert(audit.physical_consumption.end(),
+                r.candidate->physical_consumption.begin(), r.candidate->physical_consumption.end());
             if (i.presentation) {
                 if (r.candidate->hit)
                     for (const auto &request : r.candidate->hit->requests)

@@ -30,6 +30,21 @@ struct SpellConsumptionReceipt {
     std::optional<SpellLocalTargetDelta> target_delta;
     bool prior_launch_unavailable{}; // 原type2无effect/父ID，禁止从旧档补造历史。
 };
+// 物理消费的瞬态局部事实；箭矢命中只观察碰撞时当前N()，不补造发射武器历史。
+enum class PhysicalConsumptionKind { melee, arrow_launch, arrow_hit };
+struct PhysicalConsumptionReceipt {
+    PhysicalConsumptionKind kind{};
+    CharacterId attacker;
+    std::optional<int> attacker_definition;
+    std::optional<CharacterId> aimed_target, actual_target;
+    std::optional<int> target_definition; // launch为瞄准定义，其它为实际命中消费者目标定义。
+    std::optional<int> weapon_definition; // 仅来自本次既有解析点；怪物或未知身份留空。
+    std::optional<std::uint64_t> projectile;
+    std::optional<int> amount; // 实际命中消费者所用伤害，不等同HP净差。
+    std::optional<bool> landed;
+    std::optional<SpellLocalTargetDelta> target_delta;
+    bool prior_launch_unavailable{}; // 箭矢原载荷无发射装备，当前装备不能倒填历史。
+};
 struct RewardHumanDefinition {
     HumanDefinitionStatsInput definition;
     HumanDerivedStats derived;
@@ -200,6 +215,8 @@ struct WorldProjectileInput {
     WorldCombatExpressionConsumer expression{};
     WorldCombatEventConsumer event{}; // 致命命中131/217真实原位置，非事后request遍历。
     bool observe_spell_consumption{};
+    bool observe_physical_consumption{};
+    std::optional<int> resolved_weapon_definition{}; // 本次碰撞入口既有N()解析身份，不是发射身份。
 };
 struct WorldProjectileCandidate {
     AiRewardState state;
@@ -210,6 +227,7 @@ struct WorldProjectileCandidate {
     std::vector<std::uint64_t> spawned_objects;
     std::optional<std::vector<std::array<int, 3>>> popularity_queue{};
     std::vector<SpellConsumptionReceipt> spell_consumption{};
+    std::vector<PhysicalConsumptionReceipt> physical_consumption{};
 };
 struct WorldProjectileResult {
     AiRewardError error{AiRewardError::none};

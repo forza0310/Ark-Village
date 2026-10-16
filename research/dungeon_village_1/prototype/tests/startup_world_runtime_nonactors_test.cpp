@@ -40,7 +40,7 @@ StartupWorldRuntimeState fixture() {
     s.shop_actors.emplace(human.id, ref::ShopActorRecord{});
     return s;
 }
-void committed_spell_receipts() {
+void committed_combat_receipts() {
     auto s=fixture();
     s.scripts.pages.front().lifecycle=3;
     s.scene.scene_state=2; // 已有focus分支夹具避开新局教程；不声称自然施法或学习。
@@ -77,15 +77,57 @@ void committed_spell_receipts() {
         receipt.target_delta->damage_before==9&&receipt.target_delta->damage_after==16&&
         receipt.target_delta->hits_before==4&&receipt.target_delta->hits_after==5,
         "full outer success publishes exact local delayed hit after retained references can retire, without reconstructing launch history");
+    // 活跃怪物保留遭遇引用以免被原尾段删除；状态7隔离动作，不启动额外遭遇调度。
+    auto physical=fixture();physical.scripts.pages.front().lifecycle=3;physical.scene.scene_state=2;
+    auto &physical_ai=physical.scene.world.world.ai;
+    auto &caster=physical_ai.battle.actors.at({1});caster.control.flags=2;
+    caster.capacity=500;caster.hp=*ref::prepare_hp_assignment(caster.hp,500).candidate;
+    physical_ai.retired_actors.emplace(caster.id,caster);physical_ai.battle.actors.erase(caster.id);
+    auto &target=physical_ai.battle.actors.at({2});target.control.state=7;target.control.flags=2;
+    target.encounter=99;ref::RewardEncounter retained_encounter;retained_encounter.runtime.id=99;
+    retained_encounter.members={target.id};physical_ai.retired_encounters.emplace(99,retained_encounter);
+    target.capacity=500;target.hp=*ref::prepare_hp_assignment(target.hp,500).candidate;
+    target.position=target.decision_start={20,0,0};
+    physical_ai.contexts.at(target.id)={{0,0},false,{}, {},true,{1,1}};
+    physical_ai.monster_order={target.id};physical_ai.next_actor_id=3;
+    physical.scene.world.world.actors.emplace(target.id,ref::RescueActorContext{});
+    physical_ai.growth.at(0).derived.combat[1]=100;
+    physical_ai.monster_growth.at(0).base_defense=50;
+    const auto arrow=ref::prepare_projectile(ref::ProjectileKind::arrow,{1},{2},{},{1000,0,0},0);
+    check(arrow.candidate.has_value(),"physical whole-runtime fixture creates an actual arrow");
+    physical_ai.projectiles.emplace(77,*arrow.candidate);physical_ai.projectile_order={77};
+    physical_ai.next_projectile_id=78;
+    const auto physical_before=startup_world_state_digest(physical);
+    const auto plain_physical=prepare_startup_world_runtime(physical);
+    const auto hit=prepare_startup_world_runtime(physical,false,nullptr,true);
+    if(!plain_physical.candidate||!hit.candidate)
+        throw std::runtime_error("physical receipt runtime fixture rejected: "+std::to_string(int(hit.error))+"/"+
+            std::to_string(int(hit.scene_error))+"/"+std::to_string(int(hit.world_error)));
+    check(plain_physical.physical_consumption.empty()&&hit.spell_consumption.empty()&&
+        hit.physical_consumption.size()==1&&
+        startup_world_state_digest(*plain_physical.candidate)==startup_world_state_digest(*hit.candidate)&&
+        startup_world_state_digest(physical)==physical_before&&hit.candidate->scene.random.draws()>0,
+        "independent physical observation defaults off and preserves exact complete Owner and shared random");
+    const auto &physical_receipt=hit.physical_consumption.front();
+    check(physical_receipt.kind==ref::PhysicalConsumptionKind::arrow_hit&&
+        physical_receipt.attacker==ref::CharacterId{1}&&physical_receipt.actual_target==ref::CharacterId{2}&&
+        physical_receipt.projectile==77&&physical_receipt.prior_launch_unavailable&&
+        physical_receipt.weapon_definition==physical.shop_actors.at({1}).weapon&&physical_receipt.landed==true&&
+        physical_receipt.amount&&*physical_receipt.amount>0&&physical_receipt.target_delta&&
+        physical_receipt.target_delta->hp_before==500&&
+        physical_receipt.target_delta->hp_after==500-*physical_receipt.amount&&
+        hit.candidate->scene.world.world.ai.battle.actors.at({2}).hp.target==physical_receipt.target_delta->hp_after,
+        "whole-runtime physical vector forwards current weapon identity and actual committed arrow HP consumer");
     auto invalid=s;invalid.scene.world.map_flags.pop_back();
-    const auto rejected=prepare_startup_world_runtime(invalid,true);
-    check(!rejected.candidate&&rejected.spell_consumption.empty()&&rejected.checkpoints.empty(),
-        "failed whole-runtime candidate never exposes spell success or checkpoints");
+    const auto rejected=prepare_startup_world_runtime(invalid,true,nullptr,true);
+    check(!rejected.candidate&&rejected.spell_consumption.empty()&&rejected.physical_consumption.empty()&&
+        rejected.checkpoints.empty(),"failed whole-runtime candidate never exposes combat success or checkpoints");
     StartupSession initial;
     StartupWorldRuntimeSession session(initial.state(),ref::WorldRandomStream::from_java_seed(17));
     session.set_paused(true);
-    const auto paused=session.update(true);
-    check(paused.candidate&&paused.spell_consumption.empty()&&session.state().simulation_steps==0,
+    const auto paused=session.update(true,nullptr,true);
+    check(paused.candidate&&paused.spell_consumption.empty()&&paused.physical_consumption.empty()&&
+        session.state().simulation_steps==0,
         "session observation switch does not manufacture consumption while framework is paused");
 }
 void contact_and_spells() {
@@ -473,7 +515,7 @@ int main(int argc, const char **argv) {
             if (argc == 2 && std::string(argv[1]) == "projection_benchmark") return projection_benchmark();
             throw std::runtime_error("未知nonactor测试模式");
         }
-        committed_spell_receipts();
+        committed_combat_receipts();
         contact_and_spells();
         hit_object_and_projection();
         actor_presentation_and_frame_cache();

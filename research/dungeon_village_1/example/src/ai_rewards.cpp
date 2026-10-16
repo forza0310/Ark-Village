@@ -757,6 +757,25 @@ WorldProjectileResult prepare_world_projectile(const AiRewardState &s,
                 victim->state_counter, 0};
             observed_hit = std::move(receipt);
         }
+        std::optional<PhysicalConsumptionReceipt> observed_physical;
+        if (i.observe_physical_consumption && p.kind == ProjectileKind::arrow &&
+            c.step.physical_damage) {
+            PhysicalConsumptionReceipt receipt;
+            receipt.kind = PhysicalConsumptionKind::arrow_hit;
+            receipt.attacker = p.caster;
+            receipt.attacker_definition = caster->definition;
+            receipt.aimed_target = p.original_target;
+            receipt.actual_target = *c.step.damage_target;
+            receipt.target_definition = victim->definition;
+            receipt.weapon_definition = i.resolved_weapon_definition;
+            receipt.projectile = i.projectile;
+            receipt.amount = damage;
+            receipt.prior_launch_unavailable = true;
+            receipt.target_delta = SpellLocalTargetDelta{
+                victim->hp.target, 0, victim->damage_total, 0, victim->hit_count, 0,
+                victim->state_counter, 0};
+            observed_physical = std::move(receipt);
+        }
         // Temporarily project retained actors for the shared hit consumer, then restore ownership.
         std::vector<CharacterId> retained;
         for (const auto id : {p.caster, *c.step.damage_target})
@@ -798,6 +817,16 @@ WorldProjectileResult prepare_world_projectile(const AiRewardState &s,
             delta.down_counter_after = after.state_counter;
             observed_hit->landed = c.hit->landed;
             c.spell_consumption.push_back(std::move(*observed_hit));
+        }
+        if (observed_physical) {
+            const auto &after = c.state.battle.actors.at(*c.step.damage_target);
+            auto &delta = *observed_physical->target_delta;
+            delta.hp_after = after.hp.target;
+            delta.damage_after = after.damage_total;
+            delta.hits_after = after.hit_count;
+            delta.down_counter_after = after.state_counter;
+            observed_physical->landed = c.hit->landed;
+            c.physical_consumption.push_back(std::move(*observed_physical));
         }
         if (c.state.battle.next_object_id != old_next_object)
             c.spawned_objects.push_back(old_next_object);

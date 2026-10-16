@@ -53,6 +53,7 @@ struct WorldScheduleStep {
     WorldScheduleState state;
     WorldScheduleDisposition disposition{WorldScheduleDisposition::keep};
     std::vector<SpellConsumptionReceipt> spell_consumption{};
+    std::vector<PhysicalConsumptionReceipt> physical_consumption{};
 };
 using WorldScheduleConsumer = std::function<std::optional<WorldScheduleStep>(
     const WorldScheduleState &, const WorldScheduleCall &, const CombatInfluenceCandidate &)>;
@@ -78,6 +79,7 @@ struct WorldScheduleCandidate {
     std::vector<WorldScheduleCall> calls;
     std::vector<WorldScheduleEffects> effects;
     std::vector<SpellConsumptionReceipt> spell_consumption{}; // 按实际调用序，整轮失败不返回。
+    std::vector<PhysicalConsumptionReceipt> physical_consumption{};
 };
 struct WorldScheduleResult {
     WorldScheduleError error{WorldScheduleError::none};
@@ -102,6 +104,7 @@ template <class Owner> struct OwnedWorldScheduleStep {
     Owner state;
     WorldScheduleDisposition disposition{WorldScheduleDisposition::keep};
     std::vector<SpellConsumptionReceipt> spell_consumption{};
+    std::vector<PhysicalConsumptionReceipt> physical_consumption{};
 };
 template <class Owner> struct OwnedWorldScheduleAdapter {
     std::function<const WorldScheduleState &(const Owner &)> read;
@@ -140,7 +143,8 @@ prepare_owned_world_schedule(const Owner &state, const WorldScheduleInput &input
                 return {};
             scratch = std::move(step->state);
             return WorldScheduleStep{adapter.read(scratch), step->disposition,
-                                     std::move(step->spell_consumption)};
+                                     std::move(step->spell_consumption),
+                                     std::move(step->physical_consumption)};
         });
     if (!result.candidate)
         return {result.error, {}, {}};

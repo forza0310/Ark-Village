@@ -244,6 +244,32 @@ void drop_created_by_control_runs_same_round() {
               owner.random.draws() == 0,
           "created drop and all source hit/drop/normal-bn draws stay private until complete world "
           "success");
+    auto observed_actors = actors;
+    observed_actors.observe_physical_consumption = true;
+    const auto command = actors.command;
+    observed_actors.command = [&](const WorldActorRoutesState &current, CharacterId id,
+                                  const LegacyActorControl &op) {
+        auto input = command(current, id, op);
+        if (input && input->attack)
+            input->attack->resolved_weapon_definition = 37;
+        return input;
+    };
+    const auto observed = prepare_world_actor_schedule(owner, {}, observed_actors);
+    check(observed.state && observed.audit && result.audit &&
+              result.audit->physical_consumption.empty() &&
+              observed.audit->physical_consumption.size() == 1 &&
+              observed.audit->physical_consumption.front().kind == PhysicalConsumptionKind::melee &&
+              observed.audit->physical_consumption.front().weapon_definition == 37 &&
+              observed.state->random.draws() == result.state->random.draws() &&
+              observed.state->common.world.object_order == result.state->common.world.object_order &&
+              observed.state->common.world.ai.battle.actors.at({2}).hp.target ==
+                  result.state->common.world.ai.battle.actors.at({2}).hp.target,
+          "actual FIFO physical receipt passes actor step into whole-round audit without changing random or drop state");
+    check(std::count_if(observed.controls.begin(), observed.controls.end(), [](const auto &control) {
+              return control.physical_consumption.size() == 1 &&
+                     control.physical_consumption.front().weapon_definition == 37;
+          }) == 1,
+          "only the actual attack control candidate owns the forwarded physical receipt");
     auto border = owner;
     border.common.world.ai.encounters.at(3).runtime.center = {2, 2}; // upper row1含town边界(1,1)。
     const auto cancelled = prepare_world_actor_schedule(border, {}, actors);
@@ -254,7 +280,7 @@ void drop_created_by_control_runs_same_round() {
               cancelled.state->common.world.ai.battle.objects.at(1).counter == 1,
           "source upper-row town cancellation keeps same-round drop but does not draw normal "
           "spawn1000");
-    auto fail = actors;
+    auto fail = observed_actors;
     const auto actual = actors.other;
     fail.other =
         [actual](
@@ -262,7 +288,8 @@ void drop_created_by_control_runs_same_round() {
             const CombatInfluenceCandidate &field) -> std::optional<OwnedWorldScheduleStep<Owner>> {
         return call.stage == WorldScheduleStage::finalize ? std::nullopt : actual(s, call, field);
     };
-    check(!prepare_world_actor_schedule(owner, {}, fail).state &&
+    const auto rejected = prepare_world_actor_schedule(owner, {}, fail);
+    check(!rejected.state && !rejected.audit && rejected.controls.empty() &&
               owner.common.world.ai.battle.next_object_id == 1 &&
               owner.common.world.object_order.empty() &&
               owner.common.world.ai.battle.objects.empty() && owner.random.draws() == 0,

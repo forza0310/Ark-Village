@@ -254,7 +254,39 @@ void projectile_and_objects() {
           "shared physical24 actual collision consumes once; real sound/contact consumers execute");
     check(owner.random.draws() == 0 && owner.common.world.ai.battle.actors.at({2}).hp.target == 500,
           "nonactor template leaves original HP and random private until whole owner success");
+    auto observed_adapter = adapter();
+    observed_adapter.observe_physical_consumption = true;
+    const auto provider = observed_adapter.projectile;
+    observed_adapter.projectile = [&](const Owner &current, std::uint64_t id) {
+        auto input = provider(current, id);
+        input->resolved_weapon_definition = 37;
+        return input;
+    };
+    const auto observed = prepare_owned_world_nonactor_stage(
+        owner, {WorldScheduleStage::projectile, 9, {}}, field(), observed_adapter);
+    check(observed && result->physical_consumption.empty() &&
+              observed->physical_consumption.size() == 1 &&
+              observed->physical_consumption.front().kind == PhysicalConsumptionKind::arrow_hit &&
+              observed->physical_consumption.front().weapon_definition == 37 &&
+              observed->physical_consumption.front().prior_launch_unavailable &&
+              observed->physical_consumption.front().target_delta &&
+              observed->physical_consumption.front().target_delta->hp_after == 392 &&
+              observed->state.random.draws() == result->state.random.draws() &&
+              observed->state.visual == result->state.visual,
+          "owned nonactor adapter forwards physical receipt only after real consumers without extra random or output");
+    auto suppressed_adapter = observed_adapter;
+    suppressed_adapter.observe_physical_consumption = false;
+    suppressed_adapter.projectile = [&](const Owner &current, std::uint64_t id) {
+        auto input = provider(current, id);
+        input->observe_physical_consumption = true;
+        return input;
+    };
+    const auto suppressed = prepare_owned_world_nonactor_stage(
+        owner, {WorldScheduleStage::projectile, 9, {}}, field(), suppressed_adapter);
+    check(suppressed && suppressed->physical_consumption.empty(),
+          "outer physical observation gate suppresses provider-local observation");
     auto missing = adapter();
+    missing.observe_physical_consumption = true;
     missing.request = {};
     check(!prepare_owned_world_nonactor_stage(owner, {WorldScheduleStage::projectile, 9, {}},
                                               field(), missing),

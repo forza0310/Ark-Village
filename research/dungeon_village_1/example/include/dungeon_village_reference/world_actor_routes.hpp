@@ -125,6 +125,7 @@ struct WorldActorControlCandidate {
     std::vector<WorldMiscSoundRequest> sounds;
     std::vector<int> consumed_events;
     std::vector<SpellConsumptionReceipt> spell_consumption{}; // 本次成功FIFO的瞬态回执，非Owner。
+    std::vector<PhysicalConsumptionReceipt> physical_consumption{};
 };
 struct WorldActorControlResult {
     WorldActorRouteError error{WorldActorRouteError::none};

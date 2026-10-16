@@ -380,6 +380,9 @@ void projectile_world() {
         s.projectiles.emplace(10, *p.candidate);
         s.battle.actors.at({1}).miss = miss;
         auto observed = projectile_input(); observed.observe_spell_consumption = true;
+        observed.observe_physical_consumption = true;
+        observed.current_weapon_kind = 0;
+        observed.resolved_weapon_definition = 12; // 在途已换装备；只代表当前碰撞入口的N()。
         const auto c = prepare_world_projectile(s, observed);
         check(c.candidate && c.candidate->step.damage_target == CharacterId{2} &&
                   c.candidate->physical_damage->value == 120 && c.candidate->hit->landed == !miss &&
@@ -389,6 +392,20 @@ void projectile_world() {
               "arrow hits actual first collision not original, rederives damage/current miss; "
               "contact even miss");
         check(c.candidate->spell_consumption.empty(), "physical arrows never publish spell receipts");
+        check(c.candidate->physical_consumption.size() == 1,
+              "actual arrow collision publishes one physical consumer receipt even on miss");
+        const auto &receipt = c.candidate->physical_consumption.front();
+        check(receipt.kind == PhysicalConsumptionKind::arrow_hit &&
+                  receipt.attacker == CharacterId{1} && receipt.attacker_definition == 1 &&
+                  receipt.aimed_target == CharacterId{3} && receipt.actual_target == CharacterId{2} &&
+                  receipt.target_definition == 7 && receipt.weapon_definition == 12 &&
+                  receipt.projectile == 10 && receipt.amount == 120 && receipt.landed == !miss &&
+                  receipt.prior_launch_unavailable && receipt.target_delta &&
+                  receipt.target_delta->hp_before == 500 &&
+                  receipt.target_delta->hp_after == (miss ? 500 : 380) &&
+                  receipt.target_delta->damage_after == (miss ? 0 : 120) &&
+                  receipt.target_delta->hits_after == (miss ? 0 : 1),
+              "arrow receipt separates original aim from actual collision and never labels current weapon as launch history");
         check(s.projectiles.at(10).position.x == 0 && s.battle.actors.at({2}).hp.target == 500,
               "private projectile transaction doesn't mutate input owners");
     }
@@ -520,6 +537,7 @@ void projectile_world() {
     s.battle.actors.at({2}).hp.target = 1;
     auto invalid = projectile_input();
     invalid.drop_ticket.reset();
+    invalid.observe_physical_consumption = true;
     check(!prepare_world_projectile(s, invalid).candidate && s.projectiles.at(10).position.x == 0 &&
               s.battle.actors.at({2}).hp.target == 1,
           "late lethal sub-consumer failure discards projectile motion/deletion and target stats");
@@ -529,9 +547,10 @@ void projectile_world() {
     WorldProjectileInput missing;
     missing.projectile = 10;
     missing.observe_spell_consumption = true;
+    missing.observe_physical_consumption = true;
     c = prepare_world_projectile(s, missing);
     check(c.candidate && c.candidate->step.remove && c.candidate->state.projectiles.empty() &&
-              c.candidate->spell_consumption.empty(),
+              c.candidate->spell_consumption.empty() && c.candidate->physical_consumption.empty(),
           "missing original reference deletes before collision metadata/physical draws");
     for (const auto kind : {ProjectileKind::spell, ProjectileKind::delayed_damage}) {
         auto absent = s;

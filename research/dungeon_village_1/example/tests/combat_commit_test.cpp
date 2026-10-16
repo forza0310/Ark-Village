@@ -70,6 +70,8 @@ void human_windows() {
             auto i = input();
             i.weapon.kind = kind;
             i.observe_spell_consumption = true;
+            i.observe_physical_consumption = true;
+            i.resolved_weapon_definition = 37; // 本次解析身份夹具，不从weapon.kind反查目录。
             const auto r = prepare_world_attack_control(s, i);
             const bool direct = kind != 1 && counter >= 5 && counter <= 8;
             check(r.candidate && r.candidate->hit.has_value() == direct &&
@@ -77,6 +79,9 @@ void human_windows() {
                   "direct5..8 vs bow8 current-world consumption");
             check(r.candidate && r.candidate->spell_consumption.empty(),
                   "physical attacks and arrows never publish spell consumption");
+            check(r.candidate->physical_consumption.size() ==
+                      (direct || (kind == 1 && counter == 8) ? 1U : 0U),
+                  "only actual melee consumer or bow launch publishes physical receipt");
             if (direct)
                 check(r.candidate->state.battle.actors.at({2}).hp.target == 9927 &&
                           !r.candidate->state.battle.actors.at({1}).attack_armed,
@@ -85,6 +90,26 @@ void human_windows() {
                 check(r.candidate->state.battle.actors.at({2}).hp.target == 10000 &&
                           r.candidate->state.projectile_order.size() == 1,
                       "bow launch has no eager HP damage");
+            if (direct || (kind == 1 && counter == 8)) {
+                const auto &receipt = r.candidate->physical_consumption.front();
+                check(receipt.attacker == CharacterId{1} && receipt.attacker_definition == 1 &&
+                          receipt.aimed_target == CharacterId{2} && receipt.target_definition == 7 &&
+                          receipt.weapon_definition == 37 && !receipt.prior_launch_unavailable,
+                      "physical receipt retains actual parsed weapon and current actor identities");
+                if (direct)
+                    check(receipt.kind == PhysicalConsumptionKind::melee &&
+                              receipt.actual_target == CharacterId{2} && !receipt.projectile &&
+                              receipt.amount == 73 && receipt.landed == true && receipt.target_delta &&
+                              receipt.target_delta->hp_before == 10000 &&
+                              receipt.target_delta->hp_after == 9927 &&
+                              receipt.target_delta->hits_before == 0 && receipt.target_delta->hits_after == 1,
+                          "melee receipt freezes local consumer delta rather than claiming a launch");
+                else
+                    check(receipt.kind == PhysicalConsumptionKind::arrow_launch &&
+                              receipt.projectile == r.candidate->projectile && !receipt.actual_target &&
+                              !receipt.amount && !receipt.landed && !receipt.target_delta,
+                          "arrow launch reports aim and projectile without inventing impact facts");
+            }
             check(s.battle.actors.at({2}).hp.target == 10000 && s.projectiles.empty(),
                   "input unchanged after command preparation");
         }
@@ -93,17 +118,43 @@ void human_windows() {
     a.control.queue = {{14}};
     a.control.action_counter = 5;
     a.miss = true;
-    auto r = prepare_world_attack_control(s, input());
+    auto miss_input = input();
+    miss_input.observe_physical_consumption = true;
+    auto r = prepare_world_attack_control(s, miss_input);
     check(r.candidate && r.candidate->hit && !r.candidate->hit->landed &&
               !r.candidate->state.battle.actors.at({1}).attack_armed &&
               r.candidate->state.battle.actors.at({2}).hp.target == 10000,
           "miss still consumes ai, HP unchanged");
+    check(r.candidate->physical_consumption.size() == 1 &&
+              !r.candidate->physical_consumption.front().weapon_definition &&
+              r.candidate->physical_consumption.front().landed == false &&
+              r.candidate->physical_consumption.front().amount == 73 &&
+              r.candidate->physical_consumption.front().target_delta &&
+              r.candidate->physical_consumption.front().target_delta->hp_before == 10000 &&
+              r.candidate->physical_consumption.front().target_delta->hp_after == 10000 &&
+              r.candidate->physical_consumption.front().target_delta->hits_after == 0,
+          "miss is a real consumer, preserves computed amount and leaves unknown weapon identity empty");
     s = r.candidate->state;
     s.battle.actors.at({1}).control.action_counter = 6;
     auto i = input();
     i.physical_jitter.reset();
     r = prepare_world_attack_control(s, i);
     check(r.candidate && !r.candidate->hit, "already consumed ai needs no second damage ticket");
+    auto zero = fixture();
+    zero.battle.actors.at({1}).control.queue = {{14}};
+    zero.battle.actors.at({1}).control.action_counter = 5;
+    zero.growth.at(1).derived.combat[1] = 0;
+    zero.battle.actors.at({2}).control.flags |= 4096U;
+    auto zero_input = input();
+    zero_input.observe_physical_consumption = true;
+    const auto zero_hit = prepare_world_attack_control(zero, zero_input);
+    check(zero_hit.candidate && zero_hit.candidate->physical_consumption.size() == 1 &&
+              zero_hit.candidate->physical_consumption.front().amount == 0 &&
+              zero_hit.candidate->physical_consumption.front().landed == true &&
+              zero_hit.candidate->physical_consumption.front().target_delta &&
+              zero_hit.candidate->physical_consumption.front().target_delta->hp_after == 10000 &&
+              zero_hit.candidate->physical_consumption.front().target_delta->hits_after == 1,
+          "boost-rounded zero physical damage remains a landed hit with its actual local hit count");
     s = fixture();
     s.battle.actors.at({1}).control.queue = {{14}};
     s.battle.actors.at({1}).control.action_counter = 5;
@@ -123,6 +174,7 @@ void human_windows() {
     s.battle.actors.at({2}).hp.target = 1;
     i = input();
     i.drop_ticket.reset();
+    i.observe_physical_consumption = true;
     check(!prepare_world_attack_control(s, i).candidate && s.battle.actors.at({1}).attack_armed &&
               s.battle.actors.at({2}).hp.target == 1,
           "late lethal ticket failure rolls back attack-armed consumption and HP");
@@ -342,12 +394,20 @@ void monsters_and_setup() {
     s.battle.actors.at({2}).attack_destination = {300, 0, 0};
     s.battle.actors.at({2}).perceived_enemy = CharacterId{1};
     s.battle.actors.at({1}).control.state = 2;
-    r = prepare_world_attack_control(s, input({2}));
+    auto monster_input = input({2});
+    monster_input.observe_physical_consumption = true;
+    monster_input.resolved_weapon_definition = 37;
+    r = prepare_world_attack_control(s, monster_input);
     check(
         r.candidate && r.candidate->target == CharacterId{1} && r.candidate->hit &&
             r.candidate->state.battle.actors.at({2}).attack_position.x == 300 &&
             r.candidate->state.battle.actors.at({2}).position.x == 40,
         "preferred down target accepted in bl; hit uses previous au0 before new au300, n40 stays");
+    check(r.candidate->physical_consumption.size() == 1 &&
+              r.candidate->physical_consumption.front().attacker_definition == 7 &&
+              r.candidate->physical_consumption.front().actual_target == CharacterId{1} &&
+              !r.candidate->physical_consumption.front().weapon_definition,
+          "monster physical consumption never invents an equipped human weapon from caller metadata");
     s.battle.actors.at({2}).attack_position = {1000, 0, 0};
     s.contexts.at({1}).half_cell = {9, 9};
     s.battle.actors.at({1}).control.state = 1;

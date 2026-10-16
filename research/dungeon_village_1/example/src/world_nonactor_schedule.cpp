@@ -164,6 +164,7 @@ WorldNonactorResult prepare_world_nonactor_stage(const WorldNonactorScheduleStat
         if (!result.candidate)
             return failure();
         candidate.spell_consumption=result.candidate->spell_consumption;
+        candidate.physical_consumption=result.candidate->physical_consumption;
         routes.common.world.ai = result.candidate->state;
         if (result.candidate->popularity_queue)
             routes.common.popularity_queue = *result.candidate->popularity_queue;

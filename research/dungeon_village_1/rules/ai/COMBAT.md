@@ -186,6 +186,26 @@ miss仍请求接触效果并删除箭，不把命中失败解释为穿透。晚�
 
 launch的`target_definition`对应瞄准对象，其余对应实际对象；`amount`是保存伤害或原回复量，不能当最终HP差。没有目标、尚在等待、缺引用仅删除、地面空落地或任一后继失败均不伪造消费；物理箭不进入法术回执。四阶段按原调用顺序沿候选传到共同审计，再由最外层成功结果一次交付；只保留ID／局部数值，不保留实体引用。既有真实消费者及随机票序不变，回执是维护观察接口，不新增原规则、自然路线证据或原存档兼容。
 
+### 可选的实际物理攻击与武器归因
+
+物理观察与法术开关独立，`WorldAttackInput／WorldProjectileInput`及调度adapter的
+`observe_physical_consumption`默认false，由最外层覆盖。研究调用
+`prepare_startup_world_runtime(state,false,nullptr,true)`或`session.update(false,nullptr,true)`；
+成功结果的`physical_consumption`只含本轮真实消费者事实，不进入Owner／codec／玩家档。
+仍须完成完整外层提交后消费；第二轮、日历、表现或render-cache失败不发布回执／检查点。
+
+| kind | 局部入口与可用事实 | 武器身份与限制 |
+| --- | --- | --- |
+| melee | 控制14或怪物17的既有`hit`：实际攻击者／目标实例与定义、实际计算伤害、landed、HP目标／伤害累计／命中累计／倒地钟前后。miss与0伤也保留，amount不等于HP净差 | 只读本次攻击入口已经解析的武器；怪物或独立规则夹具无身份则留空，不按相同属性反查 |
+| arrow_launch | 控制14真正成功创建普通arrow：攻击者、当时瞄准对象／定义和projectile ID；actual／amount／landed／delta为空 | `weapon_definition`是此次发射时解析的N()身份；发射不认证命中 |
+| arrow_hit | 原arrow碰撞的唯一物理伤害／hit消费者：原aim与实际碰撞对象分开，附局部结果及projectile ID | 身份是**碰撞时当前N()武器**，不是发射时武器；`prior_launch_unavailable=true`。原箭载荷没有装备历史，途中换装或旧箭均不补造发射身份 |
+
+`resolved_weapon_definition`仅由原武器解析点顺带供给：人物攻击的`startup_world_routes::weapon`匹配正式装备表，
+非人物碰撞使用原current_weapon_kind的同一次匹配；不增加第二次N()查询、命中调用或随机抽取。
+`target_definition`在launch指aim，其余指actual。调用方如已收到同ID的launch可关联两次观察，
+不能把当前装备倒填到旧发射事实。普通箭无type1→type2父子链，故不伪造parent／child。
+候选失败仅返回错误；只输出ID与局部值，无实体根或持久历史。产品负责合法取得／装配与实际战斗后继认证。
+
 ### 武器窗口与动作端点分开
 
 来源`c/b.java:121–124,3520–3668`与既有低层`L46e→L61d`：当前武器p.h控制直接命中窗口，

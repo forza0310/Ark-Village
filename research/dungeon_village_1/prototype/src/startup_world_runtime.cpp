@@ -1133,7 +1133,8 @@ StartupWorldRuntimeError StartupWorldRuntimeSession::input_rank_page(std::uint64
     return input_startup_world_runtime_rank_page(state_,page,input);
 }
 StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s, bool observe_spell_consumption,
-                                                       const StartupCommerceItemInput *commerce_input) {
+                                                       const StartupCommerceItemInput *commerce_input,
+                                                       bool observe_physical_consumption) {
     if (commerce_input) {
         const auto page = std::find_if(s.scripts.pages.rbegin(), s.scripts.pages.rend(),
                                        [](const auto &p) { return p.lifecycle != 4; });
@@ -1426,13 +1427,17 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s, bool obs
     }
     // 固定原表和回调只读共享；Owner、随机及下方检查点收集器仍属于本次调用。
     // 公开adapter工厂仍返回独立值，诊断／测试对其修改不会污染这个缓存。
-    static const auto normal_adapter = startup_world_runtime_adapter();
-    static const auto observing_adapter = [] {
-        auto adapter=startup_world_runtime_adapter();
-        adapter.observe_spell_consumption=true;
-        return adapter;
+    static const auto adapters = [] {
+        std::array<ref::WorldRuntimeAdapter<State>, 4> variants;
+        for (std::size_t i = 0; i < variants.size(); ++i) {
+            variants[i] = startup_world_runtime_adapter();
+            variants[i].observe_spell_consumption = (i & 1U) != 0;
+            variants[i].observe_physical_consumption = (i & 2U) != 0;
+        }
+        return variants;
     }();
-    const auto &a=observe_spell_consumption?observing_adapter:normal_adapter;
+    const auto &a=adapters[(observe_spell_consumption ? 1U : 0U) |
+                           (observe_physical_consumption ? 2U : 0U)];
     std::vector<std::shared_ptr<const State>> checkpoints;
     const ref::WorldRuntimeCalendarConsumer<State> calendar_other =
         [&](const State &current, ref::WorldCalendarStage stage) -> std::optional<State> {
@@ -1456,15 +1461,21 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s, bool obs
     next.scripts.executing_page.reset(); // kairo/android/a/b.g的finally清j；检查点不保留回调根。
     next.simulation_steps += result.scene ? result.scene->begun_rounds : 0;
     std::vector<ref::SpellConsumptionReceipt> receipts;
+    std::vector<ref::PhysicalConsumptionReceipt> physical;
     if(observe_spell_consumption)
         for(auto &world:result.worlds)
             for(auto &receipt:world.spell_consumption)receipts.push_back(std::move(receipt));
+    if(observe_physical_consumption)
+        for(auto &world:result.worlds)
+            for(auto &receipt:world.physical_consumption)physical.push_back(std::move(receipt));
     return {StartupWorldRuntimeError::none, std::move(next), ref::WorldSceneError::none,
-            ref::WorldScheduleError::none, std::move(checkpoints),std::move(receipts)};
+            ref::WorldScheduleError::none, std::move(checkpoints),std::move(receipts),std::move(physical)};
 }
 StartupWorldRuntimeResult StartupWorldRuntimeSession::update(bool observe_spell_consumption,
-                                                            const StartupCommerceItemInput *commerce_input) {
-    auto result = prepare_startup_world_runtime(state_,observe_spell_consumption,commerce_input);
+                                                            const StartupCommerceItemInput *commerce_input,
+                                                            bool observe_physical_consumption) {
+    auto result = prepare_startup_world_runtime(state_,observe_spell_consumption,commerce_input,
+                                               observe_physical_consumption);
     if (result.candidate) {
         if (!update_startup_world_render_cache(*result.candidate))
             return {StartupWorldRuntimeError::missing_source,

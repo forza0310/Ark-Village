@@ -6,6 +6,8 @@
 
 [实际法术归因请求](../../../docs/reference/RESEARCH_REQUESTS.md#spell-consumption-receipts)已补默认关闭的非持久回执：`StartupWorldRuntimeSession::update(true)`成功后返回`spell_consumption`，分别记录真实launch／contact／delayed_hit／healing及局部目标槽／累计前后值。完整候选转发、第二轮／日历／render-cache失败拒绝及字段限制见[主责合同](../rules/ai/COMBAT.md#spell-consumption-receipts)；Q槽是实际选择，不代表学习或职业来源。原type2没有effect／父ID／原瞄准，保留gap，不改原Owner／档案字段，也不替产品执行自然施法长跑。
 
+其物理武器后继已沿现消费者补独立`physical_consumption`：`update(false,nullptr,true)`只在完整成功后交近战、箭矢发射／命中的实例、定义、真实伤害及局部HP／统计前后。武器ID从同一次既有N()解析供给；怪物／未知留空，碰撞时当前武器不当作发射身份，旧箭不补历史。开关默认关闭且由最外层覆盖，不新增Owner或存档字段；来源、三种时点和产品消费边界见[物理归因合同](../rules/ai/COMBAT.md#可选的实际物理攻击与武器归因)，短验见[验证入口](../VERIFICATION.md)。产品仍负责合法取得／装配及实际战斗后继，不以条件夹具认证自然经营。
+
 施工后继已补[完成／住宅／商品NEW合同](../ui/EQUIPMENT_FACILITY_RENDER.md#steam队首完成住宅与商品new)：`startup_world_facility_notice_draws`读取既有队首，0／7展开全部有效裁片，1–6复用原增长接口；正常研究窗口已改用完整入口。Steam图片68／150与APK像素不同，须连同`StartupVisualResource::steam_common`的直接裁片绑定迁入，不能继续指向original同名图或再次添加SEB偏移。真实完工／商品产生、队首年龄／退休与奖励仍沿原Owner；新查询不增加持久字段、随机或声音。根尺寸以外的语言加载／原OS动态及产品接入分别验收。
 
 2026-10-16接[新建植物路径投影差异](../../../docs/reference/RESEARCH_REQUESTS.md#plant-route-projection-gap)：已核APK创建／完工／刷新／加载与Steam创建绑定，植物kind2在绑定时即为state2／blocked，不等施工。正式维护修正`install_facility`遗漏，现建设套件短验真实66新建、更新、刷新、普通存读与继续更新；66／74均无flags64，不伪造施工过程。普通维护文件不改布局、不迁移或偷偷修复历史误写格值，原加载重建与维护精确格保存分开，见[路径合同](../rules/MAP_ACCESS.md)。产品真实74取得／建设仍由产品验证。

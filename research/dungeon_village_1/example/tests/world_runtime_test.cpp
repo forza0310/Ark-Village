@@ -286,7 +286,7 @@ void loop_and_rollback(const WorldScriptCatalog &catalog) {
     check(idle.state && idle.state->scene.frame_counter == 0 && idle.state->entries == 0,
           "framework non-main admission is exact freeze not missing unused callback failure");
 }
-void spell_observation_rollback(const WorldScriptCatalog &catalog) {
+void combat_observation_rollback(const WorldScriptCatalog &catalog) {
     auto source=fixture(catalog);
     source.scene.speed_setting=1; // 两个已获准轮，不重放自然经营前缀。
     auto &ai=source.scene.world.world.ai;
@@ -348,6 +348,87 @@ void spell_observation_rollback(const WorldScriptCatalog &catalog) {
           boundary.scene.world.world.ai.projectiles.size()==1&&boundary.scene.calendar.units==10790&&
           boundary.scene.world.world.ai.retired_actors.at({2}).hp.target==500,
           "late calendar refusal clears first-world spell receipt instead of publishing a partial frame");
+
+    // 箭矢须扫描真实活跃怪物；状态7、空命令及保留遭遇引用隔离AI动作和遭遇调度。
+    auto arrow=source;
+    auto &arrow_ai=arrow.scene.world.world.ai;
+    auto target=arrow_ai.retired_actors.at({2});target.control.state=7;target.encounter=99;
+    RewardEncounter retained_encounter;retained_encounter.runtime.id=99;
+    retained_encounter.members={target.id};arrow_ai.retired_encounters.emplace(99,retained_encounter);
+    arrow_ai.retired_actors.erase({2});arrow_ai.battle.actors.emplace(target.id,target);
+    arrow_ai.monster_order={target.id};arrow.scene.world.world.actors.emplace(target.id,RescueActorContext{});
+    const auto projectile=prepare_projectile(ProjectileKind::arrow,{1},{2},{},{1000,0,0},0);
+    check(projectile.candidate.has_value(),"physical runtime fixture creates an actual arrow");
+    arrow_ai.projectiles.at(9)=*projectile.candidate;
+    auto physical=adapter(catalog);
+    physical.actors.decision=[](const Owner &,CharacterId id)->std::optional<WorldActorDecisionInput> {
+        WorldActorDecisionInput input;input.actor=id;return input;
+    };
+    physical.nonactors.projectile=[](const Owner &,std::uint64_t id)->std::optional<WorldProjectileInput> {
+        WorldProjectileInput input;input.projectile=id;input.box=CollisionBox{-1,0,2,2};
+        input.monster_boxes[0]=CollisionBox{-10,10,20,20};
+        input.resolved_weapon_definition=12;return input;
+    };
+    physical.nonactors.primary_expression_table=true;
+    physical.nonactors.request=[](Owner &current,const WorldNonactorRequest &request)
+        ->std::optional<WorldNonactorWriteback> {
+        if(request.kind!=WorldNonactorRequestKind::projectile_hit&&
+           request.kind!=WorldNonactorRequestKind::projectile_contact)return {};
+        WorldNonactorWriteback output{encounter_external_writeback(current.scene.world.world.ai),{}};
+        if(request.hit&&request.hit->kind==HitRequestKind::face_attacker)output.target_facing=0;
+        if(request.kind==WorldNonactorRequestKind::projectile_contact) {
+            if(!request.target||!request.source_position)return {};
+            auto effects=current.scene.world.world.ai.contexts.at(*request.target).effects;
+            effects.display.push_back({10,0,0,0,0}); // typed接触显示消费者，不代原素材位置。
+            output.target_effects=std::move(effects);
+        }
+        return output;
+    };
+    const auto default_physical=prepare_owned_world_runtime(arrow,{27},physical);
+    physical.observe_physical_consumption=true;
+    const auto hit=prepare_owned_world_runtime(arrow,{27},physical);
+    check(default_physical.state&&hit.state&&hit.worlds.size()==2&&
+          default_physical.worlds[0].physical_consumption.empty()&&
+          hit.worlds[0].physical_consumption.size()==1&&hit.worlds[1].physical_consumption.empty(),
+          "physical observations default off and forward the actual first-round arrow hit only once");
+    const auto &receipt=hit.worlds[0].physical_consumption.front();
+    check(receipt.kind==PhysicalConsumptionKind::arrow_hit&&receipt.attacker==CharacterId{1}&&
+          receipt.actual_target==CharacterId{2}&&receipt.projectile==9&&receipt.weapon_definition==12&&
+          receipt.prior_launch_unavailable&&receipt.landed==true&&receipt.amount&&*receipt.amount>0&&
+          receipt.target_delta&&receipt.target_delta->hp_before==500&&
+          receipt.target_delta->hp_after==500-*receipt.amount&&
+          hit.state->scene.world.world.ai.battle.actors.at({2}).hp.target==receipt.target_delta->hp_after&&
+          hit.state->scene.world.world.ai.projectiles.empty(),
+          "outer physical vector contains the real collision consumer and its committed local HP delta");
+    auto physical_disabled=physical;physical_disabled.observe_physical_consumption=false;
+    physical_disabled.nonactors.observe_physical_consumption=true;
+    const auto physical_silent=prepare_owned_world_runtime(arrow,{27},physical_disabled);
+    check(physical_silent.state&&physical_silent.worlds[0].physical_consumption.empty()&&
+          physical_silent.worlds[1].physical_consumption.empty()&&
+          physical_silent.state->scene.world.world.ai.battle.actors.at({2}).hp.target==
+              hit.state->scene.world.world.ai.battle.actors.at({2}).hp.target&&
+          physical_silent.state->scene.world.world.ai.projectiles.empty()&&
+          physical_silent.state->scene.world.updates==hit.state->scene.world.updates&&
+          physical_silent.state->scene.calendar.units==hit.state->scene.calendar.units&&
+          physical_silent.state->random.snapshot().engine_state==hit.state->random.snapshot().engine_state&&
+          physical_silent.state->random.draws()==hit.state->random.draws()&&hit.state->random.draws()>0,
+          "outer physical switch overrides nested observation without changing real HP,calendar or shared random");
+    reached_second=false;
+    auto physical_reject=physical;
+    physical_reject.before_common=[&](const Owner &current)->std::optional<Owner> {
+        if(current.scene.world.updates==1) {reached_second=true;return {};}
+        return current;
+    };
+    const auto physical_second=prepare_owned_world_runtime(arrow,{27},physical_reject);
+    auto arrow_boundary=arrow;arrow_boundary.scene.speed_setting=0;
+    arrow_boundary.scene.calendar={0,3,3,10790,0,1599};physical_reject=physical;physical_reject.tasks={};
+    const auto physical_calendar=prepare_owned_world_runtime(arrow_boundary,{27},physical_reject);
+    check(reached_second&&!physical_second.state&&physical_second.worlds.empty()&&
+          !physical_calendar.state&&physical_calendar.worlds.empty()&&
+          arrow.scene.world.world.ai.battle.actors.at({2}).hp.target==500&&
+          arrow.scene.world.world.ai.projectiles.size()==1&&arrow.random.draws()==0&&
+          arrow_boundary.scene.calendar.units==10790,
+          "second-round and late-calendar failures discard physical receipts with the private owner and random");
 }
 void scoped_calendar_consumers(const WorldScriptCatalog &catalog) {
     auto source = fixture(catalog);
@@ -487,7 +568,7 @@ int main() {
         check(parsed.catalog.has_value(), "published scripts parse");
         source_scan(*parsed.catalog);
         loop_and_rollback(*parsed.catalog);
-        spell_observation_rollback(*parsed.catalog);
+        combat_observation_rollback(*parsed.catalog);
         scoped_calendar_consumers(*parsed.catalog);
         actual_facility_completion(*parsed.catalog);
         std::cout << "world runtime: " << checks << " checks passed\n";

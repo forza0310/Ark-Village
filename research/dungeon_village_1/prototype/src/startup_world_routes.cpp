@@ -90,7 +90,8 @@ std::optional<ref::WorldDepartureInput> departure(const ref::WorldActorRoutesSta
     return input;
 }
 std::optional<ref::CombatWeaponRule> weapon(const ref::WorldActorRoutesState &r,
-                                            ref::CharacterId id, const StartupWorldRouteFacts &f) {
+                                            ref::CharacterId id, const StartupWorldRouteFacts &f,
+                                            std::optional<int> *resolved = nullptr) {
     const auto actor = r.world.ai.battle.actors.find(id);
     if (actor == r.world.ai.battle.actors.end() || !f.rules)
         return {};
@@ -105,8 +106,10 @@ std::optional<ref::CombatWeaponRule> weapon(const ref::WorldActorRoutesState &r,
     if (current == r.shop_actors.end())
         return {};
     for (const auto &d : f.rules->equipment)
-        if (d.shop.kind == 1 && d.shop.id == current->second.weapon)
+        if (d.shop.kind == 1 && d.shop.id == current->second.weapon) {
+            if (resolved) *resolved = d.shop.id;
             return d.battle;
+        }
     return {};
 }
 std::optional<ref::WorldPathInput> path(const ref::WorldActorRoutesState &r, ref::CharacterId id,
@@ -298,12 +301,14 @@ prepare_startup_world_command_input(const ref::WorldActorRoutesState &r, ref::Ch
         }
     }
     if (command[0] >= 14 && command[0] <= 17) {
-        const auto w = weapon(r, id, f);
+        std::optional<int> resolved;
+        const auto w = weapon(r, id, f, &resolved);
         if (!w)
             return {};
         ref::WorldAttackInput attack;
         attack.actor = id;
         attack.weapon = *w;
+        attack.resolved_weapon_definition = resolved;
         const auto visible = f.actor_visible.find(id);
         if (visible == f.actor_visible.end())
             return {};

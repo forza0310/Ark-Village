@@ -1,5 +1,23 @@
 # 计划与决策
 
+<a id="campaign-observation-wiring"></a>
+## 经营失败观察快照的额外接线验证（待确认执行）
+
+保存门槛诊断及原codec观察快照的上层接线已编译，Debug标准140项及最终Debug/Release经营合同通过。额外验证拟在忽略的`build/validation/research-a9dc1bd-integration/observation-wiring-<UUID>/`复制有效月202的六份测试文件，执行现`steam-pot-equipment-month --recipe=0`，明确期望拒绝该非装备配方；不推进世界，不产生新玩家栏。只核顶层失败处理生成的`observation.bin/txt`，再用现`inspect-observation`只读核身份/进度/壶与树实例，前后逐字节验证原前缀及副本不变。单进程限30秒，无正常玩家档、research或格式修改；结果/日志仅在该独占目录。
+
+拟用临时脚本为同根`verify-campaign-observation.mjs`；自动审批已拒绝创建该脚本及执行，认为故意触发失败以新增持久诊断状态缺少明确授权。脚本和本次观察目录均未创建，不改用间接方式触发。当前既有有效checkpoint的独立只读核对已完成；上面的新失败路径实际接线检查仍未执行，需明确批准这一个临时脚本、拒绝操作和两份观察文件的生成/只读核对后再做。
+
+<a id="campaign-pot-ordinary-items"></a>
+## 普通道具配方的制造与设施使用（待确认）
+
+已批准的显式`--item`只能消费真实库存或商会货源，不能取得缺货的11/23。a9dc1bd的MAGIC_POT已明确：已知且flags含2的普通道具配方可重复制造，47满原门槛后扣四元素、直接增加道具库存并开放定义；不走装备免费次数、设施93或高层奖励计数。配方2→11、5→23均已知，月199缺少的实际元素分别合计28/31。不能注入库存/元素、用发现代替制造，或将这项新增流程混入已完成的九目标。
+
+提议新增进程内`steam-pot-item-month --recipe=ID`，只接受已知普通设施强化道具配方，排除药品/魔法书、未开放配方和flags0。复用`next_steam_pot_command`/`observe_steam_pot_command`完成真实购买、投入、自然处理和47制造；新薄协调器仅持本次目标及已核回执，并复用`ActiveIncomeStrategy`消费刚制造的道具，沿75–77验证非负且至少一项正效果。完整退回稳定主场景后交还现经营玩家；不复制材料、收益或奖励算法，不扩大装备/书本/设施分支。每件材料最多10000G并保留两月现金；源库存/目录/预算变化仍走原取消，制造或使用未完成时拒绝玩家保存，不新增侧车/玩家字段或保存时点。
+
+拟写入八个目标：新增`tests/app/world_steam_magic_items.hpp`、`tests/app/world_steam_magic_items.cpp`；修改`tests/app/world_campaign_test.cpp`、`cmake/ProductTests.cmake`、忽略的`build/validation/business-liquidity/run-month.mjs`、本文件、`TODO.md`及`docs/stages/B1-playable-prototype.md`。CMake只给现campaign套件登记实现，无新target。现有壶、income与全部默认经营断言保持；新增合同归现campaign，覆盖参数/类型/未知配方拒绝、库存上限及缺料、47一次扣减与取得、无二次付费的75–77接线、取消/源拒绝不推进、pending保存拒绝，期望值沿原表和既有独立oracle。
+
+批准后集中两Debug标准（仅排三个月）、Release受影响合同，再按原6分钟/10000轮在新隔离目录真实制造/使用11/23、取得完整后继营业月及独立冷载；缺料先用现已批准的发现路线合法补料，不改原前缀或失败档。research只读、玩家schema5/独立系统2及随机不保存保持，旧775报告不改签。此时只完成方案核对，尚未编写本批C++或修改分段入口。
+
 <a id="campaign-explicit-item-use"></a>
 ## 普通道具缺项的显式覆盖输入（已批准）
 

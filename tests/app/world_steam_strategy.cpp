@@ -4,6 +4,7 @@
 #include "support/world_fixture.hpp"
 #include "world_steam_budget.hpp"
 #include <algorithm>
+#include <iomanip>
 #include <iostream>
 #include <limits>
 #include <sstream>
@@ -908,7 +909,30 @@ std::string SteamVillageStrategy::diagnose(const State &s) const {
         << " unheld_activity=" << (unheld ? unheld->definition : -1)
         << " unheld_activity_cost=" << (unheld ? unheld->points : 0)
         << " fireworks_count=" << held(s, 19)
-        << " required_facility=" << steam_required_facility(s).value_or(-1);
+        << " required_facility=" << steam_required_facility(s).value_or(-1)
+        << " layout_operation=" << int(operation_) << " unlock_pending=" << unlock_
+        << " discovery_pending=" << discover_shop_ << " people_pending=" << people_.active()
+        << " income_pending=" << income_.active() << " strategy_checkpoint=" << checkpoint(s);
+    std::string reason;
+    out << " player_save_eligible=" << app::world_save_eligible(s, &reason);
+    if (!reason.empty())
+        out << " player_save_reason=" << std::quoted(reason);
+    // Identify the real leaving actors that block the existing player-save gate;
+    // a scene page and a completed strategy alone do not make that gate eligible.
+    for (const auto &[id, actor] : s.scene.world.world.ai.battle.actors) {
+        if (actor.kind != ref::ActorKind::human || !(actor.control.flags & (512U | 1024U)))
+            continue;
+        out << " departing_actor=" << id.value << ':' << actor.definition << ':'
+            << actor.control.flags << ':' << actor.control.state << ':' << actor.control.action
+            << ':' << actor.position.x << ',' << actor.position.z;
+        const auto route = s.scene.world.world.actors.find(id);
+        if (route != s.scene.world.world.actors.end()) {
+            out << ":waypoint=" << route->second.waypoint;
+            if (route->second.destination)
+                out << ":destination=" << route->second.destination->x << ','
+                    << route->second.destination->y;
+        }
+    }
     return out.str();
 }
 void SteamVillageStrategy::encode(std::ostream &out) const {

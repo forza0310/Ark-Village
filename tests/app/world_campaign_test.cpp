@@ -1498,8 +1498,12 @@ int main(int argc, char **argv) {
         }
         if (mode == "inspect-observation") {
             const auto directory =
-                isolated_directory(argv[0], argv[2], "ark-active-third-star-v1\n");
-            ark::test::inspect_income(ark::test::read_campaign_observation(directory), std::cout);
+                isolated_directory(argv[0], argv[2], "ark-active-third-star-v1\n",
+                                   "ark-steam-village-v1\n");
+            const auto state = ark::test::read_campaign_observation(directory);
+            ark::test::inspect_income(state, std::cout);
+            ark::test::inspect_campaign_progress(state, std::cout);
+            ark::test::inspect_steam_magic_pot(state, std::cout);
             return 0;
         }
         if (mode == "inspect-income" || mode == "income-baseline" || mode == "income-improved") {
@@ -1838,8 +1842,15 @@ int main(int argc, char **argv) {
     } catch (const std::exception &error) {
         std::cerr << "Active campaign failed: " << error.what() << std::endl;
         try {
-            if (steam_campaign)
+            if (steam_campaign) {
                 steam_campaign->coverage.save(steam_campaign->directory, steam_campaign->state);
+                // A budget/qualification failure can lack a rejected runtime update.
+                // Keep its full observed Owner for diagnosis, never as a player prefix.
+                if (!std::filesystem::exists(steam_campaign->directory / "observation.bin") &&
+                    !std::filesystem::exists(steam_campaign->directory / "observation.txt"))
+                    ark::test::capture_campaign_observation(steam_campaign->directory,
+                                                            steam_campaign->state);
+            }
             if (campaign)
                 campaign->coverage.save(campaign->directory, campaign->state);
             if (late_campaign)
@@ -1847,13 +1858,27 @@ int main(int argc, char **argv) {
             if (pot_campaign)
                 pot_campaign->coverage.save(pot_campaign->directory, pot_campaign->state);
         } catch (const std::exception &diagnostic) {
-            std::cerr << "Coverage report failed: " << diagnostic.what() << std::endl;
+            std::cerr << "Campaign diagnostics failed: " << diagnostic.what() << std::endl;
         }
         if (campaign)
             std::cerr << "STATE " << campaign->strategy.diagnose(campaign->state) << std::endl;
-        if (steam_campaign)
+        if (steam_campaign) {
             std::cerr << "STATE " << steam_campaign->strategy.diagnose(steam_campaign->state)
                       << std::endl;
+            if (steam_campaign->pot_facility)
+                std::cerr << "POT_FACILITY_FAILURE " << steam_campaign->pot_facility->diagnose()
+                          << std::endl;
+            if (steam_campaign->pot_discovery) {
+                try {
+                    std::cerr << "POT_DISCOVERY_FAILURE "
+                              << steam_campaign->pot_discovery->diagnose(steam_campaign->state)
+                              << std::endl;
+                } catch (const std::exception &diagnostic) {
+                    std::cerr << "Pot discovery diagnostics failed: " << diagnostic.what()
+                              << std::endl;
+                }
+            }
+        }
         if (late_campaign)
             std::cerr << "STATE " << late_campaign->strategy.diagnose(late_campaign->state)
                       << std::endl;

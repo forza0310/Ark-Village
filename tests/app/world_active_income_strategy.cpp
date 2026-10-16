@@ -222,7 +222,13 @@ void inspect_income(const State &s, std::ostream &out) {
                 << " previous_month_income=" << last_income(s, id) << " sales=" << f.sales
                 << " construction_limit=" << s.facility_details.at(id).construction_limit
                 << " quoted_construction_ticks=" << values->construction_ticks
-                << " quoted_construction_cost=" << values->construction_cost << '\n';
+                << " quoted_construction_cost=" << values->construction_cost;
+            const auto neighbours = s.neighbourhood.find(id);
+            if (neighbours != s.neighbourhood.end())
+                out << " neighbour_price=" << neighbours->second[0]
+                    << " neighbour_quality=" << neighbours->second[1]
+                    << " neighbour_charm=" << neighbours->second[2];
+            out << '\n';
         }
     const auto best = choose_income_investment(s, 10000);
     for (const auto &d : s.rules->facilities)

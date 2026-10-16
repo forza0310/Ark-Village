@@ -14,4 +14,6 @@
 
 `../input/world_management`协调UI意图、generation和pending回执；关闭子页不会同击激活父页。目录滚轮用于列表，场景滚轮用于缩放，世界鼠标操作与窗口截图分别验收。旧Game/UI入口已退役，不持第二套世界；运行不读research。
 
+纯计划中的`SteamStartupTouch.option`是调用前的TouchOption参数，不是原平台注册后的最终flags。正式9c9990f明确ID2注册另加SAME_ID；当前PC末端按已批准的页面确认语义消费请求，不合成原注册器或把无矩形请求当作全屏点击。请求值、组件ID、平台命中及Owner消费时点分别核对，来源见[触摸合同](../../../research/dungeon_village_1/ui/STEAM_INTERACTIONS.md#无矩形命令触摸与登记后flags)。
+
 接线和输入验证复用现有world_ui套件，底层规则/回滚/随机由冻结研究套件负责。窗口夹具明确标为合成显示输入，不认证自然解锁或OS鼠标。当前接入与尚缺的完整演出见[B1](../../../docs/stages/B1-playable-prototype.md)及[表现合同缺口](../../../docs/reference/RESEARCH_REQUESTS.md#steam-ui-delegates-1f19c88)。

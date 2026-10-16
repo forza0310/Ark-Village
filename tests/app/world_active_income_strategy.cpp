@@ -181,6 +181,7 @@ void inspect_income(const State &s, std::ostream &out) {
         if (f.kind == 2 || f.kind == 3 || f.kind == 9) {
             const auto values = sim::startup_world_facility_values(s, id);
             require(values.has_value(), "income inspection lost its source facility values");
+            // Placement freezes its duration; current professions only quote future work.
             out << "SHOP id=" << id << " definition=" << f.placement.definition_id
                 << " name=" << s.rules->facilities.at(f.placement.definition_id).name
                 << " definition_kind=" << s.rules->facilities.at(f.placement.definition_id).kind
@@ -188,12 +189,18 @@ void inspect_income(const State &s, std::ostream &out) {
                 << " status=" << f.status << " flags=" << s.facility_flags.at(id)
                 << " category=" << f.category
                 << " shared_charm=" << values->definition_attributes[2] << " price=" << f.price
+                << " quoted_price=" << values->instance_attributes[0]
+                << " price_improvement="
+                << s.scripts.facilities.at(f.placement.definition_id).improvements[0]
                 << " quality=" << values->instance_attributes[1]
                 << " charm=" << values->instance_attributes[2]
                 << " maintenance=" << values->definition_attributes[3] << " level="
                 << s.scene.world.world.facility_uses.at(f.placement.definition_id).level
                 << " previous_month_available=" << (s.scene.calendar.month > 0)
-                << " previous_month_income=" << last_income(s, id) << " sales=" << f.sales << '\n';
+                << " previous_month_income=" << last_income(s, id) << " sales=" << f.sales
+                << " construction_limit=" << s.facility_details.at(id).construction_limit
+                << " quoted_construction_ticks=" << values->construction_ticks
+                << " quoted_construction_cost=" << values->construction_cost << '\n';
         }
     const auto best = choose_income_investment(s, 10000);
     for (const auto &d : s.rules->facilities)

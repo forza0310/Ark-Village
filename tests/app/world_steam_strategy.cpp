@@ -692,6 +692,8 @@ void SteamVillageStrategy::observe(const State &before, const Command &c,
                     f.placement.anchor == target_.anchor &&
                     f.placement.orientation == target_.orientation,
                 "construction did not match Steam goal");
+        require(after.facility_details.at(*r.created).construction_limit == quote->construction_ticks,
+                "new construction did not freeze its source profession-adjusted duration");
         stats_.construction_cost += quote->construction_cost;
         ++stats_.builds;
         operation_committed_ = true;

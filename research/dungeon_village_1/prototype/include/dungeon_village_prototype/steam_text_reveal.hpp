@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <variant>
 #include <vector>
 
@@ -42,4 +43,25 @@ SteamTextRevealState steam_text_reveal_set_speed(const SteamTextRevealState &,
 SteamTextRevealState steam_text_reveal_set_text_tail(const SteamTextRevealState &,
     std::int32_t final_block_length);
 SteamTextRevealState steam_text_reveal_reset(const SteamTextRevealState &);
+
+// 仅普通TextBlock；pic/btn须在上游独立分流。预算/长度按UTF-16单元，不截UTF-8字节。
+struct SteamTextPlainRun { std::int32_t units{}; bool prefix{}; };
+enum class SteamTextPlainSkip { none, blink, zero_budget, outside_viewport };
+struct SteamTextPlainBudgetPlan {
+    std::int32_t consumed{};
+    SteamTextPlainSkip skip{SteamTextPlainSkip::none};
+    std::optional<SteamTextPlainRun> text; // 有值即请求真实绘制/测宽，空串也可有请求。
+};
+struct SteamTextPlainDrawInput {
+    std::int32_t budget{}, utf16_length{}, blink_period{}, blink_counter{};
+    float block_y{}, dy{}, box_y{}, box_height{-1};
+    std::optional<int> font_used_size{}; // 仅实际走纵视口判断才读取，不能按字符数推测。
+};
+// 源序：消费量->blink->budget恰0->纵视口->SetColor及真实文字请求。
+// 维护正常域预算/长度非负；实际消费的坐标有限且绝对值<=65536、字号0..65536。
+// 短路分支不校验未用视口/字号；盒高恰-1免纵裁剪。边缘相接仍可绘制。
+std::optional<SteamTextPlainBudgetPlan> steam_text_plain_draw_budget(const SteamTextPlainDrawInput &);
+// 普通块StringWidth不查blink/视口；请求前缀或整串的真实Font.StringWidth。
+std::optional<SteamTextPlainBudgetPlan> steam_text_plain_width_budget(
+    std::int32_t budget,std::int32_t utf16_length);
 } // namespace dungeon_village_prototype

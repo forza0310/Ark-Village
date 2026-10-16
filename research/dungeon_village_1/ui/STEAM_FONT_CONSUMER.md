@@ -17,7 +17,9 @@
 3. 若`Language.Japanese()`成立，尝试`Fonts/default-ja`。
 4. 尝试`Fonts/default`。
 
-空／null语言跳过前两步；并非无条件指定`default-ja`或`default-en-switch`。资源加载结果显式检查为Unity Font对象；类型不符走异常路径，不能当作“任何同名对象都行”。语言变化尾部更新缓存语言并调用`TextLayout.ClearCache()`。旧／新字体名称还经过`invalidFontNames_`的泛型helper；本批未给这些共享泛型helper强行命名Add／Remove，不能从字段名推完整名单维护算法。
+空／null语言跳过前两步；并非无条件指定`default-ja`或`default-en-switch`。资源加载结果显式检查为Unity Font对象；类型不符走异常路径，不能当作“任何同名对象都行”。语言变化时，仅旧缓存语言非null才将旧默认Font名称追加到`invalidFontNames_`（1077F59F–F5E0）；旧Font为null／失效对象时，名称helper RVA77D6D0返回精确`*`（槽111017F0）。随后清默认Font并按上列顺序查找，再缓存新的**原始语言码**（1077FB54–FB64），将新默认Font名称或`*`从名单移除一次（1077FB71–FBED），最后调用`TextLayout.ClearCache`（1077FC08）。
+
+2026-10-16补核两共享helper：Add的实际调用1077F5E0→RVA1DF960先增version、再增size并写尾引用或进入扩容；共享声明为List<object>.Add，结合接收字段List<string>认证追加。Remove调用1077FBE8→RVA576BF0先沿泛型上下文取得索引，索引<0返回false，否则只调用一次RemoveAt并返回true；本调用者不消费返回值，不循环移除。泛型索引搜索的完整字符串比较仍未独立认证。不再将这两者列为未命名helper，但也不能把List解释成自动去重集合：未见Add前Contains、名单整体Clear或重建，合法重复名称和历史容量不保证永久有界。上述各步没有联合回滚；新语言已缓存后发生失败，也不保证下一次同语言查询会重试末尾清缓存。ClearCache请求不等于重排全部仍存TextLayout或认证当前中文字形。
 
 ResourceManager（`globalgamemanagers` pathID13）首个资源表共1251行。字体路径实际每组各有Font、Material、Texture2D三个引用；路径重名合法，不能建立单值name字典覆盖掉Font。外部文件表已经核`file_id=4`为`resources.assets`：
 
@@ -30,7 +32,7 @@ ResourceManager（`globalgamemanagers` pathID13）首个资源表共1251行。�
 
 该已核目录没有`fonts/default`、`fonts/default-en`、`fonts/default-zh`、`fonts/default-zh-cn`或`fonts/default-zh-tw`。例如**若实际语言码为zh-cn且Japanese为false**，上述链会尝试中文地区／基础／通用三个缺失路径；不能改判成英语Switch字体。原生代码请求的首字母大小写与目录登记不同，Unity实际资源解析及所有可能运行时注入不由这张目录单独证明。当前未监测真实窗口的`GetLanguageCode()`返回值，条件例子不等于已观测中文运行对象。
 
-`Font._init`（`0x77FC90`）在缺GUIStyle时构造一个新GUIStyle，然后把`GetDefaultGUIFont()`的结果传给`GUIStyle.font`，包括结果为空的路径。`_updateGUIFont`（`0x780710`）在`FONT_CANCEL`时返回null；否则读取当前GUIStyle.font的名字，空对象使用固定key `*`，逐项比较`invalidFontNames_`，只有名称匹配时才改设默认字体，最后返回当前GUIStyle.font。它不是每次测宽都无条件覆盖自定义字体。本批方法内没有创建指定系统字体的调用；不能据此宣称整个Unity或原生插件不使用系统字体，更不能指定为“微软雅黑”或“Arial中文”。
+`Font._init`（`0x77FC90`）在缺GUIStyle时构造一个新GUIStyle，然后把`GetDefaultGUIFont()`的结果传给`GUIStyle.font`，包括结果为空的路径。`_updateGUIFont`（`0x780710`）在`FONT_CANCEL`时返回null；否则**先刷新默认Font**（10780781），再读当前GUIStyle.font名称（空对象用`*`），按`invalidFontNames_`顺序比较长度及字符串；匹配才改设新默认Font并结束扫描（10780887–808E7），最后返回当前GUIStyle.font。它不按对象身份替换所有Font，也不是每次测宽都无条件覆盖自定义字体。方法内没有创建指定系统字体的调用；不能据此宣称整个Unity或原生插件不使用系统字体，更不能指定为“微软雅黑”或“Arial中文”。
 
 ## 本地化字号与基线偏移
 
@@ -95,6 +97,10 @@ HEIGHT来自Font.cctor RVA77EDD0的实际InitializeArray调用（1077EE60，slot
 - 按钮块在此固定输出宽12、消耗1（107DB255–25B）；不是标签串长度或实际按钮字宽。这是测宽分支，不据此改按钮绘制尺寸。
 - 图标预算0消耗0，否则消耗1。先按`pictographParam_[0]`查已注册Pictograph；找不到或静态pictographVisible=false时宽仍为0，不补Font字宽。默认帧取Pictograph.Frame，第二参数非空时若为精确字面`∞`（槽110EF444）则用−1，否则交Int32.Parse。取得Seb.GetSprites(frame) RVA7C2A80后，按记录原序对`record[1]≥0`的项把输出宽覆写为`record[4]`（107DB393–3A5），因此本局部是最后符合项的值，不求各层最大包围盒；Margin／Scale／Transform没有在本测宽方法消费。SEB展开及图标实际绘制仍由各自消费者负责。
 
+普通块Draw另保留顺序：先取`min(len,UTF16Length)`（107DA37C–39F），再检查blink（107DA3A1–3AB）、len恰0（107DA3B1–B3）、纵视口（107DA3B9–40C），最后才SetColor及前缀／整串绘制（107DA423–43D）。盒高恰−1免纵裁剪；否则令`Y=float32(blockY+dy)`，仅`boxY>float32(Y+Font.usedSize)`或`Y>float32(boxY+boxH)`才跳过，边缘相接仍画，没有横向资格。被blink或视口隐藏仍返回原消费量；len>0而普通串为空时，虽消耗0仍可能请求整空串绘制／测宽，不能用consumed==0替代len==0。
+
+[普通块预算接口](../prototype/include/dungeon_village_prototype/steam_text_reveal.hpp)`steam_text_plain_draw_budget`返回消费量、跳过原因及UTF-16前缀／整串请求；`steam_text_plain_width_budget`独立处理StringWidth资格，不检查blink／视口。未到视口分支不校验未用观测，盒高−1也不要求Font字号；真正请求出现后仍由调用者执行原SetColor／字体后端及现有全局布尔清理。维护输入限预算／UTF-16长度非负、实际消费的坐标有限且绝对值≤65536、字号0..65536；负len在原StringWidth会Substring失败，但原Draw可能因更早隐藏直接返回负消费量，故该拒绝不能外推为源负域等价。接口不截UTF-8字节，不处理pic／btn，不安装Owner或认证真实字形。
+
 测宽存在原共享副作用：块入口VA107DB18E把`Language.UnicodeToChanakyaEnable`静态+C8写false；正常两收尾及所核异常续体均调用helper7D0660–06B9，将同字段写true。这里**未保存进入前布尔值**，不能实现成“始终无修改”或擅称恢复原值；异常清理后仍重新抛出，不吞解析／空引用错误。类型槽110FB03C独立解码为Language（TypeDef由本样本registration解析），与dump的+C8字段一致，不靠共享setter名字认证。Font、插件字形度量及标签生产者边界保持；本批不运行原游戏、不导出字体、不新增核对脚本或过程指纹。
 
 ### 标签入口及颜色组
@@ -139,7 +145,7 @@ APK的TAG只有前9项，`aa.java`同样先翻译、精确`<br>`换LF，再以�
 
 新普通块在107CF0DB–F0FA及107CF31B–F33A把当前工作Font、色、闪烁周期交`TextBlock`构造RVA7DB440；构造另复制Font及GUIStyle，并在107DB4D1保存周期。因此后续标签不会倒改已建块字号／样式／周期。块测宽走冻结Font，普通可见绘制在107DA50B–DA566或107DA61A–DA650用该Font调用Draw；完整字形仍由已核Unity／插件边界处理，不生成近似字体。
 
-闪烁是块自己的`blinkCnt_`（+24），新对象初值0。`TextLayout.Frame` RVA7CACD0在107CAE0C–E23仅对周期>0的块执行`blinkCnt_=(blinkCnt_+1)%(2*blink_)`；这是每次Frame调用，不写成秒数、逻辑世界tick或由绘制推进。普通块`Draw`在107DA3A1–DA3AB检查周期：周期≤0不闪，周期>0且计数≥周期跳过普通文字绘制；仍经107DAFDA–DAFEC返回`min(len,text.Length)`的字符消费量，隐藏块不会使后面的渐显文字向前顶。例周期2从初值0可见，连续Frame到1仍见、2／3隐藏、0再次见；本页StringWidth不读blinkCnt，隐藏也保留测宽。周期乘2／递增是原32位算术，未见大周期保护；溢出及异常完整后继不在本批维护保证内。图标／按钮在块Draw更早分流，本批没有将普通块闪烁规则外推给它们。
+闪烁是块自己的`blinkCnt_`（+24），新对象初值0。`TextLayout.Frame` RVA7CACD0在107CAE0C–E23仅对周期>0的块执行`blinkCnt_=(blinkCnt_+1)%(2*blink_)`；这是每次Frame调用，不写成秒数、逻辑世界tick或由绘制推进。普通块`Draw`在107DA3A1–DA3AB检查周期：周期≤0不闪，周期>0且计数≥周期跳过普通文字绘制；仍经107DAFDA–DAFEC返回`min(len,text.Length)`的字符消费量，隐藏块不会使后面的渐显文字向前顶。例周期2从初值0可见，连续Frame到1仍见、2／3隐藏、0再次见；本页StringWidth不读blinkCnt，隐藏也保留测宽。周期乘2／递增按原int32回卷，大正周期可产生负除数及负余数；数值边界及消费者见下节，不把原对象异常认作可回滚。图标／按钮在块Draw更早分流，本批没有将普通块闪烁规则外推给它们。
 
 APK `aa.f()`同三组使用十进制参数，`</si>`回原Font请求`n.c()`，`</st>`回`n.d()`，`</bl>`清0；`ab`构造复制`n`并冻结周期`f552f`。`aa.c()`按每调用一次推进块`g=(g+1)%(2*f552f)`，`aa.a()`普通绘制用同半周期资格但继续扣字符预算，与Steam普通块局部一致。后端分别登记：APK `n.b(style)`用三项`[0,1,2]`映射Android Typeface.NORMAL／BOLD／ITALIC并创建Typeface；Steam交Unity GUIStyle，不能据接口语义相同认证字形／测宽相同。APK换行循环失真不作为Steam布局依据；换行主干、整词前瞻、位置及其余标签见本节后继合同。图标注册的有限排查和真实中文字体边界分别保留。
 

@@ -244,6 +244,68 @@ void text_reveal(Checks &check) {
     check(threw&&failed_flush.done()&&same(stopped,{5,7,0,9,4,1000,2}),
           "Flush墙钟先抛错时不伪装成随后才可能产生的除零故障，输入仍不变");
 }
+void text_plain_budget(Checks &check) {
+    using Skip=SteamTextPlainSkip;
+    const auto nan=std::numeric_limits<float>::quiet_NaN();
+    // 第一块虽闪烁隐藏，仍占用两单元预算，第二块只能取得剩余一单元。
+    const SteamTextPlainDrawInput hidden{3,2,2,2,nan,nan,nan,nan,{}};
+    const auto first=steam_text_plain_draw_budget(hidden);
+    check(first&&first->consumed==2&&first->skip==Skip::blink&&!first->text,
+          "隐藏块先消费min预算，不读取后续非法视口或缺字号");
+    const auto next=steam_text_plain_draw_budget({hidden.budget-first->consumed,4});
+    check(next&&next->consumed==1&&next->skip==Skip::none&&next->text&&
+              next->text->units==1&&next->text->prefix,
+          "两块预算按已消费量衔接，隐藏前文不得令后文提前多显");
+    const auto outside=steam_text_plain_draw_budget({3,4,0,0,31.F,0.F,20.F,10.F,5});
+    check(outside&&outside->consumed==3&&outside->skip==Skip::outside_viewport&&!outside->text,
+          "越纵视口仍消费前三单元预算，只省实际文字请求");
+    const auto zero_hidden=steam_text_plain_draw_budget({0,0,1,1,nan,nan,nan,nan,{}});
+    const auto zero_visible=steam_text_plain_draw_budget({0,0,1,0,nan,nan,nan,nan,{}});
+    check(zero_hidden&&zero_hidden->consumed==0&&zero_hidden->skip==Skip::blink&&!zero_hidden->text&&
+              zero_visible&&zero_visible->skip==Skip::zero_budget&&!zero_visible->text,
+          "零预算先检查blink再短路，不因最终零长度省略闪烁资格或强查视口");
+    const auto empty_draw=steam_text_plain_draw_budget({1,0});
+    const auto empty_width=steam_text_plain_width_budget(1,0);
+    check(empty_draw&&empty_draw->consumed==0&&empty_draw->skip==Skip::none&&empty_draw->text&&
+              empty_draw->text->units==0&&!empty_draw->text->prefix&&
+              empty_width&&empty_width->consumed==0&&empty_width->text&&
+              empty_width->text->units==0&&!empty_width->text->prefix,
+          "正预算的空串消费零却仍请求整串绘制和测宽，不冒充零预算短路");
+    const std::u16string utf16=u"A\U0001F600B";
+    const auto prefix=steam_text_plain_width_budget(2,static_cast<std::int32_t>(utf16.size()));
+    const auto whole=steam_text_plain_width_budget(4,static_cast<std::int32_t>(utf16.size()));
+    const auto zero_width=steam_text_plain_width_budget(0,4);
+    check(utf16.size()==4&&prefix&&prefix->consumed==2&&prefix->text&&
+              prefix->text->units==2&&prefix->text->prefix&&whole&&whole->consumed==4&&
+              whole->text&&whole->text->units==4&&!whole->text->prefix&&
+              zero_width&&zero_width->skip==Skip::zero_budget&&!zero_width->text,
+          "测宽只依赖预算和UTF16单元长度，前缀可落代理对中间，不按码点或UTF8字节换算");
+    const auto unclipped=steam_text_plain_draw_budget({2,4,0,0,nan,nan,nan,-1.F,-99});
+    check(unclipped&&unclipped->text&&unclipped->text->units==2&&unclipped->text->prefix,
+          "盒高恰负一豁免全部未消费视口坐标及字号，不为无裁剪增加资格");
+    struct Edge {float y,dy,top,height;int font;};
+    for(const auto c:std::array<Edge,3>{{{10.F,5.F,20.F,10.F,5},
+                                        {30.F,0.F,20.F,10.F,5},
+                                        {0.1F,0.2F,0.3F,0.F,0}}}) {
+        const auto p=steam_text_plain_draw_budget({1,2,0,0,c.y,c.dy,c.top,c.height,c.font});
+        check(p&&p->skip==Skip::none&&p->text&&p->consumed==1,
+              "纵边缘相接仍画，逐次float32相加不能换成double比较制造边缘误裁");
+    }
+    const SteamTextPlainDrawInput visible{1,2,0,0,20.F,0.F,20.F,10.F,5};
+    auto missing_font=visible;missing_font.font_used_size.reset();
+    auto bad_coordinate=visible;bad_coordinate.block_y=nan;
+    auto infinite_height=visible;infinite_height.box_height=std::numeric_limits<float>::infinity();
+    auto over_coordinate=visible;over_coordinate.dy=65537.F;
+    auto over_font=visible;over_font.font_used_size=65537;
+    for(const auto &bad:std::array<SteamTextPlainDrawInput,5>{missing_font,bad_coordinate,
+                                                           infinite_height,over_coordinate,over_font})
+        check(!steam_text_plain_draw_budget(bad),
+              "实际走视口才严格拒绝缺字号、非有限或超维护坐标/字号预算");
+    for(const auto pair:std::array<std::array<std::int32_t,2>,2>{{{-1,2},{2,-1}}})
+        check(!steam_text_plain_draw_budget({pair[0],pair[1]})&&
+                  !steam_text_plain_width_budget(pair[0],pair[1]),
+              "维护正常域拒绝负预算或负长度，不宣称与原版负数入口等价");
+}
 void touch_arrow_effect(Checks &check) {
     // 从现公共DOWN计划取得真实id0请求；不重放KeyDown或把绘制当作Frame。
     SteamTouchCommandInput input;
@@ -2330,6 +2392,7 @@ int check_steam_startup_skin(const std::filesystem::path &root) {
     record_update(check);
     subform_update_prefix(check);
     text_reveal(check);
+    text_plain_budget(check);
     font_metrics(check);
     touch_commands(check);
     touch_arrow_effect(check);

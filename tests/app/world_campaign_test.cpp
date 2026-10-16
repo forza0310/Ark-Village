@@ -478,7 +478,7 @@ template <class PlayerStrategy> struct CampaignRun {
                           << state.simulation_steps << '\t' << loot.gap << '\n';
             pending_receipts.insert(pending_receipts.end(), loot.receipts.begin(),
                                     loot.receipts.end());
-            const auto tax = ark::test::residence_tax_receipts(state, *update.candidate);
+            const auto tax = ark::test::residence_tax_receipts(state, *update.candidate, &std::cout);
             pending_receipts.insert(pending_receipts.end(), tax.begin(), tax.end());
             const auto battle = ark::test::monster_retirement_receipts(state, *update.candidate);
             if (battle.gap)

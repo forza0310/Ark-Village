@@ -82,7 +82,8 @@ CampaignReceipt residence_transaction_receipt(int human, const app::WorldState &
 // raw98 retirement plus actual other-income/cash commit; raw90 only displays taxes.
 // Per-person amounts use source G, never inferred facility spending or a new tax formula.
 std::vector<CampaignReceipt> residence_tax_receipts(const app::WorldState &before,
-                                                    const app::WorldState &after);
+                                                    const app::WorldState &after,
+                                                    std::ostream *diagnostic = nullptr);
 // raw48 uses its initialized condition cache. Current recomputed values are diagnostic,
 // not a replacement eligibility rule. Cold/unmodified ranks produce no receipt.
 std::optional<CampaignReceipt> rank_promotion_receipt(const app::WorldState &before,

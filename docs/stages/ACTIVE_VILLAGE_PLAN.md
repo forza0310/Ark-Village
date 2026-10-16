@@ -1,6 +1,6 @@
 # 主动经营验收与建设收益方案
 
-配方14/16/17已从有效月177分别建立独立分支，实际制造/赠送、完整后继营业及月179严格冷载通过，来源a9dc1bd，见[B1](B1-playable-prototype.md#campaign-pot17-branch)。职业0/1/2/3/7已有实际转职、完整后继营业及冷载；木匠时限和商人3项实付见[经营效果](B1-playable-prototype.md#campaign-profession-economy)，未开放职业8/6/5的真实付费培养已到[月167冷载](B1-playable-prototype.md#campaign-profession-training)、尚未大师。其它专属消费与精通仍待验证。这些分支不替换下述月196主线；跨年贡献溢出及配方18后继仍是独立缺项。
+配方14/16/17已从有效月177分别建立独立分支，实际制造/赠送、完整后继营业及月179严格冷载通过，来源a9dc1bd，见[B1](B1-playable-prototype.md#campaign-pot17-branch)。职业0/1/2/3/7已有实际转职、完整后继营业及冷载；木匠时限和商人实付见[经营效果](B1-playable-prototype.md#campaign-profession-economy)，职业0已补[住宅实收税及月148后继](B1-playable-prototype.md#campaign-profession-tax)。未开放职业8/6/5的真实付费培养已到[月167冷载](B1-playable-prototype.md#campaign-profession-training)、尚未大师。其它专属消费与精通仍待验证。这些分支不替换下述月196主线；跨年贡献溢出及配方18后继仍是独立缺项。
 
 月196有效父世界的经营证据冻结5708375、503来源/81适配；现产品底座已接a9dc1bd、505来源/81适配，并完成该前缀只读冷载，尚未新增主线经营月。历史终态为五星、自然计分154750/系统提交、后继经营及独立冷载已验，phase2/continued_month195。另进程继承新局的G/p边界、5000G起步、600G建面包店/营业545G及再次存读已验，phase3/inherited_business1；两条前缀分别保留。父世界1025044G/两月预算80340G、4点、人气7037、源最高月收入95808G，50/50布局/25目标营业；建设70/强化217/装备321/胜利55/活动71/授勋51，任务74在途。27/32/33完整后继/严格冷载已验；18已制造/装配，完整后继月197两次耗尽6分钟、未认证，可选预算待确认。药店46/占卜屋56/洗澡堂52营业4641/4836/7115G；壶经验65/等级2、元素44/68/45/0，39缺6/0/5/10、29未开放；17独立分支见上。20排队不当人气兑现，实际施法/其他产物/职业及全775缺项保留；证据与失败见[本批B1](B1-playable-prototype.md#campaign-pot18-followup)。本批维护与回执审计见[B1](B1-playable-prototype.md#research-a9dc1bd-maintenance)；配方18严格后继及全775资格不由新底座冷载倒填。
 

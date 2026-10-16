@@ -3,6 +3,7 @@
 #include "world_campaign_coverage.hpp"
 #include <algorithm>
 #include <limits>
+#include <ostream>
 #include <stdexcept>
 #include <tuple>
 
@@ -231,7 +232,8 @@ std::optional<CampaignReceipt> rank_promotion_receipt(const State &before, const
                            {after.rank, 15, after.maximum_income, after.popularity}};
 }
 
-std::vector<CampaignReceipt> residence_tax_receipts(const State &before, const State &after) {
+std::vector<CampaignReceipt> residence_tax_receipts(const State &before, const State &after,
+                                                   std::ostream *diagnostic) {
     const auto page = std::find_if(before.scripts.pages.rbegin(), before.scripts.pages.rend(),
                                    [](const auto &p) { return p.lifecycle != 4; });
     if (page == before.scripts.pages.rend() || page->kind != ref::WorldScriptPageKind::raw_page ||
@@ -291,7 +293,17 @@ std::vector<CampaignReceipt> residence_tax_receipts(const State &before, const S
     need(after.scripts.notices.size() == before.scripts.notices.size() + 1 &&
          after.scripts.notices.back().message == 28);
     std::vector<CampaignReceipt> receipts;
-    for (const int id : residents)
+    for (const int id : residents) {
+        // Observe the settlement input, without recalculating or replacing the prepared G.
+        // The tax-preparation time and this later raw98 cash commit remain distinct.
+        const int job = before.scene.world.world.ai.growth.at(id).definition.current_profession;
+        if (diagnostic)
+            *diagnostic << "TAX_SETTLEMENT human=" << id << " job=" << job
+                        << " job_type=" << before.rules->jobs.at(job).type
+                        << " reward_basis_at_settlement="
+                        << before.scene.world.world.ai.battle.humans.at(id).battle_reward_stat
+                        << " prepared_tax=" << before.human_calendar.at(id).legacy_G
+                        << " page=" << page->id << " month=" << old_date.year * 12 + month << '\n';
         receipts.push_back({CampaignReceiptKind::human_home_tax_collected,
                             id,
                             after.simulation_steps,
@@ -301,6 +313,7 @@ std::vector<CampaignReceipt> residence_tax_receipts(const State &before, const S
                             {old_cash, before.human_calendar.at(id).legacy_G,
                              before.monthly_cash[month][4][0], month},
                             {new_cash, 0, after.monthly_cash[month][4][0], month}});
+    }
     return receipts;
 }
 

@@ -3753,6 +3753,26 @@ void annual_termination() {
           "late award initialization error cannot leave partial medal/list/page state");
 }
 void annual_award() {
+    // 定向调用点夹具：平方和回卷后为负；原APK必须完成Init，而非阻断年末。
+    {
+        auto input = fixture(87);
+        const auto id = input.scripts.pages.back().id;
+        for (auto &entry : input.human_presence) entry.second = entry.first <= 1 ? 1 : 0;
+        for (auto &entry : input.scene.world.world.ai.battle.humans) entry.second.killed_stat1 = 0;
+        input.scene.world.world.human_spending.at(0) = 0;
+        input.scene.world.world.human_spending.at(1) = 65536;
+        const auto before = startup_world_state_digest(input);
+        const auto r = prepare_startup_world_runtime(input);
+        check(r.candidate && r.candidate->human_calendar.at(0).contribution == 12 &&
+                  r.candidate->human_calendar.at(1).contribution == 12 &&
+                  r.candidate->award_rankings.at(id) == std::vector<int>({0, 1}) &&
+                  r.candidate->medal_count == input.medal_count + 1 &&
+                  r.candidate->scene.random.draws() == input.scene.random.draws() &&
+                  r.candidate->scene.world.world.ai.accounting.funds() ==
+                      input.scene.world.world.ai.accounting.funds() &&
+                  startup_world_state_digest(input) == before,
+              "87 Owner commits wrapped contribution and medal/list together, without input/cash/RNG mutation");
+    }
     auto s = fixture(87);
     s.human_presence.at(1) = 1;
     const auto parent = s.scripts.pages.back().id;

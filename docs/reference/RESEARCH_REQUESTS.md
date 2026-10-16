@@ -1,6 +1,6 @@
 # 研究交接需求
 
-当前产品冻结a9dc1bd。9692bb8/d4ed6be已正式交付植物绑定修正及魔法消费回执，d8d38e1/a0238f7已交80/87目录问答Owner、84实际反馈与整轮输入；6cbfdf3/239d071继续交付贡献回卷修正及物理攻击回执，adc57c9补标题纪录独立钟，dba657e补箭头临时表现的Init/Frame/Draw候选。均待产品分批接入，不再作为未交付项重复请求。下面旧来源的最小复现与当时边界保留，当前接入状态见[对照索引](REFERENCE_CHECKLIST.md#research-history-current-audit)，战斗取得/实际消费边界见[回执请求与回应](#spell-consumption-receipts)。
+当前完整冻结a9dc1bd，另独立接入并验收6cbfdf3贡献修正。9692bb8/d4ed6be已交植物绑定修正及魔法消费回执，d8d38e1/a0238f7已交80/87目录问答Owner、84实际反馈与整轮输入；239d071交付物理攻击回执，adc57c9补标题纪录独立钟，dba657e补箭头临时表现候选。各项接入状态见[对照索引](REFERENCE_CHECKLIST.md#research-history-current-audit)，不再当作未交付项重复请求。下面旧来源的最小复现与当时边界保留，战斗取得/实际消费边界见[回执请求与回应](#spell-consumption-receipts)。
 
 <a id="award-contribution-overflow"></a>
 ## 授勋贡献的正常消费群体溢出（2026-10-16）
@@ -11,7 +11,7 @@
 
 请核固定APK和Steam贡献消费者在平方、累加、方差、sqrt及转换的实际数值语义，区分原算术与维护拒绝预算，交付能处理该真实合法群体的定向修正和短边界/回滚检查。保留有效overflow拒绝或按新来源明确其适用范围，不能只扩大整数类型、夹值或删断言凑通过。产品暂不改冻结规则、不改消费历史来掩盖故障；修后从失败快照核单轮，再从月167有效玩家前缀复验经营/授勋/保存与冷载，研究无需重跑世界长链。
 
-正式6cbfdf3已回应：APK原int32回卷使本群体消费平方和成为−1870673936、整数方差−74826957；sqrt/映射的NaN按Java转0，越界饱和，不能用维护overflow拒绝阻断。已交25人独立oracle、总和/单项平方/差值边界及87 Owner联合提交短验，身份/空群体、奖章与奖励的有效拒绝保留。Steam异常浮点转换与APK不同，仅作为[版本边界](../../research/dungeon_village_1/rules/ai/WORLD_SCHEDULE.md#steam贡献异常数值的版本边界)登记；产品规则继续APK基线。当前仅只读审阅，尚未导入，也未复验上述玩家后继；该修正不混入待批d4ed6be 29目标或已通过的经营结果。
+正式6cbfdf3已回应：APK原int32回卷使本群体消费平方和成为−1870673936、整数方差−74826957；sqrt/映射的NaN按Java转0，越界饱和，不能用维护overflow拒绝阻断。已交25人独立oracle、总和/单项平方/差值边界及87 Owner联合提交短验，身份/空群体、奖章与奖励的有效拒绝保留。Steam异常浮点转换与APK不同，仅作[版本边界](../../research/dungeon_village_1/rules/ai/WORLD_SCHEDULE.md#steam贡献异常数值的版本边界)登记。产品现已在a9dc1bd基线上通过四份代码/既有来源适配独立接入，两Debug标准及Release受影响合同通过；原月168和新月216失败快照均单轮修复通过，修后从月215实际跨年、7次授勋、任务78胜利及月216/217玩家冷载已验，见[B1](../stages/B1-playable-prototype.md#research-6cbfdf3-contribution)。不宣称完整冻结6cb、不夹待批d4ed6be，也不把单轮修复改签为原月167分支的新玩家后继。
 
 <a id="plant-route-projection-gap"></a>
 ## 新建植物的路径格投影差异（2026-10-16）

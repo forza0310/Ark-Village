@@ -1,5 +1,16 @@
 # 计划与决策
 
+<a id="contribution-wrap-maintenance"></a>
+## 年末贡献回卷修正（既有APK规则的实现纠错）
+
+月215有效档沿已批准配方19路线正常经营，在年末87再次拒绝；原Owner/随机快照已单轮重现，与月167→168同为贡献数值守卫。正式6cbfdf3已核APK按int32回卷、NaN转0/越界饱和；不得保留过强拒绝、直接扩大int64或夹消费历史。三个规则头/实现/单测自a9dc1bd至该修正父版字节未变，可独立采用正式差异；Owner测试仅取新增二十行，不引入其间的住宅/目录改动。
+
+本次范围为`include/ark/simulation/village/rules/world_award_page.hpp`、`src/simulation/village/rules/world_award_page.cpp`、`tests/simulation/rules/world_award_page_test.cpp`、`tests/simulation/startup_world_pages_test.cpp`及`assets/simulation/SOURCES.json`。沿现`product_patch`登记正式修正来源及基线，不宣称完整冻结6cbfdf3或夹带待批d4ed6be；原既有适配、定义/空群体/奖章/奖励拒绝、Owner/随机回滚及独立oracle保留。三项过强算术溢出预期按已核原版语义替换，补实际25人数值与87联合提交。ABI/Owner/codec、原表及玩家身份/格式/随机政策均无变化。
+
+完成后集中两Debug配置/构建/标准CTest（仅排三个月），Release受影响规则/经营合同；用原月167及本次月215失败快照的`verify-failure-fixed`单轮核修正，再从有效月215在新目录按6分钟/10000轮实际补料、制造/分配、经营/授勋及保存冷载。原失败根与历史证据不改签，未完成制造和最早领取时点仍按实际结果记录。过程准备只放忽略的build，research只读正式Git对象，不构建、不写入、不推送。
+
+已完成：来源清单记录505项/84适配，四代码逐字节符合准备差异，501条其它来源记录保持；两Debug标准140/119项、Release受影响3项及两份历史失败单轮修复检查通过。修后月216/217真实经营、7次授勋、任务78胜利、配方19制造/分配及完整后继/严格冷载均通过。完整边界及证据见[B1](stages/B1-playable-prototype.md#research-6cbfdf3-contribution)，不把局部修正当完整6cb冻结，不改签原月168/216失败。
+
 <a id="campaign-gate-access"></a>
 ## 经营布局堵住南门的修复（既有通行契约的实现纠错）
 
@@ -53,7 +64,7 @@
 <a id="research-d4ed6be-integration"></a>
 ## 植物绑定、施工头标与魔法消费回执接续
 
-下一维护批固定正式d4ed6be，合并9692bb8/197d5b2。只读Git对象已核完整505项、8075897字节；480项源字节未变，25项源/测试更新，其中19项需保留既有产品适配重基。另导入eff_open00/eff_equipStock两PNG及两份SOURCES，精确29个目标见忽略的`build/validation/research-d4ed6be-integration/IMPORT-SCOPE.json`。目前尚未冻结新源副本、生成机械baseline或写入这些产品目标；自动审批把包括build内准备在内的批量创建/导入判为需明确核准具体落盘范围。准备改为复用旧冻结的480项输入，只物化25项变化及两素材，保留完整闭包身份和所有有效断言，不复制第二套研究缓存。
+下一维护批固定正式d4ed6be，合并9692bb8/197d5b2。只读Git对象已核完整505项、8075897字节；480项源字节未变，25项源/测试更新，其中19项原需保留既有81项产品适配重基。另导入eff_open00/eff_equipStock两PNG及两份SOURCES，精确29个目标见忽略的`build/validation/research-d4ed6be-integration/IMPORT-SCOPE.json`。目前未执行该批冻结、机械baseline或目标导入；自动审批要求明确核准具体落盘范围。后续独立6cbfdf3贡献修正将现有适配增至84项，收到本批批准后须按当前清单核旧字节并保留该修正，不直接使用旧manifest哈希。准备仅物化25项变化及两素材，复用480项未变输入，保留完整闭包身份和有效断言，不复制第二套研究缓存。
 
 植物kind2绑定立即置原legacy_state2/blocked，不再等待施工或刷新；不迁移或暗改既有玩家档，先静态核恢复合同，再单独验证月196旧布局的资格，不把旧收费/经营结果改签。施工只读计划使用实例elapsed/冻结duration/UserData更新钟，工人深度相对各占地格+1；设施队首通知0/7补Steam实际裁片，1–6继续沿增长计划。两项维护查询先接入，桌面按同一来源的深度/资源接线另行记录，不能用旧占位施工或APK同名PNG代替。
 

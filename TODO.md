@@ -4,18 +4,17 @@
 
 ## 当前接入与收口
 
-当前冻结正式a9dc1bd：505来源/81产品适配、766素材/26音频。已完成批次和旧经营前缀集中在[B1](docs/stages/B1-playable-prototype.md)，TODO只保留当前状态和后继。
+当前完整冻结a9dc1bd，另沿现有来源适配接入正式6cbfdf3贡献修正：505来源/84产品适配、766素材/26音频。已完成批次和旧经营前缀集中在[B1](docs/stages/B1-playable-prototype.md)，TODO只保留当前状态和后继。
 
 - [ ] 正式9692bb8/197d5b2已交植物路线绑定修正、施工只读计划及设施完工/装备库存头标；d4ed6be已交事务式魔法实际消费观察。按独立批次核对和接入，不混入a9dc1bd验收结果。
 
 - [ ] 按[全解锁合同](docs/stages/ACTIVE_VILLAGE_PLAN.md#full-unlock-campaign)逐定义覆盖取得、消费、实际效果与后继，保留775分母；代表样例、仅解锁或日期推进不算全覆盖。
-- [ ] 普通道具显式输入已获批并接入；2/5/8/22/27已真实购买/强化、完整后继营业及独立冷载。继续补11/23的合法取得与实际使用：月215配方2/5材料均足额，仍无库存/商会货源；[当前元素与后继](docs/stages/B1-playable-prototype.md#campaign-pot29-equipment)与[既有消费证据](docs/stages/B1-playable-prototype.md#campaign-item-stock-gaps)分开，不把目录或材料当消费。
+- [ ] 普通道具显式输入已获批并接入；2/5/8/22/27已真实购买/强化、完整后继营业及独立冷载。继续补11/23的合法取得与实际使用：月217配方5足额、2缺暗2，仍无库存/商会货源；[当前元素与后继](docs/stages/B1-playable-prototype.md#research-6cbfdf3-contribution)与[既有消费证据](docs/stages/B1-playable-prototype.md#campaign-item-stock-gaps)分开，不把目录或材料当消费。
 - 普通道具配方的制造/设施使用八目标已[准备方案](docs/MILESTONES.md#campaign-pot-ordinary-items)并发出确认，尚未编码；原九目标批准与既有魔法壶发现/设施路线继续有效。
 - 历史回执2838条：80个已核分段外补核5个旧格式阶段，配方7完整消费及职业4人物0/1/3已联接；旧来源字段缺失、失败后段和每定义未完环节保留，见[审计](docs/stages/B1-playable-prototype.md#campaign-history-receipt-audit)，不把“有回执”当全覆盖。
-- [ ] 从当前有效父世界月215接续：南门修复/任务74胜利、经验90五配方发现，以及29/23/28三项防具的[实际制造/分配/属性、完整后继与严格冷载](docs/stages/B1-playable-prototype.md#campaign-pot29-equipment)已验。继续19/37（均缺暗7）及其它产物，20/34发现门槛120、21门槛150，任务78/定义74仍在途。39植物70/20、18、32/33及52营业保留原证据，17独立分支不改签主线。活动20付款排队不当人气兑现；保留两月现金及图纸预算、40配方与775分母，实际施法不以学习/Q替代，原197/200失败不由新路线改签。
+- [ ] 从当前有效父世界月217接续：正式6cb贡献修正、跨年授勋/任务78胜利，以及19→武器24的[实际制造/装配/属性、完整后继与严格冷载](docs/stages/B1-playable-prototype.md#research-6cbfdf3-contribution)已验。先处理3件待料，再补37等产物和经验120/150后继；37当前缺暗20。29/23/28三防具、39植物70/20、18、32/33及52营业保留原证据，17独立分支不改签主线。活动20付款排队不当人气兑现；保留两月现金及图纸预算、40配方与775分母，实际施法不以学习/Q替代，原失败不由修后新路线改签。
 - [ ] 接入d4ed6be法术及239d071物理局部回执，再补实际施放、投射/延迟伤害与武器实战归因，见[研究回应](docs/reference/RESEARCH_REQUESTS.md#spell-consumption-receipts)；Q可用、装配属性及退休现金均不替代实际作用，不再将已交观察接口当作研究缺口。
 - [ ] 继续23职业的显式消费分支和后继。职业0/1/2/3/7/8已有合法付款、原三阶段、完整后继营业及冷载；木匠/商人效果见[经营效果](docs/stages/B1-playable-prototype.md#campaign-profession-economy)，职业0实收住宅税560G见[税收](docs/stages/B1-playable-prototype.md#campaign-profession-tax)。历史培养分支见[原结果](docs/stages/B1-playable-prototype.md#campaign-profession-training)；主线原职业8人物6/9现均10级、职业8已开放，0/1/3/7实际转入，见[最新后继](docs/stages/B1-playable-prototype.md#campaign-pot29-equipment)。5/6/15仍未开放；最早精通领取页、植物实付、其它职业税收及剩余精通效果待核，不把普通策略跳过标作不可达。
-- [ ] 优先接入正式6cbfdf3的跨年贡献修正：APK按int32回卷及Java转整处理，保留有效身份/奖章/奖励拒绝；先从月167→168失败Owner/随机快照单轮复验，再验玩家经营/授勋/保存冷载，见[研究回应](docs/reference/RESEARCH_REQUESTS.md#award-contribution-overflow)。当前产品尚未修正，职业0的独立跨年前分支通过不替代失败后继认证。
 
 ## 表现与研究边界
 

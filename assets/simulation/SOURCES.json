@@ -572,8 +572,12 @@
       "source": "research/dungeon_village_1/example/include/dungeon_village_reference/world_award_page.hpp",
       "source_sha256": "0941327431ef35b2a51ffa9990e97e1836139cd23c83f2bcd075783139ef0a5d",
       "source_bytes": 4038,
-      "sha256": "8019a58fbdafab905c0a7ca5af5212245480adac331f348ed2a3499ae2995177",
-      "bytes": 4033
+      "sha256": "5dc77941831d2fec2225919705f9fef1e16f6490ff6d55e1f4809ae5e6e0ae3f",
+      "bytes": 4117,
+      "product_patch": {
+        "imported_sha256": "8019a58fbdafab905c0a7ca5af5212245480adac331f348ed2a3499ae2995177",
+        "reason": "Formal research6cbfdf3 APK contribution fix: exact upstream signed-int32 wrap and Java float conversion; source identity, empty-population, medal/reward rejection and Owner/random atomicity retained. Product freeze remains a9dc1bd; this is an explicitly recorded maintained delta, not the unapproved d4ed6be import. Preserve the exact mechanical baseline and all effective assertions; obsolete arithmetic-overflow rejection expectations follow the published APK oracle."
+      }
     },
     {
       "file": "include/ark/simulation/village/rules/world_calendar.hpp",
@@ -1312,8 +1316,12 @@
       "source": "research/dungeon_village_1/example/src/world_award_page.cpp",
       "source_sha256": "0c24ada03fe6d5d60fa33a521dec394d0bf8e5ac13790036c3d2a277eb8bebfb",
       "source_bytes": 11048,
-      "sha256": "d8fcabef74e6f50baa726af8d514bfcfa1262b47ea25e8bab402d37ea0da6fdd",
-      "bytes": 11045
+      "sha256": "5525a356d88919d3555342a53a69d56d7562a3ef815e8f752810596a8b9b85e9",
+      "bytes": 11765,
+      "product_patch": {
+        "imported_sha256": "d8fcabef74e6f50baa726af8d514bfcfa1262b47ea25e8bab402d37ea0da6fdd",
+        "reason": "Formal research6cbfdf3 APK contribution fix: exact upstream signed-int32 wrap and Java float conversion; source identity, empty-population, medal/reward rejection and Owner/random atomicity retained. Product freeze remains a9dc1bd; this is an explicitly recorded maintained delta, not the unapproved d4ed6be import. Preserve the exact mechanical baseline and all effective assertions; obsolete arithmetic-overflow rejection expectations follow the published APK oracle."
+      }
     },
     {
       "file": "src/simulation/village/rules/world_calendar.cpp",
@@ -2000,8 +2008,12 @@
       "source": "research/dungeon_village_1/example/tests/world_award_page_test.cpp",
       "source_sha256": "55af754a7a2ca6666479eac93a30d907437479f49a3d98aee7976ec825912f2a",
       "source_bytes": 13444,
-      "sha256": "37ccbb34406d302f7b0bf6fce0c0710125927e1f8e8cb0cf283174cab270e33e",
-      "bytes": 13444
+      "sha256": "f3e4fab1f29f7ba9aca4e440e8337c8ac881e383d326d601bd5fa417eac8f4cb",
+      "bytes": 16292,
+      "product_patch": {
+        "imported_sha256": "37ccbb34406d302f7b0bf6fce0c0710125927e1f8e8cb0cf283174cab270e33e",
+        "reason": "Formal research6cbfdf3 APK contribution fix: exact upstream signed-int32 wrap and Java float conversion; source identity, empty-population, medal/reward rejection and Owner/random atomicity retained. Product freeze remains a9dc1bd; this is an explicitly recorded maintained delta, not the unapproved d4ed6be import. Preserve the exact mechanical baseline and all effective assertions; obsolete arithmetic-overflow rejection expectations follow the published APK oracle."
+      }
     },
     {
       "file": "tests/simulation/rules/world_calendar_maintenance_test.cpp",
@@ -3730,11 +3742,11 @@
       "source": "research/dungeon_village_1/prototype/tests/startup_world_pages_test.cpp",
       "source_sha256": "793c908bf73dd09229b178dc2015ef935d73e54e1ffc464dd499c6c5f09a6172",
       "source_bytes": 386061,
-      "sha256": "c934b410b8919b62f61d2dc9d9de780a7409913385b5f77b1df247d621f94d50",
-      "bytes": 410919,
+      "sha256": "2ddffa4406b77c35d7e336d4a77d2cf408a9b10506db43364c316a928230167c",
+      "bytes": 412279,
       "product_patch": {
         "imported_sha256": "b03ccac5d3abb385cd98ad8825ab40acf278df077888b21fb54917d60858aa47",
-        "reason": "Preserve prior adaptations; user-confirmed 2026-10-10 one-time facility blueprints: exclude p1/p2 from commerce, payment, preview and restore; cover initial exclusion, stale rollback and repeated gold construction. See docs/reference/RESEARCH_REQUESTS.md#commerce-building-blueprint."
+        "reason": "Preserve prior adaptations; user-confirmed 2026-10-10 one-time facility blueprints: exclude p1/p2 from commerce, payment, preview and restore; cover initial exclusion, stale rollback and repeated gold construction. See docs/reference/RESEARCH_REQUESTS.md#commerce-building-blueprint.; Formal research6cbfdf3 APK contribution fix: exact upstream signed-int32 wrap and Java float conversion; source identity, empty-population, medal/reward rejection and Owner/random atomicity retained. Product freeze remains a9dc1bd; this is an explicitly recorded maintained delta, not the unapproved d4ed6be import. Only insert the independent twenty-line annual_award Owner test; preserve all current product adaptations."
       }
     },
     {

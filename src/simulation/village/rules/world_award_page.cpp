@@ -7,9 +7,28 @@
 
 namespace ark::simulation::rules {
 namespace {
-bool fits(std::int64_t value) {
-    return value >= std::numeric_limits<std::int32_t>::min() &&
-           value <= std::numeric_limits<std::int32_t>::max();
+// APK add/sub/mul-int均按32位回卷；不依赖C++有符号溢出或实现定义的窄化。
+std::int32_t signed_bits(std::uint32_t value) {
+    return static_cast<std::int32_t>(value <= 0x7fffffffU
+                                         ? static_cast<std::int64_t>(value)
+                                         : static_cast<std::int64_t>(value) - 0x100000000LL);
+}
+std::int32_t add(std::int32_t a, std::int32_t b) {
+    return signed_bits(static_cast<std::uint32_t>(a) + static_cast<std::uint32_t>(b));
+}
+std::int32_t square_delta(std::int32_t value, std::int32_t mean) {
+    const auto delta = static_cast<std::uint32_t>(value) - static_cast<std::uint32_t>(mean);
+    return signed_bits(delta * delta);
+}
+// DEX float-to-int：NaN为0，越界饱和，其余向零截断；禁止把NaN直接转C++ int。
+std::int32_t java_int(float value) {
+    if (std::isnan(value))
+        return 0;
+    if (static_cast<double>(value) >= std::numeric_limits<std::int32_t>::max())
+        return std::numeric_limits<std::int32_t>::max();
+    if (static_cast<double>(value) <= std::numeric_limits<std::int32_t>::min())
+        return std::numeric_limits<std::int32_t>::min();
+    return static_cast<std::int32_t>(value);
 }
 bool valid(const WorldAwardPageState &state) {
     if (state.medal_count < 0 || state.page_counter < 0)
@@ -38,7 +57,7 @@ bool valid(const WorldAwardPageState &state) {
 int mapped(std::int32_t value, int mean, float sigma) {
     const float low = static_cast<float>(mean) - sigma;
     const float high = static_cast<float>(mean) + sigma;
-    return static_cast<int>(high - low != 0.0f
+    return java_int(high - low != 0.0f
                                 ? 25.0f + ((static_cast<float>(value) - low) * 50.0f) / (high - low)
                                 : 25.0f);
 }
@@ -58,29 +77,22 @@ prepare_world_human_contributions(std::vector<WorldAwardHuman> humans) {
     }
     if (count == 0)
         return {WorldAwardError::invalid_owner, {}};
-    std::array<std::int64_t, 2> totals{};
+    std::array<std::int32_t, 2> totals{};
     for (const auto &human : humans) {
         if (human.presence == 0)
             continue;
         for (std::size_t i = 0; i < totals.size(); ++i) {
-            totals[i] += human.yearly_totals[i + 1];
-            if (!fits(totals[i]))
-                return {WorldAwardError::overflow, {}};
+            totals[i] = add(totals[i], human.yearly_totals[i + 1]);
         }
     }
     std::array<int, 2> means{static_cast<int>(totals[0] / count),
                              static_cast<int>(totals[1] / count)};
-    std::array<std::int64_t, 2> squares{};
+    std::array<std::int32_t, 2> squares{};
     for (const auto &human : humans) {
         if (human.presence == 0)
             continue;
         for (std::size_t i = 0; i < squares.size(); ++i) {
-            const auto delta = static_cast<std::int64_t>(human.yearly_totals[i + 1]) - means[i];
-            if (!fits(delta) || std::abs(delta) > 46340)
-                return {WorldAwardError::overflow, {}};
-            squares[i] += delta * delta;
-            if (!fits(squares[i]))
-                return {WorldAwardError::overflow, {}};
+            squares[i] = add(squares[i], square_delta(human.yearly_totals[i + 1], means[i]));
         }
     }
     // 原Java先做整数方差除法，double sqrt后转float，不能改成浮点平均方差。
@@ -93,7 +105,7 @@ prepare_world_human_contributions(std::vector<WorldAwardHuman> humans) {
         const int earned = mapped(human.yearly_totals[1], means[0], sigma[0]);
         const int spent = mapped(human.yearly_totals[2], means[1], sigma[1]);
         human.contribution = std::clamp(
-            static_cast<int>(static_cast<float>(spent) * 0.5f + static_cast<float>(earned) * 0.5f),
+            java_int(static_cast<float>(spent) * 0.5f + static_cast<float>(earned) * 0.5f),
             0, 100);
     }
     return {WorldAwardError::none, std::move(humans)};

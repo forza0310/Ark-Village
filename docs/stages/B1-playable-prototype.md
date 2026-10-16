@@ -11,6 +11,8 @@
 
 Release已生成24张条件图（两尺寸、根/English/简中/繁中、滑入及特效0/4/退休8），已查看各语言与两尺寸；真实月196玩家档副本另以world-load的FIFO输入在1080×720和240×256加载绘制，均12帧、音频26/26、failed0、outer_updates0，攻略条/百分比及隐藏按钮已查看。原业务根再次独立冷载通过phase2/continued_month195/154750，9份原输入逐字节未变；玩家schema5/独立系统2及随机不保存保持。日志、条件图、真实载入图见`build/validation/research-a9dc1bd-integration/`的footer-*及latest-footer-live.txt。窗口是程序内输入验收，非OS鼠标/原程序动态或新经营月认证；完整Release标准/三个月、CI、配方18完整后继及全775仍分别未完成。维护批checkpoint为27ec47e；本桌面批本地提交及便携包后续记录。
 
+桌面代码checkpoint为e42a688；该版Release ZIP为16.70MiB、解压27.60MiB/790文件，包在上述批次目录的`release-package-bbe1949bd6494003bba21deb11c2e881/`。PE依赖闭包、资源与解压检查通过；从包外工作目录、仅Windows系统PATH启动，实际载入独立月196副本并绘12帧，音频26/26、failed0、outer_updates0，已查看探索条截图。包中已含新语言PNG/SEB、必要DLL及字体，不附开发/研究缓存；该检查不推进原经营档或替代全775。CI未运行、不推送。
+
 <a id="research-a9dc1bd-maintenance"></a>
 ## 2026-10-16：攻略特效、应用表现事务与经营回执审计
 

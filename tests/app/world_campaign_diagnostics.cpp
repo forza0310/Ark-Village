@@ -165,7 +165,10 @@ void activity_facility_fields(std::ostream &out, const sim::rules::RescueFacilit
         out << "live=0";
         return;
     }
+    // Keep the charged-price context beside sales; a later inspection may already see a
+    // different quote after an upgrade. These remain update-boundary facts, not local receipts.
     out << "live=1 definition=" << facility->placement.definition_id
+        << " price=" << facility->price << " status=" << facility->status
         << " sales=" << facility->sales << " occupants=[";
     for (std::size_t n = 0; n < facility->occupants.size(); ++n) {
         if (n)
@@ -560,6 +563,7 @@ void campaign_diagnostic_contract(const std::filesystem::path &build) {
     const auto shop = std::find_if(next_world.facilities.begin(), next_world.facilities.end(),
                                    [](const auto &entry) { return entry.second.kind == 3; });
     require(shop != next_world.facilities.end(), "activity fixture needs an initial shop");
+    shop->second.price = 37; // Deliberately distinct from the input quote and the sale amount.
     shop->second.sales += 11;
     shop->second.occupants.push_back(actor);
     require(next_world.ai.accounting.post_cash(
@@ -575,6 +579,7 @@ void campaign_diagnostic_contract(const std::filesystem::path &build) {
                 activity.str().find("phase=before live=1") != std::string::npos &&
                 activity.str().find("phase=after live=1") != std::string::npos &&
                 activity.str().find("SHOP_ACTIVITY view=actual_update_boundary") != std::string::npos &&
+                activity.str().find(" price=37 status=") != std::string::npos &&
                 activity.str().find("ACTIVITY_LEDGER_ADDED view=actual_update_boundary") !=
                     std::string::npos &&
                 sim::startup_world_state_digest(activity_before) == input_digest &&

@@ -2,6 +2,7 @@
 #include "ark/simulation/presentation/steam_task_roster_skin.hpp"
 #include "ark/simulation/presentation/steam_task_result_skin.hpp"
 #include "ark/simulation/presentation/steam_task_deadline_skin.hpp"
+#include "ark/simulation/presentation/steam_dungeon_footer_skin.hpp"
 #include "ark/simulation/persistence/startup_world_persistence.hpp"
 #include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
 #include "ark/simulation/actors/startup_world_human.hpp"
@@ -944,6 +945,167 @@ void task_information_owner(Checks &c) {
     raw.scripts.pages.back().task_definition=s.tasks.at(task).definition;raw.page_counters.erase(id);
     c(!steam_task_information_skin(raw,id,options),"29缺初始化钟拒绝，不默认置零");
 }
+void dungeon_footer(Checks &c) {
+    SteamDungeonFooterInput in;in.view={10,20,480,320};in.side_width=12;in.page=7;
+    in.presentation.ordinal=5;in.presentation.pages={7};
+    in.presentation.random_before=20;in.presentation.random_after=21;
+    SteamDungeonFooterTask task;task.facility=4;task.background_row=3;task.counter=18;
+    task.progress=7;task.maximum=10;
+    // 原逆序：已开宝箱先画；随后dy=-18宝箱→继承dy怪物→抖动下降怪物。
+    task.challenges={{{100,1,1,25,0,0},0,42},{{50,1,0,0,0,0},30,30},
+                     {{25,0,1,5,0,0},-1,-1},{{75,0,3,0,1,0},-1,-1}};
+    task.humans={{25,0,0,0},{75,1,15,1}};task.effects={{{3,8,111}},{{4,9,112}}};
+    in.task=task;in.presentation.dungeon_jitters={{7,4,0,-1}};
+    const auto p=steam_dungeon_footer_skin(in);c(bool(p),"探索底栏冻结调用点可投影");
+    const auto images=parts<StartupSkinDraw>(*p);
+    c(images.front().image==127&&images.front().crop==std::array<int,4>{-66,54,283,18}&&
+      images.front().offset==std::array<int,2>{12,322},"Steam背景保留未消费ClampMax差异和非零VIEW原式");
+    c(images[1].image==97&&images[1].sprite==27&&images[1].frame==5&&
+      images[2].image==6&&images[2].frame==3,"宝箱先画状态3，第二遍不重复并保留帧3");
+    const auto bodies=parts<SteamMonsterBody>(*p);
+    c(bodies.size()==2&&bodies[0].image==30&&bodies[0].sprite==30&&
+      bodies[0].position==std::array<int,2>{205,305}&&
+      bodies[1].position==std::array<int,2>{285,332},"怪物继承前宝箱dy，下降者只取冻结-1抖动");
+    c(images[3].image==24&&images[3].crop==std::array<int,4>{0,0,18,18},"怪物先原mode5背景垫片，不替成地表阴影");
+    const auto clips=parts<SteamHumanClip>(*p);
+    c(clips.size()==4&&clips[0].rectangle==std::array<int,4>{12,322,456,18}&&
+      clips[1].rectangle==std::array<int,4>{12,322,283,18}&&
+      clips[2].kind==SteamHumanClipKind::pop&&clips[3].kind==SteamHumanClipKind::pop,
+      "嵌套外底18高、人物内clip及各自Pop");
+    const auto humans=parts<SteamHumanPortrait>(*p);
+    c(humans.size()==2&&humans[0].actor.body.image==1&&humans[0].actor.body.frame==0&&
+      humans[0].actor.body.sprite==1&&!humans[0].actor.weapon&&!humans[0].actor.shadow&&
+      humans[0].image_clip&&humans[0].clip==std::optional<std::array<int,4>>{{230,306,15,14}}&&
+      humans[0].position==std::array<int,2>{238,327},"人物逆序、撤退位移及原独立ImageClip，非按aa行走");
+    std::vector<StartupSkinDraw> effects,tiles;
+    for(const auto &im:images) {
+        if(im.image==141)effects.push_back(im);
+        if(im.image==86)tiles.push_back(im);
+    }
+    c(effects.size()==2&&effects[0].frame==1&&effects[0].offset==std::array<int,2>{127,112}&&
+      effects[1].frame==0&&effects[1].offset==std::array<int,2>{126,111},"aW逆序并保留独立y，不叠滑入Y");
+    c(tiles.size()==9&&tiles.front().crop==std::array<int,4>{0,0,77,18}&&
+      tiles.back().crop==std::array<int,4>{64,0,5,18},"77宽右段加13宽平铺，末片5不缩放");
+    const auto numbers=parts<SteamFacilityNumber>(*p);
+    c(numbers.size()==1&&numbers[0].asset==SteamFacilityAsset::number03_hud&&numbers[0].value==70&&
+      numbers[0].position==std::array<int,2>{399,325}&&numbers[0].anchor==4,
+      "百分比来自g/h，非日文独立右移6与SEB10");
+    c(images.back().image==85&&images.back().offset==std::array<int,2>{400,328},"百分号独立SEB76调用");
+    auto jp=in;jp.japanese=true;
+    c(parts<SteamFacilityNumber>(*steam_dungeon_footer_skin(jp))[0].position[0]==393,"日文只改右段数字与百分号横移");
+    auto zero=in;zero.task->maximum=0;
+    c(parts<SteamFacilityNumber>(*steam_dungeon_footer_skin(zero))[0].value==0,"零分母沿原比例helper返回起点");
+    auto bad=in;bad.presentation.dungeon_jitters.clear();c(!steam_dungeon_footer_skin(bad),"缺本次抖动拒绝，不重抽");
+    bad=in;bad.presentation.dungeon_jitters.push_back({7,4,0,0});c(!steam_dungeon_footer_skin(bad),"重复随机事实拒绝");
+    bad=in;bad.presentation.dungeon_jitters[0].facility=5;c(!steam_dungeon_footer_skin(bad),"错误实例抖动拒绝");
+    bad=in;bad.presentation.dungeon_jitters[0].challenge=1;c(!steam_dungeon_footer_skin(bad),"错原索引拒绝");
+    bad=in;bad.task->challenges[0].monster_sprite=0;c(!steam_dungeon_footer_skin(bad),"拒绝把身体SEB当脸图SEB");
+    bad=in;bad.task->humans[0].body_image=32;c(!steam_dungeon_footer_skin(bad),"缺失human32不补透明占位");
+    bad=in;bad.task->background_row=6;c(!steam_dungeon_footer_skin(bad),"背景六行之外拒绝");
+    bad=in;bad.presentation.pages={8};c(!steam_dungeon_footer_skin(bad),"未获准页不绘制");
+    bad=in;bad.presentation.cleared_task=1;c(!steam_dungeon_footer_skin(bad),"清理后的旧绑定不能继续画");
+    bad=in;bad.task->challenges.resize(4097);c(!steam_dungeon_footer_skin(bad),"输出规模预算拒绝");
+    for(int repeat=0;repeat<3;++repeat) {
+        const auto again=steam_dungeon_footer_skin(in);
+        c(again&&again->operations.size()==p->operations.size()&&
+          in.presentation.random_before==20&&in.presentation.random_after==21&&
+          in.presentation.dungeon_jitters[0].offset==-1&&in.task->counter==18,
+          "冻结计划重复投影不推进、不累计输出、不消费共同随机");
+    }
+    in.task.reset();c(steam_dungeon_footer_skin(in)->operations.empty(),"无任务不画底栏");
+    in.task=task;in.task->kind=1;c(steam_dungeon_footer_skin(in)->operations.empty(),"非探索任务不画底栏");
+}
+void dungeon_footer_owner(Checks &c) {
+    auto s=test_support::world_fixture();
+    const auto made=ref::prepare_world_task_creation(startup_world_runtime_factory(s),0);
+    c(made.candidate&&made.candidate->created_task&&write_startup_world_runtime_factory(s,made.candidate->state),
+      "底栏桥沿真实factory生成任务和绑定实例");
+    s.active_task=*made.candidate->created_task;
+    const auto facility=*s.tasks.at(*s.active_task).facility;
+    s.dungeon_facilities.at(facility).challenges={{0,1,1,10,0,0}};
+    s.dungeon_facilities.at(facility).progress=7;s.dungeon_facilities.at(facility).extent=10;
+    s.dungeon_facilities.at(facility).percent=99; // 故意与g/h不同，不能误读缓存。
+    s.scene.world.updates=9;s.scene.world.floating_notes={{3,8,111,999}};
+    s.scripts.executing_page.reset();s.scripts.pages.front().lifecycle=3;
+    const auto page=s.scripts.pages.front().id;
+    StartupPresentationRequest request;request.ordinal=1;request.mode=StartupPresentationMode::full_redraw;
+    const auto pages=startup_world_presentation_pages(s,request.mode);
+    c(bool(pages),"真实场景名单可生成Owner表现请求");request.expected_pages=*pages;
+    const auto presented=prepare_startup_world_presentation(s,request);
+    c(presented.candidate&&presented.plan&&presented.plan->dungeon_jitters.size()==1,
+      "Owner恰消费一次原挑战抖动，皮肤不代抽");s=*presented.candidate;
+    const auto digest=startup_world_state_digest(s);
+    const auto p=steam_dungeon_footer_skin(s,page,*presented.plan,{0,0,240,240},0,false);
+    c(bool(p),"同次candidate/plan只读桥读取真实g/h、挑战、aW与页资格");
+    c(parts<SteamFacilityNumber>(*p)[0].value==70&&
+      parts<SteamHumanClip>(*p)[1].rectangle[1]==231,
+      "进度不是99缓存，滑入从UserData.p=9映射为231");
+    for(int repeat=0;repeat<3;++repeat)
+        c(steam_dungeon_footer_skin(s,page,*presented.plan,{0,0,240,240},0,false)&&
+          startup_world_state_digest(s)==digest&&s.scene.world.floating_notes[0].size()==4,
+          "重复桥不改Owner、原aW尾槽或随机，短期输出不保留引用");
+    auto bad=s;bad.scene.world.floating_notes={{0,8}};
+    c(!steam_dungeon_footer_skin(bad,page,*presented.plan,{0,0,240,240},0,false),"aW不足三槽拒绝");
+    bad=s;bad.dungeon_facilities.erase(facility);
+    c(!steam_dungeon_footer_skin(bad,page,*presented.plan,{0,0,240,240},0,false),"缺实例进度拒绝");
+    bad=s;bad.scene.world.world.facilities.erase(facility);
+    c(!steam_dungeon_footer_skin(bad,page,*presented.plan,{0,0,240,240},0,false),"缺实体交回Owner清理，皮肤不修补");
+    bad=s;bad.scene.world.world.facilities.at(facility).occupants={{999}};
+    c(!steam_dungeon_footer_skin(bad,page,*presented.plan,{0,0,240,240},0,false),"失效人物引用不跳过或用参与者补位");
+    bad=s;bad.scripts.pages.front().lifecycle=4;
+    c(!steam_dungeon_footer_skin(bad,page,*presented.plan,{0,0,240,240},0,false),"退休场景不能复用旧计划");
+    bad=s;bad.scripts.pages.push_back(bad.scripts.pages.front());
+    c(!steam_dungeon_footer_skin(bad,page,*presented.plan,{0,0,240,240},0,false),"重复页身份拒绝");
+    bad=s;bad.scripts.executing_page=page;
+    c(!steam_dungeon_footer_skin(bad,page,*presented.plan,{0,0,240,240},0,false),"轮内执行中不可冒充轮末冻结绘制");
+    auto stale=*presented.plan;++stale.random_after;
+    c(!steam_dungeon_footer_skin(s,page,stale,{0,0,240,240},0,false),"错误随机交接拒绝");
+    stale=*presented.plan;stale.random_before=stale.random_after;
+    c(!steam_dungeon_footer_skin(s,page,stale,{0,0,240,240},0,false),"相同after但错误抽数仍拒绝");
+    // 仅设置人物缓存/占用显示条件，非自然入场或完整保存认证；Java保留根不能被过滤。
+    auto held=s;ref::BattleActorRecord actor;actor.id={901};actor.definition=1;
+    held.scene.world.world.ai.retired_actors.emplace(actor.id,actor);
+    held.dungeon_actors.emplace(actor.id,ref::DungeonActorProgress{});
+    held.scene.world.world.facilities.at(facility).occupants={actor.id,actor.id};
+    const auto retained=steam_dungeon_footer_skin(held,page,*presented.plan,{0,0,240,240},0,false);
+    c(retained&&parts<SteamHumanPortrait>(*retained).size()==2,
+      "设施保留根仍绘头像，重复占用按原引用数保留，不按活跃名单去重");
+    held.scene.world.world.ai.battle.actors.emplace(actor.id,actor);
+    c(!steam_dungeon_footer_skin(held,page,*presented.plan,{0,0,240,240},0,false),"活跃/保留双持有拒绝");
+    held.scene.world.world.ai.battle.actors.clear();
+    held.scene.world.world.ai.retired_actors.at(actor.id).id={902};
+    c(!steam_dungeon_footer_skin(held,page,*presented.plan,{0,0,240,240},0,false),"人物槽键与实体身份不符拒绝");
+}
+void dungeon_footer_resources(Checks &c,const std::filesystem::path &root) {
+    const auto packaged=[&](const char *published) {
+        const std::filesystem::path file(published);
+        return std::string_view(published).rfind("original/",0)==0
+            ? root/file.lexically_relative("original") : root/"steam_common"/file.filename();
+    };
+    for(const int id:{6,24,84,85,86,97,102,127,141}) {
+        const auto r=steam_dungeon_footer_resource(id);c(bool(r),"底栏每项common有明确路径映射");
+        const auto file=packaged(r->published_image);
+        Image im=LoadImage(file.string().c_str());c(im.data&&im.width>0&&im.height>0,"底栏真实PNG可读取");
+        if(id==127)c(im.width==217&&im.height==108,"底栏真实背景六行18高");
+        if(id==86)c(im.width==77&&im.height==18,"右段原图77宽，铺片不猜尺寸");
+        if(r->published_sprite) {
+            std::ifstream stream(packaged(r->published_sprite),std::ios::binary);
+            const std::vector<std::uint8_t> data{std::istreambuf_iterator<char>(stream),{}};
+            const auto seb=ark::assets::parse_legacy_seb(data);
+            const int frame=id==6?3:id==97?5:0;
+            bool found{};
+            for(const auto &layer:seb.layers)for(const auto &part:layer.parts) {
+                if(part.frame!=frame)continue;
+                found=true;
+                c(part.source_x>=0&&part.source_y>=0&&part.source_x+part.width<=im.width&&
+                  part.source_y+part.height<=im.height,"具名SEB请求在实际PNG范围内，替图97独立验证");
+            }
+            c(found,"底栏实际SEB有被消费帧");
+        }
+        UnloadImage(im);
+    }
+    c(!steam_dungeon_footer_resource(-1)&&!steam_dungeon_footer_resource(103),"非底栏图片不猜映射");
+}
 } // namespace
 
 // 仅扩现visuals套件；报名扣费、held推进、随机次序与回滚由pages主责。
@@ -951,5 +1113,6 @@ int check_steam_task_selection_skins(const std::filesystem::path &source_root) {
     Checks c;directory(c);prompt(c);recruitment(c);owner(c);resources(c,source_root);
     rosters(c);departure(c);roster_resources(c,source_root);results(c,source_root);
     task_information(c);task_information_owner(c);victory(c);victory_owner(c);deadline(c,source_root);
-    result_owner(c);deadline_owner(c);roster_owner(c);return c.count;
+    result_owner(c);deadline_owner(c);roster_owner(c);dungeon_footer(c);dungeon_footer_owner(c);
+    dungeon_footer_resources(c,source_root);return c.count;
 }

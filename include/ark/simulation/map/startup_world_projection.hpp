@@ -61,6 +61,7 @@ struct StartupWorldMonster {
     ref::WorldScriptProgram introduction_program; // 原k.t，解锁介绍实际同步执行。
     int shadow{}; // 原monster列5的独立影子索引；不得按body推导。
     std::string description; // 原monster列14，只读定义文案，不新增世界持久字段。
+    int aura_size{}; // 原monster第3列k.e／Steam auraSize；独立于体型、击杀数和难度。
 };
 struct StartupWorldItem {
     int identity{};
@@ -88,6 +89,7 @@ struct StartupWorldTask {
     std::vector<int> encounter_monsters; // 原a.m.j，第10列，保留原序。
     int recruitment_fee{};               // 原a.m.g，第6列；页23确认扣现金类别4。
     int crew_rating_penalty{};           // 原a.m.s，第15列；只用于页28评价，不拒绝出发。
+    int dungeon_background_row{}; // 原a.m.f70e，questData第4列；只选底栏18高背景，不是阶段/建筑ID。
 };
 struct StartupWorldFacilityInitial {
     std::uint32_t flags{};

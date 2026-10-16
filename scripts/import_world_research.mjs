@@ -26,7 +26,11 @@ const prototypeModules = ['startup', 'startup_map', 'startup_ai', 'facility_proj
   'startup_information', 'startup_application_menu', 'startup_title_menu',
   'steam_startup_skin', 'steam_facility_skin', 'steam_human_skin', 'steam_information_skin',
   'startup_world_information', 'startup_world_menu', 'startup_world_save',
-  'steam_main_menu_skin', 'startup_application_world_save', 'startup_world_manual', 'steam_manual_skin'];
+  'steam_main_menu_skin', 'startup_application_world_save', 'startup_world_manual', 'steam_manual_skin',
+  'steam_town_progress_skin', 'steam_village_activity_skin', 'steam_magic_pot_skin',
+  'steam_magic_pot_effect_skin', 'steam_task_selection_skin', 'steam_task_roster_skin',
+  'steam_task_result_skin', 'steam_task_deadline_skin', 'steam_human_ceremony_skin',
+  'steam_human_award_skin', 'steam_dungeon_footer_skin'];
 const prototypeTests = ['startup_world_projection', 'startup_world_routes', 'startup_world_scene',
   'startup_world_arrival', 'startup_world_runtime_tasks', 'startup_world_runtime',
   'startup_world_continuous', 'startup_world_pages', 'startup_world_runtime_nonactors',
@@ -68,6 +72,10 @@ if (mode === '--record-patch') {
   pending.push('prototype/tests/startup_skin_checks.cpp',
     'prototype/tests/steam_startup_skin_checks.cpp', 'prototype/tests/steam_facility_skin_checks.cpp',
     'prototype/tests/steam_human_skin_checks.cpp',
+    'prototype/tests/steam_town_progress_skin_checks.cpp',
+    'prototype/tests/steam_village_skin_checks.cpp',
+    'prototype/tests/steam_magic_pot_skin_checks.cpp',
+    'prototype/tests/steam_task_selection_skin_checks.cpp',
     'prototype/tests/startup_title_menu_checks.cpp', 'prototype/tests/startup_title_menu_replay_checks.cpp',
     'prototype/tests/startup_application_replay_checks.cpp',
     'prototype/tests/startup_application_replay_paths_checks.cpp',
@@ -99,6 +107,10 @@ if (mode === '--record-patch') {
         if (['prototype/tests/startup_world_visuals_test.cpp', 'prototype/tests/startup_skin_checks.cpp',
             'prototype/tests/steam_startup_skin_checks.cpp', 'prototype/tests/steam_facility_skin_checks.cpp',
             'prototype/tests/steam_human_skin_checks.cpp',
+            'prototype/tests/steam_town_progress_skin_checks.cpp',
+            'prototype/tests/steam_village_skin_checks.cpp',
+            'prototype/tests/steam_magic_pot_skin_checks.cpp',
+            'prototype/tests/steam_task_selection_skin_checks.cpp',
             'prototype/tests/steam_facility_skin_example.hpp'].includes(relative) &&
             ['dungeon_village_tools/sprite.hpp', 'dungeon_village_tools/table.hpp'].includes(match[1]))
           continue;

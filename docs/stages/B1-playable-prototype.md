@@ -1,5 +1,14 @@
 # B1：持续世界产品接入
 
+<a id="research-3db316f-notices-footer"></a>
+## 2026-10-16：通知皮肤与探索底栏维护接续
+
+固定正式3db316f，合并82b7e3a/b1f2403为505项维护来源、81项既有产品适配及759项素材；补任务背景行、怪物aura_size、语言未决结果拒绝和99/100坏计数拒绝/回卷。两份有适配测试按旧机械基线三方重基，只将新增资源读取映射到产品目录，保留原断言及全部旧适配；完整冻结、逐目标写前核对和日志留`build/validation/research-3db316f-integration/`。修收集器显式遗漏，不丢原503项，不新增target或运行时研究依赖。
+
+桌面99/100改用正式有序皮肤，复用actors执行器、真实字体测宽与居中适配，按唯一Owner主钟和8×9演出表显示Boss轨迹/光环/烟及大量出现；Enter沿原消费者，不造鼠标热区、取消、世界怪物或绘制随机。通用面板的静止怪物替代图已退役。探索底栏只读计划及原套件完整接入，但桌面同次表现事务和负源X后端处理尚待明确，不宣称运行窗口已接探索条或原版动态/像素等价。公共DLL及desktop-debug/headless-debug/desktop-release完整构建通过。两Debug仅排simulation.startup_world_continuous_test：桌面首轮139/140，唯一失败为新增测试误把89早确认快进套入99/100；按正式消费者改为早确认不推进、真实Update满40才关闭，world_panels定向1/1通过，最终覆盖全部140项；无窗口119/119通过。Release受影响8/8通过，完整Release标准/三个月与CI未运行。Debug及Release窗口夹具均通过，真实Init/Update到30/42、240×256和540×360共8张通知条件图，已查看两类/两尺寸；渲染不改页钟、演出表、随机或声音。图片在build/validation/human-management/fixtures/monster-notice-*，不是自然遭遇或OS输入认证。
+
+现3db316f底座以desktop-debug对月196根执行steam-natural-verify，通过phase2/continued_month195/总分154750冷载，9份玩家/系统/侧车输入逐字节未变；只认证新底座可读取该有效档，不新增经营月、配方18严格后继或精确随机资格。run-month.mjs沿已批准完整分段编排，改从当前SOURCES读取真实来源身份，仍6分钟/10000轮，旧报告不重签。玩家schema5、独立系统2和随机不保存政策保持；正常玩家档与research在途不写。
+
 <a id="campaign-pot18-followup"></a>
 ## 2026-10-16：配方18与分月主动效果回执
 

@@ -707,6 +707,60 @@ void world_human_render_fixture() {
                       << " screenshot=" << file.string() << '\n';
         }
     }
+    // Synthetic99/100 callsites use real Init/Update, source definitions and published effects.
+    // Defeat history is an explicit aura display condition, not a naturally earned victory.
+    if (!text.include_text("BOSS出现！怪物大量出现正在大量出现!!出现了!!"))
+        throw std::runtime_error("Monster notice fixture could not add its label glyphs");
+    for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{540, 360}}) {
+        SetWindowSize(extent.width, extent.height);
+        for (const int raw : {99, 100}) {
+            const auto boss =
+                std::find_if(state.rules->monsters.begin(), state.rules->monsters.end(),
+                             [](const auto &d) { return (d.flags & 4U) != 0; });
+            if (boss == state.rules->monsters.end())
+                throw std::runtime_error("Monster notice fixture lacks a source boss definition");
+            auto owner = monster_notice_fixture(raw, raw == 99 ? boss->identity : 3);
+            const auto page = owner.scripts.pages.back();
+            if (raw == 99)
+                owner.scene.world.world.ai.monster_growth.at(boss->identity).growth = 1;
+            const auto &definition = owner.rules->monsters.at(*page.monster_definition);
+            if (!text.include_text(definition.name))
+                throw std::runtime_error("Monster notice fixture lacks name glyphs");
+            for (const int counter : {30, 42}) {
+                while (owner.page_counters.at(page.id) < counter) {
+                    const auto updated = simulation::prepare_startup_world_runtime(owner);
+                    if (!updated.candidate)
+                        throw std::runtime_error("Monster notice fixture source Update failed");
+                    owner = *updated.candidate;
+                }
+                const auto before = owner;
+                const auto plan = ui::prepare_world_monster_notice(owner, page, skin);
+                if (!plan)
+                    throw std::runtime_error("Monster notice fixture lost its initialized plan");
+                for (int draw = 0; draw < 4; ++draw) {
+                    BeginDrawing();
+                    ClearBackground({145, 211, 247, 255});
+                    DrawText("CONDITIONAL monster notice", 4, 4, 12, BLACK);
+                    ui::draw_world_monster_notice(plan, extent, skin);
+                    text.flush(1, {});
+                    EndDrawing();
+                }
+                const auto file =
+                    output / ("monster-notice-raw" + std::to_string(raw) + "-counter" +
+                              std::to_string(counter) + "-size" + std::to_string(extent.width) +
+                              "x" + std::to_string(extent.height) + ".png");
+                capture(file);
+                if (!same_world_clock(owner, before) ||
+                    owner.page_counters != before.page_counters ||
+                    owner.task_display_table != before.task_display_table ||
+                    owner.scene.random.draws() != before.scene.random.draws() ||
+                    owner.sound_requests != before.sound_requests)
+                    throw std::runtime_error("Monster notice drawing changed its Owner");
+                std::cout << "UI fixture / conditional raw" << raw << " counter=" << counter
+                          << " screenshot=" << file.string() << '\n';
+            }
+        }
+    }
     // Real89 producer and framework Init, followed by explicit display-clock samples.
     // These condition images do not claim a natural encounter or its elapsed update timing.
     if (!text.include_text("新型怪物出现了!!"))

@@ -270,12 +270,4 @@ bool world_task_related_confirmation(const State &s, const Page &page) {
         return s.task_display_initialized.count(page.id) != 0;
     return true;
 }
-void draw_world_task_monster(const State &s, const Page &page, Rectangle body, const Skin &skin) {
-    if ((page.legacy_page != 99 && page.legacy_page != 100) || !page.monster_definition ||
-        !s.task_display_initialized.count(page.id))
-        return;
-    const auto &monster = s.scene.world.world.ai.monster_growth.at(*page.monster_definition);
-    skin.sprites.actor(true, monster.body * 4 + 1, monster.body * 30 + monster.sprite_variant, 0,
-                       {body.x + body.width / 2, body.y - 13});
-}
 } // namespace ark::desktop::ui

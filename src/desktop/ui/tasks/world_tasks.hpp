@@ -122,7 +122,4 @@ void draw_world_task(const WorldTaskView &view, const WorldTaskLayout &layout, c
 // Related source consumers use normal page chrome but do not all accept confirmation.
 bool world_task_related_confirmation(const simulation::StartupWorldRuntimeState &state,
                                      const simulation::rules::WorldScriptPage &page);
-void draw_world_task_monster(const simulation::StartupWorldRuntimeState &state,
-                             const simulation::rules::WorldScriptPage &page, Rectangle body,
-                             const Skin &skin);
 } // namespace ark::desktop::ui

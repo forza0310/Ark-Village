@@ -137,6 +137,7 @@ set(ARK_WORLD_RUNTIME_SOURCES
     "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_task_roster_skin.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_task_result_skin.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_task_deadline_skin.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_dungeon_footer_skin.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_human_ceremony_skin.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_human_award_skin.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_human_skin.cpp"

@@ -8,7 +8,7 @@
 namespace ark::desktop::ui {
 namespace {
 namespace sim = simulation;
-// Both windows consume the same ordered primitives. Their Owner qualifiers and input gates
+// These windows consume the same ordered primitives. Their Owner qualifiers and input gates
 // stay separate: a zero-clock92 Pop must never inherit the introduction's fast-forward rule.
 void draw_monster_plan(const std::optional<sim::SteamMonsterSkinPlan> &plan, Extent extent,
                        const Skin &skin) {
@@ -150,6 +150,43 @@ prepare_world_monster_detail(const sim::StartupWorldRuntimeState &state,
     return plan;
 }
 void draw_world_monster_detail(const std::optional<sim::SteamMonsterSkinPlan> &plan, Extent extent,
+                               const Skin &skin) {
+    draw_monster_plan(plan, extent, skin);
+}
+bool world_monster_notice_page(const sim::rules::WorldScriptPage &page) {
+    return page.kind == sim::rules::WorldScriptPageKind::raw_page &&
+           (page.legacy_page == 99 || page.legacy_page == 100);
+}
+bool world_monster_notice_confirm(const sim::StartupWorldRuntimeState &state,
+                                  const sim::rules::WorldScriptPage &page, bool enter,
+                                  bool blocked) {
+    if (!enter || blocked || state.scene.framework_paused || !world_monster_notice_page(page) ||
+        page.lifecycle != 2)
+        return false;
+    // Widths are qualification-only here. The source bridge checks the actual top page,
+    // initialized clock, definition and outbreak payload without modifying any of them.
+    sim::SteamMonsterSkinOptions options;
+    options.title_widths = std::array<int, 2>{0, 0};
+    return sim::steam_monster_notice_skin(state, page.id, options).has_value();
+}
+std::optional<sim::SteamMonsterSkinPlan>
+prepare_world_monster_notice(const sim::StartupWorldRuntimeState &state,
+                             const sim::rules::WorldScriptPage &page, const Skin &skin) {
+    if (!world_monster_notice_page(page))
+        throw std::invalid_argument("Monster notice requires source99/100");
+    if (page.lifecycle != 2)
+        return {};
+    sim::SteamMonsterSkinOptions options;
+    options.view_y = 23;
+    const auto title = page.legacy_page == 99 ? "BOSS出现！" : "怪物大量出现";
+    const int width = int(skin.text.width(title));
+    options.title_widths = std::array<int, 2>{width, width};
+    const auto plan = sim::steam_monster_notice_skin(state, page.id, options);
+    if (!plan)
+        throw std::invalid_argument("Initialized monster notice lost its source payload");
+    return plan;
+}
+void draw_world_monster_notice(const std::optional<sim::SteamMonsterSkinPlan> &plan, Extent extent,
                                const Skin &skin) {
     draw_monster_plan(plan, extent, skin);
 }

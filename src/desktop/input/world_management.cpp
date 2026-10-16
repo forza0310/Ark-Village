@@ -38,11 +38,13 @@ void WorldManagement::queued(std::uint64_t serial) {
 void WorldManagement::observe(const app::WorldFrame &frame) {
     build_pages_drawn_.clear();
     presentation_epoch_ = frame.presentation_epoch;
-    build_draw_submitted_.erase(
-        std::remove_if(build_draw_submitted_.begin(), build_draw_submitted_.end(),
-                         [&](const auto &p) { return p.generation != frame.generation ||
-                                                    p.epoch != frame.presentation_epoch; }),
-        build_draw_submitted_.end());
+    build_draw_submitted_.erase(std::remove_if(build_draw_submitted_.begin(),
+                                               build_draw_submitted_.end(),
+                                               [&](const auto &p) {
+                                                   return p.generation != frame.generation ||
+                                                          p.epoch != frame.presentation_epoch;
+                                               }),
+                                build_draw_submitted_.end());
     if (generation_ != frame.generation) {
         generation_ = frame.generation;
         receipt_page_ = 0;
@@ -72,8 +74,9 @@ void WorldManagement::observe(const app::WorldFrame &frame) {
         magic_gesture_ = {};
     }
     if (build_draw_pending_) {
-        const auto result = std::find_if(frame.command_results.begin(), frame.command_results.end(),
-                                         [&](const auto &r) { return r.serial == build_draw_pending_; });
+        const auto result =
+            std::find_if(frame.command_results.begin(), frame.command_results.end(),
+                         [&](const auto &r) { return r.serial == build_draw_pending_; });
         if (result != frame.command_results.end()) {
             if (result->outcome == app::WorldCommandOutcome::applied)
                 build_draw_ready_ = build_draw_inflight_;
@@ -143,6 +146,11 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
         if (ui::world_monster_intro_confirm(state, page, enter, blocked || !IsWindowFocused()))
             queued(session.ack_page(page.id));
         return true; // Source89 has no published mouse rectangle or cancel action.
+    }
+    if (ui::world_monster_notice_page(page)) {
+        if (ui::world_monster_notice_confirm(state, page, enter, blocked || !IsWindowFocused()))
+            queued(session.ack_page(page.id));
+        return true; // Source99/100 share89's published Touch2, not a mouse rectangle or cancel.
     }
     if (ui::world_monster_detail_page(page)) {
         if (const auto action = ui::world_monster_detail_input(state, page, enter, escape,
@@ -417,7 +425,8 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
         input.pointer_released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
         const auto origin = ui::world_build_menu_origin(extent);
         input.wheel_rows = hit(mouse, {origin.x + 35, origin.y + 38, 172, 186})
-                               ? -static_cast<int>(GetMouseWheelMove()) : 0;
+                               ? -static_cast<int>(GetMouseWheelMove())
+                               : 0;
         const bool admitted = build_draw_ready_ && build_draw_ready_->page == page.id &&
                               build_draw_ready_->generation == generation_ &&
                               build_draw_ready_->epoch <= presentation_epoch_;
@@ -521,6 +530,11 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
 bool WorldManagement::draw_page(const State &state, const Page &page, Extent extent,
                                 const ui::Skin &skin, bool enabled) const {
     enabled = enabled && !pending();
+    if (ui::world_monster_notice_page(page)) {
+        ui::draw_world_monster_notice(ui::prepare_world_monster_notice(state, page, skin), extent,
+                                      skin);
+        return true;
+    }
     if (ui::world_monster_intro_page(page)) {
         ui::draw_world_monster_intro(ui::prepare_world_monster_intro(state, page, skin), extent,
                                      skin);
@@ -604,11 +618,11 @@ bool WorldManagement::draw_page(const State &state, const Page &page, Extent ext
         ui::draw_world_build_menu(view, extent, skin, true, enabled, feedback_);
         if (view.initialized) {
             build_pages_drawn_.push_back({page.id, generation_, presentation_epoch_});
-            build_menu_controls_ = IsWindowFocused()
-                                       ? std::optional<ui::WorldBuildMenuControls>{
-                                             ui::world_build_menu_controls(view, extent, skin.sprites,
-                                                                          generation_, presentation_epoch_)}
-                                       : std::nullopt;
+            build_menu_controls_ =
+                IsWindowFocused()
+                    ? std::optional<ui::WorldBuildMenuControls>{ui::world_build_menu_controls(
+                          view, extent, skin.sprites, generation_, presentation_epoch_)}
+                    : std::nullopt;
         } else
             build_menu_controls_.reset();
     } else if (ui::world_building_page(page)) {
@@ -639,7 +653,7 @@ bool WorldManagement::draw_page(const State &state, const Page &page, Extent ext
     return true;
 }
 void WorldManagement::draw_build_background(const State &state, const Page &page, Extent extent,
-                                              const ui::Skin &skin) const {
+                                            const ui::Skin &skin) const {
     for (const auto &parent : state.scripts.pages) {
         if (parent.id == page.id)
             break;
@@ -652,14 +666,16 @@ void WorldManagement::draw_build_background(const State &state, const Page &page
     }
 }
 void WorldManagement::presented(const app::WorldFrame &frame, bool blocked,
-                                 app::WorldSession &session) {
+                                app::WorldSession &session) {
     if (blocked || build_draw_pending_ || frame.failed || !frame.state ||
         frame.state->scene.framework_paused)
         return;
     for (const auto &drawn : build_pages_drawn_) {
-        const bool submitted = std::any_of(build_draw_submitted_.begin(), build_draw_submitted_.end(),
-                                           [&](const auto &old) { return old.same(drawn); });
-        if (drawn.generation != frame.generation || drawn.epoch != frame.presentation_epoch || submitted)
+        const bool submitted =
+            std::any_of(build_draw_submitted_.begin(), build_draw_submitted_.end(),
+                        [&](const auto &old) { return old.same(drawn); });
+        if (drawn.generation != frame.generation || drawn.epoch != frame.presentation_epoch ||
+            submitted)
             continue;
         build_draw_ready_.reset();
         build_draw_submitted_.push_back(drawn);

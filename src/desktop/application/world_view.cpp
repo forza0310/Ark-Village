@@ -627,7 +627,6 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                 // or a confirmation capable of skipping their source-owned counter/focus consumer.
                 const auto page_layout = ui::world_page_layout(*page, extent);
                 ui::draw_world_page_chrome(*page, page_layout, skin, paragraph);
-                ui::draw_world_task_monster(current, *page, page_layout.body, skin);
                 const auto decoded =
                     ui::decode_script_text(ui::world_page_body(current, *page, paragraph));
                 const auto wrapped =

@@ -77,6 +77,14 @@ std::optional<SteamMonsterSkinPlan> steam_monster_introduction_skin(
 std::optional<SteamFacilityResource> steam_monster_resource(SteamMonsterAsset asset) {
     if(asset==SteamMonsterAsset::money)
         return SteamFacilityResource{"common2",1,0,"original/common2/monster_money.png","original/common2/monster_money.seb"};
+    switch(asset) {
+    case SteamMonsterAsset::aura0:return SteamFacilityResource{"effect",14,13,"original/effect/aura10.png","original/effect/aura10.seb"};
+    case SteamMonsterAsset::aura1:return SteamFacilityResource{"effect",15,14,"original/effect/aura11.png","original/effect/aura11.seb"};
+    case SteamMonsterAsset::aura2:return SteamFacilityResource{"effect",16,15,"original/effect/aura12.png","original/effect/aura12.seb"};
+    case SteamMonsterAsset::aura3:return SteamFacilityResource{"effect",17,16,"original/effect/aura13.png","original/effect/aura13.seb"};
+    case SteamMonsterAsset::smoke:return SteamFacilityResource{"effect",8,8,"original/effect/satSmoke02.png","original/effect/satSmoke02.seb"};
+    default:break;
+    }
     return {};
 }
 std::optional<SteamMonsterSkinPlan> steam_monster_detail_skin(
@@ -159,5 +167,116 @@ std::optional<SteamMonsterSkinPlan> steam_monster_detail_skin(
     if(!level||!experience||!cash)return {};
     return steam_monster_detail_skin({s.page_counters.at(id),m.body,m.sprite_variant,d->shadow,
         m.growth,record->second.human_kills,*level,*experience,*cash,d->points_per_defeat,d->name,d->description},o);
+}
+std::optional<SteamMonsterSkinPlan> steam_monster_notice_skin(
+    const SteamMonsterNoticeInput &in,const SteamMonsterSkinOptions &o) {
+    const auto &m=in.monster;
+    constexpr std::array<int,4> images{9,12,8,6},speeds{6,6,8,10};
+    const bool boss=in.legacy_page==99;
+    if((!boss&&in.legacy_page!=100)||m.counter<0||m.counter==std::numeric_limits<int>::max()||
+       m.body<0||m.body>3||m.variant<0||m.variant>=images[m.body]||m.shadow<0||m.shadow>3||
+       m.name.empty()||m.name.size()>4096||!o.title_widths)return {};
+    const bool aura=boss&&(in.flags&4U)&&in.defeats>=1;
+    if((boss&&(in.flags&4U)&&in.defeats<0)||(aura&&(in.aura_size<0||in.aura_size>3)))return {};
+    if(!boss) {
+        if(!in.outbreak)return {};
+    }
+    const auto outer=steam_startup_window_skin(
+        {222,170,0,0,SteamStartupTextRole::message_title,0},o.view_y,o.title_widths);
+    const auto inner=steam_startup_box_skin({15,139,224,202},o.view_y);
+    if(!outer||!inner)return {};
+    SteamMonsterSkinPlan p;
+    p.title=boss?(o.japanese?"ボス出現！":"BOSS出现！"):
+        (o.japanese?"ﾓﾝｽﾀｰ大量発生":"怪物大量出现");
+    for(const auto &draw:outer->draws)p.operations.emplace_back(draw);
+    for(const auto &draw:inner->draws)p.operations.emplace_back(draw);
+    for(const auto &part:std::array<std::array<int,6>,3>{{
+        {30,66,0,0,93,82},{109,66,1,0,91,82},{189,66,1,0,20,82}}})
+        p.operations.emplace_back(SteamHumanImage{SteamHumanAsset::residence_background,
+            {part[0],part[1]},0,std::array<int,4>{part[2],part[3],part[4],part[5]}});
+    p.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{{30,66,179,81},{148,148,148},true}});
+    const auto body=[&](int x,int y,int direction,int clock) {
+        p.operations.emplace_back(SteamMonsterBody{m.body*30+m.variant,m.body*4+direction,
+            (clock%(speeds[m.body]*4))/speeds[m.body],{x,y}});
+    };
+    if(boss) {
+        // Steam BOSS_ANIME_DATA独立核值；本表是显示分段，不推进怪物AI或页主钟。
+        constexpr std::array<std::array<int,6>,13> steps{{
+            {0,0,2,120,120,5},{1,0,2,120,74,12},{0,0,2,74,74,5},
+            {2,0,2,74,74,12},{0,0,2,74,74,10},{1,0,1,74,166,24},
+            {0,0,1,166,166,5},{2,0,1,166,166,12},{0,0,1,166,166,10},
+            {1,0,2,166,120,12},{0,0,2,120,120,5},{2,0,2,120,120,12},
+            {0,0,2,120,120,5}}};
+        const int time=m.counter%129;
+        int index{},start{};
+        while(index<12&&time>=start+steps[index][5])start+=steps[index++][5];
+        const auto &step=steps[index];const int local=time-start;
+        const int x=step[3]+(step[0]==1?local*(step[4]-step[3])/step[5]:0);
+        int dy{};
+        if(step[0]==2) {
+            // GetParabolaValue(8,12,local)：每个float32阶段都舍入，随后向零转整数。
+            const auto mul=[](float a,float b){volatile float v=a*b;return v;};
+            const auto div=[](float a,float b){volatile float v=a/b;return v;};
+            const auto add=[](float a,float b){volatile float v=a+b;return v;};
+            const float velocity=div(16.F,5.F),acceleration=div(-16.F,30.F);
+            const float curve=mul(mul(mul(float(local),acceleration),float(local+1)),0.5F);
+            dy=-static_cast<int>(std::max(0.F,add(curve,mul(float(local),velocity))));
+        }
+        if(aura) {
+            constexpr std::array<SteamMonsterAsset,4> assets{SteamMonsterAsset::aura0,
+                SteamMonsterAsset::aura1,SteamMonsterAsset::aura2,SteamMonsterAsset::aura3};
+            p.operations.emplace_back(SteamMonsterImage{assets[in.aura_size],{x,140+dy},(m.counter%4)/2});
+        }
+        p.operations.emplace_back(SteamHumanImage{SteamHumanAsset::shadow,{x,138},m.shadow,{}});
+        body(x,138+dy,step[2],step[0]==2?0:time);
+        if(index==4||index==8||index==12)
+            p.operations.emplace_back(SteamMonsterImage{SteamMonsterAsset::smoke,{x,142},local<3?0:local<6?1:2});
+    } else {
+        p.operations.emplace_back(SteamHumanClip{SteamHumanClipKind::push_intersect,{30,66,180,82}});
+        for(const auto &row:*in.outbreak) {
+            if(row[7]==0)continue;
+            const int x=row[0]/100;
+            p.operations.emplace_back(SteamHumanImage{SteamHumanAsset::shadow,{x,139},m.shadow,{}});
+            // 外层世界步帧会被SetDrawParam用页主钟重算；不取行CNT或世界计数画身体。
+            body(x,139,row[2]==1?2:1,m.counter);
+        }
+        p.operations.emplace_back(SteamHumanClip{SteamHumanClipKind::pop,{}});
+    }
+    const int height=std::clamp(m.counter-5,0,35)*48/35;
+    p.operations.emplace_back(SteamHumanClip{SteamHumanClipKind::push_intersect,{0,158,240,height}});
+    p.operations.emplace_back(SteamHumanOverviewText{SteamHumanOverviewTextRole::result_message,
+        m.name+(o.japanese?"が":""),{120,164,0,0},2,0,false,{92,51,31}});
+    p.operations.emplace_back(SteamHumanOverviewText{SteamHumanOverviewTextRole::result_message,
+        boss?(o.japanese?"出現しました!!":"出现了!!"):
+            (o.japanese?"大量発生しています!!":"正在大量出现!!"),{120,188,0,0},2,0,false,{92,51,31}});
+    p.operations.emplace_back(SteamHumanClip{SteamHumanClipKind::pop,{}});
+    if(m.counter>=40&&(m.counter-40)%25<15)
+        p.operations.emplace_back(SteamHumanImage{SteamHumanAsset::continue_cursor,{212,204},0,{}});
+    p.operations.emplace_back(SteamStartupTouch{2,0,{},{},2});
+    return p;
+}
+std::optional<SteamMonsterSkinPlan> steam_monster_notice_skin(
+    const StartupWorldRuntimeState &s,std::uint64_t id,const SteamMonsterSkinOptions &o) {
+    const auto page=std::find_if(s.scripts.pages.rbegin(),s.scripts.pages.rend(),
+        [](const auto &p){return p.lifecycle!=4;});
+    if(!s.rules||page==s.scripts.pages.rend()||page->id!=id||!id||page->lifecycle!=2||
+       page->kind!=ref::WorldScriptPageKind::raw_page||(page->legacy_page!=99&&page->legacy_page!=100)||
+       !page->monster_definition||!s.task_display_initialized.count(id))return {};
+    const auto count=s.page_counters.find(id);
+    if(count==s.page_counters.end())return {};
+    const auto d=std::find_if(s.rules->monsters.begin(),s.rules->monsters.end(),
+        [&](const auto &m){return m.identity==*page->monster_definition;});
+    const auto current=s.scene.world.world.ai.monster_growth.find(*page->monster_definition);
+    if(d==s.rules->monsters.end()||current==s.scene.world.world.ai.monster_growth.end())return {};
+    const auto &m=current->second;
+    // Owner承接既有WorldTaskDisplayState的合法域；纯绘制的STATE!=0／DIRECT==1谓词不因此改写。
+    if(page->legacy_page==100)for(const auto &row:s.task_display_table)
+        if(row[2]<0||row[2]>1||row[3]<0||row[4]<0||row[7]<0||row[7]>2||row[8]<0)return {};
+    SteamMonsterNoticeInput input;
+    input.legacy_page=page->legacy_page;
+    input.monster={count->second,m.body,m.sprite_variant,d->shadow,d->name};
+    input.flags=d->flags;input.defeats=m.growth;input.aura_size=d->aura_size;
+    if(page->legacy_page==100)input.outbreak=s.task_display_table;
+    return steam_monster_notice_skin(input,o);
 }
 } // namespace ark::simulation

@@ -5407,6 +5407,76 @@
       "bytes": 34283,
       "width": 236,
       "height": 132
+    },
+    {
+      "file": "effect/aura10.png",
+      "source": "research/dungeon_village_1/assets/original/effect/aura10.png",
+      "sha256": "9bd1f1922a31d0936fb41aa5e2a0c7a03bd9268b3d1b5744b26ebd861bf7862f",
+      "bytes": 353,
+      "width": 34,
+      "height": 23
+    },
+    {
+      "file": "effect/aura10.seb",
+      "source": "research/dungeon_village_1/assets/original/effect/aura10.seb",
+      "sha256": "50a692c7cd0a8331949baf9276c9e6d95bbc2a8c2d45adf8dd87408668b532a5",
+      "bytes": 48
+    },
+    {
+      "file": "effect/aura11.png",
+      "source": "research/dungeon_village_1/assets/original/effect/aura11.png",
+      "sha256": "1709545897de8140cfcbb30dc507ff39adec30ac9036336d5b07758edad76078",
+      "bytes": 388,
+      "width": 34,
+      "height": 31
+    },
+    {
+      "file": "effect/aura11.seb",
+      "source": "research/dungeon_village_1/assets/original/effect/aura11.seb",
+      "sha256": "e8f39241fe470cda2e1c55718a95afa51f7e7ac4192014c18f907b68f56cc9cf",
+      "bytes": 48
+    },
+    {
+      "file": "effect/aura12.png",
+      "source": "research/dungeon_village_1/assets/original/effect/aura12.png",
+      "sha256": "a386564cea95e889cbf72d22c5cedfee7d9e7df74b991eb602908b8b60e8adf8",
+      "bytes": 503,
+      "width": 50,
+      "height": 36
+    },
+    {
+      "file": "effect/aura12.seb",
+      "source": "research/dungeon_village_1/assets/original/effect/aura12.seb",
+      "sha256": "425d89993b27d88e46276d303c7fbbb3464bb506ec5edd25c443df51e3a96780",
+      "bytes": 48
+    },
+    {
+      "file": "effect/aura13.png",
+      "source": "research/dungeon_village_1/assets/original/effect/aura13.png",
+      "sha256": "039bc011a5eee2e8620ff3148cd352fa8d50ab7a70346e186ba93fd307212e8c",
+      "bytes": 756,
+      "width": 80,
+      "height": 60
+    },
+    {
+      "file": "effect/aura13.seb",
+      "source": "research/dungeon_village_1/assets/original/effect/aura13.seb",
+      "sha256": "d2db03a7454c01e886039aabc7548010cd3be7a6e51da7bcafcf8aac0cb83805",
+      "bytes": 48
+    },
+    {
+      "file": "effect/satSmoke02.png",
+      "source": "research/dungeon_village_1/assets/original/effect/satSmoke02.png",
+      "sha256": "e9d19b2141ae47e807a8fe2688f83d0d996961262c4d2b77e5ee97227726fc5d",
+      "bytes": 567,
+      "width": 114,
+      "height": 14
+    },
+    {
+      "file": "effect/satSmoke02.seb",
+      "source": "research/dungeon_village_1/assets/original/effect/satSmoke02.seb",
+      "sha256": "7ffb658beff9941dbd6c837f50cd63519afc78db33954f5966b6f8b9301b313a",
+      "bytes": 68
     }
   ]
 }

@@ -118,6 +118,53 @@ void monster_introduction_input(ark::test::Checks &check) {
               monster_intro_observation(state) == closed_before,
           "Retired89 has no further desktop confirmation or drawing plan");
 }
+void monster_notice_input(ark::test::Checks &check) {
+    namespace sim = ark::simulation;
+    namespace ui = ark::desktop::ui;
+    for (const int raw : {99, 100}) {
+        auto state = ark::test::monster_notice_fixture(raw);
+        const auto page = state.scripts.pages.back();
+        const auto before = monster_intro_observation(state);
+        check(ui::world_monster_notice_page(page) &&
+                  !ui::world_monster_notice_confirm(state, page, false, false) &&
+                  !ui::world_monster_notice_confirm(state, page, true, true) &&
+                  ui::world_monster_notice_confirm(state, page, true, false) &&
+                  monster_intro_observation(state) == before,
+              "Initialized99/100 Enter reads the actual Owner without advancing or mutating it");
+        auto paused = state;
+        paused.scene.framework_paused = true;
+        check(!ui::world_monster_notice_confirm(paused, page, true, false),
+              "Paused99/100 cannot accept desktop Enter");
+        auto invalid = state;
+        invalid.page_counters.erase(page.id);
+        check(!ui::world_monster_notice_confirm(invalid, page, true, false),
+              "99/100 cannot reconstruct a missing source clock from input");
+        auto covered = state;
+        auto overlay = page;
+        overlay.id = covered.scripts.next_page_id++;
+        covered.scripts.pages.push_back(overlay);
+        check(!ui::world_monster_notice_confirm(covered, page, true, false),
+              "99/100 input cannot confirm a covered page");
+        const auto early_clock = state.page_counters.at(page.id);
+        check(sim::acknowledge_startup_world_runtime_page(state, page.id) ==
+                      sim::StartupWorldRuntimeError::none &&
+                  state.page_counters.at(page.id) == early_clock &&
+                  state.scripts.pages.back().lifecycle == 2,
+              "99/100 early Enter preserves the source clock and keeps the notice open");
+        while (state.page_counters.at(page.id) < 40) {
+            const auto updated = sim::prepare_startup_world_runtime(state);
+            check(updated.candidate.has_value(),
+                  "99/100 real source Update reaches the close gate");
+            state = *updated.candidate;
+        }
+        check(ui::world_monster_notice_confirm(state, state.scripts.pages.back(), true, false),
+              "99/100 at source40 permits closing through desktop Enter");
+        check(sim::acknowledge_startup_world_runtime_page(state, page.id) ==
+                      sim::StartupWorldRuntimeError::none &&
+                  !ui::world_monster_notice_confirm(state, state.scripts.pages.back(), true, false),
+              "99/100 next Enter retires through the source consumer and rejects further input");
+    }
+}
 } // namespace
 namespace ark::test {
 void world_panels() {
@@ -125,8 +172,8 @@ void world_panels() {
     using namespace ark::desktop;
     using namespace ark::simulation::rules;
     check(ui::world_hud_buttons_visible(nullptr), "Main scene retains mouse pause/menu controls");
-    for (const int raw : {3,  4,  7,  9,  10, 13, 14, 21, 22, 23, 24, 29, 34, 35, 36,
-                          37, 38, 39, 40, 74, 75, 60, 83, 84, 85, 86, 89, 90, 92}) {
+    for (const int raw : {3,  4,  7,  9,  10, 13, 14, 21, 22, 23, 24, 29, 34, 35, 36, 37,
+                          38, 39, 40, 74, 75, 60, 83, 84, 85, 86, 89, 90, 92, 99, 100}) {
         WorldScriptPage page;
         page.kind = WorldScriptPageKind::raw_page;
         page.legacy_page = raw;
@@ -167,15 +214,6 @@ void world_panels() {
             check(layout.body.y + layout.body.height + 6 < layout.confirm.y,
                   "White text frame must not cover the confirmation button");
         }
-    }
-    for (const int raw : {99, 100}) {
-        WorldScriptPage task;
-        task.kind = WorldScriptPageKind::raw_page;
-        task.legacy_page = raw;
-        const auto layout = ui::world_page_layout(task, {240, 256});
-        check(layout.body.y - layout.panel.y >= 95 && layout.body.height >= 34 &&
-                  contains(layout.panel, layout.body),
-              "Task monster display reserves its own area above readable source paragraphs");
     }
     WorldScriptPage page;
     page.kind = WorldScriptPageKind::dialogue;
@@ -358,6 +396,7 @@ void world_panels() {
     check(!ui::world_script_reward_view(reward_state, reward).initialized,
           "Retired reward cannot expose another claim button");
     monster_introduction_input(check);
+    monster_notice_input(check);
     std::cout << "PASS world page layout contracts\n";
 }
 } // namespace ark::test

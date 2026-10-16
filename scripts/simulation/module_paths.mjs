@@ -45,7 +45,8 @@ export const simulationModules = {
     steam_facility_catalog_skin steam_facility_effect_skin steam_facility_reputation_skin
     steam_town_progress_skin steam_village_activity_skin steam_magic_pot_skin
     steam_magic_pot_effect_skin steam_task_selection_skin steam_task_roster_skin
-    steam_task_result_skin steam_task_deadline_skin steam_human_ceremony_skin steam_human_award_skin
+    steam_task_result_skin steam_task_deadline_skin steam_dungeon_footer_skin
+    steam_human_ceremony_skin steam_human_award_skin
     steam_clear_score_skin steam_new_game_skin steam_config_skin steam_platform_button_skin
     steam_commerce_skin steam_monster_skin steam_build_menu_skin steam_cursor_skin steam_joystick_prompts steam_record_skin`,
 };

@@ -127,10 +127,11 @@ export function compileStartupWorld(tables, map, sources, state) {
   const monsterOutput = monsters.map(row=>{
     const flag=n(row[16]), opened=(flag&1)!==0;
     need(n(row[2])>=0&&n(row[2])<=3&&n(row[6])>=0,'怪物体型/难度越界');
+    need(n(row[3])>=0&&n(row[3])<4,'怪物光环超出原四项资源');
     return `{${n(row[0])},${text(row[1])},${flag},${n(row[12])},${n(row[11])},`+
       `{0,0,${n(row[10])},${n(row[13])},${n(row[7])},${n(row[2])},${n(row[4])},`+
       `${n(row[6])},${opened?1:0},${truth(opened)},${truth(opened)},${truth(row[15]!=='')},${n(row[8])},${n(row[9])}},`+
-      (row[15]===''?'{}':`{${row[15].split('&').map(op=>array(op.split(','))).join(',')}}`)+`,${n(row[5])},${text(row[14])}}`;
+      (row[15]===''?'{}':`{${row[15].split('&').map(op=>array(op.split(','))).join(',')}}`)+`,${n(row[5])},${text(row[14])},${n(row[3])}}`;
   });
   const taskOutput = rows['questData.txt'].map(row=>{
     const sites=values(row[7]), monster=n(row[11]),flag=n(row[16]), normal=values(row[10]);
@@ -138,8 +139,9 @@ export function compileStartupWorld(tables, map, sources, state) {
       normal.every(id=>id>=0&&id<monsters.length),
       '任务跨目录引用缺失');
     need(n(row[8])<=n(row[9]),'任务奖励范围反转');
+    need(n(row[4])>=0&&n(row[4])<6,'任务底栏背景超出原217x108图片的六行');
     return `{{${n(row[0])},${n(row[3])},${n(row[5])},${flag},0,${monster},${array(sites)},`+
-      `${n(row[8])},${n(row[9])},${n(row[14])}},${text(row[1])},${text(row[2])},${flag&1?1:0},${n(row[12])},${array(normal)},${n(row[6])},${n(row[15])}}`;
+      `${n(row[8])},${n(row[9])},${n(row[14])}},${text(row[1])},${text(row[2])},${flag&1?1:0},${n(row[12])},${array(normal)},${n(row[6])},${n(row[15])},${n(row[4])}}`;
   });
   const itemOutput=rows['item.txt'].map(row=>{
     const flag=n(row[24]),opened=(flag&1)!==0;

@@ -6,7 +6,9 @@
 
 当前冻结正式5708375：503来源/81产品适配、749素材/26音频。已完成批次和旧经营前缀集中在[B1](docs/stages/B1-playable-prototype.md)，TODO只保留当前状态和后继。
 
-- [ ] 统一评估并接正式82b7e3a/b1f2403/3db316f：82的503项及六目标已准备，尚未导入；后续通知皮肤/探索底栏交付须合并核闭包、资源及Owner边界后集中重建，见[本批计划](docs/MILESTONES.md#research-82b7e3a-integration)。
+- [x] 正式3db316f已合并接入并通过本地验收：505来源/81适配/759素材、99/100正式桌面皮肤及探索底栏维护计划；两Debug适用标准、Release定向、月196冷载和两尺寸条件窗口已验，见[本批记录](docs/stages/B1-playable-prototype.md#research-3db316f-notices-footer)。
+- [ ] 探索底栏桌面同次表现事务、宽窗口负源X裁片及与底部鼠标按钮的排版适配；动态标题/平台语言宿主仍分别待接，不以维护纯计划当窗口完成。
+- [ ] 本批验收期间正式发布4f66ce1/45b480b/a9dc1bd：下一批合并核攻略特效生产、应用Owner表现交接和语言底栏资源，保留当前已验收3db316f批次的来源资格。
 
 - [x] 正式建设/人物/设施/任务/村办/魔法壶/奖励/税收/怪物等维护消费者、只读皮肤及桌面接线已接，保留唯一Owner、整帧FIFO和建设Draw交接；最新接入见[B1](docs/stages/B1-playable-prototype.md#research-9cee27a-build-record)。未交付后继见下文。
 - [x] 用户指定的preview.mjs及小窗示例已纳入本goal，复用正式合同与套件；预览服务、CSS和夹具数值不进游戏，见[对照入口](docs/reference/REFERENCE_CHECKLIST.md#ui-small-window-goal)。

@@ -343,6 +343,20 @@ bool consume_award_display(State &s, std::uint64_t id, bool confirm, int raw) {
 }
 } // namespace
 
+bool valid_startup_world_camera_page(const State &s,const ref::WorldScriptPage &p) {
+    if(!p.id||p.id>=s.scripts.next_page_id||p.kind!=ref::WorldScriptPageKind::raw_page||
+       p.legacy_page<56||p.legacy_page>58||p.lifecycle<0||p.lifecycle>4||
+       !p.message_commands.empty()||s.page_phases.count(p.id)||s.page_secondary_counters.count(p.id)||
+       std::count_if(s.scripts.pages.begin(),s.scripts.pages.end(),[&](const auto &v){return v.id==p.id;})!=1)
+        return false;
+    const auto actual=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[&](const auto &v){return v.id==p.id;});
+    if(actual->kind!=p.kind||actual->legacy_page!=p.legacy_page||actual->lifecycle!=p.lifecycle)return false;
+    const auto main=s.page_counters.find(p.id);
+    if(p.lifecycle==0&&p.legacy_page!=58)return main==s.page_counters.end();
+    if(p.lifecycle==0)return main!=s.page_counters.end()&&main->second==0;
+    return main!=s.page_counters.end()&&main->second>=0&&main->second<std::numeric_limits<int>::max();
+}
+
 bool valid_startup_world_event_page(const State &s,const ref::WorldScriptPage &p) {
     if(!p.id||p.id>=s.scripts.next_page_id||p.kind!=ref::WorldScriptPageKind::raw_page||p.legacy_page!=11||
        p.lifecycle<0||p.lifecycle>4||
@@ -1411,6 +1425,9 @@ std::optional<State> update_startup_world_runtime_page(const State &state,
     if(notice!=state.scripts.pages.rend()&&notice->legacy_page==59&&
        (notice->lifecycle!=2||!valid_startup_world_human_unlock_page(state,*notice)))return {};
     if(notice!=state.scripts.pages.rend()&&notice->kind==ref::WorldScriptPageKind::raw_page&&
+       notice->legacy_page>=56&&notice->legacy_page<=58&&
+       (notice->lifecycle!=2||!valid_startup_world_camera_page(state,*notice)))return {};
+    if(notice!=state.scripts.pages.rend()&&notice->kind==ref::WorldScriptPageKind::raw_page&&
        (notice->legacy_page==99||notice->legacy_page==100)&&state.task_display_initialized.count(notice->id)) {
         const auto count=state.page_counters.find(notice->id);
         if(count==state.page_counters.end()||count->second<0||count->second==std::numeric_limits<int>::max())return {};
@@ -1560,12 +1577,12 @@ std::optional<State> update_startup_world_runtime_page(const State &state,
             return {};
         return next;
     }
-    auto &counter = top->kind==ref::WorldScriptPageKind::raw_page&&(top->legacy_page==11||top->legacy_page==59||top->legacy_page==89||top->legacy_page==92)
+    auto &counter = top->kind==ref::WorldScriptPageKind::raw_page&&(top->legacy_page==11||top->legacy_page==56||top->legacy_page==57||top->legacy_page==59||top->legacy_page==89||top->legacy_page==92)
         ? next.page_counters.at(top->id):next.page_counters[top->id];
     if (counter == std::numeric_limits<int>::max())
         return {};
     ++counter;
-    if(top->legacy_page==11||top->legacy_page==27||top->legacy_page==59||top->legacy_page==67||top->legacy_page==88||top->legacy_page==89||top->legacy_page==92||top->legacy_page==94||top->legacy_page==99||top->legacy_page==100)counter%=std::numeric_limits<int>::max();
+    if(top->legacy_page==11||top->legacy_page==27||top->legacy_page==56||top->legacy_page==57||top->legacy_page==59||top->legacy_page==67||top->legacy_page==88||top->legacy_page==89||top->legacy_page==92||top->legacy_page==94||top->legacy_page==99||top->legacy_page==100)counter%=std::numeric_limits<int>::max();
     if(top->legacy_page==50||top->legacy_page==30||top->legacy_page==96) {
         auto &secondary=next.page_secondary_counters.at(top->id);
         counter%=std::numeric_limits<int>::max();

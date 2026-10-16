@@ -226,7 +226,7 @@ WorldScriptResult prepare_world_script_page(const WorldScriptState &state,
 struct WorldScriptCameraFocusInput {
     std::uint64_t page{};
     std::array<float, 2> camera{};            // 表现适配的c.a.n，不由人物n格坐标补造。
-    std::array<float, 2> previous_camera{};   // c.a.p，同步接受本次位移。
+    std::array<float, 2> previous_camera{};   // c.a.p；Steam cursor_pos，同步位移，非old_pos。
     std::array<float, 2> previous_velocity{}; // bi.w；终止/无怪物分支保留旧值。
     std::optional<std::array<float, 2>> first_monster_cached_view;  // 实时bm[0].u。
     std::optional<std::array<float, 2>> first_task_facility_view{}; // raw57：bq[0].b().f()。

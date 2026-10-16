@@ -94,10 +94,10 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 52 | AS_EVENT_INFO | 村办／晋级 | 静态：支付时点、插画、说明夹190、按钮夹60与六行边距已核。维护：两选项输入／纯计划已接。动态：原字体／OS热区实测仍缺，见[合同](PAGES.md#steam-village-progress) |
 | 53 | AS_EVENT_ANIME | 村办／晋级 | 静态：[60,70,110,120]、jingle5及效果时点、进度／mask／mini和类型1语言分支已核。维护：六类结果计划、120确认及Owner效果已接；类型4拒绝。动态：连续原窗口／字体及条件held后备资格仍缺，见[合同](PAGES.md#steam-village-progress) |
 | 54 | AS_EVENT_AFTER | 村办／晋级 | 静态：冻结开放人物、当前减ao、五行／clip／111滑条及无option行已核。维护：Owner姓名／性别覆盖、只读结果及关闭已接。动态：原字体／OS输入与附加scratch仍缺，见[合同](PAGES.md#steam-village-progress) |
-| 55 | CAMERAMOVE_MA | 相机／来访 | 仅声明；更新／绘制／动态链待逐项 |
-| 56 | CAMERAMOVE_MAA | 相机／来访 | 仅声明；更新／绘制／动态链待逐项 |
-| 57 | CAMERAMOVE_DUNGEON | 相机／来访 | 仅声明；更新／绘制／动态链待逐项 |
-| 58 | CAMERAMOVE_SELECTQUEST | 相机／来访 | 仅声明；更新／绘制／动态链待逐项 |
+| 55 | CAMERAMOVE_MA | 相机／来访 | [自动相机合同](PAGES.md#steam-camera-pages)：实时共享目标、无专属绘制／输入；正常表无opcode11；跨类写者／正常可达未证、Owner未接，原动态未验 |
+| 56 | CAMERAMOVE_MAA | 相机／来访 | 同合同：实时首怪物、严格到达；现Owner／主钟恢复／退休已接，无专属UI，原同帧／OS动态未验 |
+| 57 | CAMERAMOVE_DUNGEON | 相机／来访 | 同合同：实时首任务设施中心；现Owner／主钟恢复／退休已接，无专属UI，原同帧／OS动态未验 |
+| 58 | CAMERAMOVE_SELECTQUEST | 相机／来访 | 同合同：实时选中任务地图投影；现Owner及关闭待退休校验已接，页绑定属维护引用，无专属UI，原动态未验 |
 | 59 | MANYAPPEAHUMAN | 相机／来访 | [独立合同](PAGES.md#steam-human-unlock)及正式纯皮肤／当前外观桥、严格Owner恢复已接；1声／60气泡／70确认、当前武器及入场位移分开。main60五成就静态已核但SDK未接；字体／scratch／OS与自然动态另验 |
 | 60 | CHARA_INFO | 人物／成长／礼物 | 静态：[四页及输入](STEAM_HUMAN_DETAIL.md)已核；维护：四页完整局部计划、四槽同轮输入／滚动及Owner桥已交付。完整字体、共享scratch与原窗口全链未认证 |
 | 61 | CHARA_JOBCHANGE_LIST | 人物／成长／礼物 | 静态及维护：职业五行两页、首行／选择、预览返回及整轮输入已交付；原字体／OS动态另验，见[人物合同](STEAM_HUMAN_DETAIL.md) |

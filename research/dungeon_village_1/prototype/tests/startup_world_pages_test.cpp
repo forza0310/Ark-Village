@@ -2298,6 +2298,7 @@ void unlock_rewards() {
 }
 void focus_and_pause() {
     auto s = fixture(56);
+    s.scripts.pages.back().lifecycle = 0; // opcode13新建页尚未经过真实Init。
     s.scene.framework_paused = true;
     auto tick = prepare_startup_world_runtime(s);
     check(tick.candidate && tick.candidate->page_counters.empty(),
@@ -2362,6 +2363,7 @@ void task_focus_and_introduction() {
         }
     }
     auto s = fixture(57);
+    s.scripts.pages.back().lifecycle = 0; // opcode14只分配pending页，不预装主钟。
     const auto id = s.scripts.pages.back().id;
     auto result = prepare_startup_world_runtime(s);
     check(result.candidate && result.candidate->scripts.pages.back().lifecycle == 4,
@@ -2395,6 +2397,54 @@ void task_focus_and_introduction() {
     s.tasks.at(1).facility = 99999;
     check(!prepare_startup_world_runtime(s).candidate && s.camera[0] == (*target)[0] - 5,
           "stale bound focus rejects without camera or page partial write");
+    // 56/57共用真正栈顶Init；缺钟不能用map[]变成一次成功更新。
+    for(int raw : {56,57}) {
+        auto camera = fixture(raw);
+        camera.scripts.pages.back().lifecycle = 0;
+        const auto camera_id = camera.scripts.pages.back().id;
+        const auto original = startup_world_state_digest(camera);
+        check(!update_startup_world_runtime_page(camera)&&
+                  startup_world_state_digest(camera)==original,
+              "camera pending direct update rejects without synthesizing main");
+        auto partial=camera;partial.page_counters[camera_id]=0;
+        check(!prepare_startup_world_runtime(partial).candidate,
+              "camera pending with preinstalled main explicitly rejects");
+        auto covered=camera;covered.scripts.executing_page=camera_id;
+        ref::WorldScriptPage overlay;overlay.kind=ref::WorldScriptPageKind::raw_page;
+        overlay.legacy_page=16;overlay.legacy_l=2;
+        const auto made=ref::prepare_world_script_page(startup_world_runtime_scripts(covered),overlay);
+        check(made.candidate&&write_startup_world_runtime_scripts(covered,made.candidate->state),
+              "camera covered case uses actual page allocator");
+        const auto waiting=prepare_startup_world_runtime(covered);
+        check(waiting.candidate&&!waiting.candidate->page_counters.count(camera_id),
+              "covered camera pending has no premature Init");
+        auto initialized=camera;initialized.scripts.pages.back().lifecycle=2;
+        initialized.page_counters[camera_id]=std::numeric_limits<int>::max()-1;
+        const auto wrapped=prepare_startup_world_runtime(initialized);
+        check(wrapped.candidate&&wrapped.candidate->page_counters.at(camera_id)==0&&
+                  wrapped.candidate->scripts.pages.back().lifecycle==4,
+              "camera source main wraps before automatic no-target close");
+        for(int fault=0;fault<5;++fault) {
+            auto bad=initialized;
+            if(fault==0)bad.page_counters.erase(camera_id);
+            if(fault==1)bad.page_counters.at(camera_id)=-1;
+            if(fault==2)bad.page_counters.at(camera_id)=std::numeric_limits<int>::max();
+            if(fault==3)bad.page_phases[camera_id]=0;
+            if(fault==4)bad.page_secondary_counters[camera_id]=0;
+            const auto digest=startup_world_state_digest(bad);
+            check(!prepare_startup_world_runtime(bad).candidate&&
+                      !update_startup_world_runtime_page(bad)&&startup_world_state_digest(bad)==digest,
+                  "camera damaged initialized payload rejects transaction without mutation");
+        }
+        auto damaged=*wrapped.candidate;damaged.page_counters.erase(camera_id);
+        check(!prepare_startup_world_runtime(damaged).candidate,
+              "camera closed page missing main rejects before Finish can erase evidence");
+        const auto finished=prepare_startup_world_runtime(*wrapped.candidate);
+        check(finished.candidate&&!finished.candidate->page_counters.count(camera_id)&&
+                  std::none_of(finished.candidate->scripts.pages.begin(),finished.candidate->scripts.pages.end(),
+                      [&](const auto &p){return p.id==camera_id;}),
+              "camera Finish retires actual page and main");
+    }
     const auto introduction=consume_startup_world_runtime_encounter_request(
         test_support::world_fixture(),{ref::EncounterCreationRequestKind::page89,3});
     check(introduction.has_value(),"raw89 real encounter consumer creates pending monster definition binding");

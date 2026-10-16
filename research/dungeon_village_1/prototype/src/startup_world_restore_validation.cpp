@@ -1058,6 +1058,9 @@ struct Validation {
             return fail("scripts: 页身份/续体校验失败");
         std::size_t scenes{};
         for (const auto &p : s.scripts.pages) {
+            if(p.kind==ref::WorldScriptPageKind::raw_page&&p.legacy_page>=56&&p.legacy_page<=58&&
+               !valid_startup_world_camera_page(s,p))
+                return fail("camera page: 初始化主钟或关闭待退休载荷非法");
             if(p.legacy_page==59&&!valid_startup_world_human_unlock_page(s,p))
                 return fail("human unlock59: 人物依赖/主钟/生命周期或关闭待退休载荷非法");
             if((!p.message_commands.empty()||
@@ -1166,11 +1169,6 @@ struct Validation {
                 continue;
             const auto id = p.id;
             const int raw = p.legacy_page;
-            if (p.kind == ref::WorldScriptPageKind::raw_page && raw == 58) {
-                const auto frame = get(s.page_counters, id);
-                if (!frame || !counter(*frame))
-                    return fail("task tracking58: 缺少合法逐更新计数");
-            }
             if (p.kind != ref::WorldScriptPageKind::raw_page) {
                 const auto phase = get(s.page_phases, id);
                 if (phase && !selected(*phase, p.paragraphs.size()))

@@ -1151,6 +1151,9 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s, bool obs
         return {StartupWorldRuntimeError::invalid_initial_state, {}, {}, {}, {}};
     // 原30/67/88/96载荷在producer已完整安装；退休前拒绝损坏，不以清理掩盖半载荷。
     for(const auto &page:s.scripts.pages) {
+        if(page.kind==ref::WorldScriptPageKind::raw_page&&page.legacy_page>=56&&page.legacy_page<=58&&
+           !valid_startup_world_camera_page(s,page))
+            return {StartupWorldRuntimeError::missing_source,{},ref::WorldSceneError::missing_consumer,{}, {}};
         if(page.legacy_page==59&&!valid_startup_world_human_unlock_page(s,page))
             return {StartupWorldRuntimeError::missing_source,{},ref::WorldSceneError::missing_consumer,{}, {}};
         if((!page.message_commands.empty()||
@@ -1309,7 +1312,7 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s, bool obs
                 ref::WorldScheduleError::none, {}};
     }
     if(admitted.scene.framework_paused&&pending.kind==ref::WorldScriptPageKind::raw_page&&
-       (pending.legacy_page==11||pending.legacy_page==59||pending.legacy_page==89||pending.legacy_page==92)) {
+       (pending.legacy_page==11||(pending.legacy_page>=56&&pending.legacy_page<=58)||pending.legacy_page==59||pending.legacy_page==89||pending.legacy_page==92)) {
         admitted.scripts.executing_page.reset();admitted.scene.top_is_main=false;
         return {StartupWorldRuntimeError::none,std::move(admitted),ref::WorldSceneError::none,
                 ref::WorldScheduleError::none,{}};
@@ -1392,8 +1395,8 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s, bool obs
                 ref::WorldSceneError::missing_consumer,
                 ref::WorldScheduleError::none,
                 {}};
-    // 怪物89/92只在真正栈顶准入时建立主钟；覆盖的pending与paused不提前Init。
-    if(top.kind==ref::WorldScriptPageKind::raw_page&&(top.legacy_page==89||top.legacy_page==92)&&top.lifecycle==0)
+    // 相机56/57及怪物89/92只在真正栈顶准入时建钟；58的producer已安装零钟。
+    if(top.kind==ref::WorldScriptPageKind::raw_page&&(top.legacy_page==56||top.legacy_page==57||top.legacy_page==89||top.legacy_page==92)&&top.lifecycle==0)
         admitted.page_counters.emplace(top.id,0);
     admitted.scripts.pages.back().lifecycle = 2;
     admitted.scene.top_is_main =

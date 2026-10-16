@@ -6198,7 +6198,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     if(session.acknowledge_page(page->id)!=StartupWorldRuntimeError::none)
                         throw std::runtime_error("事件页确认失败");
                 }
-            } else if (page->legacy_page != 58 && page->legacy_page != 97 && page->legacy_page != 98 &&
+            } else if ((page->legacy_page < 55 || page->legacy_page > 58) && page->legacy_page != 97 && page->legacy_page != 98 &&
                        (hit({176, 265, 58, 24}) || IsKeyPressed(KEY_ENTER))) {
                 ++confirmation_inputs;
                 if (paragraph_index + 1 < static_cast<int>(page->paragraphs.size())) {
@@ -6818,6 +6818,9 @@ int run_startup_world_window(const std::filesystem::path &assets,
             DrawRectangle(8,258,62,22,paper);DrawRectangle(166,258,66,22,paper);
             font.text("返回 Esc",12,263,ink,10);font.text("确定 Enter",170,263,ink,10);
             if(!command_feedback.empty())font.text(command_feedback,12,282,ink,10);
+        } else if (const auto page = top_page();page&&page->kind==ref::WorldScriptPageKind::raw_page&&
+                   page->legacy_page>=55&&page->legacy_page<=58) {
+            // Steam相机辅助页没有专属Draw或Touch；保留世界画面，不伪造面板／确认。
         } else if (const auto page = top_page()) {
             // 21的详情／资金不足说明覆盖期间仍绘父内容；当前子页拥有软标签。
             for(const auto &parent:state.scripts.pages)if(parent.legacy_page==21&&parent.lifecycle==3) {

@@ -716,19 +716,47 @@ int check_startup_world_restore_contracts(
             }
         }
     }
-    {
+    for(int raw : {56,57,58}) {
         auto tracking = baseline;
         // 当前任务已消失但镜头页尚未获准更新的合法短边界；下一轮自行退休。
         r::WorldScriptPage page;
         page.id = tracking.scripts.next_page_id++;
         page.kind = r::WorldScriptPageKind::raw_page;
-        page.legacy_page = 58;
+        page.legacy_page = raw;
+        page.lifecycle = 0;
         tracking.scripts.pages.front().lifecycle = 3;
         tracking.scripts.pages.push_back(page);
-        tracking.page_counters.emplace(page.id, 0);
-        expect(tracking, true, "58 pending real update with no current task retains counter");
-        tracking.page_counters.erase(page.id);
-        expect(tracking, false, "58 missing mandatory counter rejects before installation");
+        if(raw==58)tracking.page_counters.emplace(page.id,0); // 现58业务producer提前安装零钟。
+        expect(tracking, true, "camera pending payload follows actual producer");
+        auto bad=tracking;
+        if(raw==58)bad.page_counters.erase(page.id);else bad.page_counters.emplace(page.id,0);
+        expect(bad, false, "camera pending missing or preinstalled main rejects");
+        if(raw==58){bad=tracking;bad.page_counters.at(page.id)=1;expect(bad,false,"58 pending producer main must remain zero");}
+        const auto require=[&](bool ok,const char *why){++checks;if(!ok)throw std::runtime_error(std::string("restore camera: ")+why);};
+        const auto replay=[&](const auto &source){
+            const auto wire=p::persistence_detail::encode_state(source);
+            auto restored=p::persistence_detail::decode_state(wire,*source.rules);
+            require(p::persistence_detail::encode_state(restored)==wire,"exact source main and live targets");
+            const auto left=p::prepare_startup_world_runtime(source),right=p::prepare_startup_world_runtime(restored);
+            require(left.candidate&&right.candidate&&
+                p::persistence_detail::encode_state(*left.candidate)==p::persistence_detail::encode_state(*right.candidate),
+                "same short update restores full camera/world/random/output");
+        };
+        replay(tracking);
+        auto paused=tracking;paused.scene.framework_paused=true;replay(paused);
+        tracking.scripts.pages.back().lifecycle=2;
+        tracking.page_counters[page.id]=std::numeric_limits<int>::max()-1;
+        expect(tracking,true,"camera initialized main wrap boundary");replay(tracking);
+        for(int life : {2,4})for(int fault=0;fault<5;++fault) {
+            bad=tracking;bad.scripts.pages.back().lifecycle=life;
+            if(fault==0)bad.page_counters.erase(page.id);
+            if(fault==1)bad.page_counters.at(page.id)=-1;
+            if(fault==2)bad.page_counters.at(page.id)=std::numeric_limits<int>::max();
+            if(fault==3)bad.page_phases.emplace(page.id,0);
+            if(fault==4)bad.page_secondary_counters.emplace(page.id,0);
+            expect(bad,false,"camera initialized or closed corrupt payload rejects restore");
+            require(!p::prepare_startup_world_runtime(bad).candidate,"damage rejected before runtime retirement");
+        }
     }
     {
         const auto require = [&](bool valid, const char *scenario) {

@@ -494,7 +494,8 @@ std::optional<State> update_startup_world_runtime_task_tracking_page(const State
                                                                     std::uint64_t id) {
     const auto *page = top(state);
     if (!state.rules || !page || page->id != id || page->legacy_page != 58 ||
-        page->kind != ref::WorldScriptPageKind::raw_page || page->lifecycle != 2)
+        page->kind != ref::WorldScriptPageKind::raw_page || page->lifecycle != 2||
+        !valid_startup_world_camera_page(state,*page))
         return {};
     if (state.scene.framework_paused) return state;
     const auto counter = state.page_counters.find(id);

@@ -235,7 +235,7 @@ struct StartupWorldRuntimeState {
     int entry_updates{};                       // UserData.V，新局0。
     int global_updates{};                      // static n.aK，新局0。
     std::array<float, 2> camera{};             // c.a.n：表现坐标，不能与地图格混用。
-    std::array<float, 2> previous_camera{};    // c.a.p。
+    std::array<float, 2> previous_camera{};    // c.a.p；Steam对应cursor_pos，不是old_pos。保留既有字段名／codec。
     std::array<float, 2> camera_velocity{};    // bi.w。
     int build_mode{};                          // a/o.aa，0..7；不是MainScene状态。
     std::optional<int> build_definition;       // 原a/o.Z；普通建设选择，不借用旧StartupState。
@@ -423,6 +423,8 @@ bool initialize_startup_world_gift_notice_pages(StartupWorldRuntimeState &candid
 // raw11事件卡复用冻结命令/正文、page_phases段索引和page_counters主钟；不补已Init缺键。
 // life0无主钟/阶段，真实Init一次建立；关闭待Finish仍保留完整载荷。
 bool valid_startup_world_event_page(const StartupWorldRuntimeState &state,const ref::WorldScriptPage &page);
+// 自动相机页56/57在真正Init前无主钟；58的业务producer已安装零钟。关闭待退休仍核载荷。
+bool valid_startup_world_camera_page(const StartupWorldRuntimeState &state,const ref::WorldScriptPage &page);
 bool initialize_startup_world_event_pages(StartupWorldRuntimeState &candidate);
 // raw59仅绑定共享人物定义与主钟；Init不创建W，满70确认才写到访排序aq=10。
 // life0无钟，准入后/关闭待Finish缺钟或额外阶段/副钟均拒绝，查询不补键。

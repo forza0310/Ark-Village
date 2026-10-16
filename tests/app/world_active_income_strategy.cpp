@@ -73,7 +73,11 @@ Command item(std::uint64_t page, Item action, int selection = -1) {
 
 std::optional<IncomeInvestment> choose_income_investment(const State &s, std::int64_t available,
                                                          std::optional<std::uint64_t> new_shop,
-                                                         bool inventory_only) {
+                                                         bool inventory_only,
+                                                         std::optional<int> explicit_item) {
+    if (available < 0 || (explicit_item &&
+        (!s.items.count(*explicit_item) || s.items.at(*explicit_item).status == 0)))
+        return {};
     std::optional<IncomeInvestment> best;
     std::optional<IncomeInvestment> amenities;
     std::optional<std::tuple<std::int64_t, std::int64_t>> amenities_priority;
@@ -87,13 +91,16 @@ std::optional<IncomeInvestment> choose_income_investment(const State &s, std::in
             continue;
         const auto in = input(s, id);
         for (const auto &i : s.rules->items) {
+            if (explicit_item && i.identity != *explicit_item)
+                continue;
             const bool buy = s.items.at(i.identity).inventory == 0;
             if (inventory_only && buy)
                 continue; // Dungeon rewards are consumed as held inventory, never replenished by
                           // purchase.
             const auto cost = buy ? i.commerce_price : 0;
             if (cost < 0 || cost > available ||
-                (buy && s.shop_item_stock.at(i.identity).quantity <= 0))
+                (buy && (s.shop_item_stock.at(i.identity).quantity <= 0 ||
+                         (explicit_item && (s.scripts.user_flags & 16U) == 0))))
                 continue;
             const auto r = ref::prepare_facility_improvement(
                 {d.id, d.legacy_icon, s.rules->facility_initial.at(d.id).item_affinities,
@@ -104,6 +111,13 @@ std::optional<IncomeInvestment> choose_income_investment(const State &s, std::in
             const auto &deltas = r.candidate->visible_deltas;
             const bool nonnegative =
                 std::all_of(deltas.begin(), deltas.end(), [](auto delta) { return delta >= 0; });
+            if (explicit_item) {
+                if (nonnegative && cost <= 10000 &&
+                    std::any_of(deltas.begin(), deltas.end(), [](auto delta) { return delta > 0; }))
+                    return IncomeInvestment{id, d.id, i.identity, cost, deltas[0], 0,
+                                            buy, false, false, deltas};
+                continue; // Coverage needs a real positive effect, without a payback forecast.
+            }
             if (inventory_only && !nonnegative)
                 continue;
             // Quality feeds satisfaction; charm feeds source selection weights.
@@ -287,6 +301,14 @@ void inspect_income(const State &s, std::ostream &out) {
     }
 }
 
+void ActiveIncomeStrategy::set_item_target(const State &s, int id, std::int64_t reserve) {
+    require(!active() && reserve >= 0 &&
+                choose_income_investment(s, std::min<std::int64_t>(10000, cash(s) - reserve),
+                                         {}, false, id).has_value(),
+            "explicit item must be available, beneficial and affordable before configuration");
+    item_target_ = id;
+}
+
 IncomeDecision ActiveIncomeStrategy::next(const State &s, std::int64_t reserve, bool start) {
     // Moving or replacing a building creates a new instance identity. Retire old
     // introductions instead of dereferencing an instance from a previous layout.
@@ -306,13 +328,27 @@ IncomeDecision ActiveIncomeStrategy::next(const State &s, std::int64_t reserve, 
         return {active(), {}};
     const auto &p = *page;
     if (p.kind == ref::WorldScriptPageKind::scene && s.scene.scene_state == 0) {
-        if (choice_ && improved_)
+        if (choice_ && improved_) {
             choice_.reset();
+            item_target_.reset();
+        }
+        if (choice_ && retry_) {
+            require(!consumed_, "cannot retry an already consumed coverage item");
+            choice_.reset();
+            retry_ = false;
+        }
         if (choice_ && !s.scene.world.world.facilities.count(choice_->facility)) {
             require(!consumed_, "consumed investment lost its target before effect verification");
             choice_.reset();
         }
-        if (!choice_ && start &&
+        if (!choice_ && item_target_) {
+            choice_ = choose_income_investment(
+                s, std::min<std::int64_t>(10000, cash(s) - reserve), {}, false, item_target_);
+            purchased_ = consumed_ = improved_ = false;
+            if (!choice_)
+                return {}; // Continue ordinary world inputs, but retain the unsatisfied goal.
+        }
+        if (!choice_ && !item_target_ && start &&
             (reward_only_ || (uses_ < 24 && s.rank == 2 && s.maximum_income < 35000)) &&
             s.scene.calendar.year * 12 + s.scene.calendar.month < stop_month_) {
             // A free held item needs no cash reservation. Paid experiments retain
@@ -375,13 +411,20 @@ IncomeDecision ActiveIncomeStrategy::next(const State &s, std::int64_t reserve, 
             return {true, {}};
         if (view->raw == 86)
             return {true, commerce(p.id, Commerce::confirm)};
-        if (purchased_)
+        if (purchased_ || retry_)
             return {true, commerce(p.id, Commerce::cancel)};
         if (view->raw == 83)
             return {true,
                     commerce(p.id, view->selection == 0 ? Commerce::confirm : Commerce::select)};
         require(view->raw == 84 && view->mode == 0, "unexpected commerce page");
         const auto found = std::find(view->entries.begin(), view->entries.end(), choice_->item);
+        if (item_target_ && (found == view->entries.end() ||
+                s.items.at(choice_->item).inventory > 0 ||
+                s.shop_item_stock.at(choice_->item).quantity <= 0 ||
+                s.items.at(choice_->item).status == 0 || cash(s) - reserve < choice_->cost)) {
+            retry_ = true;
+            return {true, commerce(p.id, Commerce::cancel)};
+        }
         require(found != view->entries.end(), "selected stock disappeared");
         const int index = static_cast<int>(found - view->entries.begin());
         return {
@@ -438,7 +481,10 @@ void ActiveIncomeStrategy::observe(const State &before, const Command &c, const 
                     page->entries.at(page->selection) == v.item,
                 "purchase receipt lacks its selected source item page");
         purchased_ = true;
-        spent_ += v.cost;
+        // Explicit coverage purchases are already recorded by cash/receipt consumers;
+        // they do not change the persisted legacy forecast budget or reward-only policy.
+        if (!item_target_)
+            spent_ += v.cost;
         pending.push_back({CampaignReceiptKind::item_commerce_bought,
                            v.item,
                            after.simulation_steps,
@@ -499,8 +545,15 @@ void ActiveIncomeStrategy::observe_tick(const State &before, const State &after,
     // raw76 derives current inputs and refreshes the arrival-price cache. Its previous
     // cached price can predate those inputs; cache refresh is not an item increment.
     const auto delta = new_values->instance_attributes[0] - old_values->instance_attributes[0];
-    require(delta == v.price_delta && (delta > 0 || v.introduction || v.amenities),
+    require(delta == v.price_delta && (delta > 0 || v.introduction || v.amenities || item_target_),
             "committed facility price differs from selected forecast");
+    if (item_target_)
+        require(v.item == *item_target_ && v.cost <= 10000 &&
+                    std::all_of(v.visible_deltas.begin(), v.visible_deltas.end(),
+                                [](auto value) { return value >= 0; }) &&
+                    std::any_of(v.visible_deltas.begin(), v.visible_deltas.end(),
+                                [](auto value) { return value > 0; }),
+                "explicit coverage must retain its positive source effect");
     require(after.scene.world.world.facilities.at(v.facility).price ==
                 new_values->instance_attributes[0],
             "committed arrival-price cache differs from the current source economy");
@@ -549,7 +602,7 @@ void ActiveIncomeStrategy::observe_tick(const State &before, const State &after,
 }
 
 void ActiveIncomeStrategy::encode(std::ostream &out) const {
-    require(!choice_, "cannot save an active investment flow");
+    require(!active(), "cannot save an unfinished investment or coverage goal");
     out << "ACTIVE_INCOME_1 " << stop_month_ << ' ' << reward_only_ << ' ' << uses_ << ' ' << spent_
         << ' ' << new_shops_.size() << '\n';
     for (const auto id : new_shops_)
@@ -729,5 +782,135 @@ void income_strategy_contract() {
         rejected = true;
     }
     require(rejected, "reward-only controller cannot contain paid item purchases");
+
+    // Explicit coverage qualifies real source effects without the forecast heuristic.
+    auto explicit_stock = empty_inventory;
+    explicit_stock.scripts.user_flags |= 16U;
+    constexpr int selected_item = 2;
+    explicit_stock.items.at(selected_item).status = 1;
+    explicit_stock.catalog.at({0, selected_item}).status = 1;
+    explicit_stock.shop_item_stock.at(selected_item).quantity = 1;
+    explicit_stock.shop_item_stock.at(3).quantity = 1; // A valid remaining84 row after exhaustion.
+    const auto price = explicit_stock.rules->items.at(selected_item).commerce_price;
+    const auto exact = choose_income_investment(explicit_stock, price, {}, false, selected_item);
+    require(exact && exact->purchase && exact->item == selected_item && exact->cost == price &&
+                exact->monthly_gain == 0 &&
+                !choose_income_investment(explicit_stock, price - 1, {}, false, selected_item),
+            "explicit purchase preserves the exact budget without inferred payback");
+    const auto rejects = [](const auto &action) {
+        try { action(); } catch (const std::runtime_error &) { return true; }
+        return false;
+    };
+    for (const int id : {-1, 36}) {
+        ActiveIncomeStrategy invalid(3600, true);
+        require(rejects([&] { invalid.set_item_target(explicit_stock, id, 0); }) &&
+                    !invalid.active(), "unknown goal must leave the controller unchanged");
+    }
+    for (int reason = 0; reason < 3; ++reason) {
+        auto unavailable = explicit_stock;
+        if (reason == 0)
+            unavailable.items.at(selected_item).status = 0;
+        if (reason == 1)
+            unavailable.shop_item_stock.at(selected_item).quantity = 0;
+        if (reason == 2)
+            unavailable.scripts.user_flags &= ~16U;
+        ActiveIncomeStrategy invalid(3600, true);
+        require(rejects([&] { invalid.set_item_target(unavailable, selected_item, 0); }) &&
+                    !invalid.active(), "closed, exhausted or inaccessible stock must reject");
+    }
+    auto changed_rules = *explicit_stock.rules; // Callsite qualification, not original data.
+    auto harmful = explicit_stock;
+    harmful.rules = &changed_rules;
+    changed_rules.items.at(selected_item).facility_improvements = {-1000, 10, 0};
+    require(!choose_income_investment(harmful, 10000, older, false, selected_item),
+            "a positive quality delta cannot justify a negative actual price delta");
+    changed_rules.items.at(selected_item) = explicit_stock.rules->items.at(selected_item);
+    changed_rules.items.at(selected_item).commerce_price = 10001;
+    require(!choose_income_investment(harmful, 10001, {}, false, selected_item),
+            "an explicit purchase must not exceed the per-item cash ceiling");
+
+    ActiveIncomeStrategy directed(3600, true);
+    const auto initial_cash = cash(explicit_stock);
+    const auto initial_random = explicit_stock.scene.random.draws();
+    directed.set_item_target(explicit_stock, selected_item, initial_cash - price);
+    std::ostringstream unfinished;
+    require(directed.active() && rejects([&] { directed.encode(unfinished); }) &&
+                rejects([&] { directed.set_item_target(explicit_stock, selected_item, 0); }) &&
+                cash(explicit_stock) == initial_cash &&
+                explicit_stock.scene.random.draws() == initial_random,
+            "setting or repeating a goal cannot pay, draw random or save unfinished work");
+    const auto begin = directed.next(explicit_stock, initial_cash - price, false);
+    require(begin.command && begin.command->kind == Kind::open_commerce,
+            "a configured coverage goal must reach the existing commerce consumer");
+    ActiveIncomeStrategy too_poor(3600, true);
+    require(rejects([&] {
+                too_poor.set_item_target(explicit_stock, selected_item, initial_cash - price + 1);
+            }) && !too_poor.active(), "one gold below the reserve must reject atomically");
+
+    // Source Init freezes84; a later missing row or changed budget must cancel, not pay.
+    auto offered = explicit_stock;
+    ref::WorldScriptPage offer;
+    offer.kind = ref::WorldScriptPageKind::raw_page;
+    offer.legacy_page = 84;
+    const auto inserted = ref::prepare_world_script_page(sim::startup_world_runtime_scripts(offered), offer);
+    require(inserted.candidate &&
+                sim::write_startup_world_runtime_scripts(offered, inserted.candidate->state) &&
+                sim::initialize_startup_world_commerce_pages(offered),
+            "coverage cancellation requires the real source84 frozen catalogue");
+    offered.scripts.pages.back().lifecycle = 2; // Already initialized, drawable callsite fixture.
+    const auto offer_id = offered.scripts.pages.back().id;
+    for (int reason = 0; reason < 3; ++reason) {
+        auto changed = offered;
+        auto retry = directed;
+        if (reason <= 1) {
+            auto &entries = changed.commerce_page_lists.at(offer_id);
+            entries.erase(std::remove(entries.begin(), entries.end(), selected_item), entries.end());
+        }
+        if (reason == 1)
+            changed.shop_item_stock.at(selected_item).quantity = 0;
+        const auto reserve = reason == 2 ? initial_cash - price + 1 : initial_cash - price;
+        require(sim::inspect_startup_world_commerce_page(changed, offer_id).has_value(),
+                "changed offer fixture must remain valid under the source payload contract");
+        const auto cancel = retry.next(changed, reserve, false);
+        require(cancel.command && cancel.command->commerce_action == Commerce::cancel &&
+                    retry.active() && cash(changed) == initial_cash &&
+                    changed.items.at(selected_item).inventory == 0,
+                "changed source offer, stock or budget must cancel without dropping the goal");
+        require(sim::act_startup_world_commerce_page(changed, offer_id, Commerce::cancel) ==
+                    sim::StartupWorldRuntimeError::none,
+                "changed offer must actually cancel through the existing source consumer");
+    }
+
+    auto held = empty_inventory;
+    held.items.at(0).status = held.catalog.at({0, 0}).status = 1;
+    held.items.at(0).inventory = held.catalog.at({0, 0}).inventory = 1;
+    const auto held_choice = choose_income_investment(held, 0, {}, false, 0);
+    require(held_choice && held_choice->cost == 0 && !held_choice->purchase &&
+                held_choice->price_delta == 0 && held_choice->visible_deltas[1] > 0,
+            "explicit held quality-only use requires neither commerce nor invented revenue");
+    ActiveIncomeStrategy quality_goal(3600, true);
+    quality_goal.set_item_target(held, 0, cash(held));
+    const auto open = quality_goal.next(held, cash(held), false);
+    require(open.command && open.command->facility == held_choice->facility &&
+                sim::open_startup_world_facility_page(held, held_choice->facility) ==
+                    sim::StartupWorldRuntimeError::none &&
+                sim::open_startup_world_facility_items(held, held.scripts.pages.back().id) ==
+                    sim::StartupWorldRuntimeError::none &&
+                sim::initialize_startup_world_facility_item_pages(held),
+            "explicit quality goal opens the real facility inventory");
+    const auto use_page = held.scripts.pages.back().id;
+    const auto old_use = held;
+    require(sim::act_startup_world_facility_item_page(held, use_page, Item::confirm, 0) ==
+                sim::StartupWorldRuntimeError::none, "explicit item must consume through75");
+    quality_goal.observe(old_use, item(use_page, Item::confirm, 0), held);
+    require(rejects([&] { quality_goal.encode(unfinished); }),
+            "consumption before the real effect must block saving");
+    const auto old_effect = held;
+    require(sim::initialize_startup_world_facility_item_pages(held),
+            "explicit quality item must enter real76 Init");
+    quality_goal.observe_tick(old_effect, held);
+    require(quality_goal.uses() == 1 && quality_goal.spent() == 0 && quality_goal.active() &&
+                rejects([&] { quality_goal.encode(unfinished); }),
+            "verified effect still waits for source77/75/74 to return before saving");
 }
 } // namespace ark::test

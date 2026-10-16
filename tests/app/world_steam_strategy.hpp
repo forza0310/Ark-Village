@@ -20,6 +20,7 @@ class SteamVillageStrategy {
     void set_profession_target(const app::WorldState &state, int human, int job) {
         people_.set_profession_target(state, human, job);
     }
+    void set_item_target(const app::WorldState &state, int item);
     std::optional<app::WorldCommand> next(const app::WorldState &state,
                                           std::optional<SteamEquipmentSlot> retained = {},
                                           std::optional<SteamEquipmentGoal> goal = {});

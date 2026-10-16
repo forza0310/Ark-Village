@@ -99,6 +99,12 @@ int held(const State &s, int id) {
 }
 } // namespace
 
+void SteamVillageStrategy::set_item_target(const State &s, int item) {
+    require(operation_ == Operation::none && unlock_ < 0 && !discover_shop_ && !people_.active(),
+            "item coverage cannot replace an unfinished player operation");
+    income_.set_item_target(s, item, reserve(s));
+}
+
 void SteamVillageStrategy::reconcile(const State &s) {
     require(s.rules && s.rank >= 1, "requires a verified first-or-later-star business prefix");
     require(validate_steam_village_layout(s) == ref::GeometryError::none,

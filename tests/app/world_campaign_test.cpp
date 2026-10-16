@@ -50,6 +50,21 @@ const ref::WorldScriptPage *top(const State &state) {
 int month(const State &state) {
     return state.scene.calendar.year * 12 + state.scene.calendar.month;
 }
+// Parse before touching a directory; an item goal belongs only to monthly player input.
+std::optional<int> item_target_argument(const std::string &mode, const std::string &option) {
+    const std::string prefix = "--item=";
+    if (option.compare(0, prefix.size(), prefix) != 0)
+        return {};
+    require(mode == "steam-natural-month" || mode == "steam-continue-month",
+            "item coverage requires a natural/continued monthly route");
+    int id{};
+    const auto parsed = std::from_chars(option.data() + prefix.size(),
+                                        option.data() + option.size(), id);
+    require(parsed.ec == std::errc{} && parsed.ptr == option.data() + option.size() &&
+                id >= 0 && id < 36,
+            "invalid explicit item identity");
+    return id;
+}
 // A bounded manual player sequence uses the same command/update transaction as strategies.
 // The source question only queues yes; its parent must run before the task is cleared.
 std::optional<app::WorldCommand> withdrawal_command(const State &state) {
@@ -588,6 +603,9 @@ template <class PlayerStrategy> struct CampaignRun {
                   << std::endl;
     }
     void save(int slot) {
+        // Reject pending player decisions before creating even the player-file half.
+        std::ostringstream decisions;
+        strategy.encode(decisions);
         if (pot_facility)
             require(pot_facility->complete(state), "Cannot save an incomplete facility claim");
         if (pot_book)
@@ -955,7 +973,37 @@ void negative_balance_contract() {
 }
 void contract() {
     negative_balance_contract();
+    require(item_target_argument("steam-natural-month", "--item=2") == 2 &&
+                item_target_argument("steam-continue-month", "--item=35") == 35 &&
+                !item_target_argument("steam-natural-month", "--profession=0:1"),
+            "item option must preserve existing mode-specific arguments");
+    for (const auto &option : {"--item=", "--item=-1", "--item=36", "--item=2x",
+                               "--item=2:3", "--item=999999999999999999"}) {
+        bool rejected{};
+        try { (void)item_target_argument("steam-natural-month", option); }
+        catch (const std::runtime_error &) { rejected = true; }
+        require(rejected, "invalid item option must reject before file access");
+    }
+    for (const auto &mode : {"steam-inspect", "steam-inherit", "steam-pot-equipment-month"}) {
+        bool rejected{};
+        try { (void)item_target_argument(mode, "--item=2"); }
+        catch (const std::runtime_error &) { rejected = true; }
+        require(rejected, "wrong-route item option must reject before file access");
+    }
     auto state = ark::test::initial_world();
+    {
+        CampaignRun<ark::test::SteamVillageStrategy> pending{
+            state, {}, std::filesystem::path("build/validation/pending-item-save-contract"), {}};
+        pending.state.items.at(0).status = pending.state.catalog.at({0, 0}).status = 1;
+        pending.strategy.set_item_target(pending.state, 0);
+        bool rejected{};
+        try {
+            pending.save(1);
+        } catch (const std::runtime_error &error) {
+            rejected = std::string(error.what()).find("only stable Steam decisions") != std::string::npos;
+        }
+        require(rejected, "pending item goal must reject before any campaign save file is created");
+    }
     app::WorldCommand command;
     command.kind = Kind::open_build_menu;
     require(apply(state, command).outcome == app::WorldCommandOutcome::applied,
@@ -1164,8 +1212,12 @@ int main(int argc, char **argv) {
                 "Expected campaign phase, isolated directory and optional mode-specific argument");
         const std::string mode = argv[1];
         std::optional<int> requested_recipe;
+        const auto requested_item = argc == 4 ? item_target_argument(mode, argv[3])
+                                              : std::optional<int>{};
         std::optional<std::pair<int, int>> requested_profession;
-        if (argc == 4 && mode == "steam-pot-equipment-month") {
+        if (requested_item) {
+            // Already validated; configure only after the real player/strategy cold-load.
+        } else if (argc == 4 && mode == "steam-pot-equipment-month") {
             const std::string option = argv[3], prefix = "--recipe=";
             int id{};
             require(option.compare(0, prefix.size(), prefix) == 0,
@@ -1245,6 +1297,8 @@ int main(int argc, char **argv) {
                 if (requested_profession)
                     run.strategy.set_profession_target(run.state, requested_profession->first,
                                                         requested_profession->second);
+                if (requested_item)
+                    run.strategy.set_item_target(run.state, *requested_item);
                 if (mode == "steam-pot-facility-month") {
                     if (run.pot_equipment)
                         require(run.pot_equipment->certified(),

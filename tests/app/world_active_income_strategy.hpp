@@ -20,7 +20,8 @@ struct IncomeInvestment {
 std::optional<IncomeInvestment> choose_income_investment(const app::WorldState &state,
                                                          std::int64_t available,
                                                          std::optional<std::uint64_t> new_shop = {},
-                                                         bool inventory_only = false);
+                                                         bool inventory_only = false,
+                                                         std::optional<int> explicit_item = {});
 void inspect_income(const app::WorldState &state, std::ostream &out);
 struct IncomeDecision {
     bool handled{};
@@ -35,7 +36,9 @@ class ActiveIncomeStrategy {
                  const app::WorldState &after, const CampaignReceiptSink &receipts = {});
     void observe_tick(const app::WorldState &before, const app::WorldState &after,
                       const CampaignReceiptSink &receipts = {});
-    bool active() const { return choice_.has_value(); }
+    // Process-local coverage goal; unfinished purchase/use/effect blocks checkpointing.
+    void set_item_target(const app::WorldState &state, int item, std::int64_t reserve);
+    bool active() const { return choice_.has_value() || item_target_.has_value(); }
     int uses() const { return uses_; }
     std::int64_t spent() const { return spent_; }
     bool reward_only() const { return reward_only_; }
@@ -47,6 +50,8 @@ class ActiveIncomeStrategy {
 
   private:
     std::optional<IncomeInvestment> choice_;
+    std::optional<int> item_target_;
+    bool retry_{}; // Cancel the source commerce stack before choosing a new target.
     bool purchased_{}, consumed_{}, improved_{};
     int uses_{};
     int stop_month_{};

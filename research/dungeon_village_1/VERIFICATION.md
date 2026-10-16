@@ -1,5 +1,13 @@
 # 当前研究验证与历史索引
 
+## Steam探索底栏冻结计划与Owner桥 2026-10-16
+
+接`b1f2403`，新增实际探索底栏职责的[只读模块](prototype/include/dungeon_village_prototype/steam_dungeon_footer_skin.hpp)，显式登记现application目标，扩现任务皮肤套件；没有新增测试target、Owner字段或存档身份。完整几何、两遍挑战／跨条目dy、人物内clip／ImageClip、独立aW及根资源路径见[合同](ui/DUNGEON_RENDER.md#steam底栏维护消费者与资源边界)。现cnt_dungeonBar／g/h／占用者／探索状态和保留根均由既有Owner读取，随机只消费同次表现plan；缺失、重复、错绑定、错页、退休和不可能抽数明确拒绝，不在查询里清理或重抽。
+
+Windows单Release动态构建通过；现visuals／runtime_tasks最终 **2/2通过1.83秒**，覆盖独立几何oracle、层序／两次Pop、平铺末片、保留人物重复引用、g/h非缓存、随机交接、输入只读、坏载荷及真实PNG／SEB映射；既有Owner随机、清理与回滚断言保留。C++17稳定ID仅定义相等，编译时修正误用不等运算后完成复验；未构建他人在途持久化套件或跑世界长测。
+
+资源复核纠正“根素材缺失”的初判：现steam-common三文件就是Steam root原字节；7张common PNG、4个SEB及35组怪物脸图／SEB均可复用，未新增资源。语言变体／原Draw准入／GPU越界行为仍未知；自然aW生产接线及研究窗口尚未接，不以纯计划认证动态或完整皮肤。Release1379文件／145051383字节，assets863文件／9488214字节；新输出按值短期返回，向量预算4096，无积累队列或世界引用，合法历史仍不称永久有界。结果合现合同／索引，无新报告、audit、指纹或临时产物；构建／测试及子任务结束，白名单本地提交，保留他人修改、不推送。
+
 ## BOSS与群体通知正式皮肤 2026-10-16
 
 接`82b7e3a`，现`steam_monster_skin`补99／100原序计划、严格Owner只读桥及正常窗口消费者：99含13段／129循环、单精度跳跃、光环／烟效，100读取现8×9数组按原序绘制，最终身体帧取页主钟。新增的`StartupWorldMonster.aura_size`仅出版原表第3列，不改Owner／codec布局或数据身份。来源／58项既有素材局部交叉、状态域与纯Draw谓词的区分见[通知合同](ui/PAGES.md#steam-task-notices)。输入仅接确认键；源Touch2无矩形，不补底栏热区／Esc确认。初始化、演出随机及确认仍消费原Owner，绘制不推进或创建实体；已初始化丢钟拒绝，主钟按源回卷。

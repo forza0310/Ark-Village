@@ -15,6 +15,7 @@
 | `startup_world_commerce`、`steam_commerce_skin` | 83主页三入口同轮事务、原序只读皮肤及真实NEW查询；85三行图块目录／整轮输入、86交易反馈已接，保留独立93领取和86自动关闭；84金额及皮肤另列；[商会合同](../rules/COMMERCE.md#steam-commerce-top) |
 | `startup_world_menu`／`information`／`manual`／`save`、`steam_information_skin` | 菜单、34–39信息、90税收、13说明及14保存；[信息合同](../ui/INFORMATION_MENU.md)、[菜单](../ui/PAGES.md) |
 | `startup_world_runtime_pages`、`steam_monster_skin` | 89介绍、92共享详情及99／100任务通知：严格主钟／初始化、有序正常皮肤／Owner只读桥与研究窗口；99含跳跃／光环／烟效，100读既有八行演出，不保留实体根或重复初始化；[共享显示前提](../rules/STEAM_MONSTER_PROGRESSION.md)、[后期通知](../ui/PAGES.md#steam-task-notices) |
+| `steam_dungeon_footer_skin`、`startup_world_presentation` | 探索底栏按同次Owner候选／冻结抖动生成有序只读计划，绑定现Steam根素材；不在Draw抽随机或补缺实例，aW生产接线、窗口与语言变体仍未交；[底栏合同](../ui/DUNGEON_RENDER.md#steam底栏维护消费者与资源边界) |
 | `startup_application`、应用存储／标题／回放模块 | [应用](STARTUP_APPLICATION.md)、[存储事务](APPLICATION_STORAGE.md)、[标题](TITLE_MENU.md)、[完整回放](APPLICATION_REPLAY.md) |
 | `steam_startup_skin` | Steam共用窗框、标题菜单／选档局部及背景→upper→演员插入点→草／Logo的有序前段；整场组合仍待接；[标题绘制](../ui/STEAM_TITLE_DRAW.md) |
 | `steam_platform_button_skin` | 平台绑定／键盘／语言按钮及NEW原序请求、控制器后备及glyph矩阵几何；语言普通结果输出安装／成功条件共享回调／Pop次序，不调用Steam、安装包或发现设备；[按钮及glyph](../ui/STEAM_FONT_CONSUMER.md#内嵌按钮提示)、[语言结果](../ui/STEAM_LANGUAGE_INSTALL.md#语言页的选择结果与标题回调) |

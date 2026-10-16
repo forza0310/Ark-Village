@@ -99,7 +99,7 @@ add_library(dungeon_village_startup_application src/startup_application.cpp src/
     src/steam_village_activity_skin.cpp src/steam_town_progress_skin.cpp
     src/steam_magic_pot_skin.cpp src/steam_magic_pot_effect_skin.cpp
     src/steam_task_selection_skin.cpp src/steam_task_roster_skin.cpp src/steam_task_result_skin.cpp
-    src/steam_task_deadline_skin.cpp
+    src/steam_task_deadline_skin.cpp src/steam_dungeon_footer_skin.cpp
     src/steam_human_ceremony_skin.cpp
     src/steam_human_award_skin.cpp
     src/steam_main_menu_skin.cpp)

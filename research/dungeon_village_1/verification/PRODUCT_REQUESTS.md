@@ -4,9 +4,11 @@
 
 设置12主体及平台键盘参考已交（`2d8745a`／`b230c2c`），真实设置输出／跨局持久仍独立；字体新增bo／ff／btn／pic局部消费者，以[字体合同](../ui/STEAM_FONT_CONSUMER.md)明确边界，不据静态合同宣称现产品parser已支持。剩余玩家页面的当前状态统一查[覆盖表](../ui/STEAM_UI_COVERAGE.md)，下方记录保留其各自提交时范围，不把历史“未开放”重复列为当前缺口。
 
-控制器后备已补三套原PNG／SEB与[纯选择接口](../prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)：按实际input_type分流，先互斥消费原frame0／1的OK／Cancel映射，再仅对layer1的16–19改32–35，所有层最终归0。它不调用Steam、发现设备或执行完整btn排版，动态glyph仍优先；无控制器的frame7取独立鼠标图，不能直接用RB后备代替。建设21纯游标／皮肤已由`964e701`／`7ef95d1`交付，完整Owner／快照仍待设计确认；字体已追至Unity原生默认皮肤／Font交接，未认证实际中文字形提供者，不能据Arial资源引用改产品字体。
+控制器后备已补三套原PNG／SEB与[纯选择接口](../prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)：按实际input_type分流，先互斥消费原frame0／1的OK／Cancel映射，再仅对layer1的16–19改32–35，所有层最终归0。它不调用Steam、发现设备或执行完整btn排版，动态glyph仍优先；无控制器的frame7取独立鼠标图，不能直接用RB后备代替。建设21已由`9cee27a`完成完整目录、Owner游标／双钟、同轮输入、21→74返回、严格快照和退休，不再等待该设计确认，见[业务合同](../ui/STEAM_BUILD_LIST_BUSINESS.md)；原字体／OS输入与落点后续仍另验。语言普通结果有序请求由`5708375`交付，启动文字表与翻译委托分开；字体已追至Unity原生默认皮肤／Font交接，仍未认证实际中文字形提供者，不能据Arial资源引用改产品字体。
 
 ## 历史回应与交付入口
+
+2026-10-16补[探索底栏](../../../docs/reference/RESEARCH_REQUESTS.md#dungeon-strip-consumer-gap)不可变元数据：`StartupWorldTask.dungeon_background_row`直接来自固定APK `questData.txt`第4列，81定义全量保留，六行与common127原PNG217×108匹配。原构造及消费入口见[底栏合同](../ui/DUNGEON_RENDER.md#底部探索路线)；不以任务kind／阶段／设施ID代替背景行。完整底栏绘制计划、滑入及调用频率仍待交付，既有Owner显式表现请求／冻结抖动与缺绑定清理保持，不在产品重复Draw里追加随机或恢复任务。
 
 主菜单新增[raw3合同](../ui/PAGES.md#steam主菜单缓存输入与局部皮肤)与[正式只读皮肤](../prototype/include/dungeon_village_prototype/steam_main_menu_skin.hpp)：五／六项原图标、缩源展开、NEW／GET优先级、壶期间及ID8基矩形，并提供raw4／7／9／10按父存储行定位。`startup_magic_pot_menu_information`返回当前可显示期间和n1分母，与真正process满容量补1独立；pages／visuals短测通过，参考[四面板图](../ui/examples/steam-main-menu.png)。后继已接任务j、建设aY/P原时点缓存和真实raw3 Owner，操作经同一聚合事务；本段早期未接状态不再作为当前缺口，现能力以[覆盖表](../ui/STEAM_UI_COVERAGE.md)为准。平台Review由系统i9而非i16条件进入，完整光标／物理输入／字体分别待证；本批不改产品或快照格式。
 

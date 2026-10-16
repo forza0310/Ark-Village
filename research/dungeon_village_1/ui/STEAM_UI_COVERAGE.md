@@ -138,8 +138,8 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 96 | GET_MYHOME | 新局／奖励／解锁／事件 | [局部合同与维护计划](STEAM_HUMAN_DETAIL.md#human-reward-followups)：Mapchip2、独立副钟、人物抛物、mentalUp／jingle5、严格Owner桥及窗口已接；短拒绝／恢复／退休已验，完整字体与原OS动态待证 |
 | 97 | TP_LOCKOFF | 新局／奖励／解锁／事件 | Steam静态：第一次实际Update即清人气条锁并Pop，无确认／计数门槛已核；维护人气奖励后继已接。未由此认证Draw或完整人气演出动态，见[人气合同](../rules/ACCOUNTING.md#人气100条奖励与超过10000后的重放) |
 | 98 | TAX_INCOME | 新局／奖励／解锁／事件 | Steam页面仍仅声明；APK自动重新合计／其它收入／清全人物F/G合同及维护Owner事务已接，无玩家确认。Steam自身Update／Draw及原动态仍待核，见[税收合同](../rules/ACCOUNTING.md) |
-| 99 | BOSS_APPEAR | 新局／奖励／解锁／事件 | Steam静态产生者：特殊任务成功创建后134→99及后继事件顺序已核；APK满40确认／维护演出消费者不代证Steam自身Update／Draw。独立Steam皮肤与原动态仍缺，见[后期任务合同](../rules/PROGRESSION_ROUTES.md) |
-| 100 | MANYMONSTER_APPEAR | 新局／奖励／解锁／事件 | Steam静态产生者：复发任务成功创建后133→100及167守卫已核；APK演出数组／随机及40确认、维护消费者与Steam自身Update／Draw分开。独立Steam皮肤与原动态仍缺，见[后期任务合同](../rules/PROGRESSION_ROUTES.md) |
+| 99 | BOSS_APPEAR | 新局／奖励／解锁／事件 | 产生者134→99及后继已核；Steam自身Init／40确认、129循环动作／跳跃、aura／烟效、窗口／资源／最终页钟帧已独立交叉，见[通知合同](PAGES.md#steam-task-notices)。已有APK维护演出消费者，Steam有序皮肤／Owner只读桥、例图与原动态仍缺 |
+| 100 | MANYMONSTER_APPEAR | 新局／奖励／解锁／事件 | 产生者133→100及167守卫已核；Steam自身19抽Init／原序八行状态、先Update后40确认、clip／身体最终页钟帧及资源已交叉，见[通知合同](PAGES.md#steam-task-notices)。已有APK维护演出消费者，Steam有序皮肤／Owner只读桥、例图与原动态仍缺 |
 
 标题菜单0／存档栏1的[菜单／选档静态合同](STEAM_TITLE_MENU.md)与维护纯计划已接；[六态研究窗口](examples/steam-title-menu-slots.png)已消费原图元、遮挡与两名中央普通演员，目录资格和演员位置／age是显示条件，平台按钮／语言／原字体及完整Steam调度另列；S038／S039/S062及[后继窗口](../verification/startup-ui-analysis/ANALYSIS.md)只认证局部入口／显示，不证明完整覆盖、删除或配置最终开始。独立RankForm的[双页Update及纪录getter](../rules/STARTUP_RECORDS.md#steam小方法交叉及设计决策)有Steam静态证据，[两轮窗口](../verification/skin-observation-analysis/ANALYSIS.md)补纪录外观／翻页；Steam完整正常Draw已独立核出并有[纪录纯计划](../prototype/include/dungeon_village_prototype/steam_record_skin.hpp)，独立Update纯候选已接，Net getter已证仅只读系统备用项；独立页钟Owner／恢复、完整字体及共享scratch仍未接，不与SubForm的3 MAIN_MENU混号。
 GameForm 0 MAIN、1 BUILD有局部窗口证据；6 CHASE_CHARA、7 CHASE_TENANT另有[具名追踪／确认与镜头静态合同及维护接线](INFORMATION_MENU.md)，不再仅有声明，但原窗口追踪全链未认证。2 USER、3 BACK、4 DUNGEON_SELECT、5 DUNGEON_MOVE在此仍仅登记声明。

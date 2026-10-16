@@ -1752,6 +1752,7 @@ void steam_joystick_prompt_checks(Checks &check) {
 void steam_language_checks(Checks &check,const std::filesystem::path &root) {
     using ResultKind=SteamLanguagePanelResultKind;
     SteamLanguagePanelResultInput result;
+    check(!steam_language_panel_result(result),"尚未取得平台结果拒绝，不把缺载荷当null取消而提前Pop");
     result.kind=ResultKind::null_result;result.selection=-99;
     const auto cancelled=steam_language_panel_result(result);
     check(cancelled&&cancelled->actions.size()==1&&

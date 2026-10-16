@@ -138,8 +138,9 @@ export function compileStartupWorld(tables, map, sources, state) {
       normal.every(id=>id>=0&&id<monsters.length),
       '任务跨目录引用缺失');
     need(n(row[8])<=n(row[9]),'任务奖励范围反转');
+    need(n(row[4])>=0&&n(row[4])<6,'任务底栏背景超出原217x108图片的六行');
     return `{{${n(row[0])},${n(row[3])},${n(row[5])},${flag},0,${monster},${array(sites)},`+
-      `${n(row[8])},${n(row[9])},${n(row[14])}},${text(row[1])},${text(row[2])},${flag&1?1:0},${n(row[12])},${array(normal)},${n(row[6])},${n(row[15])}}`;
+      `${n(row[8])},${n(row[9])},${n(row[14])}},${text(row[1])},${text(row[2])},${flag&1?1:0},${n(row[12])},${array(normal)},${n(row[6])},${n(row[15])},${n(row[4])}}`;
   });
   const itemOutput=rows['item.txt'].map(row=>{
     const flag=n(row[24]),opened=(flag&1)!==0;

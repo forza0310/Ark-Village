@@ -556,6 +556,51 @@ Update `b/g.java:11468–11484`先以确认或右重复输入向后循环，再�
   解锁定义和真正到访实例分开，不在画面显示时创建人物。
 
 
+<a id="steam-task-notices"></a>
+### Steam特殊任务通知99／100
+
+2026-10-16。产生者仍沿[后期任务合同](../rules/PROGRESSION_ROUTES.md#任务生成后的boss与复发对话)的`GameForm.AddQuest`，这里独立补Steam自身Init／Update／Draw；固定APK仅用于交叉，不以同页号认证。入口是`SubForm.Init` RVA`312460`→`Init2` RVA`30E570`、`Update` RVA`321990`→`Update2` RVA`317940`，绘制沿具名`_draw→_draw1_1→_draw1_2→_draw1_3→_draw2→_draw2_1→_draw2_2→_draw2_3→_draw2_4`分派，未线性扫描巨大`_draw`全文。
+
+两页实际绑定`monsterData_ +0x198`，不是新造怪物实例；共享Init在`10312616`归零页主钟`frame_ +0xA0`，两页软标签表由cctor `1032AA53–1032AAD8`分别安装零值二元数组，即`{0,0}`。99没有额外Init2分支；100在`1030E75A–1030E77C`调用`UserData.Init_ma`，这一步已经会改变共同游戏随机流。公共Update `10321B63–10321B84`先分别推进页主／副钟，随后仍可能受公共wait阻挡；本页不把副钟当主钟。Update2的100在`10317CDA–10317D02`先`Update_ma`，再与99于`10317D04`合流：仅确认pulse `0x100000`且主钟≥40才Pop，早确认只消费脉冲、不快进、不取消；没有本页奖励／杀怪／解锁提交或新增脚本请求。即使第40轮同时确认关闭，100也先执行当轮演出更新。分支没有新增音效，公共待发jingle、框架进出声音仍按各自合同，不能称整轮静音。
+
+| 绘制顺序 | 两页共同请求；原240逻辑平面 |
+| --- | --- |
+| 窗口与框 | 222×170窗、top0；99标题literal槽`110F3C20`为`ボス出現！`，100的`110FC6F0`为`ﾓﾝｽﾀｰ大量発生`，均交真实LT／字体链；框(15,139)–(224,202) |
+| 背景 | common图39 `mp_back`三次DrawImage：源(0,0,93,82)→(30,66)、(1,0,91,82)→(109,66)、(1,0,20,82)→(189,66)；不镜像、不按整图拉伸。再RGB148/148/148描边(30,66,179,81) |
+| 怪物 | 99的Draw VA`103479E2`调用`Draw_bossAppear` RVA`2CE9E0`；100在`103477B4–103477D7`调用`Draw_ma` RVA`2D2820`。下述各自时钟／方向不可统一成循环走路 |
+| 两行文字 | clip(0,158,240,RateConvert(pageFrame,5,40,0,48,true))；SC_WINDOW_BLACK，LT模板`<0>が`＋真实怪物name锚(120,164)、anchor2；第二行99为`出現しました!!`、100为`大量発生しています!!`，锚(120,188)、anchor2；最后PopClip。literal分别`110EA494／110F5604／110F649C`，与89的y165／187有一像素差异 |
+| 继续箭头及Touch | pageFrame≥40才请求底箭头，参数pageFrame−40、锚(212,204)，沿现common SEB2／图片72；共尾`103477DA–10347824`注册Touch id2／option2。99页尾跳到共尾，100从helper返回后进共尾；不增软确认标签，不将注册直接当物理鼠标等价 |
+
+99绘制局部为`10347825–10347B1D`，helper完整有限范围`102CE9E0–102CF1C7`。其BOSS_ANIME_DATA不是怪物AI，按`[动作,外层seb,方向,起点x,终点x,时长]`排列。Steam cctor `102F353B–102F397F`确实安装13×6数组，各行InitializeArray槽已按FieldRef→注册类型→字段默认值独立解码；下表与APK `c/n.bb`逐值相同，不能由这一表相同推其它页面同版。
+
+| 原序 | 六列值 |
+| ---: | --- |
+| 0 | 0,0,2,120,120,5 |
+| 1 | 1,0,2,120,74,12 |
+| 2 | 0,0,2,74,74,5 |
+| 3 | 2,0,2,74,74,12 |
+| 4 | 0,0,2,74,74,10 |
+| 5 | 1,0,1,74,166,24 |
+| 6 | 0,0,1,166,166,5 |
+| 7 | 2,0,1,166,166,12 |
+| 8 | 0,0,1,166,166,10 |
+| 9 | 1,0,2,166,120,12 |
+| 10 | 0,0,2,120,120,5 |
+| 11 | 2,0,2,120,120,12 |
+| 12 | 0,0,2,120,120,5 |
+
+99取`t=pageFrame%129`，原序累计时长并选`t<累计终点`首行，局部钟为`t−行起点`。动作0固定起点，动作1按局部钟将0…时长映射起点…终点，动作2固定起点且y偏移为`−trunc(GetParabolaValue(8.0f,时长,局部钟))`；正常身体锚(x,138+y偏移)，阴影common SEB25／图3按真实shadowFrame画于(x,138)，阴影不随跳高。先写显示scratch的size及body=`size×30+sizeIndex`，再调用SetDispMonsterData(0,body,外层步帧,行方向,更新钟)和DrawDispMonster。**更新钟在动作2为0，其余为t**；外层`(pageFrame%24)/6`不是最终身体帧。正常action0的SetDrawParam在`1028B49B–1028B58C`重新按body×4+方向选SEB，以更新钟和已核speed `[6,6,8,10]`计算四步帧。
+
+99在flags4且dieCnt_total≥1时，先于阴影绘effect aura：SEB=`auraSize+13`、图=`auraSize+14`、frame=`(pageFrame%4)/2`，锚(x,140+y偏移)，不能以累计击杀数代替auraSize。第4／8／12行再于身体之后画effect SEB8／图8 `satsmoke02`，按局部钟顺序取首个门槛大于它的帧，越过全部门槛则封末帧；Steam Character2.cctor `10299D20–10299D5B／10299DE3–10299E1E`分别核出门槛`[3,6,9]`、y位移`[4,4,4]`，故锚(x,142)。这里既有明确aura／烟效请求，不能把它们归入尚未认证的任意scratch附效而一律省略。
+
+100独立可变演出数组`UserData.ma_data`为static+0x12C；cctor `102F3B9D–102F3C01`按实际尺寸8×9分配。列为`[PX,GOAL_PX,DIRECT,CNT,TIME,AREA_LEFT,AREA_RIGHT,STATE,VX]`，位置使用百分之一逻辑单位；它不在真实世界怪物容器中，不能用画面有八只推断世界增怪八只。Init_ma `102DF5D0–102DF92B`按行0→7初始化：前3行先Random(100)映射−3000…3000加至按行0…2映射5000…19000的x，再Random(100)映射2000…16000为区域左界、右界再加6000，最后切state1；后5行先Random(100)<50取x2000，否则22000，再抽同样区域，最后切state0。state0令CNT0／TIME=行号×10；state1令CNT0并Random(100)映射TIME5…60。正常8行Init合计**19次GameUtil.Random(100)**，实际NextInt与余数沿原共同流，不独立另起表现随机源。Init不清整个8×9数组：未被本次分支赋值的GOAL／DIRECT／VX等槽保留既值，首次零分配与再次Init不能混为同一种初态。
+
+ChangeMAState RVA`2C9620`在切state2时按原序抽目标（Random100映射区域左…右）、令DIRECT=`PX<GOAL?0:1`、再抽VX30…200；切state1抽等待5…60，切state0不抽。Update_ma `102EEF20–102EF48F`每行先CNT++；state0／1在CNT≥TIME转state2；state2按DIRECT0加VX、DIRECT1减VX，到达／越过目标即state1（本轮重置CNT并抽等待）。未到目标但PX触及右22000／左2000时只反转方向；下一行继续，不创建世界实体。切state2不重置CNT，不能把所有状态切换统一成清钟。
+
+100 Draw_ma完整范围`102D2820–102D2EB1`在背景后push clip(30,66,180,82)，按行0→7仅画STATE!=0的条目：x=`trunc(PX/100)`，阴影锚(x,139)；size／sizeIndex／shadow仍来自本页绑定的同一真实怪物定义。DIRECT恰1传显示dir2，其余传dir1；无此状态的隐藏行不画。身体锚(x,139)，没有99的跳跃、aura或烟效分支。helper先用**UserData.frame_ +0xB4**算外层步帧，但SetDispMonsterData的最后更新钟是**pageFrame**，DrawDispMonster再按这个钟重算实际身体帧；不能把世界钟、页钟或行CNT合成一个值。八行后PopClip，再画上述文字／箭头；Draw本身不抽随机，100的随机来自Init及Update状态转换。
+
+供产品的最小只读输入是页类型／绑定怪物定义／pageFrame，加99所需flags、dieCnt_total、auraSize以及size、sizeIndex、shadowFrame、name；100另需原序8×9演出状态及原UserData.frame_用于保持setter请求实参。资源复用现common39／3／72、SEB25／2、monster身体与effect aura／satsmoke02，不另复制图片。共享显示的初始化／合法相机／非调试充分前提沿[已核scratch合同](../rules/STEAM_MONSTER_PROGRESSION.md#raw89介绍页的输入绘制与共享请求)，不能认证任意残留血条／伤害／附效；本节也未实现新的Owner快照字段、未取得原窗口动态或提供维护UI例图。100的演出状态与随机恢复必须由唯一Owner保存／安装，不能交给只读Draw重建或重复Init来“补齐画面”。
+
 ### Steam任务选择与募集22–24
 
 Steam2.56静态来源：22为`SubForm._draw` VA10353269–10353798，23／24为`_draw1_1` VA10332B89–10332D59／10332116–10332B88；Update22为1032572B–10325999、23为10325566–1032572A。固定APK的对应准备链见上节，维护[有序计划](../prototype/include/dungeon_village_prototype/steam_task_selection_skin.hpp)只投影Owner，不重抽报名、不付款。原字体、完整TextLayout、共享人物scratch及OS输入动态仍待证。

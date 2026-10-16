@@ -34,9 +34,29 @@ Steam边缘参数：x<-14时`srcRatio=abs(-18-x)*64`；x>250时`srcRatio=(254-x)
 
 因此正常有空槽是`100→11→2→100`；20槽全满仍先抽间隔，不能优化成零抽。`SetAppearCnt`使用同一间隔公式。Steam `GameUtil.Random(n)`读静态共同`JRandom`，调用无参数`NextInt()`，有符号余数后交给`JMath.Abs`；本批没有认证Steam底层PRNG与APK Java序列等价，不能仅凭四个bound相同合并随机基线。
 
-`TitleForm.Update`固定前2048字节证明：父更新计数回卷后，titleFrame饱和递增、frame回卷；更新后的titleFrame<100时先查确认脉冲，可跳到100。仍<100则跳往后部结束；达到100后调用背景更新，之后才处理调试长按、指示SEB及菜单输入。背景调用点VA`0x1020C4A7`。
+`TitleForm.Update`（RVA`20C230`，至下一具名入口`20D5D0`的5024字节，含末尾填充）现已顺序核完：父更新计数回卷后，titleFrame饱和递增、frame回卷；更新后的titleFrame<100时先查确认脉冲，可跳到100。仍<100则跳到`1020D2CD`直接返回true；达到100后调用背景更新，之后才处理调试长按、指示SEB及菜单输入。背景调用点VA`0x1020C4A7`。因此门槛前的提前返回也绕过尾部平台／调试输入，不是只暂停人物移动；[Draw的75门槛](STEAM_TITLE_MENU.md)与此处Update的100门槛独立。
 
-确认键mask`0x100000`不走JoystickIndex分支；无输入guard且可用Keypad时，`CheckKeyPulse`读取并清除该bit。故旧titleFrame=98时，同一确认脉冲可用于跳动画并在本轮更新人物，但不会再次供菜单确认；旧值=99自然加到100，不经过提前消费，后续确认仍可能命中。这里只认证这个方法及同一mask消费关系；本批没有追完Steam表单框架的栈顶／生命周期准入、guard状态变化、触摸映射或实际键位，不把它写成所有输入设备的完整合同。
+确认键mask`0x100000`不走JoystickIndex分支；无输入guard且可用Keypad时，`CheckKeyPulse`读取并清除该bit。故旧titleFrame=98时，同一确认脉冲可用于跳动画并在本轮更新人物，但不会再次供菜单确认；旧值=99自然加到100，不经过提前消费，后续确认仍可能命中。它不单独证明所有输入设备的完整键位或脉冲生产链。
+
+### Update的后半部与输入边界
+
+2026-10-16补核剩余范围后，以下顺序可供产品接线；菜单／选档各项业务结果仍集中在[标题菜单合同](STEAM_TITLE_MENU.md)和[保存菜单合同](STEAM_SAVE_MENU.md)，不在此复制第二套规则。
+
+| 顺序 | 原方法直接行为与边界 |
+| --- | --- |
+| 背景后 | 查询`CheckKeyState(0x800)`，未按下清POUND计数，按下递增且严格大于40才置STAR；本方法没有相应清STAR分支。随后推进common SEB22一次，再按state分流 |
+| state0 | 先Up、再Down repeat，再处理已有dialog；之后依次查询软标签1、软标签5、脉冲`0x1000000`、确认`0x100000`。前三项分别走既有询问、`URL_SP`外链、LanguageForm；不应把同轮输入先合成一个无序按钮集合 |
+| state1 | 按Left→Right→Up→Down查询repeat，随后把无中断档的中断行改为手动行；之后才检查已有dialog。无dialog才查询确认，确认未命中才查软标签2返回；返回调用`ChangeState(0)`后进入尾部，保留选择，详见菜单合同 |
+| state1后继 | 空栏NewGame调用后回到尾部；非空手动栏Push raw20后立即返回，非空中断ContinueGame后立即返回。已有dialog结果分支处理及清引用后走独立false返回，不经过普通尾部 |
+| 普通尾部 | `1020CE1D`先检查STAR专用`0x400`脉冲／原对话请求，再在`Config.APPLI_TYPE==4`时检查`0x800000`脉冲，并于`1020CF08`调用`SteamInputManager.ShowBindingPanel`，最后返回true |
+
+尾部绑定面板请求不是仅state0可达：选档无确认、空栏NewGame返回及软标签2返回等路径也能走到它；新子页Push、直接Continue等提前返回则跳过。不能仅因[Draw只在栈顶state0显示平台图标](STEAM_TITLE_MENU.md)就把Update快捷请求也限制成相同资格。ShowBindingPanel具名入口`7B7E00–7B7EA0`另有`Config.USE_STEAM`与manager初始化检查，然后把当前64位handle交给SDK；该入口未额外检查handle非零，不能补用相邻其它方法的资格。本批只核请求链，不执行SDK或声称当前手柄可用。
+
+STAR／`DEBUG_CMD_DEV`／`DEBUG`／`PTW`保留为原调试旁支，不能默认纳入普通经营接口：其中可见Http.Connect、RecordStore.WriteRecord、系统日期槽／字符串修改和SaveSystem；另一STAR路径调用SendSaveData。原方法内这些调用是有副作用的，不能以“标题背景”之名整体放进可重复只读Draw。上述静态分支存在不等于用户正常冷启动实际已准入；本批未调用网络、调试命令或原档。
+
+**guard限制输入，不直接暂停背景。** `CheckKeyPulse(int)`（747E60）与`CheckKeyRepeat(int)`（748250）在读取相应输入前均调用`Canvas.CheckInputGuard`（7479E0，完整512字节登记范围）；标题的`CheckKeyState`（7484E0）也先查同一guard。已核guard依次处理：any-key标志仍有效则拒绝，否则清该标志；非零截止时间仅在`deadline−10000≤now<deadline`时拒绝，过期或距离当前过远时清零；倒序剔除guard列表中mode4表单后，当前`GetTopForm`仍在列表才拒绝。时间来自CurrentTimeMillis，不是标题tick，10000是该异常期限比较常量，不能改写成标题动画时长。any-key所依赖框架静态标志的生产者、guard设置者与所有跨线程时点未在本批展开。
+
+标题Update本身没有先以栈顶／生命周期或统一guard阻断三种时钟及人物更新；每次查询才分别读guard，guard检查还可能清期限／退休引用。Up／Down查询在guard拒绝前仍增加Canvas的`checkUpDownKeyCount_`，并非严格只读查询。调用者须保留[框架准入](STEAM_INTERACTIONS.md)与单轮原序，不能把一次guard结果缓存后任意重排全部查询；这里不证明非栈顶Title实际会被框架调用，也不扩大为完整设备／焦点或全部输入生产链已认证。
 
 ## 排序、资源查询与图层
 
@@ -149,4 +169,4 @@ Character2.Init（284080）的`10284193–1028421D`显式写objType=0、动画�
 
 ## 静态来源范围
 
-本批21个窗口中20个覆盖完整登记范围，TitleForm.Update仅核2048字节入口前缀。TITLE_GUEST经cctor槽0x110F2100的fieldRef→私有数据字段→默认44字节blob独立得出0…10，不用APK代替；共同随机后端算法见上节，实际模式／流交接、完整框架准入及scratch历史资格仍未闭合。来源身份与数组证据沿本页既有入口维护，不另存重复指纹。
+原批21个窗口现均覆盖完整登记范围；TitleForm.Update由2048字节前缀补至5024字节登记边界，正文至`1020D5C1`，其后至下一入口为填充。另沿具名Canvas输入查询／CheckInputGuard和GetJoystickIndex补核局部准入，未穷尽设备树或传递调用。TITLE_GUEST经cctor槽0x110F2100的fieldRef→私有数据字段→默认44字节blob独立得出0…10，不用APK代替；共同随机后端算法见上节，实际模式／流交接、完整框架准入及scratch历史资格仍未闭合。来源身份与数组证据沿本页既有入口维护，不另存重复指纹。

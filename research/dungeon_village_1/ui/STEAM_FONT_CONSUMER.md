@@ -240,9 +240,21 @@ DLL中Add入口绝对VA的唯一四字节匹配在`.data`的1112D608；邻项依
 
 2026-10-14沿固定Steam具名入口补核，未运行游戏或读取语言偏好。`Main.OnCreate` RVA`2AD440`在`102AD63B`读取**资源组1／记录10**并创建JarInflater；不是玩家世界记录。其正常路径从`softkey.txt`读取各行、按实际Tab拆列，`trim／excludeZeroLength／escape`均false，在`102AD72A`调用`Language.SetSoftLabelTable`；随后读`text.txt`，先将原字面两字符`\n`替换为真正LF，再按同样Tab参数拆列，于`102AD869`调用`SetTextTable`。源文件不存在时跳过对应安装；读／安装异常进入已有异常处理及Jar退休路径，不提供两表联合回滚。不能把两个文件名与默认`LoadTranslateTable`的media3／xls.dat路径合并为同一次读取，实际当前表资格还取决于调用时序与随后语言安装。
 
-此处找到的是**表值writer，尚未找到翻译委托writer**。类型槽`110FB03C`沿MetadataRegistration.types独立解析为Language（TypeDef600）。`SetSoftLabelTable` RVA`81F210`在`1081F264`原样安装数组引用到静态`+0x14`，随后原序就地将每行前两列中的单个反斜线替为`¥`；只检查当前行／列的原边界，不认证所有第三列也被转换。`SetTextTable` RVA`81F400`先清静态`+0x18`，非null输入交`MakeTextTable`，正常返回才安装其三维表；失败不恢复旧表。两入口均不写静态`translateTableMethod_ +0x3C`，也不生成ThreadStart。消费者仍沿[保存页翻译链](STEAM_SAVE_MENU.md#文本翻译的已核边界)处理当前表／内置表／语言包资格，不能机械把所有中文列固定为第2或第3列。
+此处找到的是**表值writer，尚未找到翻译委托writer**。类型槽`110FB03C`沿MetadataRegistration.types独立解析为Language（TypeDef600）。`SetSoftLabelTable` RVA`81F210`在`1081F264`原样安装数组引用到静态`+0x14`，随后原序就地将每行前两列中的单个反斜线替为`¥`；不转换第三列，也不跳过null行或不足两列的行：这些输入走原异常路径，表已发布、此前行修改仍保留。`SetTextTable` RVA`81F400`先清静态`+0x18`，非null输入交`MakeTextTable`，正常返回才安装其三维表；失败不恢复旧表。两入口均不写静态`translateTableMethod_ +0x3C`，也不生成ThreadStart。消费者仍沿[保存页翻译链](STEAM_SAVE_MENU.md#文本翻译的已核边界)处理当前表／内置表／语言包资格，不能机械把所有中文列固定为第2或第3列。
 
 本批有限排查另外顺序读取`IApplication.Awake` RVA`781120`（7008字节）、`BootForm.InitApp` RVA`1FB3A0`（352字节）及`BootForm.Load` RVA`1FBE90`（9712字节）：Awake可见语言Get／TranslateEnable及Config安装，Boot两个入口负责业务初始化／定义与资源加载，没有在这些已读入口直接安装翻译委托。这个范围不覆盖其全部间接构造、虚调用、平台注册或反射，也未展开Language的大静态构造；[语言安装合同](STEAM_LANGUAGE_INSTALL.md#启动选择与翻译注册的边界)的`+0x3C`注册者仍未知。直接供给与当前回调是否存在必须分别认证，不将已找到两表安装升级为“从未注册回调”或当前中文逐字内容已经取得。
+
+### 正文索引、列选择与退休
+
+2026-10-16重核`MakeTextTable` RVA`81A080`至下一具名入口`81B3A0`的4896字节，并交叉下列消费者；没有导出译文表。输出是`表[键串Length][同长度行的原序][原Tab列]`，不是`表[语言][键][译文]`。`1081AF2B–AFB5`先找第0列的最大长度、分配最大长度加1的外层；`1081AFC0–B09B`按加入顺序分桶；`1081B1D3–B374`只把桶容器转成数组，内层仍是原`string[]`行引用。Length调用的共享RVA`6E9470`此处接收字符串，须按`StringEx.Length(string)`解释，不能套用同地址的整数／Steam句柄别名。未用桶保留null，不排序、不去重；同键多行仍按原序匹配。
+
+构造会先修改输入。`1081A220–A6AB`仅规范源第0列颜色：`<co=([0-9A-F]+)>`转小写十六进制，RGB十进制三分量转`<co=rrggbb>`。随后逐列处理以`<po=`开头的字段：存在首个`>`才去掉此前前缀，非第0列在此分支另交`AdjustMacroScope`；第0列精确等于`Lite版`或`Lite Version`时，将后续各列写成`Lite Version`。原行先加入索引候选，再为第0列另作`AdjustMacroScope`及颜色表示规范化；键发生变化才以`Array.Copy`浅复制整行并替换第0列，最后可再追加将该别名键的`～`替为`〜`的浅副本（`1081AE0B–AF26`）。它们保留原翻译列，不能当作新译文或深复制。非Japanese时，对每个候选行的第0／1列才另做反斜线→`¥`，其余列不动（`1081B09B–B1CE`）。缺列／null、解析或分配失败可发生在这些修改之后，没有输入回滚，也没有统一的“坏行忽略”。
+
+`AdjustMacroScope` RVA`80BCD0`有限体处理`co／si／st`开启与对应关闭标记的未闭合范围，并按记录顺序补关闭串；这里的作用是构造匹配键／译串变体，不是文字绘制器的完整TAG解释。构造中的颜色正则、`<po=`、两种波浪线及`\\`／`¥`均由实际metadata使用槽交叉，不能拿维护正则或截图猜串替代原输入。以上没有覆盖全部文化相关解析、畸形标签或翻译表内容。
+
+消费列按来源分开。`_translateText2` RVA`835ED0`先暂存输入的`<po=…>`前缀、用剩余键的Length定位当前`+0x18`桶，再按原序`String.Equals`比较第0列；**当前表命中固定取第1列**，必要时去其`<po=…>`并经后处理，最后恢复输入前缀（`10835F59–10836229`）。当前表未命中才进入内置表：基础`Language.Get()`非0时懒建`+0x38`，命中行默认按Get选列、超行长回退第1列；仅`langPackRecords_ +0x44`存在且该内置行至少3列时强制第2列（`10836582–10836676`）。`TranslateSoftLabel` RVA`820C90`的当前软标签表同样取第1列，内置软标签才采用上述Get／语言包选列条件。第2列在这些条件下有意义，但不能因枚举Chinese=2就直接把当前表当中文列矩阵。
+
+`ClearSoftLabelTable` RVA`80CB80`和`ClearTextTable` RVA`80CBE0`分别只清静态`+0x14／+0x18`引用；它们以及已核Set／Make方法体没有显式调用翻译缓存清理、`TextLayout.ClearCache`或翻译委托，也不清内置`+0x38`。因此“退休当前表”不证明旧缓存译串已经失效，引用置空也不证明无其它持有者或立即释放。产品若将原表转换成不可变索引、先验证再发布、随语言代际清缓存，应明确登记为维护策略，不能把这些事务保证反写成原版行为。实际语言切换的Boot重载仍沿[语言安装合同](STEAM_LANGUAGE_INSTALL.md)，本节不证明运行时列内容、当前字体或全部线程可见性。
 
 ## 仍需闭合及产品使用边界
 

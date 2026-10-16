@@ -121,7 +121,7 @@ struct SteamLanguageTouchResult { bool propagate{}, open_language{}; };
 // 匹配组件3/value0x133A066只在UP1请求入页；其它匹配事件截断分发，不调callback。
 SteamLanguageTouchResult steam_language_button_touch(int component,int value,int event_type);
 // LanguageForm.Update普通结果；平台字符串解析由适配层完成，空字符串/坏格式不能当null取消。
-enum class SteamLanguagePanelResultKind { null_result, parsed_selection };
+enum class SteamLanguagePanelResultKind { unresolved, null_result, parsed_selection };
 struct SteamLanguagePanelResultInput {
     SteamLanguagePanelResultKind kind{};
     int selection{};

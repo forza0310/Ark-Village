@@ -256,6 +256,16 @@ void catalogue() {
           "actual shortsword complete battle rule");
     check(rules.tasks[0].recruitment_fee == 1300 && rules.tasks[0].crew_rating_penalty == 1500,
           "questData constructor columns6/15 publish fee and display-only rating penalty");
+    std::array<int,6> backgrounds{};
+    for(const auto &task:rules.tasks) {
+        check(task.dungeon_background_row>=0&&task.dungeon_background_row<6,
+              "all81 quest background rows fit the independently decoded217x108 original strip");
+        ++backgrounds[static_cast<std::size_t>(task.dungeon_background_row)];
+    }
+    check(backgrounds==std::array<int,6>{48,10,3,8,6,6}&&
+          rules.tasks[0].dungeon_background_row==2&&rules.tasks[1].dungeon_background_row==1&&
+          rules.tasks[3].dungeon_background_row==3&&rules.tasks[6].dungeon_background_row==5,
+          "questData column4 preserves six distinct source row groups instead of task kind/stage/site IDs");
     check(rules.facilities[54].exit_effects.size() == 1 &&
               rules.facilities[54].exit_effects[0].attribute_index == 5 &&
               rules.unconsumed_exit_deltas.at(54) == std::vector<int>{3} &&

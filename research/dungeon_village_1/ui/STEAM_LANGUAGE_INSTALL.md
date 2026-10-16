@@ -104,7 +104,7 @@ null结果和相同包仅Pop；不同包为`SetLanguagePack(file,null,true)`请�
 消费者须按序执行，安装false跳过callback但仍Pop，安装或callback异常停止余项；该纯计划不实现原偏好写入，
 也不承诺原安装事务或Boot已经成功重建。callback必须在执行该步时重新读取，不能冻结成入页私有委托。
 冻结文件及当前文件各保留null，按文件串精确比较，不按标题／locale／存在性替换。
-平台result[0]的Int32.Parse仍由适配层负责，空串／坏格式不能冒充null；本接口拒绝负结果和越界，
+平台result[0]的Int32.Parse仍由适配层负责，尚未取得结果的默认unresolved显式拒绝，空串／坏格式不能冒充null；本接口拒绝负结果和越界，
 因此HTTP／模板／外链不由普通结果接口隐式启用。4096行及实际消费字符串4096字节为维护预算；
 未消费目录不补校验。现visuals短测覆盖分支、原序、null文件、大小写、拒绝与重复只读，没有新增Owner或持久字段。
 标题实际传入的callback（RVA `20BFD0`）在`1020BFE3`调用`AppData.StopBgm(0)`，

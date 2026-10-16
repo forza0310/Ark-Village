@@ -88,6 +88,7 @@ struct StartupWorldTask {
     std::vector<int> encounter_monsters; // 原a.m.j，第10列，保留原序。
     int recruitment_fee{};               // 原a.m.g，第6列；页23确认扣现金类别4。
     int crew_rating_penalty{};           // 原a.m.s，第15列；只用于页28评价，不拒绝出发。
+    int dungeon_background_row{}; // 原a.m.f70e，questData第4列；只选底栏18高背景，不是阶段/建筑ID。
 };
 struct StartupWorldFacilityInitial {
     std::uint32_t flags{};

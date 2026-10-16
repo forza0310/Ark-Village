@@ -8,7 +8,7 @@
 
 ## 历史回应与交付入口
 
-2026-10-16补[探索底栏](../../../docs/reference/RESEARCH_REQUESTS.md#dungeon-strip-consumer-gap)不可变元数据：`StartupWorldTask.dungeon_background_row`直接来自固定APK `questData.txt`第4列，81定义全量保留，六行与common127原PNG217×108匹配。原构造及消费入口见[底栏合同](../ui/DUNGEON_RENDER.md#底部探索路线)；不以任务kind／阶段／设施ID代替背景行。完整底栏绘制计划、滑入及调用频率仍待交付，既有Owner显式表现请求／冻结抖动与缺绑定清理保持，不在产品重复Draw里追加随机或恢复任务。
+2026-10-16，[探索底栏](../../../docs/reference/RESEARCH_REQUESTS.md#dungeon-strip-consumer-gap)已由`3db316f`／`4f66ce1`／`45b480b`交付完整局部有序计划、严格Owner桥、根／必要语言素材、aW同事务生产／退休及正常研究窗口显式表现接线。`StartupWorldTask.dungeon_background_row`直接来自固定APK第4列，81定义全量保留；p绑定、滑入／几何、两遍挑战／跨条目dy、人物专用裁片、百分比、火花及语言源缩放均见[底栏合同](../ui/DUNGEON_RENDER.md#steam底栏维护消费者与资源边界)。产品可迁入纯计划与同次Owner表现事务，重复展示计划不再抽签、追加aW或恢复任务；研究窗口每次全画布重合提交full_redraw只是显式适配策略，原平台实际准入次数／顺序仍未认证。Steam未消费ClampMax返回值的负源X须保留；GPU最终越界、实际语言安装／字体及66包装资格另验，不能自动套APK min或60FPS。
 
 主菜单新增[raw3合同](../ui/PAGES.md#steam主菜单缓存输入与局部皮肤)与[正式只读皮肤](../prototype/include/dungeon_village_prototype/steam_main_menu_skin.hpp)：五／六项原图标、缩源展开、NEW／GET优先级、壶期间及ID8基矩形，并提供raw4／7／9／10按父存储行定位。`startup_magic_pot_menu_information`返回当前可显示期间和n1分母，与真正process满容量补1独立；pages／visuals短测通过，参考[四面板图](../ui/examples/steam-main-menu.png)。后继已接任务j、建设aY/P原时点缓存和真实raw3 Owner，操作经同一聚合事务；本段早期未接状态不再作为当前缺口，现能力以[覆盖表](../ui/STEAM_UI_COVERAGE.md)为准。平台Review由系统i9而非i16条件进入，完整光标／物理输入／字体分别待证；本批不改产品或快照格式。
 
@@ -114,7 +114,7 @@
 | RQ11战斗／任务表现 | 连击ap样本、cd14跳跃、怪物群旗子、成果30连续动作；[X4局部计划](../ui/STEAM_COIN_RENDER.md)和[募集24](../ui/PAGES.md#steam任务选择与募集22–24)已交付 | 已交局部计划不替代完整场景层序、真实OS动态和剩余成果页 |
 | RQ01通知／新闻／人气 | 其余说话人／插画、目录翻页、文本节奏、特殊通知32、完整人气填充／pulse映射 | 文本通知与静态皮肤不是完整表现 |
 | 设施74第二页及类别图标 | 已交付原序identity／实例序号、固定y明细、空态及五行视窗；类别9／7、45效果槽与87个+原计划已验 | 产品待迁入；第一页完整效果皮肤／自然两同定义建设与Steam74调用、OS滚动仍另验，不能从总额分摊 |
-| 探索底栏 | 背景f70e静态投影、j(0)滑入时钟及坐标、宝箱／怪物／人物裁片、231→aW载荷／退休 | 已接随机／失绑事务不等于完整像素计划；旅店头像不是探索头像 |
+| 探索底栏 | 已交完整局部计划／Owner桥、根／语言资源、aW生产／退休及研究全重绘接线；剩原平台full-redraw／top-only准入、66包装及GPU越界末端 | 研究窗口适配不认证原OS／FPS；同计划重绘不重复随机／清理，中文物理尺寸不能替代基础语言gate |
 | 地图编辑与菜单 | 模式3／5／6／7选区图、原D锚点／深度、raw21完整目录／marker／滚动、商会余页原父子层级；五菜单、建设21静态和壶41–47已交，按覆盖表接收 | [Steam分母及局部输入](../ui/STEAM_UI_COVERAGE.md)不认证所有组件注册或实际OS投递 |
 | RQ06周期／调度 | 原APK／EXE各自正常与模态、暂停／焦点、倍速、报告／绘制时序动态；focus同月同tick入口 | 47ms桌面政策或局部scene2夹具不证明原节奏或重复收费缺陷 |
 | RQ07／RQ08／RQ10全解锁 | [775定义索引](../rules/PROGRESSION_CONTENT.md)逐项连条件／开放位／领取／来访、任务复发及二至五星／结局继承 | 枚举定义和数字表一致不是自然全路线认证；优先使用已认证快照尾段 |

@@ -10,7 +10,7 @@
 - [x] 用户指定的preview.mjs及小窗示例已纳入本goal，复用正式合同与套件；预览服务、CSS和夹具数值不进游戏，见[对照入口](docs/reference/REFERENCE_CHECKLIST.md#ui-small-window-goal)。
 - [x] 玩家两栏schema5/独立系统2、正常保存桥及维护回放已接；旧身份拒绝，月度真实经营独立冷载和字节复制持续验证。周期扣费可负、主动支付仍核余额，见[B1](docs/stages/B1-playable-prototype.md#campaign-negative-balance)。
 - [x] 真实转职、任务库存强化、额外募集/入住及预算接续已接；修复入住后父74退休与世界恢复，实际扩张至围栏2、18住户冷载后均可达，见[本批](docs/stages/B1-playable-prototype.md#campaign-residence-successors)。
-- [x] 魔法壶实际消费：药品7治疗、装备22/24/31/15/30/25装配/属性、书10/11/13永久学习及各自后继营业/冷载通过；已知不倒填发现。治愈13及火/冰Q后继见[治愈批次](docs/stages/B1-playable-prototype.md#campaign-healing-shop)，逐配方/未完待料见[发现批次](docs/stages/B1-playable-prototype.md#campaign-pot-discovery)；27真实扣元素/装配及完整后继营业、严格装备冷载通过，见[通关后接续](docs/stages/B1-playable-prototype.md#campaign-post-clear-pot)。
+- [x] 魔法壶实际消费：药品7治疗、装备22/24/31/15/30/25装配/属性、书10/11/13永久学习及各自后继营业/冷载通过；已知不倒填发现。治愈13及火/冰Q后继见[治愈批次](docs/stages/B1-playable-prototype.md#campaign-healing-shop)，逐配方/未完待料见[发现批次](docs/stages/B1-playable-prototype.md#campaign-pot-discovery)；27、32、33真实扣元素/装配及完整后继营业、严格装备冷载通过，最新见[装备接续](docs/stages/B1-playable-prototype.md#campaign-pot32-33-followup)。
 - [x] 壶升级点数预算及独立效果回执已接；活动28真实付100点、壶级1→2/容量10→20、完整后继营业及两次保存冷载通过，见[本批](docs/stages/B1-playable-prototype.md#campaign-pot-upgrade-budget)。
 - [x] 设施配方的47扣元素/93领取和原金币建设测试玩家已接；配方35/点心铺44真实制造、领取、2000G建设/完工、强化、实际营业1870G及后继存读通过，H不是普通建筑免费券，见[本批](docs/stages/B1-playable-prototype.md#campaign-healing-shop)。
 
@@ -20,7 +20,7 @@
 - [x] 四项条件及真实五星晋级/庆典/冷载已验，源收入73374G；配方36准确制造、领取、占卜屋2000G建设及任务库存强化已验，见[本批](docs/stages/B1-playable-prototype.md#campaign-fifth-star-pot36)。
 - [x] 配方26/防具24主角实际装配、完整后继及冷载通过；四本魔法书永久学习和当前Q均已取得，雷书12由人物8实际消费；自然到月183计分154750、系统纪录提交及玩家冷载通过，见[本批](docs/stages/B1-playable-prototype.md#campaign-natural-clear-books)。
 - [x] 完整月184真实营业30258G、付费装备/强化/任务胜利，月185保存/独立冷载已认证；另进程继承新局，5000G起步/600G建设面包店/实际营业545G及再次冷载通过，见[继续与继承](docs/stages/B1-playable-prototype.md#campaign-continued-months)。自然生命周期闭合不等于全775。
-- [ ] 从有效父世界月190接续：52已买图纸/建设/完工可达及强化，仍待实际营业；46/56营业已冷载保持。已由原46发现1/18/32/33/37，后续实际制造/消费仍待；继续2/3/17/39等产物，39尚缺四元素0/0/10/7，17保留合法较早前缀分支。29未开放，20已付款排队；预留两月现金及图纸点数，实际施法不以学习/Q替代，40配方与775分母保持，见[经营现状](docs/stages/ACTIVE_VILLAGE_PLAN.md)。
+- [ ] 从有效父世界月194接续：52实际营业5692G、46/56营业及32/33制造/装配/完整后继冷载已验；继续1/2/3/17/18/37/39等产物。39尚缺四元素44/38/0/6；17需合法前缀的定向消费分支，不以当前收益策略跳过判不可用。29未开放，20已付款排队；预留两月现金及图纸点数，实际施法不以学习/Q替代，40配方与775分母保持，见[经营现状](docs/stages/ACTIVE_VILLAGE_PLAN.md)。
 - [ ] 4魔法实际施放、投射/延迟伤害归因及全23职业后继等待真实局部消费事实；Q可用不等于学习/施法，见[研究请求](docs/reference/RESEARCH_REQUESTS.md#spell-consumption-receipts)。
 
 ## 表现与研究边界

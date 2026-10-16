@@ -10,6 +10,7 @@
 #include "dungeon_village_prototype/startup_world_menu.hpp"
 #include "dungeon_village_prototype/startup_world_save.hpp"
 #include "dungeon_village_prototype/startup_world_manual.hpp"
+#include "dungeon_village_prototype/startup_world_config.hpp"
 #include "dungeon_village_prototype/startup_world_routes.hpp"
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
 #include "dungeon_village_prototype/startup_world_tax.hpp"
@@ -1209,6 +1210,9 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s, bool obs
     const auto active=std::find_if(s.scripts.pages.rbegin(),s.scripts.pages.rend(),[](const auto &p){return p.lifecycle!=4;});
     if(active!=s.scripts.pages.rend()&&active->kind==ref::WorldScriptPageKind::raw_page&&active->legacy_page==17)
         return {StartupWorldRuntimeError::missing_source,{},ref::WorldSceneError::missing_consumer,{}, {}};
+    // raw12先验完整/退休载荷与孤立键，不能借Finish擦键补救损坏状态。
+    if (!valid_startup_world_config_pages(s))
+        return {StartupWorldRuntimeError::missing_source,{},ref::WorldSceneError::missing_consumer,{}, {}};
     // Finish前核对84反馈；合法耗尽的空目录可退休，缺金额的正反馈不能靠清理修复。
     for(const auto &page:s.scripts.pages)
         if(page.kind==ref::WorldScriptPageKind::raw_page&&page.legacy_page==84&&
@@ -1260,6 +1264,7 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s, bool obs
             admitted.page_human_bindings.erase(page.id);
             admitted.page_counters.erase(page.id);
             admitted.page_phases.erase(page.id);
+            admitted.config_page_selections.erase(page.id);
             admitted.task_abort_questions.erase(page.id);
             admitted.task_abort_answers.erase(page.id);
             admitted.human_pages_initialized.erase(page.id);
@@ -1342,11 +1347,13 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s, bool obs
     }
     if (admitted.scene.framework_paused && pending.kind == ref::WorldScriptPageKind::raw_page &&
         (pending.legacy_page == 3 || pending.legacy_page == 4 || pending.legacy_page == 7 ||
-         pending.legacy_page == 10 || pending.legacy_page == 13 || pending.legacy_page == 14 || pending.legacy_page == 60 || pending.legacy_page == 9 ||
+         pending.legacy_page == 10 || pending.legacy_page == 12 || pending.legacy_page == 13 || pending.legacy_page == 14 || pending.legacy_page == 60 || pending.legacy_page == 9 ||
          (pending.legacy_page >= 34 && pending.legacy_page <= 40))) {
         const bool navigation = pending.legacy_page == 3 || pending.legacy_page == 4 ||
                                 pending.legacy_page == 7 || pending.legacy_page == 10;
         if (!(navigation ? valid_startup_world_menu_page(admitted, pending.id)
+                         : pending.legacy_page == 12
+                               ? valid_startup_world_config_page(admitted, pending.id)
                          : pending.legacy_page == 13
                                ? valid_startup_world_manual_page(admitted, pending.id)
                          : pending.legacy_page == 14
@@ -1366,6 +1373,7 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s, bool obs
         !initialize_startup_world_human_unlock_pages(admitted) ||
         !initialize_startup_world_menu_pages(admitted) ||
         !initialize_startup_world_save_pages(admitted) ||
+        !initialize_startup_world_config_pages(admitted) ||
         !initialize_startup_world_manual_pages(admitted) ||
         !initialize_startup_world_human_pages(admitted) ||
         !initialize_startup_world_village_activity_pages(admitted) ||

@@ -8,6 +8,7 @@
 #include "dungeon_village_prototype/startup_world_magic_pot.hpp"
 #include "dungeon_village_prototype/startup_world_menu.hpp"
 #include "dungeon_village_prototype/startup_world_manual.hpp"
+#include "dungeon_village_prototype/startup_world_config.hpp"
 #include "dungeon_village_prototype/startup_world_save.hpp"
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
@@ -5738,6 +5739,201 @@ void magic_pot_equipment_low_level_rewards() {
     }
 }
 
+// raw12主责：真实菜单来源、页面生命周期及设置请求；系统文件事务由application套件覆盖。
+void config_settings_page() {
+    using E = StartupWorldRuntimeError;
+    auto pending = test_support::world_fixture();
+    pending.quality_setting = 1; // 显式调用点夹具，不冒充本机尺寸或自然新局画质。
+    const auto scene_id = pending.scripts.pages.front().id;
+    const auto choose = [&](int tag) {
+        const auto id = pending.scripts.pages.back().id;
+        const auto view = inspect_startup_world_menu_page(pending, id);
+        check(view.has_value(), "设置入口保留真实已Init菜单");
+        const auto row = std::find(view->tags.begin(), view->tags.end(), tag);
+        check(row != view->tags.end(), "设置入口选择原tag而非伪造raw12");
+        StartupWorldMenuInput select; select.select_row = static_cast<int>(row - view->tags.begin());
+        StartupWorldMenuInput confirm; confirm.confirm = true;
+        check(input_startup_world_menu_page(pending, id, select) == E::none &&
+                  input_startup_world_menu_page(pending, id, confirm) == E::none,
+              "设置入口消费一次真实菜单确认");
+    };
+    check(open_startup_world_main_menu(pending) == E::none, "设置从真实主菜单开始");
+    page_tick(pending);
+    choose(6); // raw3系统行。
+    check(pending.scripts.pages.back().legacy_page == 10, "系统行创建真实raw10");
+    page_tick(pending);
+    choose(21);
+    const auto id = pending.scripts.pages.back().id;
+    check(pending.scripts.pages.back().legacy_page == 12 && pending.scripts.pages.back().lifecycle == 0 &&
+              pending.scripts.pages.back().source_record == 10 && pending.scripts.pages.back().legacy_tag == 21 &&
+              !pending.config_page_selections.count(id) && !pending.page_counters.count(id) &&
+              !inspect_startup_world_config_page(pending, id),
+          "raw10/tag21先退休菜单并插入未Init设置页，查询不能补载荷");
+    const StartupConfigSystemValues system{3, 0, false};
+    StartupConfigInput left; left.left_repeat = true;
+    auto paused = pending;
+    paused.scene.framework_paused = true;
+    const auto paused_wire = startup_world_state_digest(paused);
+    check(initialize_startup_world_config_pages(paused) &&
+              startup_world_state_digest(paused) == paused_wire &&
+              !prepare_startup_world_config_input(paused, id, system, left).candidate,
+          "暂停不Init设置页，输入拒绝而不造选择或主钟");
+    const auto paused_step = prepare_startup_world_runtime(paused);
+    check(paused_step.candidate && !paused_step.candidate->config_page_selections.count(id) &&
+              !paused_step.candidate->page_counters.count(id) &&
+              paused_step.candidate->scripts.pages.back().lifecycle == 0,
+          "真实暂停框架保留raw12未初始化状态");
+    for (int fault = 0; fault != 4; ++fault) {
+        auto bad = pending;
+        if (fault == 0 || fault == 2) bad.config_page_selections.emplace(id, 0);
+        if (fault == 1 || fault == 2) bad.page_counters.emplace(id, 0);
+        if (fault == 3) bad.scripts.pages.back().legacy_f = 1;
+        const auto before = startup_world_state_digest(bad);
+        check(!initialize_startup_world_config_pages(bad) && !prepare_startup_world_runtime(bad).candidate &&
+                  startup_world_state_digest(bad) == before,
+              "未Init设置页拒绝预装选择/钟/画质，不用默认值修补");
+    }
+    auto hidden = pending;
+    ref::WorldScriptPage cover;
+    cover.id = hidden.scripts.next_page_id++; cover.kind = ref::WorldScriptPageKind::dialogue;
+    hidden.scripts.pages.push_back(cover);
+    check(!initialize_startup_world_config_pages(hidden) && !hidden.config_page_selections.count(id),
+          "设置只在真实顶页Init，错误覆盖父域不遍历补建");
+    auto state = pending;
+    const auto money = state.scene.world.world.ai.accounting.funds();
+    const auto date = state.scene.calendar.units;
+    const auto draws = state.scene.random.draws();
+    check(initialize_startup_world_config_pages(state) && state.config_page_selections.at(id) == 0 &&
+              state.page_counters.at(id) == 0 && state.scripts.pages.back().legacy_f == 1 &&
+              state.scripts.pages.back().lifecycle == 1,
+          "设置真正Init仅冻结进入画质并建立选择0/主钟0");
+    const auto initialized = startup_world_state_digest(state);
+    check(initialize_startup_world_config_pages(state) && startup_world_state_digest(state) == initialized,
+          "设置重复Init不清游标或重冻画质");
+    page_tick(state);
+    check(inspect_startup_world_config_page(state, id)->frame == 2 &&
+              state.scene.world.world.ai.accounting.funds() == money && state.scene.calendar.units == date &&
+              state.scene.random.draws() == draws,
+          "设置公共+1后专属+1模20，不推进世界资金/日期/随机");
+    const auto ticked = update_startup_world_config_page(state, id);
+    check(ticked && ticked->page_counters.at(id) == 4 && state.page_counters.at(id) == 2,
+          "设置独立更新只返回双步主钟候选");
+    auto edge = state; edge.page_counters.at(id) = 19;
+    const auto wrapped = update_startup_world_config_page(edge, id);
+    check(wrapped && wrapped->page_counters.at(id) == 1, "设置主钟19经两步成为1");
+    StartupConfigInput net; net.up_repeat = net.down_repeat = net.left_repeat = net.right_repeat = true;
+    const auto unchanged = prepare_startup_world_config_input(state, id, system, net);
+    check(unchanged.candidate && unchanged.candidate->config_page_selections.at(id) == 0 &&
+              unchanged.candidate->quality_setting == 1 && unchanged.effects.empty() &&
+              unchanged.checked_keys == std::array<bool, 5>{{true,true,true,true,true}},
+          "上下及左右各按原序独立执行，净值不变不发setter");
+    const auto quality = prepare_startup_world_config_input(state, id, system, left);
+    check(quality.candidate && quality.candidate->quality_setting == 0 && quality.effects.size() == 3,
+          "画质方向写世界候选并产生完整三项setter请求");
+    const auto *qwrite = std::get_if<SteamConfigPropertyWrite>(&quality.effects[0]);
+    const auto *filter = std::get_if<SteamConfigLinearFilter>(&quality.effects[1]);
+    const auto *redraw = std::get_if<SteamConfigSetterAction>(&quality.effects[2]);
+    check(qwrite && qwrite->property == SteamConfigProperty::world && qwrite->index == 12 && qwrite->value == 0 &&
+              filter && !filter->enabled && redraw && *redraw == SteamConfigSetterAction::draw_all_forms,
+          "画质保持P12属性写→滤镜请求→重绘原序，不宣称GPU已执行");
+    auto speed_state = state;
+    check(set_startup_world_config_selection(speed_state, id, 1) == E::none, "Touch选择速度行不加钟");
+    const auto locked = prepare_startup_world_config_input(speed_state, id, system, left);
+    check(locked.candidate && locked.candidate->scene.speed_setting == 0 && locked.effects.empty() &&
+              locked.checked_keys == std::array<bool, 5>{{true,true,false,false,true}},
+          "J9锁定速度整行时不查询左右，也不发setter");
+    const auto touch_speed = prepare_startup_world_config_setting(speed_state, id, system, 1, 1);
+    check(touch_speed.candidate && touch_speed.candidate->scene.speed_setting == 1 &&
+              touch_speed.candidate->page_counters.at(id) == state.page_counters.at(id) &&
+              touch_speed.effects.size() == 1 && std::get<SteamConfigPropertyWrite>(touch_speed.effects[0]).index == 13,
+          "即时速度setter不重复键盘J9门控，且不加钟/重绘/试听");
+    const auto unlocked = prepare_startup_world_config_input(speed_state, id, {3,0,true}, left);
+    check(unlocked.candidate && unlocked.candidate->scene.speed_setting == 1 && unlocked.effects.size() == 1,
+          "已解锁速度方向使用相同P13 setter候选");
+    auto audio_state = state;
+    check(set_startup_world_config_selection(audio_state, id, 2) == E::none, "选择BGM行");
+    const auto bgm = prepare_startup_world_config_input(audio_state, id, system, left);
+    check(bgm.candidate && bgm.system_volumes == std::array<int,2>{{2,0}} && bgm.effects.size() == 4,
+          "BGM改值仅回传系统音量候选，不写第二份世界系统值");
+    const auto *bwrite = std::get_if<SteamConfigPropertyWrite>(&bgm.effects[0]);
+    const auto *bvolume = std::get_if<SteamConfigVolume>(&bgm.effects[1]);
+    const auto *bmute = std::get_if<SteamConfigMute>(&bgm.effects[2]);
+    const auto *breflect = std::get_if<SteamConfigSetterAction>(&bgm.effects[3]);
+    check(bwrite && bwrite->property == SteamConfigProperty::system && bwrite->index == 3 && bwrite->value == 2 &&
+              bvolume && bvolume->channel == 0 && bvolume->volume == 102 &&
+              bmute && bmute->channel == 0 && !bmute->mute &&
+              breflect && *breflect == SteamConfigSetterAction::reflect_audio,
+          "BGM保持J3写→音量×51→静音→Reflect，没有SE试听");
+    check(set_startup_world_config_selection(audio_state, id, 3) == E::none, "选择SE行");
+    auto back = left; back.back_soft_label = true;
+    const auto returned = prepare_startup_world_config_input(audio_state, id, system, back);
+    check(returned.candidate && returned.system_volumes == std::array<int,2>{{3,5}} && returned.effects.size() == 5 &&
+              returned.save_system && returned.reset_offscreen && returned.popped,
+          "SE从0向左绕到5，同轮返回保留setter并请求保存/缓存重置/Pop");
+    const auto *swrite = std::get_if<SteamConfigPropertyWrite>(&returned.effects[0]);
+    const auto *svolume = std::get_if<SteamConfigVolume>(&returned.effects[1]);
+    const auto *smute = std::get_if<SteamConfigMute>(&returned.effects[2]);
+    const auto *sreflect = std::get_if<SteamConfigSetterAction>(&returned.effects[3]);
+    const auto *preview = std::get_if<SteamConfigResourceSound>(&returned.effects[4]);
+    check(swrite && swrite->index == 4 && swrite->value == 5 &&
+              svolume && svolume->channel == 1 && svolume->volume == 255 &&
+              smute && smute->channel == 1 && !smute->mute &&
+              sreflect && *sreflect == SteamConfigSetterAction::reflect_audio && preview && preview->index == 7,
+          "SE保持J4写→音量→静音→Reflect→同AppData资源7试听原序");
+    check(returned.candidate->scripts.pages.back().lifecycle == 4 &&
+              returned.candidate->scripts.pages.front().id == scene_id && returned.candidate->scripts.pages.front().lifecycle == 1 &&
+              returned.candidate->config_page_selections.count(id) && returned.candidate->page_counters.count(id) &&
+              audio_state.scripts.pages.back().lifecycle == 2 && audio_state.scene.random.draws() == draws,
+          "返回仅预备候选关闭并恢复原GameForm，不先安装或提前释放载荷");
+    const auto same_quality = prepare_startup_world_config_setting(state, id, system, 0, 1);
+    const auto same_volume = prepare_startup_world_config_setting(state, id, system, 2, 3);
+    check(same_quality.candidate && same_quality.effects.size() == 3 &&
+              same_quality.candidate->page_counters.at(id) == state.page_counters.at(id) &&
+              same_volume.candidate && same_volume.effects.empty(),
+          "同值即时画质仍写/滤镜/重绘，同值音量无输出，两者均不加钟");
+    StartupConfigInput back_only; back_only.back_soft_label = true;
+    const auto no_change_back = prepare_startup_world_config_input(state, id, system, back_only);
+    check(no_change_back.candidate && no_change_back.save_system && no_change_back.effects.empty(),
+          "没有改值的设置返回仍请求系统保存");
+    for (int fault = 0; fault != 10; ++fault) {
+        auto bad = state;
+        if (fault == 0) bad.config_page_selections.erase(id);
+        if (fault == 1) bad.page_counters.erase(id);
+        if (fault == 2) bad.config_page_selections.at(id) = 4;
+        if (fault == 3) bad.page_counters.at(id) = 20;
+        if (fault == 4) bad.quality_setting = 2;
+        if (fault == 5) bad.scripts.pages.back().source_record = 9;
+        if (fault == 6) bad.scripts.pages.front().kind = ref::WorldScriptPageKind::raw_page;
+        if (fault == 7) bad.config_page_selections.emplace(999, 0);
+        if (fault == 8) bad.page_phases.emplace(id, 0);
+        if (fault == 9) bad.scripts.pages.back().legacy_f = 2;
+        const auto before = startup_world_state_digest(bad);
+        check(!valid_startup_world_config_pages(bad) && !initialize_startup_world_config_pages(bad) &&
+                  !prepare_startup_world_runtime(bad).candidate &&
+                  !prepare_startup_world_config_input(bad, id, system, left).candidate &&
+                  startup_world_state_digest(bad) == before,
+              "已Init设置缺键/错父/越界/孤立或错域载荷明确拒绝，失败不补字段");
+    }
+    paused = state; paused.scene.framework_paused = true;
+    const auto held = update_startup_world_config_page(paused, id);
+    check(held && held->page_counters.at(id) == state.page_counters.at(id) &&
+              !prepare_startup_world_config_setting(paused, id, system, 0, 0).candidate &&
+              set_startup_world_config_selection(paused, id, 2) == E::invalid_page &&
+              acknowledge_startup_world_runtime_page(state, id) == E::invalid_page &&
+              cancel_startup_world_runtime_page(state, id) == E::invalid_page,
+          "暂停冻结主钟与所有设置输入，通用确认/取消不能绕过应用保存");
+    auto retired_bad = *returned.candidate;
+    retired_bad.config_page_selections.erase(id); retired_bad.page_counters.erase(id);
+    check(!prepare_startup_world_runtime(retired_bad).candidate,
+          "退休设置双缺键不能通过Finish静默修复");
+    auto finished = *returned.candidate;
+    page_tick(finished);
+    check(!finished.config_page_selections.count(id) && !finished.page_counters.count(id) &&
+              std::none_of(finished.scripts.pages.begin(), finished.scripts.pages.end(),
+                           [=](const auto &p) { return p.id == id; }),
+          "真实框架Finish释放设置游标/钟及页面身份");
+}
+
 // 保存页的两次Update与应用写盘边界分开；这里不使用文件系统或伪造保存成功。
 void manual_help_page() {
     using E = StartupWorldRuntimeError;
@@ -6078,14 +6274,14 @@ void navigation_menu_pages() {
     check(input_startup_world_menu_page(saving, system_id, confirm) == E::none &&
               saving.scripts.pages.back().legacy_page == 14,
           "Steam system row20 opens actual save page instead of reporting missing consumer");
-    // 22现有真实说明消费者；此拒绝契约继续覆盖仍缺平台接线的21/23/24。
+    // 21设置由专属主责覆盖；22已有说明，拒绝契约仅保留平台23/24。
     auto manual = system;
     select.select_row = 2;
     check(input_startup_world_menu_page(manual, system_id, select) == E::none &&
               input_startup_world_menu_page(manual, system_id, confirm) == E::none &&
               manual.scripts.pages.back().legacy_page == 13,
           "Steam system row22 opens actual manual page without silently discarding its parent");
-    for (const int row : {1, 3, 4}) {
+    for (const int row : {3, 4}) {
         select.select_row = row;
         check(input_startup_world_menu_page(system, system_id, select) == E::none,
               "system row selection is a real menu operation");
@@ -6288,6 +6484,7 @@ int main() {
         navigation_menu_pages();
         manual_save_page();
         manual_help_page();
+        config_settings_page();
         present_directory_pages();
         human_catalogue_navigation();
         human_profession_and_mastery();

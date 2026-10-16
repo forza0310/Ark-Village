@@ -1,3 +1,4 @@
+#include "support/application_fixture.hpp"
 #include "dungeon_village_prototype/startup_application.hpp"
 #include <algorithm>
 #include <chrono>
@@ -18,6 +19,7 @@ int check_startup_title_presentation();
 int run_startup_title_menu_checks();
 int run_startup_title_replay_cli(int, const char **);
 int run_startup_title_menu_file_replay_cli(int, const char **);
+int run_startup_application_config_checks(const std::filesystem::path &);
 namespace {
 int checks{};
 void check(bool ok, const std::string &message) {
@@ -65,7 +67,7 @@ void title_and_files(Work &work) {
     good(app.cancel_configuration()); good(app.request_new_game(0));
     check(app.draft().main_character.name == "研究主角", "取消重进及切性别保留自定义名");
     check(!app.edit_main_name(std::string("a\0b", 3)).empty(), "控制字节不能写入标题");
-    good(app.start_game());
+    good(start_application_fixture_game(app));
     check(app.records().save_directory == StartupSystemRecords{}.save_directory,
           "开始不发布四目录中的任何世界引用");
     const auto before_pending_save = bytes(paths.root / "system.avr");
@@ -114,7 +116,7 @@ void title_and_files(Work &work) {
     cancel = {}; cancel.kind = StartupTitleMenuRequestKind::consume_return;
     good(app.apply_title_request(app.title_page_id(), cancel));
     good(app.request_new_game(0)); good(app.answer_overwrite(true));
-    good(app.edit_main_name("另一个主角")); good(app.start_game());
+    good(app.edit_main_name("另一个主角")); good(start_application_fixture_game(app));
     check(bytes(world_file) == old_world && app.records().save_directory == saved_directory,
           "开始新局也不提前覆盖旧世界或重写四目录");
     check(app.take_sound_requests() == std::vector<int>{1}, "仅实际开始追加G，覆盖询问不制造B0");
@@ -122,7 +124,7 @@ void title_and_files(Work &work) {
     check(startup_world_human_profile(app.world()->state(), 0)->name == "研究主角",
           "载入恢复已保存姓名，不取当前标题草稿");
     check(app.take_sound_requests() == std::vector<int>({0,1}), "标题重入后真实加载按序B0/G");
-    good(app.return_to_title()); good(app.request_new_game(1)); good(app.start_game());
+    good(app.return_to_title()); good(app.request_new_game(1)); good(start_application_fixture_game(app));
     check(app.records().last_slot == 1 && load_startup_system_file((paths.root / "system.avr")).records->last_slot == 1,
           "两栏共享同一系统最后栏位");
     check(bytes(world_file) == old_world && app.records().save_directory == saved_directory,
@@ -206,7 +208,7 @@ void title_and_files(Work &work) {
           !app.apply_title_request(old_menu, hide).empty() &&
           app.take_sound_requests() == std::vector<int>({1,0}) && !app.has_pending_audio_requests(),
           "刷新后旧根和旧子页ID均拒绝，原待发输出仍恰一次可领取");
-    good(app.request_new_game(1)); good(app.start_game());
+    good(app.request_new_game(1)); good(start_application_fixture_game(app));
     check(app.handoff_random()->cursor == random_before_refresh.cursor &&
           app.handoff_random()->engine_state == random_before_refresh.engine_state &&
           app.handoff_random()->tape == random_before_refresh.tape &&
@@ -239,7 +241,7 @@ void title_replay(Work &work) {
     check(logic.take_sound_requests() == std::vector<int>{0}, "逻辑模式冷构造同样有显式B0输出");
     check(!logic.restore_title_replay(*snapshot).empty(), "两种回放模式不混用");
     for (auto *app : {&a, &b}) {
-        good(app->return_to_title()); good(app->request_new_game(0)); good(app->start_game());
+        good(app->return_to_title()); good(app->request_new_game(0)); good(start_application_fixture_game(*app));
         check(app->handoff_random()->cursor == before, "开始显式交接标题随机游标");
         good(app->update()); app->take_sound_requests();
     }
@@ -294,7 +296,7 @@ void title_replay(Work &work) {
     check(same_background(a.title_presentation(), oracle.candidate->state) &&
           advanced.random_draws == oracle.candidate->random_draws,
           "所有拒绝后首次真实标题更新与未插入失败请求的独立oracle相同");
-    good(a.request_new_game(1)); good(a.start_game());
+    good(a.request_new_game(1)); good(start_application_fixture_game(a));
     const auto expected_random = oracle.candidate->random.snapshot();
     check(a.handoff_random()->cursor == expected_random.cursor &&
           a.handoff_random()->engine_state == expected_random.engine_state &&
@@ -320,14 +322,14 @@ void bad_files_and_rollback(Work &work) {
     const auto handle = CreateFileW((paths.root / "system.avr").c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
                                     OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
     check(handle != INVALID_HANDLE_VALUE, "独占替换锁夹具");
-    const auto failed = locked.start_game();
+    const auto failed = start_application_fixture_game(locked);
     check(CloseHandle(handle) != 0, "释放本轮文件锁");
     check(!failed.empty() && !locked.world() && locked.records().last_slot == 0 &&
           locked.page() == StartupApplicationPage::configure && bytes((paths.root / "system.avr")) == before,
           "系统替换失败不留下世界/栏位/页面部分提交");
     auto failed_copy = locked;
     check(failed_copy.take_sound_requests() == std::vector<int>{0}, "失败保留未领取B0而不提前发布G");
-    good(locked.start_game());
+    good(start_application_fixture_game(locked));
     check(locked.handoff_random()->cursor == 0, "失败后重试不多抽随机");
     check(locked.take_sound_requests() == std::vector<int>({0,1}), "成功重试保序领取原B0和唯一G");
 #else
@@ -359,7 +361,7 @@ void presentation_bridge(Work &work) {
     const auto no_world = app.present_world(request);
     check(!no_world.error.empty() && !no_world.plan && !app.world(),
           "无世界拒绝表现且不返回冻结计划");
-    good(app.request_new_game(0)); good(app.start_game());
+    good(app.request_new_game(0)); good(start_application_fixture_game(app));
     const auto pages = startup_world_presentation_pages(app.world()->state(), request.mode);
     check(pages.has_value(), "真实新局生成本次合法绘制名单");
     request.expected_pages = *pages;
@@ -419,7 +421,7 @@ void presentation_bridge(Work &work) {
 void natural_cash(Work &work) {
     const auto paths = work.paths("cash");
     StartupApplication app(paths, ref::WorldRandomStream::from_java_seed(1));
-    good(app.request_new_game(0)); good(app.start_game());
+    good(app.request_new_game(0)); good(start_application_fixture_game(app));
     check(app.take_sound_requests() == std::vector<int>({0,1}), "自然新局先领取标题B0与真实激活G");
     int frames{};
     int visible_oracle_rounds{};
@@ -461,7 +463,7 @@ void natural_cash(Work &work) {
     const auto peak = app.records().cash_peak;
     check(load_startup_system_file((paths.root / "system.avr")).records->cash_peak == peak,
           "现金Owner提交后独立系统已落盘");
-    good(app.return_to_title()); good(app.request_new_game(1)); good(app.start_game());
+    good(app.return_to_title()); good(app.request_new_game(1)); good(start_application_fixture_game(app));
     check(app.records().cash_peak == peak && app.world()->state().cash_peak == peak &&
           app.world()->state().scene.world.world.ai.accounting.funds() == 5000,
           "新世界沿用系统峰值，起始资金保持原值");
@@ -481,6 +483,7 @@ int main(int argc, const char **argv) {
         checks += run_startup_title_menu_checks();
         checks += run_startup_application_replay_paths_checks(work.path);
         checks += run_startup_application_replay_state_checks(work.path);
+        checks += run_startup_application_config_checks(work.path);
         if (run_startup_system_records_tests(work.path) || run_startup_world_clear_score_tests()) return 1;
         title_and_files(work); title_replay(work); bad_files_and_rollback(work);
         presentation_bridge(work); natural_cash(work);

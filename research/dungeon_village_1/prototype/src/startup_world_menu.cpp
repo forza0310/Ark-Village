@@ -2,6 +2,7 @@
 #include "dungeon_village_prototype/startup_world_menu.hpp"
 #include "dungeon_village_prototype/startup_world_save.hpp"
 #include "dungeon_village_prototype/startup_world_manual.hpp"
+#include "dungeon_village_prototype/startup_world_config.hpp"
 #include "dungeon_village_prototype/startup_world_building.hpp"
 #include "dungeon_village_prototype/startup_world_commerce.hpp"
 #include "dungeon_village_prototype/startup_world_information.hpp"
@@ -130,6 +131,7 @@ void suspend(State &s, std::uint64_t id) {
 }
 Error dispatch(State &s, std::uint64_t id, int raw, int tag, bool english) {
     if(raw==10 && tag==20)return open_startup_world_save_page(s);
+    if(raw==10 && tag==21)return open_startup_world_config_page(s);
     if(raw==10 && tag==22)return open_startup_world_manual_page(s);
     if (raw == 3) {
         if (tag == 1 || tag == 2 || tag == 6)
@@ -166,7 +168,7 @@ Error dispatch(State &s, std::uint64_t id, int raw, int tag, bool english) {
         if (e != Error::none) return e;
         return retire_startup_world_menu_pages(s) ? Error::none : Error::script_failed;
     } else if (raw == 10) {
-        // 系统保存、设置、游戏说明、平台高分及结束须由应用层接管。
+        // 平台高分及结束仍须由应用层提供真实消费者。
         // 在缺真实消费者时保持原Owner，不能造一个可通用关闭的raw页冒称已完成。
         return Error::missing_source;
     }

@@ -1,3 +1,4 @@
+#include "support/application_fixture.hpp"
 #include "startup_application_second_star_replay.hpp"
 #include "startup_application_active_replay.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
@@ -542,7 +543,7 @@ int run_startup_application_second_star_driver_checks(const fs::path &parent) {
     require(fs::create_directory(root), "exclusive driver check root");
     try {
         StartupApplication app({root}, ref::WorldRandomStream::from_java_seed(1)); good(app.error());
-        good(app.request_new_game(0)); good(app.start_game());
+        good(app.request_new_game(0)); good(start_application_fixture_game(app));
         Metadata missing; require(!support::validate_v1(app, missing).empty(), "missing v1 accepted");
         require(!support::validate_v1_origin(missing).empty(), "nonterminal empty origin accepted");
         int checks = 2;

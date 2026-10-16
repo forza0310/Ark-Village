@@ -74,6 +74,13 @@ std::vector<SectionOffset> sections(const Bytes &bytes) {
     }
     return out;
 }
+void resign_section(Bytes &bytes, const SectionOffset &section) {
+    const Bytes payload(bytes.begin() + static_cast<std::ptrdiff_t>(section.payload),
+                        bytes.begin() + static_cast<std::ptrdiff_t>(section.payload + section.length));
+    const auto digest = dungeon_village_tools::sha256_hex(payload);
+    std::copy(digest.begin(), digest.end(), bytes.begin() + static_cast<std::ptrdiff_t>(section.digest));
+    resign(bytes);
+}
 void reject(const std::filesystem::path &path, const Bytes &bytes, const char *scenario) {
     write(path, bytes);
     const auto result = load_startup_system_file(path);
@@ -181,16 +188,24 @@ void application_storage(const std::filesystem::path &parent) {
     const auto empty=*loaded.snapshot;
     auto records=empty.records;
     records.high_score=77;
+    records.settings={5,0,INT32_MIN};
     records.opaque_sections={{1042,3,Bytes{7,0,255}}};
     auto committed=commit_startup_application_records(root,empty,records);
     check(committed.snapshot && !committed.snapshot->missing && !committed.cleanup_pending &&
               committed.error.empty() && committed.snapshot->records.revision==1 &&
-              committed.snapshot->records.high_score==77,"单系统提交同步纪录与修订");
+              committed.snapshot->records.high_score==77 &&
+              committed.snapshot->records.settings==records.settings,
+          "单系统提交同步纪录、完整设置与修订");
     auto current=*committed.snapshot;
     const auto system=root/"system.avr";
     auto before=read(system);
     check(!commit_startup_application_records(root,empty,records).snapshot && read(system)==before,
           "旧缺失观察值不能覆盖已发布系统");
+    auto forged=current;
+    forged.records.settings.high_speed=1;
+    check(!commit_startup_application_records(root,forged,current.records).snapshot && read(system)==before &&
+              current.records.settings==records.settings,
+          "即使修订及摘要相同，也拒绝被修改设置的expected观察值且保留磁盘与旧观察");
     StartupSession initial;
     StartupWorldRuntimeSession world(initial.state(),ref::WorldRandomStream::from_java_seed(1));
     const auto world_digest=startup_world_session_digest(world);
@@ -331,9 +346,12 @@ void run(const std::filesystem::path &directory) {
     check(missing.records->last_slot == 0 && missing.records->high_score == 0 &&
               missing.records->cash_peak == 0 && missing.records->score_village == "没有记录" &&
               missing.records->cash_village == "没有记录" && missing.records->trophy == 0 &&
-              missing.records->facility_levels.empty() && missing.records->profession_status.empty(),
+              missing.records->facility_levels.empty() && missing.records->profession_status.empty() &&
+              missing.records->settings.bgm == 3 && missing.records->settings.se == 3 &&
+              missing.records->settings.high_speed == 0,
           "默认系统记录不凭空补继承数据");
     StartupSystemRecords r;
+    r.settings = {2, 5, INT32_MIN};
     r.last_slot = 1;
     r.high_score = 9876543210LL;
     r.cash_peak = 12345678901LL;
@@ -359,6 +377,13 @@ void run(const std::filesystem::path &directory) {
           "纯字节桥往返保留全部已知字段及未知可选段");
     create_only_files(work.path, original);
     const auto offsets = sections(original);
+    check(offsets.size() == 6 && offsets[3].length == 12, "格式3新增完整12字节必需设置段");
+    std::size_t version_at = 8;
+    check(number(original, version_at, 4) == 3, "系统文件显式使用格式3");
+    std::size_t settings_id_at = offsets[3].header;
+    check(number(original, settings_id_at, 4) == 4 && number(original, settings_id_at, 4) == 1 &&
+              number(original, settings_id_at, 4) == 1,
+          "设置分区ID4、版本1且必需，不借可选段保存");
     check(std::string(original.begin(), original.begin() + 8) == "AVRSYS01",
           "独立系统magic不冒充世界文件");
     const auto loaded = load_startup_system_file(file);
@@ -367,7 +392,7 @@ void run(const std::filesystem::path &directory) {
     check(copy.last_slot == 1 && copy.high_score == 9876543210LL && copy.cash_peak == 12345678901LL &&
               copy.score_village == "分数村" && copy.cash_village == "资金村" && copy.trophy == 4 &&
               copy.facility_levels == r.facility_levels && copy.profession_status == r.profession_status &&
-              copy.revision==17 && copy.save_directory==r.save_directory,
+              copy.revision==17 && copy.save_directory==r.save_directory && copy.settings==r.settings,
           "全部已知字段往返");
     check(copy.opaque_sections.size() == 2 && copy.opaque_sections[0].id == 1024 &&
               copy.opaque_sections[0].version == 9 && copy.opaque_sections[0].bytes == Bytes({0, 255, 7}) &&
@@ -383,21 +408,80 @@ void run(const std::filesystem::path &directory) {
     reject(broken, changed, "整体摘要损坏拒绝");
     resign(changed);
     reject(broken, changed, "整体摘要有效仍拒绝坏分区摘要");
-    for (const auto mutation : {0, 1, 2, 3, 4, 5, 6}) {
+    for (const auto mutation : {0, 1, 2, 3, 4, 5, 6, 7}) {
         changed = original;
         switch (mutation) {
-        case 0: u32(changed, 8, 3); break;
+        case 0: u32(changed, 8, 4); break;
         case 1: changed.at(16) ^= 1; break; // 数据身份字符串，不改变长度。
-        case 2: u32(changed, offsets[3].header + 8, 1); break;
-        case 3: u32(changed, offsets[3].header, 9); break;
-        case 4: u32(changed, offsets[3].header, 1); break;
+        case 2: u32(changed, offsets[4].header + 8, 1); break;
+        case 3: u32(changed, offsets[4].header, 9); break;
+        case 4: u32(changed, offsets[4].header, 1); break;
         case 5: u32(changed, offsets[0].header + 4, 2); break;
         case 6: u32(changed, 8, 1); break;
+        case 7: u32(changed, 8, 2); break;
         }
         resign(changed);
         reject(broken, changed, "版本／来源／未知必需／保留／重复段拒绝");
     }
-    for (const auto mutation : {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14}) {
+    // 保持有效外层/分区摘要，单独验证设置必需、唯一、完整及值域；不靠摘要失败凑拒绝。
+    const auto settings = offsets[3];
+    const auto count_at = offsets.front().header - 4;
+    changed = original;
+    changed.erase(changed.begin() + static_cast<std::ptrdiff_t>(settings.header),
+                  changed.begin() + static_cast<std::ptrdiff_t>(settings.payload + settings.length));
+    u32(changed, count_at, static_cast<std::uint32_t>(offsets.size() - 1));
+    resign(changed);
+    reject(broken, changed, "设置必需段缺失拒绝，不使用默认值补损坏档");
+    changed = original;
+    const Bytes duplicate(original.begin() + static_cast<std::ptrdiff_t>(settings.header),
+                          original.begin() + static_cast<std::ptrdiff_t>(settings.payload + settings.length));
+    changed.insert(changed.end() - 64, duplicate.begin(), duplicate.end());
+    u32(changed, count_at, static_cast<std::uint32_t>(offsets.size() + 1));
+    resign(changed);
+    reject(broken, changed, "重复设置必需段拒绝");
+    for (const auto mutation : {0, 1, 2, 3, 4, 5}) {
+        changed = original;
+        auto modified = settings;
+        switch (mutation) {
+        case 0: u32(changed, settings.header + 4, 2); break;
+        case 1: u32(changed, settings.header + 8, 0); break;
+        case 2: u32(changed, settings.payload, UINT32_MAX); break;
+        case 3: u32(changed, settings.payload + 4, 6); break;
+        case 4:
+            changed.insert(changed.begin() + static_cast<std::ptrdiff_t>(settings.payload + settings.length), 0);
+            ++modified.length;
+            u32(changed, settings.header + 12, static_cast<std::uint32_t>(modified.length));
+            break;
+        case 5:
+            changed.erase(changed.begin() + static_cast<std::ptrdiff_t>(settings.payload + 8),
+                          changed.begin() + static_cast<std::ptrdiff_t>(settings.payload + 12));
+            modified.length = 8;
+            u32(changed, settings.header + 12, 8);
+            break;
+        }
+        resign_section(changed, modified);
+        reject(broken, changed, "设置段坏版本/非必需/坏音量/尾字节/字段缺失拒绝");
+    }
+    for (const std::int32_t high_speed : {INT32_MIN, -1, 0, 1, INT32_MAX}) {
+        auto boundary = r;
+        boundary.settings = {0, 5, high_speed};
+        const auto bytes = persistence_detail::encode_system_records_bytes(boundary);
+        const auto restored = persistence_detail::decode_system_records_bytes(bytes);
+        check(restored.settings == boundary.settings,
+              "高速资格完整有符号int32往返，不归一成布尔且保留音量边界");
+    }
+    {
+        auto boundary = r;
+        boundary.opaque_sections.clear();
+        for (std::uint32_t id = 1024; id < 1084; ++id)
+            boundary.opaque_sections.push_back({id, 1, {}});
+        const auto bytes = persistence_detail::encode_system_records_bytes(boundary);
+        check(persistence_detail::decode_system_records_bytes(bytes).opaque_sections.size() == 60,
+              "新增设置段后仍保留60可选段资格，完整64段往返");
+        boundary.opaque_sections.push_back({1084, 1, {}});
+        check(!validate_startup_system_records(boundary).empty(), "61个可选段仍拒绝，不随格式升级放宽预算");
+    }
+    for (const auto mutation : {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18}) {
         auto bad = r;
         switch (mutation) {
         case 0: bad.last_slot = 2; break;
@@ -419,6 +503,10 @@ void run(const std::filesystem::path &directory) {
         case 12: bad.save_directory[0][1].reference->bytes=128U*1024U*1024U+1; break;
         case 13: bad.save_directory[0][1].village="坏\n名"; break;
         case 14: ++bad.save_directory[1][0].reference->bytes; break;
+        case 15: bad.settings.bgm = -1; break;
+        case 16: bad.settings.bgm = 6; break;
+        case 17: bad.settings.se = -1; break;
+        case 18: bad.settings.se = 6; break;
         }
         check(!validate_startup_system_records(bad).empty(), "非法业务或预算数据显式拒绝");
         check(!save_startup_system_file(file, bad).empty() && read(file) == original,
@@ -427,11 +515,7 @@ void run(const std::filesystem::path &directory) {
     changed=original;
     // 分区3的revision8 + 首条空目录(date4/textlen4/cash8)后为严格u32引用标记。
     u32(changed,offsets[2].payload+24,2);
-    const Bytes directory_payload(changed.begin()+static_cast<std::ptrdiff_t>(offsets[2].payload),
-        changed.begin()+static_cast<std::ptrdiff_t>(offsets[2].payload+offsets[2].length));
-    const auto directory_hash=dungeon_village_tools::sha256_hex(directory_payload);
-    std::copy(directory_hash.begin(),directory_hash.end(),changed.begin()+static_cast<std::ptrdiff_t>(offsets[2].digest));
-    resign(changed);
+    resign_section(changed, offsets[2]);
     reject(broken,changed,"分区和整体摘要重签后仍拒绝非法目录引用布尔");
     reject(broken, Bytes(4U * 1024U * 1024U + 1, 0), "读取总预算拒绝");
     const auto directory_result = load_startup_system_file(work.path);
@@ -444,9 +528,11 @@ void run(const std::filesystem::path &directory) {
     const auto handle = CreateFileW(file.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING,
                                     FILE_ATTRIBUTE_NORMAL, nullptr);
     check(handle != INVALID_HANDLE_VALUE, "锁定旧有效文件夹具");
-    const auto error = save_startup_system_file(file, r);
+    auto changed_settings = r;
+    changed_settings.settings = {5, 0, INT32_MAX};
+    const auto error = save_startup_system_file(file, changed_settings);
     check(CloseHandle(handle) != 0, "释放锁定句柄");
-    check(!error.empty() && read(file) == original, "替换失败保留旧有效系统文件");
+    check(!error.empty() && read(file) == original, "替换失败保留旧有效系统文件及旧设置");
 #endif
     for (const auto &entry : std::filesystem::directory_iterator(work.path))
         check(entry.path().filename().string().find(".tmp.") == std::string::npos,

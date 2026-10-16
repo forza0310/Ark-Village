@@ -20,6 +20,8 @@ void require(bool value, const char *message) {
         throw std::runtime_error(message);
 }
 void valid(const StartupSystemRecords &r) {
+    require(r.settings.bgm >= 0 && r.settings.bgm <= 5 &&
+                r.settings.se >= 0 && r.settings.se <= 5, "系统音量设置越界");
     require(r.last_slot >= 0 && r.last_slot <= 1, "系统记录栏位非法");
     require(r.high_score >= 0 && r.cash_peak >= 0 && r.trophy >= 0 && r.trophy <= 4,
             "系统记录数值或奖杯档位非法");
@@ -34,8 +36,8 @@ void valid(const StartupSystemRecords &r) {
             "系统记录继承short字节串长度为奇数");
     require(r.opaque_sections.size() <= 60, "系统记录可选分区过多");
     std::set<std::uint32_t> ids;
-    // 固定头／三必需段／四目录及整体摘要的实际开销，不把payload预算冒充文件预算。
-    std::size_t total = 464 + std::string(startup_world_persistence_dataset()).size() +
+    // 固定头／四必需段／四目录及整体摘要的实际开销，不把payload预算冒充文件预算。
+    std::size_t total = 560 + std::string(startup_world_persistence_dataset()).size() +
                         r.score_village.size() + r.cash_village.size() +
                         r.facility_levels.size() + r.profession_status.size();
     std::map<std::array<std::uint8_t,32>,StartupSaveReference> references;
@@ -153,9 +155,14 @@ int signed32(Reader &r) {
             "系统记录整数越界");
     return static_cast<int>(value);
 }
+std::int32_t signed_settings32(Reader &r) {
+    const auto value = r.u32();
+    return value <= INT32_MAX ? static_cast<std::int32_t>(value) :
+        static_cast<std::int32_t>(static_cast<std::int64_t>(value) - 0x100000000LL);
+}
 Bytes encode(const StartupSystemRecords &r) {
     valid(r);
-    Writer record, inheritance, directory;
+    Writer record, inheritance, directory, settings;
     record.u32(static_cast<std::uint32_t>(r.last_slot));
     record.u64(static_cast<std::uint64_t>(r.high_score));
     record.u64(static_cast<std::uint64_t>(r.cash_peak));
@@ -177,11 +184,14 @@ Bytes encode(const StartupSystemRecords &r) {
                 directory.u32(static_cast<std::uint32_t>(entry.reference->purpose));
             }
         }
+    settings.u32(static_cast<std::uint32_t>(r.settings.bgm));
+    settings.u32(static_cast<std::uint32_t>(r.settings.se));
+    settings.u32(static_cast<std::uint32_t>(r.settings.high_speed));
     Writer file;
     file.raw(magic, 8);
-    file.u32(2);
+    file.u32(3);
     file.text(startup_world_persistence_dataset());
-    file.u32(static_cast<std::uint32_t>(3 + r.opaque_sections.size()));
+    file.u32(static_cast<std::uint32_t>(4 + r.opaque_sections.size()));
     const auto section = [&](std::uint32_t id, std::uint32_t version, bool required,
                              const Bytes &payload) {
         file.u32(id);
@@ -195,6 +205,7 @@ Bytes encode(const StartupSystemRecords &r) {
     section(1, 1, true, record.bytes);
     section(2, 1, true, inheritance.bytes);
     section(3, 1, true, directory.bytes);
+    section(4, 1, true, settings.bytes);
     for (const auto &s : r.opaque_sections)
         section(s.id, s.version, false, s.bytes);
     const auto digest = dungeon_village_tools::sha256_hex(file.bytes);
@@ -209,17 +220,17 @@ StartupSystemRecords decode(Bytes file) {
     Reader reader{file};
     const auto signature = reader.raw(8);
     require(std::equal(signature.begin(), signature.end(), magic), "系统文件标识不符");
-    require(reader.u32() == 2, "不支持的系统文件版本（旧版本不迁移）");
+    require(reader.u32() == 3, "不支持的系统文件版本（旧版本不迁移）");
     require(reader.text() == startup_world_persistence_dataset(), "系统记录固定数据来源不匹配");
     const auto count = reader.u32();
-    require(count >= 3 && count <= 63, "系统文件分区数非法");
+    require(count >= 4 && count <= 64, "系统文件分区数非法");
     StartupSystemRecords r;
-    bool record_seen = false, inheritance_seen = false, directory_seen = false;
+    bool record_seen = false, inheritance_seen = false, directory_seen = false, settings_seen = false;
     std::set<std::uint32_t> ids;
     for (std::uint32_t i = 0; i < count; ++i) {
         const auto id = reader.u32(), version = reader.u32(), required = reader.u32();
         require(ids.insert(id).second && version > 0 && required <= 1, "系统分区身份非法或重复");
-        require((id == 1 || id == 2 || id == 3) ? version == 1 && required == 1 : id >= 1024 && required == 0,
+        require((id >= 1 && id <= 4) ? version == 1 && required == 1 : id >= 1024 && required == 0,
                 "系统必需分区版本不符或未知必需／保留分区");
         const auto n = reader.u64();
         require(n <= (id >= 1024 ? opaque_budget : file_budget), "系统分区载荷超预算");
@@ -269,11 +280,17 @@ StartupSystemRecords decode(Bytes file) {
                 }
             section.end();
             directory_seen = true;
+        } else if (id == 4) {
+            r.settings.bgm = signed_settings32(section);
+            r.settings.se = signed_settings32(section);
+            r.settings.high_speed = signed_settings32(section);
+            section.end();
+            settings_seen = true;
         } else
             r.opaque_sections.push_back({id, version, payload});
     }
     reader.end();
-    require(record_seen && inheritance_seen && directory_seen, "系统必需分区缺失");
+    require(record_seen && inheritance_seen && directory_seen && settings_seen, "系统必需分区缺失");
     valid(r);
     return r;
 }
@@ -284,6 +301,12 @@ bool operator==(const StartupSaveReference &a, const StartupSaveReference &b) {
 bool operator==(const StartupSaveDirectoryEntry &a, const StartupSaveDirectoryEntry &b) {
     return a.packed_date == b.packed_date && a.village == b.village && a.cash == b.cash &&
         a.reference == b.reference;
+}
+bool operator==(const StartupSystemSettings &a, const StartupSystemSettings &b) {
+    return a.bgm == b.bgm && a.se == b.se && a.high_speed == b.high_speed;
+}
+bool operator!=(const StartupSystemSettings &a, const StartupSystemSettings &b) {
+    return !(a == b);
 }
 namespace persistence_detail {
 Bytes encode_system_records_bytes(const StartupSystemRecords &records) {

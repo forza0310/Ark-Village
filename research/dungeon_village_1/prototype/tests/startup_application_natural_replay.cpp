@@ -1,3 +1,4 @@
+#include "support/application_fixture.hpp"
 #include "startup_application_natural_replay.hpp"
 #include "dungeon_village_prototype/startup_application_replay.hpp"
 #include "dungeon_village_tools/archive.hpp"
@@ -415,7 +416,7 @@ int run_startup_application_natural_replay_cli(int argc, const char **argv) {
         good(restore_startup_application_replay(source, live, controller, app, m, restore_validator, restore_protected));
         restore_seconds = std::chrono::duration<double>(Clock::now() - started).count(); driver = decode(m.controller_state);
     } else {
-        good(app.request_new_game(0)); good(app.start_game());
+        good(app.request_new_game(0)); good(start_application_fixture_game(app));
         driver = new_game_driver(app);
     }
     good(validate(app, metadata(driver)));
@@ -488,7 +489,7 @@ int run_startup_application_natural_driver_checks(const std::filesystem::path &p
     const auto check = [&](bool ok, const char *message) { ++checks; require(ok, message); };
     const auto live = root / "live"; require(fs::create_directory(live), "natural checks live directory");
     StartupApplication app(paths(live), ref::WorldRandomStream::from_java_seed(1));
-    good(app.error()); good(app.request_new_game(0)); good(app.start_game());
+    good(app.error()); good(app.request_new_game(0)); good(start_application_fixture_game(app));
     auto d = new_game_driver(app); auto m = metadata(d);
     check(validate(app, m).empty(), "natural initial driver valid");
     const auto before = startup_application_replay_digest(app, m, validate);

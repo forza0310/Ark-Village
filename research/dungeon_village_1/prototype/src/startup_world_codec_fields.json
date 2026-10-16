@@ -843,6 +843,10 @@
           "type": "std::map<std::uint64_t, int>"
         },
         {
+          "name": "config_page_selections",
+          "type": "std::map<std::uint64_t, int>"
+        },
+        {
           "name": "information_page_data",
           "type": "std::map<std::uint64_t, StartupInformationPageData>"
         },
@@ -1161,6 +1165,10 @@
         {
           "name": "deadline_page",
           "type": "std::optional<std::uint64_t>"
+        },
+        {
+          "name": "quality_setting",
+          "type": "int"
         },
         {
           "name": "completion_mode",

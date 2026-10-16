@@ -9,8 +9,10 @@
 #include "dungeon_village_prototype/startup_title_menu.hpp"
 #include "dungeon_village_prototype/startup_application_storage.hpp"
 #include "dungeon_village_prototype/startup_world_presentation.hpp"
+#include "dungeon_village_prototype/startup_world_config.hpp"
 #include <array>
 #include <utility>
+#include <variant>
 
 namespace dungeon_village_prototype {
 enum class StartupApplicationMode { logic, title_presentation };
@@ -28,9 +30,24 @@ struct StartupRecordView {
     std::int64_t value{};
     int page{};
 };
+// 宿主显式取得的原应用GetWidth/GetHeight语义；不是240逻辑画布或Windows外框。
+struct StartupNewGameEnvironment {
+    std::int32_t width{}, height{};
+};
+constexpr bool operator==(const StartupNewGameEnvironment &a, const StartupNewGameEnvironment &b) {
+    return a.width == b.width && a.height == b.height;
+}
+constexpr bool operator!=(const StartupNewGameEnvironment &a, const StartupNewGameEnvironment &b) {
+    return !(a == b);
+}
+enum class StartupApplicationPresentationAction { reset_offscreen };
+// 一份有序输出：资源音保留实际AppData槽身份，不能因槽7就当作普通声音ID7。
+using StartupApplicationPresentationRequest = std::variant<StartupAudioRequest,
+    SteamConfigVolume, SteamConfigMute, SteamConfigLinearFilter, SteamConfigResourceSound,
+    SteamConfigSetterAction, StartupApplicationPresentationAction>;
 // 只捕获无世界的标题控制器；系统纪录由独立文件验证，世界有自己的快照协议。
 struct StartupTitleReplay {
-    std::string controller{"startup-title-v4"};
+    std::string controller{"startup-title-v5"};
     StartupApplicationMode mode{StartupApplicationMode::logic};
     StartupTitleDraft draft;
     StartupApplicationPage page{StartupApplicationPage::title};
@@ -42,6 +59,8 @@ struct StartupTitleReplay {
     StartupTitlePresentation title;
     StartupTitleMenuState menu;
     StartupTitleCatalogStamp catalog;
+    StartupSystemSettings live_settings;
+    std::optional<StartupNewGameEnvironment> new_game_environment;
 };
 struct StartupTitleApplyResult {
     std::string error;
@@ -82,6 +101,9 @@ class StartupApplication {
                        StartupApplicationMode mode = StartupApplicationMode::logic);
     const std::string &error() const { return error_; }
     const StartupSystemRecords &records() const { return storage_.records; }
+    const StartupSystemSettings &live_settings() const { return live_settings_; }
+    bool settings_dirty() const { return live_settings_ != storage_.records.settings; }
+    const std::optional<StartupNewGameEnvironment> &new_game_environment() const { return new_game_environment_; }
     const StartupTitleDraft &draft() const { return draft_; }
     StartupApplicationPage page() const { return page_; }
     StartupApplicationMode mode() const { return mode_; }
@@ -94,7 +116,9 @@ class StartupApplication {
     const StartupTitlePresentation &title_presentation() const { return title_; }
     const StartupTitleMenuState &title_menu() const { return title_menu_; }
     bool storage_cleanup_pending() const { return cleanup_pending_; }
-    bool has_pending_audio_requests() const noexcept { return !audio_requests_.empty(); }
+    bool has_pending_presentation_requests() const noexcept { return !presentation_requests_.empty(); }
+    // 旧名称仍阻止全部未消费表现输出；不让非音频绕过既有捕获闸门。
+    bool has_pending_audio_requests() const noexcept { return has_pending_presentation_requests(); }
     // 明确接收外部目录的新修订并退休旧标题子页；不自动重试失败的文件意图。
     std::string refresh_title_storage();
     std::uint64_t title_page_id() const { return startup_title_menu_top_id(title_menu_); }
@@ -114,6 +138,8 @@ class StartupApplication {
     std::string edit_sex(int sex);
     std::string cancel_configuration();
     std::string start_game();
+    // 仅标题/新局配置可更新；跨标题与新局保留，精确恢复不重新查询当前机器。
+    std::string set_new_game_environment(StartupNewGameEnvironment environment);
     std::string return_to_title();
     std::string open_records(); // 一次显式表现请求；重画record_view不抽取。
     std::string turn_record_page(int direction);
@@ -183,6 +209,9 @@ class StartupApplication {
     std::string open_information_menu();
     std::string open_main_menu();
     std::string input_menu_page(std::uint64_t page, const StartupWorldMenuInput &input);
+    std::string input_config_page(std::uint64_t page, const StartupConfigInput &input);
+    std::string set_config_value(std::uint64_t page, int row, int value);
+    std::string set_config_selection(std::uint64_t page, int selection);
     std::string input_manual_page(std::uint64_t page, const StartupManualInput &input);
     std::string input_information_page(std::uint64_t page, const StartupInformationInput &input);
     std::string act_human_page(std::uint64_t page, StartupHumanPageAction action, int selection = 0);
@@ -194,6 +223,8 @@ class StartupApplication {
     std::string act_rank_page(std::uint64_t page, int selection = 0, bool cancel = false);
     std::string input_rank_page(std::uint64_t page,const StartupTownRankInput &input);
     std::string cancel_page(std::uint64_t page);
+    std::vector<StartupApplicationPresentationRequest> take_presentation_requests();
+    // 旧领取接口消费同一全量队列，明确丢弃非音频（含资源音/画质/音量/重绘请求）。
     std::vector<StartupAudioRequest> take_audio_requests();
     // 兼容旧ID消费者；同一输出只会被任一领取接口消费一次。
     std::vector<int> take_sound_requests();
@@ -217,7 +248,12 @@ class StartupApplication {
     std::string apply_title_request_candidate(std::uint64_t id, const StartupTitleMenuRequest &request);
     void sync_title_page();
     bool valid_record_page() const;
-    std::string commit_world(StartupWorldRuntimeSession candidate, bool save_system = false);
+    std::string commit_world(StartupWorldRuntimeSession candidate, bool save_system = false,
+        std::optional<StartupSystemSettings> settings = {},
+        std::vector<StartupApplicationPresentationRequest> effects = {});
+    StartupSystemRecords system_records_candidate() const;
+    void queue_title_settings();
+    std::string commit_config(StartupWorldConfigResult result);
     std::string world_action_error() const;
     template <class Action> std::string apply_world_action(Action &&action);
     std::string update_clear(bool confirm);
@@ -225,6 +261,8 @@ class StartupApplication {
     std::string update_save_page(std::uint64_t page);
     StartupApplicationPaths paths_;
     StartupApplicationStorageSnapshot storage_;
+    StartupSystemSettings live_settings_;
+    std::optional<StartupNewGameEnvironment> new_game_environment_;
     StartupTitleDraft draft_;
     ref::WorldRandomStream random_;
     StartupApplicationMode mode_;
@@ -241,7 +279,7 @@ class StartupApplication {
     std::string error_;
     StartupTitlePresentation title_;
     StartupTitleMenuState title_menu_;
-    std::vector<StartupAudioRequest> audio_requests_;
+    std::vector<StartupApplicationPresentationRequest> presentation_requests_;
     bool cleanup_pending_{}; // 存储环境清理债务，精确恢复不继承源环境的待清理文件。
 };
 } // namespace dungeon_village_prototype

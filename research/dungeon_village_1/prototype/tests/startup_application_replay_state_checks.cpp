@@ -1,3 +1,4 @@
+#include "support/application_fixture.hpp"
 #include "dungeon_village_prototype/startup_application_replay.hpp"
 #include "startup_application_replay_wire.hpp"
 #include "startup_application_replay_paths.hpp"
@@ -293,13 +294,13 @@ void title_owner_transactions(Checks &check,Work &work) {
     const auto lock=CreateFileW((paths.root/"system.avr").c_str(),GENERIC_READ,FILE_SHARE_READ,nullptr,
                                OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr);
     check(lock!=INVALID_HANDLE_VALUE,"标题交接系统文件替换锁夹具");
-    const auto error=app.start_game();
+    const auto error=start_application_fixture_game(app);
     const bool released=CloseHandle(lock)!=0;
     check(released,"释放标题交接替换锁");
     check(!error.empty() && digest(app,start_meta)==locked_before && read((paths.root/"system.avr"))==retained_file,
           "系统写失败保留标题q、random、草稿、页面、旧纪录和空world");
 #endif
-    check.good(app.start_game());app.take_sound_requests();
+    check.good(start_application_fixture_game(app));app.take_sound_requests();
     check(app.handoff_random() && app.handoff_random()->cursor==handoff.cursor &&
           app.handoff_random()->engine_state==handoff.engine_state &&
           app.world()->state().scene.random.snapshot().engine_state==handoff.engine_state &&
@@ -360,7 +361,7 @@ void record_owner_restore(Checks &check,Work &work) {
     const auto child=source.title_page_id(), parent=source.title_menu().root_id;
     const auto background=source.title_presentation();
     const auto initial=*source.capture_title_replay();
-    check(initial.controller=="startup-title-v4" && initial.record_frame==0,
+    check(initial.controller=="startup-title-v5" && initial.record_frame==0,
           "新纪录由正式标题external入口安装独立零钟");
     for(int n=0;n<4;++n)check.good(source.input_record_frame(child,{}));
     auto meta=metadata(source,4,5);
@@ -381,7 +382,7 @@ void record_owner_restore(Checks &check,Work &work) {
         if(error==4)bad.menu.external->kind=StartupTitleExternalPage::configure;
         if(error==5)bad.menu.external->returned=true;
         if(error==6)bad.menu.external.reset();
-        if(error==7)bad.controller="startup-title-v3";
+        if(error==7)bad.controller="startup-title-v4";
         check(!source.restore_title_replay(bad).empty() && digest(source,meta)==before,
               "内存纪录缺钟/越界/错父/错类型/返回状态/孤儿/旧控制器严格拒绝且无部分安装");
     }
@@ -407,15 +408,19 @@ void record_owner_restore(Checks &check,Work &work) {
     const auto wire=unpack(original);
     for(int error=0;error<4;++error) {
         auto bad=wire;auto &control=section(bad,3).bytes;
-        // 控制分区尾：独立钟存在位、钟值、已消费音频计数；独立线格式夹具不调用codec。
-        require(control.size()>=12,"纪录钟尾字段范围");
-        if(error==0)set_number(control,control.size()-8,4,0xffffffffU);
-        if(error==1)set_number(control,control.size()-8,4,0x7fffffffU);
+        // 独立线格式：钟之后是三项设置、可选环境、已消费输出数；不调用codec算偏移。
+        const auto suffix=12U+(saved.new_game_environment?12U:4U)+4U;
+        require(control.size()>=suffix+8,"纪录钟尾字段范围");
+        const auto presence=control.size()-suffix-8,value=presence+4;
+        if(error==0)set_number(control,value,4,0xffffffffU);
+        if(error==1)set_number(control,value,4,0x7fffffffU);
         if(error==2) {
-            set_number(control,control.size()-12,4,0);
-            control.erase(control.end()-8,control.end()-4);
+            set_number(control,presence,4,0);
+            control.erase(control.begin()+static_cast<std::ptrdiff_t>(value),
+                          control.begin()+static_cast<std::ptrdiff_t>(value+4));
         }
-        if(error==3)control.erase(control.end()-12,control.end()-4);
+        if(error==3)control.erase(control.begin()+static_cast<std::ptrdiff_t>(presence),
+                                 control.begin()+static_cast<std::ptrdiff_t>(presence+8));
         const auto badfile=capture/("bad-record"+std::to_string(error)+".avrapp");
         write(badfile,pack(bad));
         const auto destination=work.root/("bad-record"+std::to_string(error)+"-target");
@@ -790,7 +795,7 @@ void directory_view_roundtrip(Checks &check,Work &work) {
     }
     auto &old_system_bytes=section(bad,2).bytes;
     std::size_t pos=8;
-    require(number(old_system_bytes,pos,4)==2,"旧世界normal夹具保持系统2");
+    require(number(old_system_bytes,pos,4)==3,"旧世界normal夹具保持系统3");
     (void)text(old_system_bytes,pos);
     const auto parts=number(old_system_bytes,pos,4);
     int replaced{};
@@ -838,7 +843,7 @@ void directory_view_roundtrip(Checks &check,Work &work) {
     bad=wire;
     auto &system=section(bad,2).bytes;
     std::size_t system_at=8;
-    require(number(system,system_at,4)==2,"隐藏目录夹具使用系统版本2");
+    require(number(system,system_at,4)==3,"隐藏目录夹具使用系统版本3");
     (void)text(system,system_at);
     const auto section_count=number(system,system_at,4);
     bool changed_visibility=false;
@@ -975,14 +980,18 @@ void corruption(Checks &check,Work &work) {
     const auto &source_control=section(wire,3).bytes;
     std::size_t title_at=control_offsets(source_control).world;
     for(int i=0;i<4;++i)require(number(source_control,title_at,4)==0,"源无world/rows/clear/id载荷");
-    require(source_control.size()-title_at==124U*4U+48U,
-            "当前布局保持完整标题、空菜单、无纪录钟及空音频尾部");
+    require(source_control.size()-title_at==124U*4U+64U,
+            "当前布局保持完整标题、空菜单、无纪录钟、即时设置、空宿主尺寸及已消费表现尾部");
     auto menu_at=title_at+124U*4U;
     require(number(source_control,menu_at,4)==0 && number(source_control,menu_at,4)==0 &&
             number(source_control,menu_at,4)==1 && number(source_control,menu_at,8)==1 &&
             number(source_control,menu_at,8)==2,"根菜单模式/选择/行与稳定身份独立布局golden");
-    for(int i=0;i<5;++i)require(number(source_control,menu_at,4)==0,
-                               "三个空子页、无独立纪录钟和已消费音频均有显式零标记");
+    for(int i=0;i<4;++i)require(number(source_control,menu_at,4)==0,
+                               "三个空子页与无独立纪录钟均有显式零标记");
+    require(number(source_control,menu_at,4)==3 && number(source_control,menu_at,4)==3 &&
+            number(source_control,menu_at,4)==0,"即时BGM/SE/高速设置有独立线格式初值");
+    require(number(source_control,menu_at,4)==0 && number(source_control,menu_at,4)==0,
+            "未提供宿主尺寸与已消费表现均有显式零标记");
     require(menu_at==source_control.size(),"独立尾字段golden恰好消费整个控制分区");
     wire=decoded;set_number(section(wire,3).bytes,title_at+16U+19U*24U,4,2);
     reject(pack(wire),"重签末槽active非法仍由标题语义校验拒绝");
@@ -998,8 +1007,9 @@ void corruption(Checks &check,Work &work) {
     reject(pack(wire),"重签应用音频未消费标志拒绝");
     wire=decoded;
     auto &unexpected_clock=section(wire,3).bytes;
-    set_number(unexpected_clock,unexpected_clock.size()-8,4,1);
-    unexpected_clock.insert(unexpected_clock.end()-4,4,0);
+    const auto record_presence=title_at+124U*4U+40U;
+    set_number(unexpected_clock,record_presence,4,1);
+    unexpected_clock.insert(unexpected_clock.begin()+static_cast<std::ptrdiff_t>(record_presence+4),4,0);
     reject(pack(wire),"非纪录页面预装零钟也显式拒绝，不当作可修补初值");
     wire=decoded;set_number(section(wire,6).bytes,0,4,5);
     reject(pack(wire),"槽位文件视图超过最多四个唯一blob拒绝");
@@ -1102,7 +1112,7 @@ int run_startup_application_replay_state_checks(const std::filesystem::path &par
     roundtrip(check,work,"records-no-world",app,metadata(app,0,command),StartupApplicationMode::title_presentation);
     check.good(app.return_to_title());app.take_audio_requests();++command;
     check.good(app.request_new_game(1));++command;
-    check.good(app.start_game());++command;
+    check.good(start_application_fixture_game(app));++command;
     app.take_sound_requests();
     check(app.world() && app.handoff_random() && app.handoff_random()->cursor==title_random->random.cursor &&
           app.world()->state().scene.random.draws()==title_random->random.cursor,

@@ -1,3 +1,4 @@
+#include "support/application_fixture.hpp"
 #include "startup_application_active_replay.hpp"
 #include "dungeon_village_prototype/startup_application_replay.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
@@ -686,7 +687,7 @@ int run_startup_application_active_replay_cli(int argc, const char **argv) {
         };
         good(restore_startup_application_replay(source, live, controller, app, m, loader, restore_protected));
         restore_seconds = std::chrono::duration<double>(Clock::now() - started).count(); d = decode(m.controller_state);
-    } else { good(app.request_new_game(0)); good(app.start_game()); d = initial(app); }
+    } else { good(app.request_new_game(0)); good(start_application_fixture_game(app)); d = initial(app); }
     d.producer_revision = producer; // 源先按原身份完整验证，本次新证据登记当前生成实现。
     good(validate(app, metadata(d)));
     require(d.next_frame <= stop && (!save || save_at >= d.next_frame), "observer before source");
@@ -752,7 +753,7 @@ int run_startup_application_active_driver_checks(const fs::path &parent) {
     require(!root.empty(), "exclusive driver check directory exhausted");
     try {
     StartupApplication app({root}, ref::WorldRandomStream::from_java_seed(1));
-    good(app.error()); good(app.request_new_game(0)); good(app.start_game());
+    good(app.error()); good(app.request_new_game(0)); good(start_application_fixture_game(app));
     const auto d = initial(app); const auto before = startup_application_replay_digest(app, metadata(d), validate);
     int checks{};
     const auto reject = [&](Metadata m, const char *reason) {

@@ -1,3 +1,4 @@
+#include "support/application_fixture.hpp"
 #include "dungeon_village_prototype/startup_application.hpp"
 #include "dungeon_village_prototype/startup_application_replay.hpp"
 #include "dungeon_village_prototype/startup_world_village_activity.hpp"
@@ -144,7 +145,7 @@ void management_bridges(const std::filesystem::path &root) {
     rejected([&]{return !app.set_paused(false).empty();});
     rejected([&]{return !app.set_speed(0).empty();});
     rejected([&]{return !app.set_page_confirm_held(false).empty();});
-    good(app.request_new_game(0)); good(app.start_game());
+    good(app.request_new_game(0)); good(start_application_fixture_game(app));
     require(app.take_audio_requests()==std::vector<StartupAudioRequest>{
                 {StartupAudioOperation::replace_bgm,0},{StartupAudioOperation::replace_bgm,1}},
             "real new management world consumes actual B0 and G activation outputs");
@@ -527,7 +528,7 @@ void window_host_save(const std::filesystem::path &root) {
     ref::WorldRandomSnapshot random;
     {
         StartupApplication app(files,ref::WorldRandomStream::from_java_seed(17));
-        good(app.request_new_game(0));good(app.start_game());
+        good(app.request_new_game(0));good(start_application_fixture_game(app));
         StartupWindowHost host(std::move(app));
         require(host.application_mode() && host.application() &&
                     &host.runtime()==host.application()->world(),
@@ -631,7 +632,7 @@ void window_host_save(const std::filesystem::path &root) {
 void manual_page_bridges(const std::filesystem::path &root) {
     const auto files = paths(root, "manual-bridge");
     StartupApplication app(files, ref::WorldRandomStream::from_java_seed(1));
-    good(app.request_new_game(0)); good(app.start_game());
+    good(app.request_new_game(0)); good(start_application_fixture_game(app));
     const auto id = enter_system_request(app, 22, 13);
     require(!app.save_world().empty(), "ordinary storage rejects transient manual page");
     good(app.update());
@@ -691,7 +692,7 @@ void save_page_bridges(const std::filesystem::path &root) {
     for (int slot = 0; slot != 2; ++slot) {
         const auto files = paths(root, "save-slot-" + std::to_string(slot));
         StartupApplication app(files, ref::WorldRandomStream::from_java_seed(1));
-        good(app.request_new_game(slot)); good(app.start_game()); app.take_audio_requests();
+        good(app.request_new_game(slot)); good(start_application_fixture_game(app)); app.take_audio_requests();
         good(app.save_world()); // 保留一份真实稳定旧档，检验替换而非仅首次创建。
         const auto before_directory = app.records().save_directory;
         const auto before_revision = app.records().revision;
@@ -752,7 +753,7 @@ void save_page_bridges(const std::filesystem::path &root) {
 
     const auto files = paths(root, "save-revision-conflict");
     StartupApplication conflict(files, ref::WorldRandomStream::from_java_seed(1));
-    good(conflict.request_new_game(0)); good(conflict.start_game()); conflict.take_audio_requests();
+    good(conflict.request_new_game(0)); good(start_application_fixture_game(conflict)); conflict.take_audio_requests();
     good(conflict.save_world());
     const auto old_directory = conflict.records().save_directory;
     const auto marker = conflict.world()->state().save_marker;
@@ -778,7 +779,7 @@ void save_page_bridges(const std::filesystem::path &root) {
 
     const auto pending_files = paths(root, "save-pending-audio");
     StartupApplication pending(pending_files, ref::WorldRandomStream::from_java_seed(1));
-    good(pending.request_new_game(0)); good(pending.start_game());
+    good(pending.request_new_game(0)); good(start_application_fixture_game(pending));
     enter_save_request(pending); // 真实标题及激活输出留在应用队列，不注入音频。
     require(pending.has_pending_audio_requests(), "pending gate uses real unconsumed application audio");
     const auto before = management_observation(pending);

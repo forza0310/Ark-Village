@@ -1,6 +1,6 @@
 {
   "format": "AVRAPP01",
-  "semantics": 7,
+  "semantics": 8,
   "boundary": "complete-outer-round-v1",
   "fields": [
     {
@@ -11,7 +11,17 @@
     {
       "name": "storage_",
       "type": "StartupApplicationStorageSnapshot",
-      "policy": "save/rebind: records完整系统2及槽位引用闭包；missing/digest在新根发布后重绑"
+      "policy": "save/rebind: records完整系统3及槽位引用闭包；missing/digest在新根发布后重绑"
+    },
+    {
+      "name": "live_settings_",
+      "type": "StartupSystemSettings",
+      "policy": "save: 运行音量0至5与完整signed32 high_speed；允许不同于系统已存设置"
+    },
+    {
+      "name": "new_game_environment_",
+      "type": "std::optional<StartupNewGameEnvironment>",
+      "policy": "save: 可选正signed32客户区宽高；恢复不查询宿主"
     },
     {
       "name": "draft_",
@@ -94,9 +104,9 @@
       "policy": "save: 完整根菜单、raw20、询问、外部子页及未消费返回载荷"
     },
     {
-      "name": "audio_requests_",
-      "type": "std::vector<StartupAudioRequest>",
-      "policy": "require-empty: 一次性音频请求必须已消费，恢复为空"
+      "name": "presentation_requests_",
+      "type": "std::vector<StartupApplicationPresentationRequest>",
+      "policy": "require-empty: 有序一次性音频/设置表现请求必须已消费，恢复为空"
     },
     {
       "name": "cleanup_pending_",
@@ -106,12 +116,47 @@
   ],
   "nested": [
     {
+      "name": "StartupSystemSettings",
+      "fields": [
+        {
+          "name": "bgm",
+          "type": "std::int32_t",
+          "policy": "save: int32音量0至5"
+        },
+        {
+          "name": "se",
+          "type": "std::int32_t",
+          "policy": "save: int32音量0至5"
+        },
+        {
+          "name": "high_speed",
+          "type": "std::int32_t",
+          "policy": "save: 完整signed32原值，不约束为布尔"
+        }
+      ]
+    },
+    {
+      "name": "StartupNewGameEnvironment",
+      "fields": [
+        {
+          "name": "width",
+          "type": "std::int32_t",
+          "policy": "save: 正signed32客户区宽度"
+        },
+        {
+          "name": "height",
+          "type": "std::int32_t",
+          "policy": "save: 正signed32客户区高度"
+        }
+      ]
+    },
+    {
       "name": "StartupApplicationStorageSnapshot",
       "fields": [
         {
           "name": "records",
           "type": "StartupSystemRecords",
-          "policy": "save: 完整系统2、四条目录、引用及未知可选段"
+          "policy": "save: 完整系统3、四条目录、引用及未知可选段"
         },
         {
           "name": "missing",

@@ -252,6 +252,7 @@ struct StartupWorldRuntimeState {
     std::array<int, 4> reference_viewport{{0, 23, 240, 297}}; // 明确240×320研究画布的b.c.m/n/o/p。
     std::map<std::uint64_t, int> page_counters; // b.g.f124d；主场景冻结时独立推进栈顶页。
     std::map<std::uint64_t, int> page_phases;   // b.g.i，成果页30两段展示不重复奖励。
+    std::map<std::uint64_t, int> config_page_selections; // raw12四行select_；主钟复用page_counters。
     std::map<std::uint64_t, StartupInformationPageData> information_page_data;
     std::map<std::uint64_t, StartupManualPageData> manual_page_data; // raw13冻结装饰与正文缓存时点。
     // 缓存raw3行号/存储位置跨关闭保留；重新入栈使用新维护页ID，不复用退休身份。
@@ -340,6 +341,7 @@ struct StartupWorldRuntimeState {
     int task_subperiods{};                                           // UserData.y。
     bool generation_retry{};                                         // MainScene.Y。
     std::optional<std::uint64_t> deadline_page;                      // MainScene.aI。
+    int quality_setting{};                                           // P12，显式应用尺寸决定新局值。
     int completion_mode{};                                           // P14。
     int system_completion_mode{};                                    // J9。
     int save_marker{};                                               // P15，av.a(true)先置1。

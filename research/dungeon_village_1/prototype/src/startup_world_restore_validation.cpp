@@ -9,6 +9,7 @@
 #include "dungeon_village_prototype/startup_world_menu.hpp"
 #include "dungeon_village_prototype/startup_world_save.hpp"
 #include "dungeon_village_prototype/startup_world_manual.hpp"
+#include "dungeon_village_prototype/startup_world_config.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_commerce.hpp"
 #include "dungeon_village_prototype/startup_world_village_activity.hpp"
@@ -537,6 +538,7 @@ struct Validation {
     }
         PAGE_MAP(page_counters);
         PAGE_MAP(page_phases);
+        PAGE_MAP(config_page_selections);
         PAGE_MAP(information_page_data);
         PAGE_MAP(manual_page_data);
         PAGE_MAP(menu_page_data);
@@ -683,6 +685,10 @@ struct Validation {
         for (const auto &[id, data] : s.manual_page_data) {
             (void)data;
             if (!page_kind(id, {13})) return fail("manual page: 装饰名单附在错误页型");
+        }
+        for (const auto &[id, selection] : s.config_page_selections) {
+            (void)selection;
+            if (!page_kind(id, {12})) return fail("config page: 选择附在错误页型");
         }
         for (const auto &[id, data] : s.menu_page_data) {
             (void)data;
@@ -1105,6 +1111,9 @@ struct Validation {
                 p.legacy_page == 13 && !valid_startup_world_manual_page(s,p.id))
                 return fail("manual page: 来源/页码/装饰名单/父栈或载荷非法");
             if (p.kind == ref::WorldScriptPageKind::raw_page &&
+                p.legacy_page == 12 && !valid_startup_world_config_page(s,p.id))
+                return fail("config page: 来源/选择/主钟/进入画质/父栈或退休载荷非法");
+            if (p.kind == ref::WorldScriptPageKind::raw_page &&
                 p.legacy_page == 14 && !valid_startup_world_save_page(s,p.id))
                 return fail("save page: 来源/阶段/结果/父栈或载荷非法");
             if (p.kind == ref::WorldScriptPageKind::raw_page &&
@@ -1270,7 +1279,8 @@ bool validate_restored_state(const State &s, std::string &reason, bool audit_che
             return std::all_of(row.begin(), row.end(), [](int n) { return n >= 0; });
         }))
         return v.fail("magic pot: 级别/容量/日期/演出数据非法");
-    if (!ref::valid_world_calendar_state(s.scene.calendar) || s.scene.scene_state < 0 ||
+    if (s.quality_setting < 0 || s.quality_setting > 1 ||
+        !ref::valid_world_calendar_state(s.scene.calendar) || s.scene.scene_state < 0 ||
         s.scene.scene_state > 7 || !counter(s.scene.frame_counter) ||
         !counter(s.scene.scene_counter) || (!audit_checkpoint && s.scene.processing_phase != -1) ||
         (audit_checkpoint && s.scene.processing_phase != -1 && s.scene.processing_phase != 1) ||

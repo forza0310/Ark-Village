@@ -9,6 +9,7 @@
 #include "dungeon_village_prototype/startup_world_menu.hpp"
 #include "dungeon_village_prototype/startup_world_save.hpp"
 #include "dungeon_village_prototype/startup_world_manual.hpp"
+#include "dungeon_village_prototype/startup_world_config.hpp"
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
 #include "dungeon_village_prototype/startup_world_tax.hpp"
@@ -1029,8 +1030,9 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
         StartupResidenceAwardInput input; input.confirm = true;
         return input_startup_world_residence_award_page(state, id, input);
     }
-    if (top->kind == ref::WorldScriptPageKind::raw_page && (top->legacy_page == 58||top->legacy_page==17))
-        return Error::invalid_page; // 58由逐帧跟踪收尾；17只能由应用Owner计分，均不能通用确认关闭。
+    if (top->kind == ref::WorldScriptPageKind::raw_page &&
+        (top->legacy_page == 58 || top->legacy_page == 17 || top->legacy_page == 12))
+        return Error::invalid_page; // 12须应用保存后返回；58逐帧收尾；17仅应用计分。
     if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==89&&
        (top->lifecycle!=2||!valid_startup_world_monster_intro_page(state,*top)))return Error::missing_source;
     if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==92&&
@@ -1405,6 +1407,7 @@ Error input_startup_world_runtime_rank_page(State &s,std::uint64_t id,const Star
 
 std::optional<State> update_startup_world_runtime_page(const State &state,
                                                      const StartupCommerceItemInput *commerce_input) {
+    if (!valid_startup_world_config_pages(state)) return {};
     if (commerce_input) {
         const auto page = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
                                        [](const auto &p) { return p.lifecycle != 4; });
@@ -1508,6 +1511,8 @@ std::optional<State> update_startup_world_runtime_page(const State &state,
     }
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 14)
         return update_startup_world_save_page(state,top->id);
+    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 12)
+        return update_startup_world_config_page(state,top->id);
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 13)
         return update_startup_world_manual_page(state,top->id);
     if (top->kind == ref::WorldScriptPageKind::raw_page &&

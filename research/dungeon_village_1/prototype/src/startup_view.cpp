@@ -1837,7 +1837,7 @@ template<class Plan> void draw_facility_ceremony(const Plan &plan,SourceSprites 
             sprites.crop("steam-common/buttoneffect.png",{float(c[0]),float(c[1]),float(c[2]),float(c[3])},
                 {origin.x+d[0],origin.y+d[1]},true,Vector2{d[2],d[3]});
         } else if constexpr(std::is_same_v<T,SteamConfigTouch>) {
-            // 条件窗口只消费绘制；完整设置输入、音量输出与系统保存尚未接Owner。
+            // 此处仅登记原图元；正常窗口键盘交应用Owner，平台Touch／拖动另验。
         } else if constexpr(std::is_same_v<T,SteamConfigPlatformKeyboard>) {
             const auto button=steam_platform_button_skin({SteamPlatformButtonKind::keyboard_guide,
                 value.anchor,value.component,true,false,value.touched,{}});
@@ -2672,20 +2672,35 @@ std::optional<SteamBuildMenuSkinPlan> build_menu_example(const std::string &name
     if(!window_build_menu_rows(s,in,font,overlays))return {};
     return steam_build_menu_skin(in);
 }
+SteamConfigSkinOptions window_config_options(int selection,const ChineseFont &font) {
+    SteamConfigSkinOptions o;o.view_y=23;o.graphics_origin={0,30};o.on_top=true;o.steam_platform=true;
+    o.text.title="环境设置";o.text.names={"画面","速度","BGM","效果音"};
+    o.text.choices={{{"画质优先","速度优先"},{"高速","普通"}}};
+    if(selection==0)o.text.explanation={"优先速度时会省略部分","演出及显示效果"};
+    else if(selection==1)o.text.explanation={"更改游戏的运行速度","通关游戏后可以更改"};
+    else o.text.explanation={"设置游戏中的","音量大小"};
+    // 两次实测对应源两次StringWidth，不将一次测量缓存冒称相同调用。
+    o.text.title_widths=std::array<int,2>{int(font.measure(o.text.title)),int(font.measure(o.text.title))};
+    return o;
+}
+std::optional<SteamConfigSkinPlan> window_config_plan(const StartupApplication &app,
+                                                      std::uint64_t id,const ChineseFont &font) {
+    if(!app.world())return {};
+    const auto &s=app.world()->state();
+    const auto view=inspect_startup_world_config_page(s,id);
+    if(!view)return {};
+    const auto &live=app.live_settings();
+    return steam_config_skin({{s.quality_setting,s.scene.speed_setting,live.bgm,live.se},
+        view->selection,live.high_speed!=0},window_config_options(view->selection,font));
+}
 std::optional<SteamConfigSkinPlan> config_example(const std::string &name,const ChineseFont &font) {
     // 显式条件值不是平台默认设置；不创建世界或触发实际音量/画质/保存。
     SteamConfigSkinInput in{{0,0,3,5},0,false};
     if(name=="config-locked")in.selection=1;
     if(name=="config-speed"){in.selection=1;in.speed_unlocked=true;in.values[1]=1;}
     if(name=="config-volume"){in.selection=3;in.values[2]=0;in.values[3]=5;}
-    SteamConfigSkinOptions o;o.view_y=23;o.graphics_origin={0,30};o.on_top=true;o.steam_platform=true;
+    auto o=window_config_options(in.selection,font);
     o.platform_keyboard_touched=name=="config-volume";
-    o.text.title="环境设置";o.text.names={"画面","速度","BGM","效果音"};
-    o.text.choices={{{"画质优先","速度优先"},{"高速","普通"}}};
-    if(in.selection==0)o.text.explanation={"优先速度时会省略部分","演出及显示效果"};
-    else if(in.selection==1)o.text.explanation={"更改游戏的运行速度","通关游戏后可以更改"};
-    else o.text.explanation={"设置游戏中的","音量大小"};
-    const int width=int(font.measure(o.text.title));o.text.title_widths=std::array<int,2>{width,width};
     if(name=="config-volume")o.arrow_selected[1][1]=true;
     return steam_config_skin(in,o);
 }
@@ -4270,7 +4285,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                              const std::optional<StartupWindowApplicationOptions> &application) {
     const bool manual_inspection=inspect_page=="world-manual" || inspect_page=="world-manual-about";
     if(application && (load_file || save_file ||
-       (!inspect_page.empty() && inspect_page!="world-save" && !manual_inspection) || application->slot<0 || application->slot>1))
+       (!inspect_page.empty() && inspect_page!="world-save" && inspect_page!="world-config" && !manual_inspection) || application->slot<0 || application->slot>1))
         throw std::invalid_argument("应用窗口参数组合非法");
     Window window;
     Canvas canvas;
@@ -4328,7 +4343,9 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 for(const auto &entry:app.records().save_directory[application->slot])
                     if(entry.reference || entry.packed_date!=-1 || !entry.village.empty() || entry.cash!=0)
                         throw std::runtime_error("应用新局仅允许空栏，隐藏记录仍保留，不能覆盖");
-                error=app.request_new_game(application->slot);
+                // 研究raylib宿主显式供本次客户区尺寸；不把240逻辑画布当原设备观测。
+                error=app.set_new_game_environment({GetScreenWidth(),GetScreenHeight()});
+                if(error.empty())error=app.request_new_game(application->slot);
                 if(error.empty())error=app.start_game();
             }
             if(!error.empty())throw std::runtime_error(error);
@@ -4356,6 +4373,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
     for (const auto &human : rules.humans)
         glyphs += human_name(human.identity); // 原字体目录外的自定义中文在载入后一次装入。
     glyphs += "设备一般饮食撤除移动返回详细Ｇ冒险者名单姓名装备居住满足努力请选择"; // 补正式皮肤标签字形，不改原人物属性。
+    glyphs += "环境设置画面速度BGM效果音画质优先高速普通优先速度时会省略部分演出及显示效果更改游戏的运行速度通关游戏后可以更改设置游戏中的音量大小";
     ChineseFont font(font_path, glyphs);
     const auto available_road = [](const StartupWorldRuntimeState &s) -> std::optional<int> {
         for (const auto &d : s.rules->facilities) {
@@ -4373,7 +4391,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
         [&](const auto &entry){return inspect_page==entry.first;});
     const bool inspect_information=information_inspection!=information_inspections.end();
     if (inspect_information || inspect_page == "world-menu" || inspect_page == "world-system" || inspect_page == "world-information" ||
-        inspect_page == "world-adventure" || inspect_page == "world-village" || inspect_page == "world-save" || manual_inspection) {
+        inspect_page == "world-adventure" || inspect_page == "world-village" || inspect_page == "world-save" || inspect_page == "world-config" || manual_inspection) {
         // 有界验收只使用真实入口与输入，不注入选择、页计数、资金或随机。
         if (session.open_main_menu()!=StartupWorldRuntimeError::none)
             throw std::runtime_error("导航检查主菜单入口失败");
@@ -4383,7 +4401,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
             const auto id=session.state().scripts.pages.back().id;
             const auto view=inspect_startup_world_menu_page(session.state(),id);
             if(!view)throw std::runtime_error("导航检查主菜单投影失败");
-            const int tag=(inspect_page=="world-system"||inspect_page=="world-save"||manual_inspection)?6:(inspect_information||inspect_page=="world-information")?5:
+            const int tag=(inspect_page=="world-system"||inspect_page=="world-save"||inspect_page=="world-config"||manual_inspection)?6:(inspect_information||inspect_page=="world-information")?5:
                           inspect_page=="world-adventure"?1:2;
             const auto entry=std::find(view->tags.begin(),view->tags.end(),tag);
             if(entry==view->tags.end())throw std::runtime_error("导航检查所需标签不存在");
@@ -4416,6 +4434,20 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 if(session.input_menu_page(save_menu,confirm)!=StartupWorldRuntimeError::none ||
                    !session.update().committed)
                     throw std::runtime_error("保存页真实请求检查失败");
+            }
+            if(inspect_page=="world-config") {
+                if(!session.application_mode())throw std::runtime_error("设置诊断需要应用宿主");
+                const auto system=session.state().scripts.pages.back().id;
+                const auto menu=inspect_startup_world_menu_page(session.state(),system);
+                if(!menu)throw std::runtime_error("设置诊断缺系统菜单");
+                const auto entry=std::find(menu->tags.begin(),menu->tags.end(),21);
+                if(entry==menu->tags.end())throw std::runtime_error("设置诊断缺真实条目");
+                StartupWorldMenuInput select;select.select_row=static_cast<int>(entry-menu->tags.begin());
+                if(session.input_menu_page(system,select)!=StartupWorldRuntimeError::none ||
+                   session.input_menu_page(system,confirm)!=StartupWorldRuntimeError::none)
+                    throw std::runtime_error("设置诊断真实入口拒绝");
+                for(int step=0;step<3;++step)
+                    if(!session.update().committed)throw std::runtime_error("设置诊断初始化拒绝");
             }
             if(manual_inspection) {
                 const auto system=session.state().scripts.pages.back().id;
@@ -5166,6 +5198,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
     std::string command_feedback;
     std::optional<std::uint64_t> clear_confirm_pending; // 绑定计分页，按逻辑门槛只消费一次。
     std::optional<StartupCommerceItemInput> commerce_input_pending; // 只保留84设备脉冲，不复制业务游标。
+    std::optional<std::pair<std::uint64_t,StartupConfigInput>> config_input_pending;
     while (!WindowShouldClose()) {
         const Vector2 mouse{GetMousePosition().x / scale, GetMousePosition().y / scale};
         const bool pressed = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
@@ -5176,6 +5209,9 @@ int run_startup_world_window(const std::filesystem::path &assets,
         if(commerce_input_pending&&(session.state().scene.framework_paused||!IsWindowFocused()||
            current_top==session.state().scripts.pages.rend()||current_top->id!=commerce_input_pending->page||
            current_top->legacy_page!=84))commerce_input_pending.reset();
+        if(config_input_pending&&(session.state().scene.framework_paused||!IsWindowFocused()||
+           current_top==session.state().scripts.pages.rend()||current_top->id!=config_input_pending->first||
+           current_top->legacy_page!=12))config_input_pending.reset();
         if(build_item_marker&&(session.state().scene.framework_paused||!IsWindowFocused()||
            current_top==session.state().scripts.pages.rend()||current_top->id!=build_item_marker->first||
            current_top->legacy_page!=21))build_item_marker.reset();
@@ -6284,6 +6320,18 @@ int run_startup_world_window(const std::filesystem::path &assets,
                         if(session.input_task_page(pid,input).error!=StartupWorldRuntimeError::none)
                             throw std::runtime_error("Task followup input transaction rejected");
                 } else if(page->lifecycle!=0)throw std::runtime_error("Task followup input source rejected");
+            } else if (raw==12) {
+                if(!session.application_mode())throw std::runtime_error("设置输入需要应用宿主");
+                if(page->lifecycle==2 && IsWindowFocused() && !session.state().scene.framework_paused) {
+                    if(!config_input_pending)config_input_pending.emplace(page->id,StartupConfigInput{});
+                    auto &input=config_input_pending->second;
+                    // PC按下／重复仅为研究适配；五个脉冲在下一获准轮合并一次，不另跑公共Update。
+                    input.up_repeat|=IsKeyPressed(KEY_UP)||IsKeyPressedRepeat(KEY_UP);
+                    input.down_repeat|=IsKeyPressed(KEY_DOWN)||IsKeyPressedRepeat(KEY_DOWN);
+                    input.left_repeat|=IsKeyPressed(KEY_LEFT)||IsKeyPressedRepeat(KEY_LEFT);
+                    input.right_repeat|=IsKeyPressed(KEY_RIGHT)||IsKeyPressedRepeat(KEY_RIGHT);
+                    input.back_soft_label|=IsKeyPressed(KEY_ESCAPE)||hit({8,265,58,24});
+                }
             } else if (raw==13) {
                 StartupManualInput input;
                 input.confirm=IsKeyPressed(KEY_ENTER);
@@ -6523,7 +6571,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
             throw std::runtime_error("共同世界绘制时钟失败");
         if (gate.clock) {
             clock = *gate.clock;
-            (void)session.take_audio_requests(); // 命令可能产生输出，先消费再进入应用保存事务。
+            (void)session.take_presentation_requests(); // 静默sink领取全部typed输出，不伪装已执行音频／GPU。
             const auto page = top_page();
             const auto save=page && page->kind==ref::WorldScriptPageKind::raw_page && page->legacy_page==14
                 ? inspect_startup_world_save_page(session.state(),page->id) : std::nullopt;
@@ -6534,7 +6582,11 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     page->kind==ref::WorldScriptPageKind::raw_page&&page->legacy_page==84&&
                     !session.state().scene.framework_paused&&IsWindowFocused();
                 // 设备脉冲只借用一次；未准入不成交、不多减反馈，且不改变Owner更新原序。
-                const auto result = session.update(clear_confirm,commerce_ready?&*commerce_input_pending:nullptr);
+                const bool config_ready=config_input_pending&&page&&page->id==config_input_pending->first&&
+                    page->legacy_page==12&&!session.state().scene.framework_paused&&IsWindowFocused();
+                const auto result = session.update(clear_confirm,commerce_ready?&*commerce_input_pending:nullptr,
+                    config_ready?&config_input_pending->second:nullptr);
+                config_input_pending.reset();
                 commerce_input_pending.reset();
                 clear_confirm_pending.reset();
                 if (result.error != StartupWorldRuntimeError::none)
@@ -6559,7 +6611,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
         presentation_ordinal=presentation.ordinal;
         presentation_random+=presentation.random_after-presentation.random_before;
         // 本研究窗口暂未实现音频；表现提交产生的声音也在同轮一次领取。
-        (void)session.take_sound_requests();
+        (void)session.take_presentation_requests();
         std::vector<std::uint64_t> build_pages_drawn;
         const auto &state = session.state();
         if(facility_scroll_drag) {
@@ -6933,6 +6985,11 @@ int run_startup_world_window(const std::filesystem::path &assets,
             if(!plan)throw std::runtime_error("说明页面皮肤拒绝");
             draw_manual_plan(*plan,state,sprites,font);
             font.text("返回 Esc",12,272,ink,10);
+        } else if (const auto page = top_page(); page && page->legacy_page==12) {
+            if(!session.application_mode())throw std::runtime_error("设置绘制需要应用宿主");
+            const auto plan=window_config_plan(*session.application(),page->id,font);
+            if(plan)draw_facility_ceremony(*plan,sprites,font);
+            else if(page->lifecycle!=0)throw std::runtime_error("设置正式皮肤载荷拒绝");
         } else if (const auto page = top_page(); page && page->legacy_page==14) {
             if(const auto view=inspect_startup_world_save_page(state,page->id)) {
                 const auto plan=window_save_plan(*view,font);

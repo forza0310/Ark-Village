@@ -8,6 +8,7 @@
 #include <limits>
 #include <stdexcept>
 #include <type_traits>
+#include <iterator>
 
 namespace dungeon_village_prototype {
 static_assert(std::is_nothrow_move_assignable_v<StartupSystemRecords>);
@@ -39,8 +40,9 @@ StartupApplication::StartupApplication(StartupApplicationPaths paths, ref::World
     auto loaded = load_startup_application_storage(paths_.root);
     if (!loaded.snapshot) { error_ = loaded.error; return; }
     storage_ = std::move(*loaded.snapshot);
+    live_settings_ = storage_.records.settings;
     draft_.slot = storage_.records.last_slot;
-    audio_requests_.push_back({StartupAudioOperation::replace_bgm,0});
+    queue_title_settings();
 
 }
 std::string StartupApplication::edit_village(std::string name) {
@@ -62,6 +64,8 @@ std::string StartupApplication::start_game_candidate() {
     if (!error_.empty()) return error_;
     if (!valid_text(draft_.village) ||
         !valid_startup_world_human_profile(draft_.main_character)) return "新局配置非法";
+    if (!new_game_environment_ || new_game_environment_->width <= 0 || new_game_environment_->height <= 0)
+        return "开始新局需要显式原应用宽高环境";
     try {
         StartupSession reset;
         StartupWorldRuntimeSession candidate(reset.state(), random_);
@@ -72,18 +76,22 @@ std::string StartupApplication::start_game_candidate() {
         // 系统是跨局权威；世界仅在实际现金事务时更新此运行镜像。
         candidate.state_.cash_peak = storage_.records.cash_peak;
         candidate.state_.cash_peak_village = storage_.records.cash_village;
-        auto records = storage_.records;
+        candidate.state_.quality_setting = new_game_environment_->width <= 480 ||
+            new_game_environment_->height <= 480 ? 1 : 0;
+        candidate.state_.scene.speed_setting = 0;
+        candidate.state_.system_completion_mode = live_settings_.high_speed;
+        auto records = system_records_candidate();
         records.last_slot = draft_.slot;
         auto handoff = random_.snapshot();
-        auto audio = audio_requests_;
+        auto audio = presentation_requests_;
         auto initial = candidate.take_audio_requests();
         audio.insert(audio.end(), initial.begin(), initial.end());
-        audio.push_back({StartupAudioOperation::replace_bgm,
+        audio.emplace_back(StartupAudioRequest{StartupAudioOperation::replace_bgm,
                         candidate.state_.active_task && candidate.state_.task.encounter ? 2 : 1});
         auto committed = commit_startup_application_records(paths_.root, storage_, records);
         if (!committed.snapshot) return committed.error;
         storage_ = std::move(*committed.snapshot); cleanup_pending_ = committed.cleanup_pending;
-        audio_requests_ = std::move(audio);
+        presentation_requests_ = std::move(audio);
         world_ = std::move(candidate);
         handoff_ = std::move(handoff);
         clear_.reset(); clear_rows_.reset(); clear_id_.reset(); decorations_.clear(); record_frame_.reset();
@@ -170,17 +178,18 @@ StartupRecordView StartupApplication::record_view() const {
         : StartupRecordView{"16年为止的最高资金", storage_.records.cash_village, "G", storage_.records.cash_peak, 1};
 }
 std::optional<StartupTitleReplay> StartupApplication::capture_title_replay() const {
-    if (!error_.empty() || world_ || page_ == Page::world || clear_ || !audio_requests_.empty() ||
+    if (!error_.empty() || world_ || page_ == Page::world || clear_ || !presentation_requests_.empty() ||
         !validate_startup_title_menu(title_menu_).empty() || !valid_record_page()) return {};
-    return StartupTitleReplay{"startup-title-v4", mode_, draft_, page_, record_page_, record_frame_, decorations_,
-                              random_.snapshot(), requests_, title_, title_menu_, *title_menu_context().catalog};
+    return StartupTitleReplay{"startup-title-v5", mode_, draft_, page_, record_page_, record_frame_, decorations_,
+                              random_.snapshot(), requests_, title_, title_menu_, *title_menu_context().catalog,
+                              live_settings_, new_game_environment_};
 }
 std::string StartupApplication::restore_title_replay(const StartupTitleReplay &s) {
     if (!error_.empty()) return error_;
     if (!validate_startup_title_presentation(s.title).empty() ||
         (s.mode == StartupApplicationMode::logic && !pristine_startup_title_presentation(s.title)))
         return "标题背景状态或逻辑模式不符";
-    if (!audio_requests_.empty() || !validate_startup_title_menu(s.menu).empty())
+    if (!presentation_requests_.empty() || !validate_startup_title_menu(s.menu).empty())
         return "标题待消费输出或菜单状态非法";
     const auto catalog = title_menu_context().catalog;
     if (!catalog || s.catalog.revision != catalog->revision || s.catalog.digest != catalog->digest)
@@ -195,10 +204,14 @@ std::string StartupApplication::restore_title_replay(const StartupTitleReplay &s
          storage_.records.save_directory[static_cast<std::size_t>(s.draft.slot)][1].packed_date == -1 ||
          s.menu.save_menu->catalog->revision != catalog->revision || s.menu.save_menu->catalog->digest != catalog->digest)))
         return "标题内存快照的菜单、页面或目录引用不一致";
-    if (world_ || s.controller != "startup-title-v4" || s.mode != mode_ ||
+    if (world_ || s.controller != "startup-title-v5" || s.mode != mode_ ||
         s.page < Page::title || s.page > Page::records || s.record_page < 0 || s.record_page > 1 ||
         s.draft.slot < 0 || s.draft.slot > 1 || !valid_text(s.draft.village) ||
         !valid_startup_world_human_profile(s.draft.main_character)) return "标题快照身份或载荷非法";
+    if (s.live_settings.bgm < 0 || s.live_settings.bgm > 5 ||
+        s.live_settings.se < 0 || s.live_settings.se > 5 ||
+        (s.new_game_environment && (s.new_game_environment->width <= 0 || s.new_game_environment->height <= 0)))
+        return "标题设置或新局环境快照非法";
     if ((s.page == Page::records) != s.record_frame.has_value() ||
         (s.record_frame && (*s.record_frame < 0 || *s.record_frame == std::numeric_limits<int>::max())))
         return "标题纪录钟缺失、越界或残留";
@@ -235,12 +248,27 @@ std::string StartupApplication::restore_title_replay(const StartupTitleReplay &s
     static_assert(std::is_nothrow_move_assignable_v<StartupTitleDraft>);
     static_assert(std::is_nothrow_move_assignable_v<ref::WorldRandomStream>);
     draft_ = std::move(draft); page_ = s.page; record_page_ = s.record_page; record_frame_ = s.record_frame;
+    live_settings_ = s.live_settings; new_game_environment_ = s.new_game_environment;
     decorations_ = std::move(decorations); random_ = std::move(random_candidate);
     requests_ = s.requests; title_ = s.title; title_menu_ = std::move(menu); return {};
 }
-std::string StartupApplication::commit_world(StartupWorldRuntimeSession candidate, bool save_system) {
+std::string StartupApplication::commit_world(StartupWorldRuntimeSession candidate, bool save_system,
+        std::optional<StartupSystemSettings> settings,
+        std::vector<StartupApplicationPresentationRequest> effects) {
+    auto live = settings.value_or(live_settings_);
+    auto &s = candidate.state_;
+    // 日历真正插入17与endgame_checkpoint是同一producer；以新页身份识别本轮，
+    // 即使旧系统高速早已非0，仍必须保存，不推迟到17首次Update或最终纪录。
+    if (world_) for (const auto &page : s.scripts.pages) {
+        if (!is_clear(&page)) continue;
+        const auto &old = world_->state().scripts.pages;
+        if (std::none_of(old.begin(), old.end(), [&](const auto &p) { return p.id == page.id; })) {
+            live.high_speed = 1; save_system = true;
+        }
+    }
+    s.system_completion_mode = live.high_speed;
     auto records = storage_.records;
-    const auto &s = candidate.state_;
+    records.settings = live;
     // 只观察已完成的Owner现金提交；读档另走install_loaded，不重发纪录。
     if (s.cash_peak > records.cash_peak) {
         records.cash_peak = s.cash_peak; records.cash_village = s.cash_peak_village;
@@ -250,15 +278,16 @@ std::string StartupApplication::commit_world(StartupWorldRuntimeSession candidat
         records.facility_levels = s.system_unlock_data[0];
         records.profession_status = s.system_unlock_data[1]; save_system = true;
     }
-    auto audio = audio_requests_;
+    auto audio = presentation_requests_;
     auto output = candidate.take_audio_requests();
     audio.insert(audio.end(), output.begin(), output.end());
+    audio.insert(audio.end(), std::make_move_iterator(effects.begin()), std::make_move_iterator(effects.end()));
     if (save_system) {
         auto committed = commit_startup_application_records(paths_.root, storage_, records);
         if (!committed.snapshot) return committed.error;
         storage_ = std::move(*committed.snapshot); cleanup_pending_ = committed.cleanup_pending;
     }
-    world_ = std::move(candidate); audio_requests_ = std::move(audio); return {};
+    world_ = std::move(candidate); live_settings_ = live; presentation_requests_ = std::move(audio); return {};
 
 }
 std::string StartupApplication::update(bool confirm, const StartupCommerceItemInput *commerce_input) {
@@ -277,6 +306,13 @@ std::string StartupApplication::update(bool confirm, const StartupCommerceItemIn
     }
     if (is_clear(top(world_->state()))) return update_clear(confirm);
     if (clear_) return "计分页引用已不匹配";
+    const auto *config_page = top(world_->state());
+    if (!commerce_input && !world_->state().scene.framework_paused && config_page &&
+        config_page->kind == ref::WorldScriptPageKind::raw_page && config_page->legacy_page == 12 &&
+        config_page->lifecycle == 2) {
+        if (confirm) return "设置页不消费通用确认，请使用设置原序输入";
+        return input_config_page(config_page->id, {});
+    }
     const auto *save_page = top(world_->state());
     if (save_page && save_page->kind == ref::WorldScriptPageKind::raw_page &&
         save_page->legacy_page == 14) {
@@ -585,15 +621,28 @@ std::string StartupApplication::input_rank_page(std::uint64_t page,const Startup
     return apply_world_action([&](auto &world){return world.input_rank_page(page,input);});
 }
 std::string StartupApplication::cancel_page(std::uint64_t page) {
+    if (world_) {
+        const auto *p = top(world_->state());
+        if (p && p->id == page && p->kind == ref::WorldScriptPageKind::raw_page && p->legacy_page == 12)
+            return input_config_page(page, {false, false, false, false, true});
+    }
     return apply_world_action([&](auto &world) { return world.cancel_page(page); });
+}
+std::vector<StartupApplicationPresentationRequest> StartupApplication::take_presentation_requests() {
+    std::vector<StartupApplicationPresentationRequest> result;
+    result.swap(presentation_requests_); return result;
 }
 std::vector<StartupAudioRequest> StartupApplication::take_audio_requests() {
     std::vector<StartupAudioRequest> result;
-    result.swap(audio_requests_); return result;
+    result.reserve(presentation_requests_.size());
+    for (const auto &request : presentation_requests_)
+        if (const auto *audio = std::get_if<StartupAudioRequest>(&request)) result.push_back(*audio);
+    // 兼容出口明确消费并丢弃其余所有输出，不把资源槽7强转为普通声音ID。
+    presentation_requests_.clear(); return result;
 }
 std::vector<int> StartupApplication::take_sound_requests() {
     std::vector<int> result;
-    result.reserve(audio_requests_.size());
+    result.reserve(presentation_requests_.size());
     const auto requests = take_audio_requests();
     for (const auto &request : requests)
         result.push_back(request.id);
@@ -601,8 +650,9 @@ std::vector<int> StartupApplication::take_sound_requests() {
 }
 std::string StartupApplication::save_world() {
     if (!world_ || page_ != Page::world || clear_) return "当前不能保存世界";
-    if (!audio_requests_.empty()) return "应用声音输出尚未消费，不能捕获普通存档";
-    auto committed = save_startup_application_slot(paths_.root, storage_, storage_.records,
+    if (!presentation_requests_.empty()) return "应用声音输出尚未消费，不能捕获普通存档";
+    const auto records = system_records_candidate();
+    auto committed = save_startup_application_slot(paths_.root, storage_, records,
         draft_.slot, StartupSaveKind::manual, *world_);
     if (!committed.snapshot) return committed.error;
     storage_ = std::move(*committed.snapshot); cleanup_pending_ = committed.cleanup_pending;
@@ -618,17 +668,18 @@ std::string StartupApplication::install_loaded(StartupWorldLoadResult loaded, in
     }
     candidate.state_.cash_peak = storage_.records.cash_peak;
     candidate.state_.cash_peak_village = storage_.records.cash_village;
-    auto records = storage_.records;
+    candidate.state_.system_completion_mode = live_settings_.high_speed;
+    auto records = system_records_candidate();
     records.last_slot = slot;
-    auto audio = audio_requests_;
+    auto audio = presentation_requests_;
     auto output = candidate.take_audio_requests();
     audio.insert(audio.end(), output.begin(), output.end());
-    audio.push_back({StartupAudioOperation::replace_bgm,
+    audio.emplace_back(StartupAudioRequest{StartupAudioOperation::replace_bgm,
                     candidate.state_.active_task && candidate.state_.task.encounter ? 2 : 1});
     auto committed = commit_startup_application_records(paths_.root, storage_, records);
     if (!committed.snapshot) return committed.error;
     storage_ = std::move(*committed.snapshot); cleanup_pending_ = committed.cleanup_pending;
-    audio_requests_ = std::move(audio);
+    presentation_requests_ = std::move(audio);
     world_ = std::move(candidate); draft_.slot = slot; page_ = Page::world;
     clear_.reset(); clear_rows_.reset(); clear_id_.reset(); decorations_.clear(); record_frame_.reset();
     title_menu_.save_menu.reset(); title_menu_.confirmation.reset(); title_menu_.external.reset(); return {};
@@ -684,10 +735,10 @@ std::string StartupApplication::update_clear(bool confirm) {
     if (!result.candidate) return "通关演出状态拒绝";
     s.page_counters.at(id)=result.candidate->counter;s.page_phases.at(id)=result.candidate->stage;
     if (!result.finished_pulse) {
-        auto audio=audio_requests_;auto output=candidate.take_audio_requests();
+        auto audio=presentation_requests_;auto output=candidate.take_audio_requests();
         audio.insert(audio.end(),output.begin(),output.end());
         clear_rows_ = std::move(rows); clear_ = result.candidate; clear_id_ = id;
-        audio_requests_=std::move(audio);
+        presentation_requests_=std::move(audio);
         world_ = std::move(candidate);
         return {};
     }
@@ -703,18 +754,18 @@ std::string StartupApplication::update_clear(bool confirm) {
             return "通关收尾脚本失败";
     }
     s.scripts.executing_page.reset();
-    auto records = storage_.records;
+    auto records = system_records_candidate();
     if (result.candidate->new_record) {
         records.high_score = result.candidate->sum; records.score_village = s.scripts.village_name;
         records.trophy = result.candidate->trophy;
     }
-    auto audio = audio_requests_;
+    auto audio = presentation_requests_;
     auto output = candidate.take_audio_requests();
     audio.insert(audio.end(), output.begin(), output.end());
     auto committed = commit_startup_application_records(paths_.root, storage_, records);
     if (!committed.snapshot) return committed.error;
     storage_ = std::move(*committed.snapshot); cleanup_pending_ = committed.cleanup_pending;
-    audio_requests_ = std::move(audio); world_ = std::move(candidate);
+    presentation_requests_ = std::move(audio); world_ = std::move(candidate);
     clear_.reset(); clear_rows_.reset(); clear_id_.reset(); return {};
 }
 } // namespace dungeon_village_prototype

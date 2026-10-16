@@ -70,8 +70,9 @@ std::string StartupApplication::apply_title_request_candidate(std::uint64_t id, 
             page_ = Page::title;
             error = load_world(intent.slot, static_cast<StartupSaveKind>(intent.row)); break;
         case StartupTitleIntentKind::hide_record: {
+            const auto records = system_records_candidate();
             auto committed = hide_startup_application_slot(paths_.root, storage_,
-                storage_.records, intent.slot, static_cast<StartupSaveKind>(intent.row));
+                records, intent.slot, static_cast<StartupSaveKind>(intent.row));
             if (!committed.snapshot) error = committed.error;
             else {
                 // 下游没有可能失败的业务；真正系统成功后仅移动已分配候选。
@@ -182,7 +183,7 @@ std::string StartupApplication::return_to_title() {
             candidate.title_menu_.root_id = title_menu_.next_id;
             candidate.title_menu_.next_id = title_menu_.next_id+1;
             candidate.draft_.slot = storage_.records.last_slot;
-            candidate.audio_requests_.push_back({StartupAudioOperation::replace_bgm,0});
+            candidate.queue_title_settings();
             candidate.page_ = Page::title;
         } else if (title_menu_.external) {
             Request request; request.kind = Kind::return_external;
@@ -210,6 +211,7 @@ std::string StartupApplication::refresh_title_storage() {
             // 只重绑跨局纪录镜像，保留旧世界的资金、实体、随机与历史，不加载其它玩家世界。
             candidate.world_->state_.cash_peak = candidate.storage_.records.cash_peak;
             candidate.world_->state_.cash_peak_village = candidate.storage_.records.cash_village;
+            candidate.world_->state_.system_completion_mode = candidate.live_settings_.high_speed;
         }
         candidate.title_menu_ = {};
         candidate.title_menu_.root_id = title_menu_.next_id;

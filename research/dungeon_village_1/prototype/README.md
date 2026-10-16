@@ -24,7 +24,8 @@
 | `steam_text_reveal` | TextLayout渐显／快进／完成、blink及复位数值候选；Source逐次供墙钟、两次应用帧与末尾共同门槛。普通块预算保留隐藏消费、UTF-16前缀及纵视口／测宽资格；高度查询分别保持全块浮点高度、独立32位预测时间／逐块截整和首块行高，空目录交真实字体fallback请求。不实现排块／字形或新增持久状态；[时钟](../ui/STEAM_FONT_CONSUMER.md#渐显时钟复位与完成资格)、[块预算](../ui/STEAM_FONT_CONSUMER.md#textlayout渐显块的测宽)、[高度](../ui/STEAM_FONT_CONSUMER.md#内容高度下一高度与行高并非同一查询) |
 | `steam_text_layout` | 完整_make排块主干：四层Font交接、14TAG、组合／整词、重复真实测宽、行定位、源范围重建和共享栈清理。后端显式供原字体、语言／文化解析及pic注册宽，结果不改渐显长度、时钟或Owner；尚无原Unity／研究窗口绑定；[完整入口与边界](../ui/STEAM_FONT_CONSUMER.md#完整扫描入口尾部与维护消费者) |
 | `steam_subform_update` | 一次真实获准Update的共同前段候选：双钟、等待早返、重画、jingle、22／21／23及本页分派原序；后继成功才安装，不执行平台声音／SEB或新增持久状态；[共同调度合同](../ui/INPUT_RENDER_REQUESTS.md#steam公共subform单轮页面钟手形与待发jingle) |
-| `steam_config_skin` | 设置12四行皮肤／键盘候选及setter有序后继：区分P12／P13、J3／J4，声音改值去重与画质同值重绘；仅交属性／声音／Canvas请求，不写文件或代替应用联合提交；[设置合同](../ui/STEAM_INTERACTIONS.md#游戏设置与标题平台按钮) |
+| `startup_world_config`、`startup_application_config` | 设置12四行选择／双步钟、跨局即时值与系统3联合提交、失败回滚及完整恢复；实际平台执行独立，[持久合同](PERSISTENCE.md#设置12的跨局权威与系统格式3待确认) |
+| `steam_config_skin`、`steam_config_update` | 设置12四行皮肤／键盘候选及setter有序后继：区分P12／P13、J3／J4，声音改值去重与画质同值重绘；纯层交属性／声音／Canvas请求，应用层沿上列模块联合提交；[设置合同](../ui/STEAM_INTERACTIONS.md#游戏设置与标题平台按钮) |
 | `steam_dialogue_skin`／`steam_event_skin`／`steam_news_skin` | 对话0有序纯请求，事件11及人物解锁59完整局部皮肤／严格Owner桥，报纸15真实排版观测的页数／输入／绘制纯计划；11／59接正常研究窗口，59读取当前职业／武器，不创建到访实体；报纸尚无专用Owner或精确恢复；[页面及限制](../ui/PAGES.md#steam脚本事件11报纸15与等待16) |
 | `steam_cursor_skin` | 虚拟光标的按下图资格、原SEB两帧、平台坐标补偿和恢复缩放／混合的有序纯计划；不合成Touch或推进平台状态；[原输入与绘制合同](../ui/STEAM_INTERACTIONS.md#虚拟屏幕光标模式位置与合成touch) |
 | `steam_touch_commands` | 已准入组件的公共按键／属性写入及箭头反馈、主菜单切换与解除标记纯请求；列表／滚动使用SteamTouchFlow逐请求临时续体，等真实Set完成再取下一观测；保留触发边沿、绑定目标、查询短路、扩展原序与顶页截获，不执行OS命中、Canvas或业务；[公共输入合同](../ui/STEAM_INTERACTIONS.md#公共触摸分派与请求边界) |

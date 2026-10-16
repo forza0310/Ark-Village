@@ -1,3 +1,4 @@
+#include "support/application_fixture.hpp"
 #include "dungeon_village_prototype/startup_application_replay.hpp"
 #include "dungeon_village_tools/archive.hpp"
 #include "startup_application_replay_wire.hpp"
@@ -148,7 +149,7 @@ std::vector<StartupAudioRequest> take(StartupApplication &app,const std::vector<
     return actual;
 }
 Driver initialize(StartupApplication &app) {
-    good(app.error()); good(app.request_new_game(0)); good(app.start_game());
+    good(app.error()); good(app.request_new_game(0)); good(start_application_fixture_game(app));
     take(app,{0,1}); good(app.save_world()); good(app.return_to_title()); take(app,{0});
     apply(app,confirm()); apply(app,confirm()); apply(app,touch(9,2));
     need(app.title_menu().confirmation && app.title_menu().confirmation->selection==1,
@@ -172,7 +173,7 @@ std::vector<StartupAudioRequest> step(StartupApplication &app,Driver &d) {
     case 7: apply(app,consume()); break;
     case 8: apply(app,consume()); break;
     case 9: apply(app,confirm()); break;
-    case 10: good(app.start_game()); break;
+    case 10: good(start_application_fixture_game(app)); break;
     case 11: good(app.save_world()); break;
     case 12: good(app.return_to_title()); break;
     case 13: apply(app,confirm()); break;

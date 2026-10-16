@@ -93,9 +93,26 @@ class StartupWindowHost {
             throw std::runtime_error(result.error.empty()?"表现提交缺少计划":result.error);
         return std::move(*result.plan);
     }
-    StartupWindowUpdate update(bool clear_confirm = false,const StartupCommerceItemInput *commerce_input = nullptr) {
-        return std::visit([clear_confirm,commerce_input](auto &owner) -> StartupWindowUpdate {
+    StartupWindowUpdate update(bool clear_confirm = false,
+            const StartupCommerceItemInput *commerce_input = nullptr,
+            const StartupConfigInput *config_input = nullptr) {
+        return std::visit([clear_confirm,commerce_input,config_input](auto &owner) -> StartupWindowUpdate {
             if constexpr (std::is_same_v<std::decay_t<decltype(owner)>, StartupApplication>) {
+                if (config_input) {
+                    if (clear_confirm || commerce_input)
+                        throw std::runtime_error("设置整轮输入不能与计分确认或商会输入合并");
+                    if (!owner.world() || owner.page() != StartupApplicationPage::world)
+                        throw std::runtime_error("设置整轮输入需要活动世界raw12");
+                    const auto &pages = owner.world()->state().scripts.pages;
+                    const auto page = std::find_if(pages.rbegin(), pages.rend(),
+                        [](const auto &p) { return p.lifecycle != 4; });
+                    if (page == pages.rend() || page->kind != ref::WorldScriptPageKind::raw_page ||
+                        page->legacy_page != 12)
+                        throw std::runtime_error("设置整轮输入只能提交给活动raw12");
+                    // 本命令已包含公共+专属主钟，不能再调用owner.update重复推进。
+                    checked(owner.input_config_page(page->id, *config_input));
+                    return {true};
+                }
                 if (clear_confirm) {
                     if (!owner.world() || owner.page() != StartupApplicationPage::world)
                         throw std::runtime_error("计分确认需要活动世界raw17");
@@ -109,6 +126,7 @@ class StartupWindowHost {
                 checked(owner.update(clear_confirm,commerce_input));
                 return {true};
             } else {
+                if (config_input) throw std::runtime_error("独立Session没有应用设置与系统保存消费者");
                 if (clear_confirm) throw std::runtime_error("独立Session没有应用计分确认消费者");
                 const auto result = owner.update(false,commerce_input);
                 return {result.candidate.has_value(), result.error, result.scene_error, result.world_error};
@@ -119,6 +137,19 @@ class StartupWindowHost {
     void set_speed(int value) { setting([&](auto &owner) { return owner.set_speed(value); }); }
     void set_page_confirm_held(bool value) {
         setting([&](auto &owner) { return owner.set_page_confirm_held(value); });
+    }
+    // 同一Owner唯一领取；独立模式仅将原声音请求转为相同variant，不新增输出队列。
+    std::vector<StartupApplicationPresentationRequest> take_presentation_requests() {
+        return std::visit([](auto &owner) -> std::vector<StartupApplicationPresentationRequest> {
+            if constexpr (std::is_same_v<std::decay_t<decltype(owner)>, StartupApplication>)
+                return owner.take_presentation_requests();
+            else {
+                std::vector<StartupApplicationPresentationRequest> result;
+                result.reserve(owner.state().sound_requests.size()); // 先分配，失败不领取原输出。
+                for (const auto &request : owner.take_audio_requests()) result.emplace_back(request);
+                return result;
+            }
+        }, owner_);
     }
     std::vector<StartupAudioRequest> take_audio_requests() {
         return std::visit([](auto &owner) { return owner.take_audio_requests(); }, owner_);
@@ -176,6 +207,26 @@ class StartupWindowHost {
     }
     StartupWorldRuntimeError input_manual_page(std::uint64_t page, const StartupManualInput &input) {
         return command([&](auto &owner) { return owner.input_manual_page(page, input); });
+    }
+    StartupWorldRuntimeError set_config_value(std::uint64_t page, int row, int value) {
+        return command([&](auto &owner) {
+            if constexpr (std::is_same_v<std::decay_t<decltype(owner)>, StartupApplication>)
+                return owner.set_config_value(page, row, value);
+            else {
+                last_error_ = "独立Session没有系统设置Owner，不能执行设置setter";
+                return StartupWorldRuntimeError::invalid_page;
+            }
+        });
+    }
+    StartupWorldRuntimeError set_config_selection(std::uint64_t page, int selection) {
+        return command([&](auto &owner) {
+            if constexpr (std::is_same_v<std::decay_t<decltype(owner)>, StartupApplication>)
+                return owner.set_config_selection(page, selection);
+            else {
+                last_error_ = "独立Session没有系统设置Owner，不能改变设置行选择";
+                return StartupWorldRuntimeError::invalid_page;
+            }
+        });
     }
     StartupWorldRuntimeError input_information_page(std::uint64_t page, const StartupInformationInput &input) {
         return command([&](auto &owner) { return owner.input_information_page(page, input); });

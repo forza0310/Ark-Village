@@ -124,7 +124,7 @@ Options parse_options(int argc, char **argv) {
           options.inspect_page != "world-shop-details" && options.inspect_page != "world-equipment-info" && options.inspect_page != "world-magic-pot" &&
           options.inspect_page != "world-facility-bonuses" && options.inspect_page != "world-facility-details" && options.inspect_page != "world-facility-items" && options.inspect_page != "world-facility-improvement" && options.inspect_page != "world-facility-result" && options.inspect_page != "world-menu" &&
           options.inspect_page != "world-adventure" && options.inspect_page != "world-village" &&
-          options.inspect_page != "world-save" && options.inspect_page != "world-manual" && options.inspect_page != "world-manual-about" &&
+          options.inspect_page != "world-save" && options.inspect_page != "world-config" && options.inspect_page != "world-manual" && options.inspect_page != "world-manual-about" &&
           options.inspect_page != "world-system" && options.inspect_page != "world-information" && !information_inspection)))
         throw std::invalid_argument("共同世界不能与旧夹具混用；快照检查支持 "
                                     "visitor/world-month/world-active/task-team/world-award/"
@@ -206,7 +206,7 @@ Options parse_options(int argc, char **argv) {
              options.inspect_page == "world-shop-details" || options.inspect_page == "world-equipment-info" || options.inspect_page == "world-magic-pot" ||
              options.inspect_page == "world-facility-bonuses" || options.inspect_page == "world-facility-details" || options.inspect_page == "world-facility-items" || options.inspect_page == "world-facility-improvement" || options.inspect_page == "world-facility-result" || options.inspect_page == "world-menu" ||
              options.inspect_page == "world-adventure" || options.inspect_page == "world-village" ||
-             options.inspect_page == "world-save" || options.inspect_page == "world-manual" || options.inspect_page == "world-manual-about" ||
+             options.inspect_page == "world-save" || options.inspect_page == "world-config" || options.inspect_page == "world-manual" || options.inspect_page == "world-manual-about" ||
              options.inspect_page == "world-system" || options.inspect_page == "world-information" || information_inspection)))))
         throw std::invalid_argument("页面检查需要有界窗口及对应模式的页面名称");
     if ((options.load_file || options.save_file) &&
@@ -217,8 +217,8 @@ Options parse_options(int argc, char **argv) {
     if(options.application_root || options.application_new || options.application_load) {
         if(!options.application_root || (!options.application_new && !options.application_load) ||
            !options.world || options.fixture || options.check || options.load_file || options.save_file ||
-           (!options.inspect_page.empty() && options.inspect_page!="world-save" && options.inspect_page!="world-manual" && options.inspect_page!="world-manual-about"))
-            throw std::invalid_argument("应用窗口需--world、研究根及唯一new/load栏位；仅允许保存或说明的有界诊断");
+           (!options.inspect_page.empty() && options.inspect_page!="world-save" && options.inspect_page!="world-config" && options.inspect_page!="world-manual" && options.inspect_page!="world-manual-about"))
+            throw std::invalid_argument("应用窗口需--world、研究根及唯一new/load栏位；仅允许保存、设置或说明的有界诊断");
         // 先验证全部参数和路径，再构造可能写系统目录的应用。
         const auto allowed=std::filesystem::canonical(DUNGEON_VILLAGE_RESEARCH_WORK_ROOT);
         const auto root=std::filesystem::canonical(*options.application_root);

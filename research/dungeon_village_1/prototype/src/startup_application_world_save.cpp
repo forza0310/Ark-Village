@@ -11,7 +11,7 @@ std::string StartupApplication::update_save_page(std::uint64_t page) {
     const auto view = inspect_startup_world_save_page(world_->state(), page);
     if (!view || view->stage != 1) return "保存请求状态非法";
     if (world_->state().scene.framework_paused) return {}; // 暂停不消费请求或推进页面。
-    if (!audio_requests_.empty()) return "应用声音输出尚未消费，不能处理保存请求";
+    if (!presentation_requests_.empty()) return "应用声音输出尚未消费，不能处理保存请求";
     try {
         auto exported = prepare_startup_world_save_export(world_->state(), page);
         if (!exported) return "保存页不满足稳定导出资格";
@@ -27,7 +27,8 @@ std::string StartupApplication::update_save_page(std::uint64_t page) {
         success_session.state_ = std::move(*success);
         static_assert(std::is_nothrow_move_assignable_v<StartupApplicationStorageSnapshot>);
         static_assert(std::is_nothrow_move_assignable_v<std::optional<StartupWorldRuntimeSession>>);
-        auto committed = save_startup_application_slot(paths_.root, storage_, storage_.records,
+        const auto records = system_records_candidate();
+        auto committed = save_startup_application_slot(paths_.root, storage_, records,
             draft_.slot, StartupSaveKind::manual, saved_session);
         if (!committed.snapshot) {
             // 文件尚未发布才生成失败文本。原有效目录、业务及随机保留；

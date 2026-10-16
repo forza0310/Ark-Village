@@ -3,7 +3,9 @@
 
 #include <charconv>
 #include <iostream>
+#include <sstream>
 #include <string_view>
+#include <type_traits>
 
 namespace app = dungeon_village_prototype;
 namespace {
@@ -34,6 +36,7 @@ void help() {
                  "  overwrite yes|no            回答覆盖询问\n"
                  "  village 后续全串 / name 后续全串  编辑村名／主角名\n"
                  "  sex 0|1 / cancel / start    性别／取消配置／开始\n"
+                 "  environment W H            显式新局应用尺寸；未设置时不能开始\n"
                  "  records / next / previous   纪录入口／翻页\n"
                  "  left/right/up/down/activate/back  当前标题菜单的具名键请求\n"
                  "  consume / frame-menu       父页消费返回结果／一次显式菜单动画请求\n"
@@ -42,7 +45,7 @@ void help() {
                  "  confirm                     确认栈顶页，计分页合并为一次更新脉冲\n"
                  "  save / load 0|1             显式保存当前世界／标题读入指定栏\n"
                  "  quit                        退出，不自动保存\n"
-                 "声音请求在本CLI中领取一次并打印操作与编号，不播放音频。\n";
+                 "有序表现请求在本CLI领取一次并打印，不执行音频／Canvas。\n";
 }
 const char *page_name(app::StartupApplicationPage page) {
     switch (page) {
@@ -55,11 +58,25 @@ const char *page_name(app::StartupApplicationPage page) {
     return "非法页";
 }
 void sounds(app::StartupApplication &application) {
-    const auto requests = application.take_audio_requests();
+    const auto requests = application.take_presentation_requests();
     if (!requests.empty()) {
-        std::cout << "声音请求（已领取，仅打印）：";
-        for (const auto &request : requests)
-            std::cout << " [" << static_cast<int>(request.operation) << ',' << request.id << ']';
+        std::cout << "表现请求（已领取，仅打印）：";
+        for (const auto &request : requests)std::visit([](const auto &value) {
+            using T=std::decay_t<decltype(value)>;
+            if constexpr(std::is_same_v<T,app::StartupAudioRequest>)
+                std::cout<<" [audio,"<<static_cast<int>(value.operation)<<','<<value.id<<']';
+            else if constexpr(std::is_same_v<T,app::SteamConfigVolume>)
+                std::cout<<" [volume,"<<value.channel<<','<<value.volume<<']';
+            else if constexpr(std::is_same_v<T,app::SteamConfigMute>)
+                std::cout<<" [mute,"<<value.channel<<','<<value.mute<<']';
+            else if constexpr(std::is_same_v<T,app::SteamConfigLinearFilter>)
+                std::cout<<" [filter,"<<value.enabled<<']';
+            else if constexpr(std::is_same_v<T,app::SteamConfigResourceSound>)
+                std::cout<<" [resource-sound,"<<value.index<<']';
+            else if constexpr(std::is_same_v<T,app::SteamConfigSetterAction>)
+                std::cout<<" [config-action,"<<static_cast<int>(value)<<']';
+            else std::cout<<" [application-action,"<<static_cast<int>(value)<<']';
+        },request);
         std::cout << '\n';
     }
 }
@@ -185,6 +202,14 @@ int main(int argc, char **argv) {
             int number{};
             if (command == "village") error = application.edit_village(text);
             else if (command == "name") error = application.edit_main_name(text);
+            else if (command == "environment") {
+                app::StartupNewGameEnvironment environment;
+                std::string extra;
+                std::istringstream values(text);
+                if(!(values>>environment.width>>environment.height)||(values>>extra))
+                    error="环境必须恰有两个正int32尺寸";
+                else error=application.set_new_game_environment(environment);
+            }
             else if (command == "new" || command == "load" || command == "sex") {
                 if (!integer(std::string_view(text), number) || number < 0 || number > 1)
                     error = "参数必须是0或1";

@@ -236,7 +236,12 @@ struct StartupApplicationReplayAccess {
         need(valid_startup_world_human_profile({a.draft_.village,0,false}) &&
              valid_startup_world_human_profile(a.draft_.main_character),"草稿文字或人物非法");
         need(validate_startup_system_records(a.storage_.records).empty(),"系统记录非法");
-        need(a.audio_requests_.empty(),"应用音频输出尚未消费");
+        need(a.live_settings_.bgm>=0 && a.live_settings_.bgm<=5 &&
+             a.live_settings_.se>=0 && a.live_settings_.se<=5,"运行音量设置非法");
+        need(!a.new_game_environment_ || (a.new_game_environment_->width>0 &&
+             a.new_game_environment_->height>0),"新局客户区尺寸非法");
+        // 运行设置可以尚未写回系统记录；high_speed保留原完整signed32值。
+        need(a.presentation_requests_.empty(),"应用表现输出尚未消费");
         need(validate_startup_title_menu(a.title_menu_).empty(),"标题菜单关系非法");
         need(a.valid_record_page(),"活动纪录缺钟、非法钟或非纪录残留钟");
         const auto &menu=a.title_menu_;
@@ -288,6 +293,7 @@ struct StartupApplicationReplayAccess {
              "计分三元组不完整");
         if(a.world_) {
             const auto &s=a.world_->state();
+            need(s.system_completion_mode==a.live_settings_.high_speed,"系统高速即时权威与世界镜像不同");
             need(!s.scripts.executing_page && s.sound_requests.empty(),"世界未到已消费输出的完整轮末");
             need(s.cash_peak==a.storage_.records.cash_peak && s.cash_peak_village==a.storage_.records.cash_village,
                  "系统资金纪录与世界运行镜像不同");
@@ -344,7 +350,12 @@ struct StartupApplicationReplayAccess {
         }
         write_menu(out,a.title_menu_);
         out.boolean(a.record_frame_.has_value()); if(a.record_frame_)out.i32(*a.record_frame_);
-        out.u32(0); // 已消费的一次性音频输出；非空捕获在validate明确拒绝。
+        out.i32(a.live_settings_.bgm);out.i32(a.live_settings_.se);out.i32(a.live_settings_.high_speed);
+        out.boolean(a.new_game_environment_.has_value());
+        if(a.new_game_environment_) {
+            out.i32(a.new_game_environment_->width);out.i32(a.new_game_environment_->height);
+        }
+        out.u32(0); // 已消费的一次性表现输出；非空捕获在validate明确拒绝。
         return std::move(out.bytes);
     }
     static StartupApplication restore(const Bytes &bytes, StartupApplicationPaths paths,
@@ -385,7 +396,9 @@ struct StartupApplicationReplayAccess {
         }
         a.title_menu_=read_menu(in);
         if(in.boolean())a.record_frame_=in.i32();
-        need(in.u32()==0,"应用捕获边界含未消费音频");
+        a.live_settings_.bgm=in.i32();a.live_settings_.se=in.i32();a.live_settings_.high_speed=in.i32();
+        if(in.boolean())a.new_game_environment_=StartupNewGameEnvironment{in.i32(),in.i32()};
+        need(in.u32()==0,"应用捕获边界含未消费表现输出");
         a.cleanup_pending_=false;
         in.end(); validate(a); return a;
     }

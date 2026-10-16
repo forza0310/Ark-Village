@@ -19,8 +19,15 @@ struct StartupSaveDirectoryEntry {
 };
 bool operator==(const StartupSaveReference &, const StartupSaveReference &);
 bool operator==(const StartupSaveDirectoryEntry &, const StartupSaveDirectoryEntry &);
+// 跨局系统设置；高速按非0开放，保留原有符号整数，不归一成布尔。
+struct StartupSystemSettings {
+    std::int32_t bgm{3}, se{3}, high_speed{};
+};
+bool operator==(const StartupSystemSettings &, const StartupSystemSettings &);
+bool operator!=(const StartupSystemSettings &, const StartupSystemSettings &);
 // 应用跨局纪录独立于单世界；继承列表保留原序，未知可选段原样往返。
 struct StartupSystemRecords {
+    StartupSystemSettings settings;
     int last_slot{};
     std::int64_t high_score{}, cash_peak{};
     std::string score_village{"没有记录"}, cash_village{"没有记录"};

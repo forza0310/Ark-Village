@@ -1,10 +1,10 @@
 # 应用目录与单一提交点
 
-当前接受世界语义5／应用语义8、系统版本2，并严格核字段与数据身份；Driver身份由各场景独立验证。系统2四目录及应用存储五项检查、文件动作三进程一致性见[标题批历史交付](../VERIFICATION.md#标题四目录统一输出与完整文件视图2026-10-09)，当时语义不作为当前加载资格。方案沿[已确认设计](../verification/title-menu-application-design/README.md)，原版事实另见[存档规则](../rules/PERSISTENCE.md)。以下是维护协议，不是APK／Steam原档格式。
+当前接受世界语义5／应用语义8、系统版本3，并严格核字段与数据身份；Driver身份由各场景独立验证。系统2四目录及应用存储五项检查、文件动作三进程一致性见[标题批历史交付](../VERIFICATION.md#标题四目录统一输出与完整文件视图2026-10-09)，当时语义不作为当前加载资格。方案沿[已确认设计](../verification/title-menu-application-design/README.md)，原版事实另见[存档规则](../rules/PERSISTENCE.md)。以下是维护协议，不是APK／Steam原档格式。
 
 ## 实际模块与布局
 
-[公开接口](include/dungeon_village_prototype/startup_application_storage.hpp)提供读取、提交系统、保存／隐藏／加载指定逻辑记录，以及一致文件视图捕获。[实现](src/startup_application_storage.cpp)管理路径、Windows短租约、不可变世界字节与提交；应用只保留一份`StartupApplicationStorageSnapshot`作为系统权威，不另复制可分歧的目录。Session仍是唯一世界Owner。
+[公开接口](include/dungeon_village_prototype/startup_application_storage.hpp)提供读取、提交系统、保存／隐藏／加载指定逻辑记录，以及一致文件视图捕获。[实现](src/startup_application_storage.cpp)管理路径、Windows短租约、不可变世界字节与提交；应用只保留一份`StartupApplicationStorageSnapshot`作为磁盘观察，不另复制可分歧的目录。运行设置由应用`live_settings`权威持有，可与已存`records.settings`不同；这种脏值不是磁盘冲突，保存候选合入live而旧观察保持到真正提交成功。Session仍是唯一世界Owner。
 
 调用方显式提供已存在的research/work下专用根：
 
@@ -18,9 +18,9 @@
 
 应用不会扫描worlds猜目录，也不会以世界当前日期修补系统目录。相同字节可被多项引用；同一摘要的长度／用途声明冲突拒绝。当前只接受世界语义5及匹配来源的稳定normal载荷；旧语义明确拒绝，不在加载时重算后继续。raw14已接真实菜单手动保存及结果确认，中断行读取可用明确条件文件验证；**原自动中断的轮内产生者尚未接线**，不能把轮末normal档称作真实自动中断档。
 
-## 系统版本2与观察身份
+## 系统版本3与观察身份
 
-`AVRSYS01`版本2仍使用固定dataset身份；必需分区1保存最后栏位、最高分／资金、村名和奖杯，分区2保存原序设施G／职业p的大端short字节串，新增必需分区3保存uint64修订和固定四条目录。未知可选段保留原序、版本及字节；未知必需段、旧系统1、截断或坏摘要拒绝，不迁移、不从旧两栏补目录。
+`AVRSYS01`版本3仍使用固定dataset身份；必需分区1保存最后栏位、最高分／资金、村名和奖杯，分区2保存原序设施G／职业p的大端short字节串，分区3保存uint64修订和固定四条目录，分区4保存J3／J4／J9三个小端signed32。音量严格0至5，J9保留完整signed32，不限制为0／1；默认3／3／0。未知可选段保留原序、版本及字节；未知必需段、旧系统1–2、截断或坏摘要拒绝，不迁移、不替旧系统补默认设置。
 
 `StartupApplicationStorageSnapshot`保存records、missing和实际system文件摘要。真正缺失时只生成默认内存records，missing为true，摘要为规范默认system字节的SHA；这与“已存在且内容恰为默认”仍是不同观察身份。既有文件的合法分区顺序可以不同，摘要对应实际源字节，不强制重新编码后取hash。
 
@@ -34,7 +34,7 @@
 
 隐藏只更新所选日期为-1，保留原blob和其他三条目录。重新开始同意只进入配置；真正开始与加载仅提交last_slot等系统候选，不覆盖原世界文件。应用公开`save_world()`保存当前栏手动项，正常世界仍须满足稳定主场景和输出已消费要求。
 
-`refresh_title_storage()`是冲突后的显式接纳入口：只在非活动世界／无计分时重读目录，换新根页ID并退休旧子页和返回载荷，不重放失败意图。它保留草稿、背景及随机；有保留世界时只重绑跨局资金纪录镜像，不把其他栏世界加载进去。读取失败保留原状态，刷新不发标题B0或激活G。
+`refresh_title_storage()`是冲突后的显式接纳入口：只在非活动世界／无计分时重读目录，换新根页ID并退休旧子页和返回载荷，不重放失败意图。它保留草稿、背景、随机、运行设置及新局环境；新磁盘设置不会暗中覆盖live，有保留世界时只重绑跨局纪录及运行J9镜像，不把其他栏世界加载进去。读取失败保留原状态，刷新不发标题B0、激活G或设置输出。
 
 ## 文件视图、规模与检查归属
 

@@ -162,14 +162,45 @@ Load读取资源组1的记录10并重建定义目录，且依原序Dispose／重
 
 Language.ClearCache（`80CA00`）只在锁内清翻译缓存列表；其Updated回调RemoveExpiredTranslateCache（`81DCA0`）
 同样是缓存寿命消费者，不充作ResourceManager重建回调。原翻译表／语言目录已由SetLanguagePack变更，
-实际逐字文本及字体重选仍须由各消费者认证。Boot的注册／版本提示／错误模式、线程完成与平台加载异常、
-Finish失败或目标仍在栈的分支不由上述普通成功链穷尽；已发生的偏好、旧页退休和资源替换不保证回滚。
+实际逐字文本及字体重选仍须由各消费者认证。下面仅补Boot加载失败与局部线程交接，不穷尽注册／版本提示、
+平台线程实现、Finish失败或目标仍在栈的分支；已发生的偏好、旧页退休和资源替换不保证回滚。
+
+#### 加载异常、错误保留与线程交接
+
+Run的实际异常表沿入口SEH指向的FuncInfo `11084C10`核对：try state6覆盖
+`101FE8F8–101FE91A`的Load及随后SaveSystem，接异常处理器`101FEA8A`，不是从反汇编邻近位置猜捕获范围。
+其System.Exception检查槽`110F5E20`独立解为该类型；匹配后经`101FE820–101FE87D`把原异常存
+`e_ +0xA4`，将`error_ +0x9C`设为槽`110F9ADC`的精确字面`読み込みに失敗しました。`，
+再调用ChangeState(3)，清`th_ +0xA0`并返回。这里没有继续执行正常尾部的ChangeState(4)，
+也没有撤回Load此前的资源替换或系统写入。ChangeState只按状态装软标签、写state_并清frame_wait，
+不是重新加载或失败事务。
+
+Update在`101FF606–101FF609`把state3分到错误UI：按当前GameForm是否存在使用平台Dialog或SubForm，
+后继RemoveAllForms；特定按键还能把保留的e_交SpForm。该错误分支没有切Title。
+只有state4进入已有的Title／版本提示分支；不能将后台线程返回或th_为空当成成功资格。
+Init2的`101FAFA2–101FAFC5`仅清error_与regist_，整方法未清e_；本批所核正常Run尾及Update同样未清它。
+因此复用Boot时旧异常对象可能仍被持有，直到新异常覆盖；不把清错误文字写成完整释放失败结果。
+
+其它异常不能并入这一结论：注册请求自己的捕获改用GetHttpErrorText；注册返回解析的捕获
+`101FEB8C`只把bowWait置0，不写加载错误，仍可进入state4，而Update会再次解析该返回字节。
+外层state1–11的异常续体`101FEC6E–101FECB0`清th_后重抛，未保证已经安装error_或state3。
+这批不把上述路径认证为平台网络容错或所有异常均安全停页。
+
+Init2实际构造JThread并在`101FB00A`调用Start；JThread的JRunnable构造
+`849FB0`绑定委托、创建System.Threading.Thread，Start `849E90`将非空内部线程交Thread.Start。
+Run正常尾先在`101FEC49`发布state4，随后`101FEC5D`清th_；Update只读state_，不等th_清空，
+也未调用Join／IsAlive。Run的短等待是bowWait=5后循环JThread.Sleep(50)，每轮减计数，确认pulse可提早清零；
+Update普通尾另有Sleep(50)。JThread.Sleep `849E20`转Thread.Sleep(int)，随后检查共享abort_并可请求当前线程Abort，
+不是等待加载线程完成的Join。Boot这两个方法和ChangeState中的状态／引用交接是普通字段读写，
+未见局部Monitor、Interlocked或显式屏障；引用写屏障不等于已核线程完成协议。
+原生调度、内存可见性及ThreadAbort运行时语义仍在SDK边界，不照搬成无同步C++共享状态，
+也不由清th_宣称底层线程已回收或全部加载副作用已原子发布。
 
 ## 交付与后继
 
 产品可消费以上语言输入区分、条件资源目录顺序、中文包身份及失败／保存副作用边界。当前不提供完整多语言播放器、字体替代、已观测当前中文文字全集或可操作语言页；也没有改变APK业务、C++Owner、应用快照格式或发布素材。
 
-后继最小研究是：翻译注册者、LanguageConfig／locale选择的实际输入、Boot加载异常与平台线程完成、平台取消结果产生者、最终Graphics文字基线与Unity／插件字形回退。上述正常Boot→Title资源重建不再列为整体未知；外部窗口可记录当前语言菜单和同一标题的文字／Logo，但不得为验证本合同自行覆盖用户语言偏好。
+后继最小研究是：翻译注册者、LanguageConfig／locale选择的实际输入、平台线程可见性与回收、平台取消结果产生者、最终Graphics文字基线与Unity／插件字形回退。上述正常Boot→Title资源重建及局部加载失败分支不再列为整体未知；外部窗口可记录当前语言菜单和同一标题的文字／Logo，但不得为验证本合同自行覆盖用户语言偏好。
 
 ## 静态来源范围
 

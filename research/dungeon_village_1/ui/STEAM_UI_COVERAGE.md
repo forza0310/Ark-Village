@@ -39,9 +39,9 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 
 | 页值 | Steam TYPE名称 | 功能组 | 当前Steam证据／缺口 |
 | --- | --- | --- | --- |
-| 0 | TALK | 对话 | 自然对话截图只证角色，未绑定TYPE |
+| 0 | TALK | 对话 | 静态：[通用对话](PAGES.md#steam-common-dialog)已核构造、原TextLayout先Frame再快进／换段／Pop、五类speaker与有序绘制；固定两版talk目录next均−1。维护目前确认直接关闭，逐字／分段尚未接；原窗口截图未绑定TYPE，字体／OS动态另验 |
 | 1 | DIALOG | 对话 | raw20重开／删除询问的默认否、横向输入、父页结果及局部绘制已核，见[合同](STEAM_SAVE_MENU.md)；其它调用者／原窗口组合仍待逐项 |
-| 2 | DIALOG_CHARA | 对话 | 仅声明；更新／绘制／动态链待逐项 |
+| 2 | DIALOG_CHARA | 对话 | 静态：与1／19共用右→左→确认→取消询问输入；Draw沿默认分派直接返回，无专属人物皮肤。正常产生者未核，见[通用对话](PAGES.md#steam-common-dialog)；不因枚举名补画或因有限扫描断言不可达 |
 | 3 | MAIN_MENU | 菜单 | 静态：缓存重入／目录／NEW／父位置／type0计划已核；维护：真实Owner与任务NEW／建设缓存已接。原字体、整栈输入和虚拟光标仍缺，见[菜单合同](PAGES.md#steam主菜单缓存输入与局部皮肤) |
 | 4 | ADVENTURE_MENU | 菜单 | 静态及维护：可变type1菜单、真实任务入口与父子返回已交付；原OS投递另验，见[菜单合同](PAGES.md) |
 | 5 | DEVELOP_MENU | 菜单 | 仅声明；更新／绘制／动态链待逐项 |
@@ -57,8 +57,8 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 15 | NEWS | 事件／系统 | 仅声明；更新／绘制／动态链待逐项 |
 | 16 | WAIT | 事件／系统 | 仅声明；更新／绘制／动态链待逐项 |
 | 17 | CLEARPOINT | 事件／系统 | 静态：[计分规则](../rules/STARTUP_RECORDS.md#通关六类计分固定apk及steam有限交叉)与[Steam局部Draw](STARTUP_SKIN.md#steam计分17的独立绘制交叉)已核，独立主钟／阶段钟、六类空单位及Touch2分开。维护：正式Steam计划／应用只读桥／窗口、wait0自然入口的独立主钟和联合恢复已接，Init切BGM0一次；通用非零wait仍未接。动态：通关页、快速分支资格及真实输入仍缺 |
-| 18 | ENDING | 事件／系统 | 仅声明；更新／绘制／动态链待逐项 |
-| 19 | NO_MYMENU | 事件／系统 | 仅声明；更新／绘制／动态链待逐项 |
+| 18 | ENDING | 事件／系统 | 保留空内容类型：无专属Init；通用Update后进入Update2落空返回true，仍有通用钟／SEB／待发jingle。Draw在10353243–10353262显式直接返回；不是17计分页的别名。正常产生入口未核，不因直调用扫描未命中便认定全程序不可达 |
+| 19 | NO_MYMENU | 事件／系统 | 具名MakeNoMymenu工厂创建消息／是非窗，改type19；与1／14共用消息绘制，与1／2共用选项输入，确认“是”后还请求SITE_URL浏览器。只核静态消费者，未核正常工厂调用入口，不开放外链或凭名字猜用途；见[通用对话](PAGES.md#steam-common-dialog) |
 | 20 | SAVE_MENU | 事件／系统 | 三项原序、raw1父子消费、取消清结果、SEB2/3／测宽／触摸窄矩形已核，见[合同](STEAM_SAVE_MENU.md)；已有S040不代替全链动态，维护文件17命令另验 |
 | 21 | BUILD | 建设目录 | Init／Update、绘制／marker／滚动、85定义pattern、资源安装／旋转准入静态已核；完整目录、Owner选择／首行及双钟、同轮输入／首次说明、21→74恢复／退休已接并短验；有序皮肤及条件／真实新局返回图例可用。最终OS输入、全框架及落点后续另验 |
 | 22 | QUEST_SELECT | 任务 | [局部合同](PAGES.md#steam任务选择与募集22–24)：目录／原任务名／NEW／费用／宝箱等级及软6场景5→4已接；静态／维护短测与原窗口动态分开，字体／OS和特殊subQuest待证 |
@@ -137,7 +137,7 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 95 | GET_OBJ_FROM_AWARD | 新局／奖励／解锁／事件 | 静态：共93／94绘制模板的七类图文、SetClip替换及r11择一后缀已核。维护：真实r/s/t只读皮肤、等待／40领取及拒绝已接，范围见[合同](../rules/ACCOUNTING.md#script-rewards)。动态：原窗口／字体与94其它分支仍缺 |
 | 96 | GET_MYHOME | 新局／奖励／解锁／事件 | [局部合同与维护计划](STEAM_HUMAN_DETAIL.md#human-reward-followups)：Mapchip2、独立副钟、人物抛物、mentalUp／jingle5、严格Owner桥及窗口已接；短拒绝／恢复／退休已验，完整字体与原OS动态待证 |
 | 97 | TP_LOCKOFF | 新局／奖励／解锁／事件 | Steam静态：第一次实际Update即清人气条锁并Pop，无确认／计数门槛已核；维护人气奖励后继已接。未由此认证Draw或完整人气演出动态，见[人气合同](../rules/ACCOUNTING.md#人气100条奖励与超过10000后的重放) |
-| 98 | TAX_INCOME | 新局／奖励／解锁／事件 | Steam页面仍仅声明；APK自动重新合计／其它收入／清全人物F/G合同及维护Owner事务已接，无玩家确认。Steam自身Update／Draw及原动态仍待核，见[税收合同](../rules/ACCOUNTING.md) |
+| 98 | TAX_INCOME | 新局／奖励／解锁／事件 | Steam Update2已独立核当前资格重合计→分类4入账→半角G的通知28→完整人物F/G清0→Pop，无确认或页内计数门槛，与APK已维护规则相符。专属Draw沿完整分派直接返回，无需补确认窗；父背景／通知表现分开，跨年产生者与原动态仍待核，见[税收合同](../rules/ACCOUNTING.md#steam98独立更新交叉) |
 | 99 | BOSS_APPEAR | 新局／奖励／解锁／事件 | 产生者134→99及后继已核；Steam自身Init／40确认、129循环／跳跃、aura／烟效及最终页钟帧独立交叉，正式有序皮肤／Owner只读桥和条件例图已接，见[通知合同](PAGES.md#steam-task-notices)。共享scratch附效、原字体及原窗口动态仍缺 |
 | 100 | MANYMONSTER_APPEAR | 新局／奖励／解锁／事件 | 产生者133→100及167守卫已核；Steam19抽Init／原序八行、先Update后40确认及最终页钟帧独立交叉，正式有序皮肤／Owner只读桥和条件例图已接，见[通知合同](PAGES.md#steam-task-notices)。不由Draw重建数组或消费随机，原字体及原窗口动态仍缺 |
 

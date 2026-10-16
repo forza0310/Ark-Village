@@ -133,7 +133,7 @@ Character2.Init（284080）的`10284193–1028421D`显式写objType=0、动画�
 
 **标题纪录返回已核不重Init。** 具名原类型为`form.RankForm`；其Update RVA203420在软标签2命中后于`102034A0`直接转FormManagerBase.Pop（7E7D40），再经7E7D60的UI线程委托7F29E0令子mode4、逆序找到原父；父mode3于`107F2DBC–2DC2`转PREUPDATE1。`_executeInitAndFinish`（7E9360）只有mode0走Init，mode4走Finish／移除；`_execute`（7E98D0）在`107EA297–A309`仅复核同一栈顶、调用PreUpdate并转mode2，PreUpdate（7E7EB0）消费Canvas输入。这里不会把原Title设mode0或再调用Setting。Title.Resume虽有声明，实际入口1EDFA0仅返回true，也不清scratch；不能凭Resume名字补一次初始化。Title.NewGame（20B8E0）明确Push新SubForm91；若91经同一通用Pop恢复Title，同样不重Init，但其具体取消／最终开始分支不由本批通用框架代为认证。
 
-已核一个真实子页writer：RankForm._draw（203660，完整3680字节）在`10203FB3`按当前展示定义的职业／性别图、步帧、dir1和完整页钟调用SetDispPlayerData(action0)，`10203FDC`再传当前武器绘人物。该局部没有直接写dispHuman.objType／haveObj或重新构造它；下一标题演员的五字段setter会覆盖这些预览参数。DrawDispPlayer／SetDrawParam／Draw_human仍沿共享后端写派生数组与旧坐标，不能由Rank局部无直接写者外推其全部传递调用或任意子页历史都保留空效果。因此纪录返回的生命周期已证，全部残留资格仍须按具体writer和附效子树逐项核，不能对返回动作隐式清零。
+已核一个真实子页writer：RankForm._draw（203660，完整3680字节）在`10203FB3`按当前展示定义的职业／性别图、步帧、dir1和完整页钟调用SetDispPlayerData(action0)，`10203FDC`再传当前武器绘人物。该局部没有直接写dispHuman.objType／haveObj或重新构造它；下一标题演员的五字段setter会覆盖这些预览参数。DrawDispPlayer／SetDrawParam／Draw_human仍沿共享后端写派生数组与位置缓存，不能由Rank局部无直接写者外推其全部传递调用或任意子页历史都保留空效果。因此纪录返回的生命周期已证，全部残留资格仍须按具体writer和附效子树逐项核，不能对返回动作隐式清零。
 
 2026-10-16进一步窄核**新Setting的scratch尚未被其它使用者改写**这一前提，沿`Draw_human RVA27BCF0`实际后继闭合下列资格；不外推纪录返回或任意历史。
 

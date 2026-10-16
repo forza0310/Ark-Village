@@ -47,6 +47,38 @@
 第二次扩张及封顶只登记条件组合；固定APK动态、原皮肤和OS输入仍单独认证。
 最终检查数与验收结果统一写入验证入口，不以本页进展替代阶段收口。
 
+<a id="steam-common-dialog"></a>
+
+## Steam通用人物对话与消息
+
+2026-10-16。固定Steam2.56的`MakeTalkForm`、`SubForm.Update`和具名绘制分派作局部静态核对，APK只交叉；没有新增原窗口、原档或OS输入实验。raw0是人物对话，不能套用raw1横向询问，也不能凭raw2枚举名`DIALOG_CHARA`推导人物皮肤。公共居中、隐藏／覆盖资格、翻译和窗框沿[保存消息合同](STEAM_SAVE_MENU.md#raw14保存页的局部皮肤)。
+
+**raw0构造与正文状态。** `MakeTalkForm(msgId,arg,changeType,changeIndex)` VA10315AE0–10315DD1先取`talk[msgId]`，有arg先替换，再按Tab拆：字段1／2为人物类型／索引，各自可由非−1参数覆盖；字段3写`nextTalk +FC`，字段4起为正文数组`+C4`。新页type0、x／y／selection0、段索引`+C8=0`。TextLayout构造参数true／true，区域172×60、颜色(37,35,54)、行距4（`SetLineSpace RVA7429A0`确认偏移`+48`），速度取SubForm静态`+138`；首段先LT再SetText。直接人物文本重载VA10315DE0–10315FE5则将正文按Tab拆段、next置−1，只显式写人物索引；本局部不能替它补未写的人物类型1。
+
+`Update`在VA10321D62–10321D64把raw0送至10327286–1032748E：每轮先TextLayout.Frame，确认Pulse`0x100000`（或既有DEBUG资格且Held`0x40`）后才检查IsEnd。未展开完只Flush，不前进；已展开完先段索引加一，有后段则SetText；全部段结束且next为−1才调用Pop并返回其bool。本页局部没有软键2取消分支，没有固定40／75等等待门槛。换段SetText未再显式调用最初的LT包装，不能把两条调用链合并。
+
+next非−1的保留分支在VA10327380–10327452读取**同一talk数组的next索引**，沿原arg替换后Tab拆，字段1写新的next、字段2起作为正文，段索引归零；不重新建页、不重写speaker。这是运行分支的不同字段消费，**不能据此改初始talk表的字段定义**。现固定APK及Steam日／英文talk各182条，原分隔符`|`分记录，全部字段3均为−1，未见短记录；因此固定目录并未提供进入该后继分支的前提，不把它认证成已在游戏进程使用的对话后继。
+
+原逐字钟不是主页面frame的简单别名：`TextLayout.Frame RVA7CACD0`读`JSystem.CurrentTimeMillis RVA849830`并结合`IApplication.TotalFrames RVA790F60`的同帧补偿；`IsEnd RVA7CB640`以展开量`+28==-1`或达到文本计数`+1C×1000`判完，`Flush RVA7CAC70`设置全展开并调整时间起点。`SetSpeed RVA7CC0B0`还按`Language.Japanese`资格调整速度。上述只认证这些实际消费者，不据此给逻辑tick换秒，完整标签计数／时钟恢复仍须独立处理。
+
+**raw0绘制。** `_draw` VA10353209–1035320B分派至103565AE–10356CB5，顺序为：`DrawWindow(202,122,0,"会話ウィンドウ")`→`DrawBox(27,82,214,159)`→common图片143`wnd_point.png`于(174,169)→正文TextLayout于(37,100)→头像及姓名→`GameView.AddTouch(2)`。最后是无显式矩形重载，不编造OS触区；本局部不画继续箭头或询问按钮。令i在`SubForm.En→Language.English`为真时取1、否则0；此分支临时字号10、末尾恢复，不能外推为全部非日文。三种固定角色及人物／怪物姓名都以TextLayout区域`(53,174+i,120,11)`、anchor34／行距0绘制：
+
+| speaker类型／索引 | 原头像与姓名消费者 |
+| --- | --- |
+| 0／−1 | common SEB87＋图片126，`chara_hishoko01`，frame1于(193,189)；原姓名literal“町村まち子” |
+| 0／2 | common SEB38＋图片173，`chara_pumpkin`，frame1于(193,189)；原姓名literal“ﾊﾟﾝﾌﾟｷﾝ商会” |
+| 0／3 | common SEB95＋图片176，`chara_award01`，frame1于(193,189)；原姓名literal“街協会の大臣” |
+| 1／非负定义ID | 取当前人物职业与性别、当前武器及`GetName`；SetDispChara为action0／step0／dir2并携main counter，DrawDispChara脚底(193,189)、step0；不回退原表出生职业／姓名 |
+| 2／怪物定义ID | 怪物flags含bit4时x188，否则x177，y188／dir2；调用Draw_monster并取怪物名 |
+
+资源索引由现[素材覆盖表](../assets/IMAGE_COVERAGE.json)的Steam common img／seb.inf对应；上述四PNG及三SEB与已发布APK副本字节相同，可沿`assets/original/common/`消费。同素材不等于人物scratch或随机副作用已认证为只读；维护绘制仍须接显式表现请求。原literal只指输入字符串，最终译文／字体沿既有翻译合同，不由表中文字认证中文窗口。
+
+**raw2与raw19边界。** `Update` VA10321CFF–10321D14将1／19／2送到10328261，共用右Repeat→左Repeat→确认→软键2的短路顺序；方向命中立即返回，确认写result=selection后Pop，取消不改初始−1。询问皮肤和按钮触摸复用[raw1合同](STEAM_SAVE_MENU.md#raw1询问皮肤与遮挡)，但绘制分派仅1／14／19合流VA10356DE9。raw2沿`_draw1_1→_draw1_2→_draw1_3→_draw2→_draw2_1→_draw2_2→_draw2_3→_draw2_4`默认分派，最终VA1034C7A6直接返回；本次未找到正常raw2产生者，不能为它补原版头像／消息皮肤或宣称可达。
+
+raw19的`MakeNoMymenu RVA315A70`沿MakeDialog(text,“はい\tいいえ”)再改type19，正常上游调用入口尚未证。确认写结果、Pop之后，VA10328370–103283C0仅在type19且result0时调用OpenBrowser(AppData.SITE_URL)；**没有按Pop返回bool分流**，该支最后返回true，也未把Pop返回值当父页答案。其它结果回通用true尾。这里只登记原保留外链消费者，不在维护产品主动打开网站；调用者结果读取与正常可达性另验。
+
+**维护缺口。** 现`WorldScriptPage`已有人物、替换文本、正文数组和legacy_tag，足够提供raw0窗框／头像／显式当前正文的只读计划；`world_scripts.cpp`的opcode2／3已按初始talk结构保存这些字段。但现通用`acknowledge_startup_world_runtime_page`直接关闭dialogue，没有原“先全文→换段→最终关闭”的消费者，也没有原TextLayout完整展开状态；不能把已有dialogue页存在视为完整操作已还原。本节不新增Owner或持久布局，未把raw2不可达推成删除规则，也未改变原表。
+
 <a id="steam-village-progress"></a>
 
 ## Steam村办、晋级与奖励小窗

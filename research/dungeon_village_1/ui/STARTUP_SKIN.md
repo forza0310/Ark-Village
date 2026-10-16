@@ -138,6 +138,7 @@ Draw读自身`view_ +0x58`宽高，设原点`(trunc((W−240)/2),trunc((H−240)
 Draw实际循环整个名单，`min(count,5)`只参与居中：`x_i=120−trunc((26*min(count,5)−26)/2)+26*i`。
 名单冻结的是定义身份，不冻结绘制时职业／性别／武器；共享显示scratch沿[标题演员合同](STEAM_TITLE_ACTORS.md)。
 `Init`直接置state0并装软标签；未见其重写frame／page，新对象零初值与复用重置不能混称。
+标题正式版选择1的自然入口已另核：`TitleForm.Update 1020C9FC–1020CAC9`以槽`110FE544`（独立解析为RankForm TypeDef4083）调用分配器取得新对象，随后内联建立名单并调用FormBase构造、Push；不是从标题字段取旧实例复用。故这条fresh入口可采用新对象frame／page零初值，不外推任意RankForm.Init重置。
 `cctor RVA2034D0`实建`[0,2]`。`Update RVA203420`全176字节没有base.Update：
 先`frame=(frame+1)%INT_MAX`并写回（`1020342C–1020343A`），再检查state0；非0只返回true，不查询输入。
 正常state0严格短路：先`CheckKeyRepeat(0x10000)`左（`1020344E`），仅左false再

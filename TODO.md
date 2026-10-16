@@ -12,7 +12,7 @@
 - [ ] 普通道具显式输入已获批并接入；2/5/8/22/27已真实购买/强化、完整后继营业及独立冷载。继续补11/23的合法取得与实际使用，月199已知配方2/5分别缺元素总量28/31；[结果与取得边界](docs/stages/B1-playable-prototype.md#campaign-item-stock-gaps)分别记录，不把库存/目录当消费。
 - 历史回执2838条：80个已核分段外补核5个旧格式阶段，配方7完整消费及职业4人物0/1/3已联接；旧来源字段缺失、失败后段和每定义未完环节保留，见[审计](docs/stages/B1-playable-prototype.md#campaign-history-receipt-audit)，不把“有回执”当全覆盖。
 - [ ] 从当前有效父世界月199接续：新显式道具路线在原6分钟预算内补齐配方18严格后继及继续经营/独立冷载，见[本批](docs/stages/B1-playable-prototype.md#campaign-item-stock-gaps)；两条旧197超时保留历史资格，不再等待扩时。32/33完整后继冷载、52实际营业7115G保持；继续1/2/3/37/39等产物，39缺四元素6/0/5/10。17的独立分支资格不改签主线；29未开放，20付款排队不当人气兑现。保留两月现金及图纸预算、40配方与775分母，实际施法不以学习/Q替代。
-- [ ] 4魔法实际施放、投射/延迟伤害等待d4ed6be导入，物理武器另需局部归因，见[研究请求](docs/reference/RESEARCH_REQUESTS.md#spell-consumption-receipts)；Q可用、装配属性及退休现金均不替代实际作用。
+- [ ] 接入d4ed6be法术及239d071物理局部回执，再补实际施放、投射/延迟伤害与武器实战归因，见[研究回应](docs/reference/RESEARCH_REQUESTS.md#spell-consumption-receipts)；Q可用、装配属性及退休现金均不替代实际作用，不再将已交观察接口当作研究缺口。
 - [ ] 继续23职业的显式消费分支和后继。职业0/1/2/3/7已有合法付款、原三阶段、完整后继营业及冷载；木匠/商人效果见[经营效果](docs/stages/B1-playable-prototype.md#campaign-profession-economy)，职业0实收住宅税560G及月148后继见[税收](docs/stages/B1-playable-prototype.md#campaign-profession-tax)。独立培养分支已验真实付费、任务73胜利及月153冷载，两名职业8升9级、职业5升7级；5/6/8/15仍未开放，见[培养](docs/stages/B1-playable-prototype.md#campaign-profession-training)。植物实付、其它职业税收、剩余收费及精通后继待核，不把普通策略跳过标作不可达。
 - [ ] 优先接入正式6cbfdf3的跨年贡献修正：APK按int32回卷及Java转整处理，保留有效身份/奖章/奖励拒绝；先从月167→168失败Owner/随机快照单轮复验，再验玩家经营/授勋/保存冷载，见[研究回应](docs/reference/RESEARCH_REQUESTS.md#award-contribution-overflow)。当前产品尚未修正，职业0的独立跨年前分支通过不替代失败后继认证。
 

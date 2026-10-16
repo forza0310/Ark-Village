@@ -59,10 +59,12 @@ IncomeDecision SteamPotItemPlayer::next(const State &s, std::int64_t reserve) {
     require(reserve >= 0, "negative operating reserve");
     const auto &r = recipe(s, recipe_);
     const auto &p = top(s);
-    if (!crafted_ || (p.legacy_page >= 41 && p.legacy_page <= 47))
-        return next_steam_pot_command(
-            s, r, crafted_, std::max<std::int64_t>(0, s.scene.world.world.ai.accounting.funds() - reserve),
-            next_market_step_, leaving_market_);
+    if (!crafted_ || (p.legacy_page >= 41 && p.legacy_page <= 47)) {
+        const auto available = std::max<std::int64_t>(
+            0, s.scene.world.world.ai.accounting.funds() - reserve);
+        return next_steam_pot_command(s, r, crafted_, std::min<std::int64_t>(10000, available),
+                                      next_market_step_, leaving_market_);
+    }
     if (!armed_) {
         if (!stable(s))
             return {}; // Original notices/dialogues retire before the new use begins.
@@ -153,6 +155,43 @@ void steam_magic_item_contract() {
                 sim::startup_world_state_digest(s) == digest &&
                 rejected([&] { missing.reconcile(s, 5); }),
             "missing materials must retain the same goal without changing Owner/random");
+
+    // A frozen source84 row can remain affordable overall yet exceed this
+    // player's per-material ceiling. Neither planning nor cancellation pays it.
+    auto shop = s;
+    auto prices = *s.rules;
+    shop.rules = &prices;
+    shop.scene.world.world.ai.accounting = ref::PeriodAccounting(30000);
+    for (auto &[id, value] : shop.items)
+        value.inventory = shop.catalog.at({0, id}).inventory = 0;
+    shop.items.at(24).status = shop.catalog.at({0, 24}).status = 1;
+    shop.shop_item_stock.at(24).quantity = 1;
+    shop.scripts.pages.resize(1);
+    auto &offer = shop.scripts.pages.front();
+    offer.kind = ref::WorldScriptPageKind::raw_page;
+    offer.legacy_page = 84;
+    offer.legacy_f = 0;
+    offer.lifecycle = 3;
+    shop.page_counters[offer.id] = shop.page_phases[offer.id] = 0;
+    shop.commerce_pages_initialized.insert(offer.id);
+    shop.commerce_page_data[offer.id] = {0, 0, 0, 0, -1, 0};
+    shop.commerce_page_lists[offer.id] = {24};
+    for (const auto &terms : std::array<std::array<int, 3>, 4>{{
+             {10000, 10000, 1}, {10001, 10000, 0}, {20000, 10000, 0}, {10000, 20001, 0}}}) {
+        prices.items.at(24).commerce_price = terms[0]; // Explicit boundary fixture, not original data.
+        const auto original = sim::startup_world_state_digest(shop);
+        require(sim::inspect_startup_world_commerce_page(shop, offer.id).has_value(),
+                "budget fixture must retain the source84 payload contract");
+        SteamPotItemPlayer player;
+        player.reconcile(shop, 2);
+        const auto selected = player.next(shop, terms[1]);
+        require(selected.command && selected.command->kind == Kind::commerce_action &&
+                    selected.command->commerce_action ==
+                        (terms[2] ? sim::StartupCommerceAction::confirm
+                                  : sim::StartupCommerceAction::cancel) &&
+                    sim::startup_world_state_digest(shop) == original && !player.complete(shop),
+                "material purchases must satisfy both the ceiling and the operating reserve");
+    }
 
     // Both approved ordinary rewards use the existing47 observer and75/76 consumers.
     for (const int id : {2, 5}) {

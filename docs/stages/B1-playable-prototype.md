@@ -1,5 +1,14 @@
 # B1：持续世界产品接入
 
+<a id="campaign-pot-discovery-current"></a>
+## 2026-10-16：配方后继与775项证据索引接续
+
+沿现已批准发现路线，从有效月220连续真实购料、投入及原时间处理至月224；四段225.304/210.451/233.856/234.986秒，分别保存并独立冷载，完整营业月220–223收入69277/48870/48346/73702G。壶经验96→99→103→107→111，末端待料5、元素237/363/342/14，120门槛配方20仍未发现，不能以经验或购料冒充发现/制造。当前父世界为`build/validation/business-liquidity/steam-pot-discover-month-month224-goal-902049aadd1a46be90ce372f35eccb9f/checkpoints/month-224`：现金1718750G高于82700G预留、237点，五星/154750分及phase2/continued_month223；配方37缺暗6，转现设施路线继续，不改变玩家格式、正常存档或研究工作区。月197–224的原回执oracle与冷载联接为`build/validation/research-a9dc1bd-integration/pot-progression-month224-RESULT.json`。
+
+只读索引补入已验月197–224的28个分段，以及另存的25个职业/训练/道具/装备17实际经营分支；分支入口、原父档、槽位逐字节复制、独立冷载和三阶段转职均沿原回执oracle核对，已在旧基线出现的phase不重复计数。原2838条加1647条，现4485条、880份输入/日志复核，新增89种“定义＋阶段”；775分母及原合同引用保持。入口为`build/validation/research-a9dc1bd-integration/coverage-current-79db83b6c69044a9b0327d6be6c09ee2/RESULT.json`及同目录`coverage.json`。36道具都有至少一种回执，职业0/1/2/3/4/7/8已有真实转职阶段；这不是全部道具效果/职业精通/战斗归因完成。旧来源和缺失执行身份保留原资格，不倒填；跨合法分支的first/last只是审计观察引用，不认证最早自然领取时间。
+
+复核并修正本批普通道具协调器漏传的单件10000G材料上限；原三段实际只购买1000G材料，其证据不改签。现budget先保留运行预留，再夹为最多10000G；现campaign合同补10000/10001/20000G及预留差1G边界，原规则表不变。desktop-debug标准139项通过，唯一失败为新增84夹具漏了原模式绑定，补齐合法载荷后最终Debug/Release经营合同分别通过4.43/2.82秒；本次检查只排三个月，既有有效断言保持。记录在`build/validation/research-a9dc1bd-integration/ordinary-items-budget-20261016/`及同根`ordinary-items-budget-desktop-debug-20261016.log`；没有核心接口/CMake/资源变化，不重复headless、窗口或包，CI未运行、不推送。
+
 <a id="campaign-pot-ordinary-items"></a>
 ## 2026-10-16：普通道具制造、真实强化及完整后继
 

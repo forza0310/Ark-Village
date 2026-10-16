@@ -10,8 +10,8 @@
 
 - [ ] 按[全解锁合同](docs/stages/ACTIVE_VILLAGE_PLAN.md#full-unlock-campaign)逐定义覆盖取得、消费、实际效果与后继，保留775分母；代表样例、仅解锁或日期推进不算全覆盖。
 - [ ] 普通道具继续按剩余定义补覆盖：2/5/8/22/27已有真实购买/强化，11/23现已完成合法制造/实际强化、完整后继营业及独立冷载，见[制造接线与结果](docs/stages/B1-playable-prototype.md#campaign-pot-ordinary-items)。药品/魔法书仍沿各自消费者核效果，不能用入壶或仅库存变化替代使用。
-- 历史回执2838条：80个已核分段外补核5个旧格式阶段，配方7完整消费及职业4人物0/1/3已联接；旧来源字段缺失、失败后段和每定义未完环节保留，见[审计](docs/stages/B1-playable-prototype.md#campaign-history-receipt-audit)，不把“有回执”当全覆盖。
-- [ ] 从当前有效父世界月220接续：11/23真实制造/强化及后继、任务80胜利、人物2实际转入职业8均见[最新结果](docs/stages/B1-playable-prototype.md#campaign-pot-ordinary-items)；壶经验96、待料1，四元素48/167/148/0，补37等产物和经验120/150后继，37仍缺暗20。既有29/23/28三防具、39植物70/20、18、32/33、52营业及19→武器24严格冷载保留原证据，17独立分支不改签主线。活动20付款排队不当人气兑现；保留两月现金及图纸预算、40配方与775分母，实际施法不以学习/Q替代，原失败不由新路线改签。
+- 当前索引在原2838条基线上联接月197–224及另存职业/训练/道具/装备分支，现4485条回执，见[当前证据](docs/stages/B1-playable-prototype.md#campaign-pot-discovery-current)；[原历史审计](docs/stages/B1-playable-prototype.md#campaign-history-receipt-audit)、旧来源缺失身份、失败后段和每定义未完环节保留，不把“有回执”当全覆盖。
+- [ ] 从有效月224接续：壶经验111、待料5，元素237/363/342/14；120门槛配方20仍未发现，配方37缺暗6，转原设施路线补制造/领取/实际营业。11/23真实制造/强化与完整后继、19→武器24、29/23/28三防具、39植物70/20、18、32/33、52营业及独立17分支保留原证据；继续补120/150门槛后继。活动20付款排队不当人气兑现；保留两月现金及图纸预算、40配方与775分母，实际施法不以学习/Q替代，原失败不由新路线改签。
 - [ ] 接入d4ed6be法术及239d071物理局部回执，再补实际施放、投射/延迟伤害与武器实战归因，见[研究回应](docs/reference/RESEARCH_REQUESTS.md#spell-consumption-receipts)；Q可用、装配属性及退休现金均不替代实际作用，不再将已交观察接口当作研究缺口。
 - [ ] 继续23职业的显式消费分支和后继。职业0/1/2/3/7/8已有合法付款、原三阶段、完整后继营业及冷载；木匠/商人效果见[经营效果](docs/stages/B1-playable-prototype.md#campaign-profession-economy)，职业0实收住宅税560G见[税收](docs/stages/B1-playable-prototype.md#campaign-profession-tax)。历史培养分支见[原结果](docs/stages/B1-playable-prototype.md#campaign-profession-training)；主线原职业8人物6/9现均10级、职业8已开放，0/1/3/7实际转入，见[最新后继](docs/stages/B1-playable-prototype.md#campaign-pot29-equipment)。5/6/15仍未开放；最早精通领取页、植物实付、其它职业税收及剩余精通效果待核，不把普通策略跳过标作不可达。
 

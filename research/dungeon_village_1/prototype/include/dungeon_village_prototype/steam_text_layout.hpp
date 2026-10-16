@@ -115,4 +115,50 @@ struct SteamTextSetResult {
 // 不执行公开Replace/平台文案转换、不创建Owner/存档，也不代替实例Draw重排。
 std::optional<SteamTextSetResult> steam_set_prepared_text(
     const SteamTextSetInput &,SteamTextLayoutBackend &,std::uint32_t relayout_budget=65536);
+
+struct SteamTextReplaceWord {
+    std::optional<std::u16string> old_word,new_word;
+};
+enum class SteamTextComparison { current_culture,current_culture_ignore_case };
+struct SteamConsoleTextResult {
+    bool translated{}; // 私有SetText忽略该返回值，实际消费out_text。
+    std::optional<std::u16string> out_text;
+};
+// 固定Steam String.GetHashCode RVA8E8770：双5381累加器交替取UTF-16，遇NUL止，
+// 低32位回卷后按有符号返回；不外推其它.NET/Unity版本，也不是文件身份摘要。
+std::int32_t steam_text_string_hash(const std::u16string &);
+class SteamTextInputBackend {
+public:
+    virtual ~SteamTextInputBackend()=default;
+    virtual std::int32_t hash_code(const std::u16string &text) {return steam_text_string_hash(text);}
+    virtual SteamConsoleTextResult translate_console_text(const std::u16string &)=0;
+    virtual bool contains(const std::u16string &,const std::u16string &,SteamTextComparison)=0;
+    virtual bool starts_with(const std::u16string &,const std::u16string &,SteamTextComparison)=0;
+    virtual bool ends_with(const std::u16string &,const std::u16string &,SteamTextComparison)=0;
+};
+struct SteamPreparedText {
+    std::u16string text;
+    std::int32_t hash{}; // Replace结果的hash，不是console/ff最终串的hash。
+};
+// 公开null归空→当前字典枚举原序的ordinal替换→真实hash→console-out→ff重组。
+// words必须是当前替换表的实际稳定枚举，不得因未找到writer就假设为空；
+// 本接口不伪造原字典并发修改行为或安装共享text_/hash_，成功后交prepared SetText。
+// 各串<=4096 UTF-16单元、表<=4096项、替换<=65536次为维护预算；
+// helper原null键/值不替换，实际消费的空旧词会不前进，明确拒绝而非返回假成功。
+// console的bool忽略，null out明确拒绝；后端异常原样传播，已执行后端副作用不回滚。
+std::optional<SteamPreparedText> steam_prepare_text(
+    const std::optional<std::u16string> &,const std::vector<SteamTextReplaceWord> &words,
+    SteamTextInputBackend &);
+
+struct SteamTextDrawReflow {
+    float scale_ratio{};
+    std::optional<SteamTextLayoutResult> replacement; // 空表示保持原块，不是清空块数组。
+};
+// 实例Draw的比例重排门。相等（含正负零）不调用后端，保留旧比例；
+// 不等时先用Graphics比例准备一次_make，空串也保留原前宽/request资格。
+// 只返回实际替换的块等字段；原渐显长度/钟、adjust、框高及draw计数由调用者保留。
+// 实际更换的新比例NaN/无限或维护预算外明确拒绝，原版先改比例再排、异常不保证回滚。
+// 不是完整实例Draw/GPU，也不调用SetText的缩字循环或末尾复位。
+std::optional<SteamTextDrawReflow> steam_reflow_text_for_draw(
+    const SteamTextLayoutInput &current,float graphics_scale,SteamTextLayoutBackend &);
 } // namespace dungeon_village_prototype

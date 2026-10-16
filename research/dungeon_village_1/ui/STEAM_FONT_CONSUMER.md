@@ -212,6 +212,10 @@ raw15的`pagesNum_`在MakeNews的10315980–15A22按当时实测高度、行距�
 
 `SetSize` RVA7CC090和`SetGraphicsScale` RVA7CBF50仅写字段；`SetFontSize` RVA7CBEB0／`SetFont` RVA7CBEE0修改或复制Font并清adjust标记，都不调用重排。相同比例Draw不会仅因这些setter自动重排；真正重排仍是SetText或上述Draw比例变化。精确恢复须保留构造期页数、当前布局Font及旧块Font／比例状态的不同来源，不能改字号后顺便重算总页数，也不能把两种字号观测合成一个输入；此处只确认源行为，不新增持久化设计或字形认证。
 
+同模块`steam_reflow_text_for_draw`现接这个比例门：相等（含正负零）不读字体或调用后端，保留旧比例；不等才以新比例调用一次`steam_make_text_blocks`，仅返回新的块／宽／request／overArea候选。无替换载荷表示保留旧块，不能解释成清空。它不进入SetText的首排后备份／自适应／长度尾，不清渐显，不改框高或推进draw钟；后续实际绘制成功与draw钟仍归调用者。新NaN／无限／预算外比例明确拒绝，旧NaN到有限新比例仍能准备重排；维护拒绝不冒称原版无序比较也拒绝。报纸`103554DB`与说明`10355937`是实际已核的实例Draw调用点，窗口后端和分页Owner仍独立待接。
+
+`SetTextCheckSize(int)` RVA7CC110不是缩字入口：`107CC149–158`仅在Config.DEBUG为真时把参数写`textCheckSize_ +68`，false不写；不调用排块或SetText。Draw在`107C9E61–9FEA`只把它用于红色诊断双框：checkSize非0、autoScale、宽高均非−1且有首块才继续；阈值−1改取布局Font.usedSize，首块usedSize非−1、不同于布局字号且严格小于阈值时，画`(x−2,y−2,w+4,h+4)`及`(x−3,y−3,w+6,h+6)`。Draw不重查DEBUG，不能把这个字段改作适配阈值或把request字号代替usedSize。固定DLL可执行区未见此setter的直接E8调用，不排除内联／间接或反射；无需为诊断另造Owner字段。
+
 ### 普通宽溢出、显式换行与块提交
 
 #### 完整扫描入口、尾部与维护消费者
@@ -247,7 +251,19 @@ Steam私有SetText的非空／空串共同上游还包括字号准备与自适�
 
 各次重排沿用首次排块保存的requestFontSize，不反复清−1。`107CC699–71A`只对最终块重算渐显length：pic／btn各1，其余按实际UTF-16长度作int32累加；`107CC71A–729`最后把布局Font指针换为首排后的备份，不再次排块或重算长度。循环曾修改的旧Font对象可能仍被外部引用；换回指针不代表那些对象恢复，也没有认证异常路径的回滚。这一循环是Steam局部合同，不倒填为固定APK已有同一实现。
 
-现同模块的`steam_set_prepared_text`接上述外层，复用真实排块器并返回最终块、备份Font、框高、adjust标志及渐显数值尾候选；公开Replace、TranslateConsoleText及运行标签转换仍须由真实上游供给。调用方须将输入Font隔离为本次私有呈现候选，函数会按源序修改它，不额外复制以伪造原调用时点。缺少实际消费的比例、零除、不能表示的数值、坏Font或排块拒绝均不返回成功候选；已执行后端操作不回滚。取得首排后备份后，失败时尽力换回一次，失败清理不重试，这是维护策略。每次调用的重排预算为1…65536（含首排），超限拒绝、不夹成某个字号或假装适配成功；它不是原循环上限，也不新增持久字段、平台字体缓存或长期重排历史。实例Draw仍只调用排块重排，不借此重算渐显长度或做一次SetText复位。
+现同模块的`steam_set_prepared_text`接上述外层，复用真实排块器并返回最终块、备份Font、框高、adjust标志及渐显数值尾候选；公开入口的准备见下节，真实当前语言／平台表及文化比较仍由后端供给。调用方须将输入Font隔离为本次私有呈现候选，函数会按源序修改它，不额外复制以伪造原调用时点。缺少实际消费的比例、零除、不能表示的数值、坏Font或排块拒绝均不返回成功候选；已执行后端操作不回滚。取得首排后备份后，失败时尽力换回一次，失败清理不重试，这是维护策略。每次调用的重排预算为1…65536（含首排），超限拒绝、不夹成某个字号或假装适配成功；它不是原循环上限，也不新增持久字段、平台字体缓存或长期重排历史。实例Draw仍只调用排块重排，不借此重算渐显长度或做一次SetText复位。
+
+#### 公开文本准备、平台文案与hash身份
+
+公开SetText `107CC19B–1A0`先将null归空，再于`107CC1C0`调用`TextLayout.Replace(text,null)`；对其返回串取真实虚GetHashCode（`107CC1CE–1DD`），连同该串交私有入口。Replace RVA7CB860先执行StringUtil的args替换，args=null时原样返回，再按当前`replaceTable_`枚举次序逐项替换。helper RVA86A390的IndexOf采用Ordinal=4，每次替换后从`命中位+newStr.Length`继续，不递归扫描刚写入的新串；任一参数null原样返回，空oldStr没有已核终止保证。表在cctor创建空字典，`SetReplaceWord` RVA7CC020使用set_Item写；有限直接调用未命中不能证明当前运行表永空，也不认证字典并发枚举安全。
+
+固定DLL的`System.String.GetHashCode`与`GetLegacyNonRandomizedHashCode`同为RVA8E8770；虚槽2正对应上述调用的`class+CC`。`108E8770–87BF`完整实现无调用／seed读取／平台分派：h1=h2=5381，交替取UTF-16单元执行`h=wrap32(h×33) XOR unit`，任一单元为0即停，最后低32位返回`h1+h2×0x5D588B65`。它不读String.Length，因此`A\0B`与`A`同hash，不能把hash当作正文唯一身份。维护`steam_text_string_hash`按无符号回卷与显式signed转换实现，作为准备后端默认方法；独立源算式字面oracle包含空串371857150、AB为−331290873、中文1842450162和代理对1126268081。此算法只认证固定样本，不外推其它.NET／Unity版本，也不代替文件SHA或存档身份。
+
+私有入口`107CC28A`忽略`Language.TranslateConsoleText`的bool，消费out串；null out走源异常，不归空。console转换 RVA820860要求console表非null且Count>0、Joystick.IsShown为真，否则原样输出。启用时保存开头`<po=...>`到首个`>`的原前缀，用默认Regex `(<po=[a-z]+>|</po>)`移除标签作lookup key；先查原key，失败且末尾CR才TrimEnd(CR)重查。之后无论已否命中均计算`CRLF→<br>`再`LF→<br>`的key；仅此前失败才查新key及其末CR裁尾版本。命中才输出前缀加表值，未命中输出原input，不泄漏lookup归一串。空key的Last<char>等原异常资格未被维护字典默认值修补。表的具名生产者在`MakeBuiltInMultiLangTable` RVA8172E0，当前语言／实际表值及Joystick运行门仍须真实供给。
+
+随后`107CC29D–2B3`以CurrentCultureIgnoreCase=1检测`<ff>`。命中才按**精确**`<ff>`与`<FF>`两个string分隔（RemoveEmptyEntries，不Trim），不把混合`<Ff>`统一成分隔符。每个保留片，非首且既不StartsWith(br,ignoreCase)也不StartsWith(LF)才前加br；非末且既不EndsWith(br,ignoreCase)也不EndsWith(LF)才后加br，片间追加小写ff。连续／首尾空片丢弃，仅ff可变空；混合大小写可触发入口而保留在整片中。`107CC4A6–4BF`先安装最后text，再写入**公开Replace结果hash**，不会为console／ff结果重算hash；没有同串相等早退，之后才复位渐显与排块。
+
+维护`steam_prepare_text`接null归空、实际稳定枚举的ordinal替换、后端真实hash与console-out、文化查询和上述ff重组，再把text交`steam_set_prepared_text`。接口不代替Console表／Regex／Joystick后端，不用std::hash或假恒等转换；hash字段须保留其原串身份，不能用于认定最终正文相等。文本／单词4096 UTF-16单元、表4096项、替换65536次为维护预算；空oldStr、不前进／超预算／null out拒绝，后端首错原样传播，不安装共享text或hash。逐次替换串／分片仅本次持有，不添加持久缓存或原始代码副本。
 
 Init RVA7CB430是另一组赋值：重建Font，text设空、清渐显时间／位置、width_/height_设−1，并在107CB570将textWidth清0；**没有写textBlocks或length_**。新构造RVA7CD4A0先在107CD4CC–4E3建零长块数组，再内联同Init赋值，不能由新对象的零状态推断对旧对象再Init会联合清空所有字段。若仅重复Init而未SetText／重排，旧块及length仍在、GetHeight仍读那些块，但pos0暂不消费文字；没有据此认证原页面真的执行这种复用链。固定APK `aa.a(String)`（744行起）同样归一null、置文本／pos、调用f，再清总长度并按块求和；f的空串早退留下旧m宽，b()按空块返回高度0。APK构造初始化空块／m0，但没有此Steam独立Init入口；其失真的非空换行循环不参与上述小型调用链结论。
 

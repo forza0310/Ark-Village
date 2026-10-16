@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <functional>
 #include <limits>
@@ -546,11 +547,250 @@ void prepared_text_failures(Checks &check) {
               "非法预算在任何后端调用前拒绝，不建立备份或成功候选");
     }
 }
+
+// 这里只对ASCII样本提供具名文化夹具；hash是宿主给定回执，不实现.NET散列。
+class TextInputFixture final:public SteamTextInputBackend {
+public:
+    struct Query {
+        std::string operation;
+        std::u16string text,needle;
+        SteamTextComparison comparison;
+        bool operator==(const Query &other) const {
+            return operation==other.operation&&text==other.text&&needle==other.needle&&comparison==other.comparison;
+        }
+    };
+    explicit TextInputFixture(std::u16string expected):hash_input(std::move(expected)) {}
+    const std::u16string hash_input;
+    static constexpr std::int32_t receipt=-2000000077;
+    std::optional<SteamConsoleTextResult> console;
+    std::vector<std::string> calls;
+    std::vector<Query> queries;
+    std::string fail_operation;
+    std::int32_t hash_code(const std::u16string &text) override {
+        call("hash");
+        if(text!=hash_input)throw std::runtime_error("公开文字夹具：hash必须读取原序Replace完成的串");
+        return receipt;
+    }
+    SteamConsoleTextResult translate_console_text(const std::u16string &text) override {
+        call("console");
+        if(text!=hash_input)throw std::runtime_error("公开文字夹具：console必须读取原序Replace完成的串");
+        return console?*console:SteamConsoleTextResult{false,text};
+    }
+    bool contains(const std::u16string &text,const std::u16string &needle,SteamTextComparison comparison) override {
+        query("contains",text,needle,comparison);
+        return compared(text,comparison).find(compared(needle,comparison))!=std::u16string::npos;
+    }
+    bool starts_with(const std::u16string &text,const std::u16string &needle,SteamTextComparison comparison) override {
+        query("starts",text,needle,comparison);
+        const auto a=compared(text,comparison),b=compared(needle,comparison);
+        return a.size()>=b.size()&&a.compare(0,b.size(),b)==0;
+    }
+    bool ends_with(const std::u16string &text,const std::u16string &needle,SteamTextComparison comparison) override {
+        query("ends",text,needle,comparison);
+        const auto a=compared(text,comparison),b=compared(needle,comparison);
+        return a.size()>=b.size()&&a.compare(a.size()-b.size(),b.size(),b)==0;
+    }
+private:
+    void call(const char *operation) {
+        calls.emplace_back(operation);
+        if(fail_operation==operation)throw LayoutBackendFailure{operation};
+    }
+    void query(const char *operation,const std::u16string &text,const std::u16string &needle,
+               SteamTextComparison comparison) {
+        call(operation);queries.push_back({operation,text,needle,comparison});
+    }
+    static std::u16string compared(std::u16string text,SteamTextComparison comparison) {
+        if(comparison==SteamTextComparison::current_culture_ignore_case)
+            for(auto &unit:text)if(unit>=u'A'&&unit<=u'Z')unit=static_cast<char16_t>(unit+(u'a'-u'A'));
+        return text;
+    }
+};
+
+void public_text_preparation(Checks &check) {
+    const auto ignore=SteamTextComparison::current_culture_ignore_case;
+    const auto culture=SteamTextComparison::current_culture;
+    TextInputFixture null_backend(u"");const auto empty=steam_prepare_text({}, {},null_backend);
+    check(empty&&empty->text.empty()&&empty->hash==TextInputFixture::receipt&&
+              null_backend.calls==std::vector<std::string>{"hash","console","contains"}&&
+              null_backend.queries==std::vector<TextInputFixture::Query>{{"contains",u"",u"<ff>",ignore}},
+          "公开null先归空，仍读取实际hash、console和ff查询；空文案不是省略上游的成功");
+    struct ReplaceCase {
+        std::u16string input,expected;
+        std::vector<SteamTextReplaceWord> words;
+    };
+    const std::vector<ReplaceCase> replacements{
+        {u"ab",u"Y",{{u"ab",u"X"},{u"X",u"Y"}}},
+        {u"ab",u"X",{{u"X",u"Y"},{u"ab",u"X"}}},
+        {u"AAAA",u"AAAAAAAA",{{u"A",u"AA"}}},
+        {u"aAA",u"axx",{{u"A",u"x"}}},
+        {u"A",u"",{{u"A",u""}}},
+        {u"A",u"A",{{{},std::u16string(4097,u'x')},{std::u16string(4097,u'x'),{}},{u"",{}}}}
+    };
+    for(const auto &c:replacements) {
+        TextInputFixture backend(c.expected);const auto p=steam_prepare_text(c.input,c.words,backend);
+        check(p&&p->text==c.expected&&p->hash==TextInputFixture::receipt&&
+                  backend.calls==std::vector<std::string>{"hash","console","contains"},
+              "替换按实际枚举原序跨项串联，单项不递归新串、Ordinal区分大小写、允许删空且null键值先跳过");
+    }
+    TextInputFixture converted(u"after-replace");converted.console=SteamConsoleTextResult{false,u"console-out"};
+    const auto result=steam_prepare_text(u"before",{{u"before",u"after-replace"}},converted);
+    check(result&&result->text==u"console-out"&&result->hash==TextInputFixture::receipt&&
+              converted.calls==std::vector<std::string>{"hash","console","contains"}&&
+              converted.queries.front().text==u"console-out",
+          "hash先于console且保留Replace串回执；console返回false仍实际消费out，不给最终串重算hash");
+    struct FfCase {std::u16string input,expected;};
+    const std::array<FfCase,7> ff{{
+        {u"<ff>A<FF>",u"A"},{u"<ff><FF>",u""},
+        {u"A<ff><ff>B",u"A<br><ff><br>B"},{u"A<Ff>B",u"A<Ff>B"},
+        {u" <ff> ",u" <br><ff><br> "},
+        {u"A<ff>B<ff>C",u"A<br><ff><br>B<br><ff><br>C"},
+        {u"<Ff><ff>A<FF><fF>",u"<Ff><br><ff><br>A<br><ff><br><fF>"}
+    }};
+    for(const auto &c:ff) {
+        TextInputFixture backend(c.input);const auto p=steam_prepare_text(c.input,{},backend);
+        check(p&&p->text==c.expected&&p->hash==TextInputFixture::receipt&&
+                  backend.queries.front()==TextInputFixture::Query{"contains",c.input,u"<ff>",ignore},
+              "ff入口ignorecase、分隔却只认精确ff/FF；首尾连续空片移除，不Trim，混合大小写片保留原文");
+    }
+    struct EdgeCase {
+        std::u16string input,expected;
+        std::vector<TextInputFixture::Query> queries;
+    };
+    const std::array<EdgeCase,3> edges{{
+        {u"A<BR><ff><bR>B",u"A<BR><ff><bR>B",{
+            {"contains",u"A<BR><ff><bR>B",u"<ff>",ignore},
+            {"ends",u"A<BR>",u"<br>",ignore},{"starts",u"<bR>B",u"<br>",ignore}}},
+        {u"A\n<ff>\nB",u"A\n<ff>\nB",{
+            {"contains",u"A\n<ff>\nB",u"<ff>",ignore},
+            {"ends",u"A\n",u"<br>",ignore},{"ends",u"A\n",u"\n",culture},
+            {"starts",u"\nB",u"<br>",ignore},{"starts",u"\nB",u"\n",culture}}},
+        {u"A<br> <ff> <br>B",u"A<br> <br><ff><br> <br>B",{
+            {"contains",u"A<br> <ff> <br>B",u"<ff>",ignore},
+            {"ends",u"A<br> ",u"<br>",ignore},{"ends",u"A<br> ",u"\n",culture},
+            {"starts",u" <br>B",u"<br>",ignore},{"starts",u" <br>B",u"\n",culture}}}
+    }};
+    for(const auto &c:edges) {
+        TextInputFixture backend(c.input);const auto p=steam_prepare_text(c.input,{},backend);
+        check(p&&p->text==c.expected&&backend.queries==c.queries,
+              "片尾先于后片开头查询：br忽略大小写命中即短路LF，否则LF为CurrentCulture；空格不Trim或跨过");
+    }
+}
+
+void public_text_rejection_and_faults(Checks &check) {
+    TextInputFixture null_out(u"A");null_out.console=SteamConsoleTextResult{true,{}};
+    check(!steam_prepare_text(u"A",{},null_out)&&null_out.calls==std::vector<std::string>{"hash","console"},
+          "console真值不能将null out伪装成功，拒绝前已消费hash与console且不继续文化查询");
+    TextInputFixture large_out(u"A");large_out.console=SteamConsoleTextResult{false,std::u16string(4097,u'x')};
+    check(!steam_prepare_text(u"A",{},large_out)&&large_out.calls==std::vector<std::string>{"hash","console"},
+          "console实际out超4096拒绝，不在超限串上继续ff查询");
+    const std::vector<std::vector<SteamTextReplaceWord>> rejected_words{
+        {{u"",u"x"}},{{u"A",std::u16string(4097,u'x')}},
+        {{std::u16string(4097,u'x'),u"A"}},std::vector<SteamTextReplaceWord>(4097)
+    };
+    for(const auto &words:rejected_words) {
+        TextInputFixture backend(u"A");
+        check(!steam_prepare_text(u"A",words,backend)&&backend.calls.empty(),
+              "实际空旧词及已消费超限键值、超限表在后端前拒绝，不夹限或返回原文凑成功");
+    }
+    TextInputFixture oversized(u"");
+    check(!steam_prepare_text(std::u16string(4097,u'A'),{},oversized)&&oversized.calls.empty(),
+          "原输入超过4096在后端前拒绝");
+    TextInputFixture growth(u"");
+    check(!steam_prepare_text(std::u16string(4096,u'A'),{{u"A",u"AA"}},growth)&&growth.calls.empty(),
+          "替换途中增长超预算即拒绝，不能截成4096再给hash");
+    for(const int entries:std::array<int,2>{16,17}) {
+        const std::u16string text(4096,u'A'),expected(4096,static_cast<char16_t>(u'A'+entries));
+        TextInputFixture backend(expected);std::vector<SteamTextReplaceWord> words;
+        for(int i=0;i<entries;++i)
+            words.push_back({std::u16string(1,static_cast<char16_t>(u'A'+i)),
+                             std::u16string(1,static_cast<char16_t>(u'A'+i+1))});
+        const auto p=steam_prepare_text(text,words,backend);
+        check(entries==16?(p&&p->text==expected&&p->hash==TextInputFixture::receipt):(!p&&backend.calls.empty()),
+              "真实唯一旧key枚举A到B到C串联：65536次边界通过，第65537次在后端前拒绝");
+    }
+    std::u16string expanded;for(int i=0;i<512;++i)expanded+=u"A<ff>";expanded+=u"A";
+    TextInputFixture ff_budget(expanded);
+    check(!steam_prepare_text(expanded,{},ff_budget)&&
+              ff_budget.calls.front()=="hash"&&ff_budget.calls[1]=="console"&&ff_budget.queries.size()>1,
+          "ff插入换行后的最终串同样受4096预算约束，失败不能交部分重组候选");
+    for(const auto *operation:{"hash","console","contains","ends","starts"}) {
+        TextInputFixture backend(u"A<ff>B");backend.fail_operation=operation;
+        bool exact=false;
+        try {(void)steam_prepare_text(u"A<ff>B",{},backend);}
+        catch(const LayoutBackendFailure &failure) {exact=failure.operation==operation;}
+        check(exact&&std::count(backend.calls.begin(),backend.calls.end(),operation)==1,
+              "真实hash/console/文化查询抛错原样传播且不重放，不把平台失败包装成成功原文");
+    }
+}
+
+void draw_scale_reflow(Checks &check) {
+    auto same=input(u"A");same.font={};same.scale_ratio=1.F;
+    FixtureBackend untouched;const auto unchanged=steam_reflow_text_for_draw(same,1.F,untouched);
+    check(unchanged&&unchanged->scale_ratio==1.F&&!unchanged->replacement&&untouched.calls.empty(),
+          "同Graphics比例不读取缺失Font或调用排版后端，返回无替换而非伪造新空块");
+    for(const bool negative:std::array<bool,2>{false,true}) {
+        auto zero=input(u"A");zero.font={};zero.scale_ratio=negative?-0.F:0.F;
+        FixtureBackend backend;const auto p=steam_reflow_text_for_draw(zero,negative?0.F:-0.F,backend);
+        check(p&&!p->replacement&&std::signbit(p->scale_ratio)==negative&&backend.calls.empty(),
+              "正负零相等不重排，也不把旧scale符号覆盖成当前Graphics的零符号");
+    }
+    auto changed=input(u"A");changed.scale_ratio=1.F;changed.request_font_size=99;
+    changed.previous_text_width=42.F;changed.auto_scale=true;changed.height=1.F;
+    FixtureBackend changed_backend;const auto next=steam_reflow_text_for_draw(changed,2.F,changed_backend);
+    check(next&&next->scale_ratio==2.F&&next->replacement&&
+              next->replacement->blocks.size()==1&&next->replacement->text_width==12.F&&
+              next->replacement->request_font_size==99&&
+              FixtureBackend::font(next->replacement->blocks[0].font)->used==24&&
+              std::count(changed_backend.calls.begin(),changed_backend.calls.end(),"begin")==1&&
+              changed_backend.sizes.empty()&&changed_backend.outside_copies.empty()&&
+              changed_backend.installed.empty()&&changed_backend.cleaned()&&
+              changed.scale_ratio==1.F&&changed.previous_text_width==42.F&&changed.height==1.F&&
+              changed.request_font_size==99&&FixtureBackend::font(changed.font)->used==12,
+          "变比例仅_make一次：块字号24/宽12，即便autoScale高1也不缩字、不备份换Font或重置首次request99；输入框高保持");
+    auto empty=input(u"");empty.font={};empty.scale_ratio=1.F;
+    empty.previous_text_width=42.F;empty.request_font_size=91;
+    FixtureBackend empty_backend;const auto empty_next=steam_reflow_text_for_draw(empty,2.F,empty_backend);
+    check(empty_next&&empty_next->replacement&&empty_next->replacement->blocks.empty()&&
+              empty_next->replacement->text_width==42.F&&empty_next->replacement->request_font_size==91&&
+              empty_next->scale_ratio==2.F&&empty_backend.calls.empty(),
+          "变比例空原串沿_make早退，缺Font仍可交空块并保旧宽42/request91，不误调prepared SetText备份");
+    auto unordered=input(u"A");unordered.scale_ratio=std::numeric_limits<float>::quiet_NaN();
+    FixtureBackend nan_backend;const auto finite=steam_reflow_text_for_draw(unordered,1.F,nan_backend);
+    check(finite&&finite->replacement&&finite->scale_ratio==1.F&&
+              std::isnan(unordered.scale_ratio)&&
+              std::count(nan_backend.calls.begin(),nan_backend.calls.end(),"begin")==1&&nan_backend.cleaned(),
+          "旧NaN与有限新比例无序仍触发一次重排，候选用新比例且不回写原输入");
+    for(const float scale:std::array<float,3>{std::numeric_limits<float>::quiet_NaN(),
+            std::numeric_limits<float>::infinity(),16777218.F}) {
+        FixtureBackend backend;
+        check(!steam_reflow_text_for_draw(changed,scale,backend)&&backend.calls.empty()&&
+                  changed.scale_ratio==1.F&&FixtureBackend::font(changed.font)->used==12,
+              "实际新比例非有限或超过维护域时先拒绝，无新块成功、后端调用或旧Font修改");
+    }
+    FixtureBackend failure;failure.fail_operation="width";bool exact=false;
+    try {(void)steam_reflow_text_for_draw(changed,2.F,failure);}
+    catch(const LayoutBackendFailure &error) {exact=error.operation=="width";}
+    check(exact&&std::count(failure.calls.begin(),failure.calls.end(),"width")==1&&failure.cleaned()&&
+              failure.outside_copies.empty()&&changed.text==u"A"&&changed.scale_ratio==1.F&&
+              changed.height==1.F&&changed.previous_text_width==42.F&&
+              changed.request_font_size==99&&FixtureBackend::font(changed.font)->used==12,
+          "变比例排块测宽失败只传播一次原错并清理，没有候选安装；原输入和入场Font不改，不宣称后端副作用回滚");
+}
 } // namespace
 
 int steam_text_layout_checks() {
     Checks check;ordinary_and_source_ranges(check);fonts_and_tags(check);
     combination_words_and_empty(check);boundaries_and_cleanup(check);
     prepared_text_outer(check);prepared_text_failures(check);
+    public_text_preparation(check);public_text_rejection_and_faults(check);
+    draw_scale_reflow(check);
+    // 逐字面代入固定RVA8E8770算式的独立oracle，不使用被测helper构造期望。
+    struct HashCase {std::u16string text;std::int32_t hash;};
+    for(const auto &c:std::vector<HashCase>{{u"",371857150},{u"A",372029405},
+             {u"AB",-331290873},{u"ABC",-325606582},{u"中文",1842450162},
+             {u"\U0001F600",1126268081},{std::u16string{u'A',0,u'B'},372029405},
+             {std::u16string{0,u'A'},371857150}})
+        check(steam_text_string_hash(c.text)==c.hash,
+              "固定Steam hash保留双累加器回卷、Unicode单元和内嵌零终止，不改成std::hash或按length继续");
     return check.count;
 }

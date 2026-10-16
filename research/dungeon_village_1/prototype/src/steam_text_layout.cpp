@@ -476,4 +476,82 @@ std::optional<SteamTextSetResult> steam_set_prepared_text(
     } catch(const Rejected &) {cleanup();return {};}
       catch(...) {cleanup();throw;}
 }
+
+std::int32_t steam_text_string_hash(const std::u16string &text) {
+    std::uint32_t first=5381U,second=5381U;
+    bool to_second=false;
+    for(const auto unit:text) {
+        if(!unit)break; // 108E8782/8799零终止，不以.NET String.Length截取内嵌零后缀。
+        auto &accumulator=to_second?second:first;
+        accumulator=(accumulator*33U)^static_cast<std::uint32_t>(unit);
+        to_second=!to_second;
+    }
+    return signed32(first+second*0x5D588B65U);
+}
+
+std::optional<SteamPreparedText> steam_prepare_text(
+        const std::optional<std::u16string> &input,
+        const std::vector<SteamTextReplaceWord> &words,SteamTextInputBackend &out) {
+    if((input&&input->size()>text_budget)||words.size()>4096)return {};
+    auto text=input.value_or(u"");
+    std::uint32_t replacements{};
+    for(const auto &word:words) {
+        // StringUtil.Replace 1086A397–3A6：null参数原样返回，不读取未用串长。
+        if(!word.old_word||!word.new_word)continue;
+        if(word.old_word->empty()||word.old_word->size()>text_budget||word.new_word->size()>text_budget)return {};
+        std::size_t start=0;
+        for(;;) {
+            const auto at=text.find(*word.old_word,start); // Ordinal=4，原UTF-16单元精确查找。
+            if(at==std::u16string::npos)break;
+            if(++replacements>65536||word.new_word->size()>text_budget-(text.size()-word.old_word->size()))return {};
+            text.replace(at,word.old_word->size(),*word.new_word);
+            start=at+word.new_word->size(); // 不从头递归替换刚写入的new_word。
+        }
+    }
+    SteamPreparedText result;
+    result.hash=out.hash_code(text); // 107CC1DD早于console；即使后续串改变也不重算。
+    auto console=out.translate_console_text(text);
+    if(!console.out_text||console.out_text->size()>text_budget)return {};
+    text=std::move(*console.out_text);
+    using Comparison=SteamTextComparison;
+    if(!out.contains(text,u"<ff>",Comparison::current_culture_ignore_case)) {
+        result.text=std::move(text);return result;
+    }
+    std::vector<std::u16string> parts;
+    std::size_t begin=0;
+    for(;;) {
+        const auto lower=text.find(u"<ff>",begin),upper=text.find(u"<FF>",begin);
+        const auto end=std::min(lower,upper); // 原精确string[] Split，不是ignore-case分隔。
+        const auto length=(end==std::u16string::npos?text.size():end)-begin;
+        if(length)parts.emplace_back(text.substr(begin,length)); // RemoveEmptyEntries，不Trim。
+        if(end==std::u16string::npos)break;
+        begin=end+4;
+    }
+    auto append=[&](const std::u16string &value) {
+        if(value.size()>text_budget-result.text.size())return false;
+        result.text+=value;return true;
+    };
+    for(std::size_t i=0;i<parts.size();++i) {
+        auto &part=parts[i];
+        if(i&&!out.starts_with(part,u"<br>",Comparison::current_culture_ignore_case)&&
+              !out.starts_with(part,u"\n",Comparison::current_culture))part=u"<br>"+part;
+        if(i+1<parts.size()&&!out.ends_with(part,u"<br>",Comparison::current_culture_ignore_case)&&
+                              !out.ends_with(part,u"\n",Comparison::current_culture))part+=u"<br>";
+        if(i&&!append(u"<ff>"))return {};
+        if(!append(part))return {};
+    }
+    return result;
+}
+
+std::optional<SteamTextDrawReflow> steam_reflow_text_for_draw(
+        const SteamTextLayoutInput &current,float graphics_scale,SteamTextLayoutBackend &out) {
+    if(graphics_scale==current.scale_ratio)return SteamTextDrawReflow{current.scale_ratio,{}};
+    // 原无序比较也会重排；维护拒绝不能实际消费的新非有限比例，不借空串早退伪装有效。
+    if(!std::isfinite(graphics_scale)||std::abs(graphics_scale)>16777216.F)return {};
+    auto next=current;
+    next.scale_ratio=graphics_scale;
+    auto layout=steam_make_text_blocks(next,out);
+    if(!layout)return {};
+    return SteamTextDrawReflow{graphics_scale,std::move(layout)};
+}
 } // namespace dungeon_village_prototype

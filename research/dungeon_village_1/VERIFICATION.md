@@ -1,5 +1,13 @@
 # 当前研究验证与历史索引
 
+## 公开文字准备与Draw重排 2026-10-16
+
+接`0f852c8`，在既有[文字模块](prototype/include/dungeon_village_prototype/steam_text_layout.hpp)补`steam_prepare_text`和`steam_reflow_text_for_draw`：实际枚举原序的ordinal替换、hash／Console-out交接、文化入口与精确ff分隔的区别、br／LF短路；Draw仅在比例变化时执行一次_make，保留SetText独有的长度／渐显／框高政策。独立反汇编及metadata复核进一步闭合固定`System.String.GetHashCode`，已提供低32位回卷／内嵌零终止的默认实现。Console当前表／Regex／Joystick、文化后端和原Font仍由真实宿主供给；没有将准备接口或ASCII比较夹具当作完整原文字运行。`SetTextCheckSize`只写DEBUG诊断字段及其红框资格已合入[字体合同](ui/STEAM_FONT_CONSUMER.md)，不为它新造缩字规则／Owner状态。
+
+Windows单Release动态构建及头／实现／测试严格C++17语法检查通过；扩现visuals，最终 **1/1通过1.81秒**。覆盖null、替换原序／不递归／null键值与空旧词拒绝、hash早于转换／保留原串身份、false但非null Console-out、ff大小写／空片／空白、查询短路、4096／65536预算、后端首错、同／变比例、±0、NaN、空串旧宽及失败清理；固定hash用八组源算式字面值覆盖普通／中文／代理对／内嵌零。没有新增target、Owner／codec或世界长跑，三份他人在途住宅存取测试未编译。文本准备的串／分片按调用释放，相同比例不复制旧块或持有新字体引用；真实后端可有的缓存不由此保证永久有界。
+
+Release1411文件／230400384字节，assets仍872文件／9504668字节，无.pending。新增外部文字观察提示词仅在忽略work，包含15分钟现成正文／说明／可选报纸边界，未执行原窗口、购买、网络或档案操作；动态结果仍待用户转交。91新增持久载荷方案本批已具体征询，未收到批准不编码该分支。文档并入现入口，差异／本地链接检查通过；构建、短测及并行任务已结束，仅本批研究白名单提交，不推送。
+
 ## SetText自适应外层与预留保存使能 2026-10-16
 
 接`7d40075`，同一[文字模块](prototype/include/dungeon_village_prototype/steam_text_layout.hpp)新增`steam_set_prepared_text`，实际执行已准备text_后的双次比例补偿、首排后备份、逐次缩字重排、条件扩框、最终UTF-16长度与Font换回；与实例Draw重排分别处理。调用方提供私有呈现Font，旧别名按原序可被修改，后端已执行副作用不承诺回滚；预算耗尽明确拒绝，失败尽力清理但不重放失败动作。没有增加Owner／codec／素材或公开Replace／平台文案转换认证。每次新排块前释放旧结果，仅保留前宽与首次请求，不积存历轮Font或字符串。

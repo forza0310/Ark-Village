@@ -160,6 +160,14 @@ std::optional<IncomeInvestment> choose_income_investment(const State &s, std::in
 }
 
 void inspect_income(const State &s, std::ostream &out) {
+    for (const auto &item : s.rules->items) {
+        const auto &owned = s.items.at(item.identity);
+        out << "ITEM_STOCK definition=" << item.identity << " status=" << owned.status
+            << " inventory=" << owned.inventory
+            << " shop_quantity=" << s.shop_item_stock.at(item.identity).quantity
+            << " commerce_price=" << item.commerce_price;
+        out << '\n';
+    }
     out << "INCOME_INPUT month=" << s.scene.calendar.year * 12 + s.scene.calendar.month
         << " cash=" << cash(s) << " record=" << s.maximum_income << '\n';
     for (int month = 0; month <= s.scene.calendar.month; ++month) {

@@ -1,5 +1,26 @@
 # 计划与决策
 
+<a id="campaign-explicit-item-use"></a>
+## 普通道具缺项的显式覆盖输入（待批准）
+
+现2838条历史回执中，活动22已经有付款/效果证据，不再重跑作为新增覆盖；普通道具2/5/8/11/22/23/27尚无有效使用回执。先沿现steam-inspect只读输出真实开放、库存、商会余量及报价，不把目录状态、出售/入壶或库存减少当作使用。新执行方案因自动审批要求明确范围及测试/回滚说明而暂停；已撤回部分落盘的未完成策略/CLI代码，当前只保留库存诊断，run-month未变。
+
+拟复用现设施强化/商会消费者，在steam-natural-month和steam-continue-month增加进程内`--item=ID`目标。只从真实可用库存或84冻结目录购一件，选择普通设施的非负且至少一项正价格/品质/魅力增量；该覆盖目标不要求预测回本，单次购买仍限10000G并保留两月现金。源付款、75消耗、76共享改良与价格刷新、77展示后退页均沿原消费者和回执，不改规则、玩家schema5/独立系统2、随机或原16列回执。
+
+精确拟写范围为以下九个现有文件，不增加模块/测试target：
+
+| 职责 | 路径 |
+| --- | --- |
+| 收益选择、有限目标和现income合同 | `tests/app/world_active_income_strategy.hpp`、`tests/app/world_active_income_strategy.cpp` |
+| Steam玩家协调 | `tests/app/world_steam_strategy.hpp`、`tests/app/world_steam_strategy.cpp` |
+| 参数校验、载入后目标接线 | `tests/app/world_campaign_test.cpp` |
+| 现分段编排只增加参数/INPUT记录 | `build/validation/business-liquidity/run-month.mjs`（忽略目录） |
+| 方案、待办与结果 | `docs/MILESTONES.md`、`TODO.md`、`docs/stages/B1-playable-prototype.md` |
+
+失败边界：设目标前核定义、当前流程、可用性、源正效果及预算，失败不写控制器；付款前重验84真实条目和预算，缺货/余额变化走原取消后等待，不注资或强迫选择。源命令失败不推进购买/消耗标记，保持其原Owner/随机事务；已消耗却无法核验实际效果时保留失败现场，不清目标、补效果或再扣。进行中或尚未实际完成的目标一律拒绝encode/checkpoint；完成并退回稳定主场景后才释放，不在玩家/策略档新增字段，不增加保存时点。
+
+测试复用income/campaign：保留全部默认收益/费用/独立oracle；补未知/未开放/缺货/负效果拒绝、已有库存零成本、刚好两月预算与差1G、品质/魅力正效果的显式用途、选择不改Owner/随机、重复/中途改目标拒绝、pending保存拒绝，以及84条目或资金变化的原取消分支。原CLI拒绝非法尾串/ID/错模式，旧recipe/profession参数保持。实现后集中desktop-debug标准（仅排三个月）、Release受影响合同；仅合法可得的缺项按既有6分钟/10000轮新目录实际取得/消耗/效果、完整后继营业及独立冷载。原前缀、旧覆盖报告与正常玩家档不改；不可得项登记最小取得前提，不造消费证书。research只读，不推送。
+
 <a id="research-d4ed6be-integration"></a>
 ## 植物绑定、施工头标与魔法消费回执接续
 

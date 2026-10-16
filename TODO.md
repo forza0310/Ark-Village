@@ -9,6 +9,7 @@
 - [ ] 正式9692bb8/197d5b2已交植物路线绑定修正、施工只读计划及设施完工/装备库存头标；d4ed6be已交事务式魔法实际消费观察。按独立批次核对和接入，不混入a9dc1bd验收结果。
 
 - [ ] 按[全解锁合同](docs/stages/ACTIVE_VILLAGE_PLAN.md#full-unlock-campaign)逐定义覆盖取得、消费、实际效果与后继，保留775分母；代表样例、仅解锁或日期推进不算全覆盖。
+- [ ] 补普通道具2/5/8/11/22/23/27的实际使用；月196前五项已开放且商会有货，11/23仍需合法取得。显式输入的九目标方案待已发出的批准，当前只有[只读资格](docs/stages/B1-playable-prototype.md#campaign-item-stock-gaps)，不把库存/目录当消费。
 - 历史回执2838条：80个已核分段外补核5个旧格式阶段，配方7完整消费及职业4人物0/1/3已联接；旧来源字段缺失、失败后段和每定义未完环节保留，见[审计](docs/stages/B1-playable-prototype.md#campaign-history-receipt-audit)，不把“有回执”当全覆盖。
 - [ ] 从有效父世界月196接续：18已实际制造/装配，完整后继月197两次耗尽6分钟、未认证；可选预算待确认，见[本批](docs/stages/B1-playable-prototype.md#campaign-pot18-followup)。32/33完整后继冷载、52实际营业7115G保持；继续1/2/3/37/39等产物，39缺四元素6/0/5/10。17的独立分支资格不改签主线；29未开放，20付款排队不当人气兑现。保留两月现金及图纸预算、40配方与775分母，实际施法不以学习/Q替代。
 - [ ] 4魔法实际施放、投射/延迟伤害等待d4ed6be导入，物理武器另需局部归因，见[研究请求](docs/reference/RESEARCH_REQUESTS.md#spell-consumption-receipts)；Q可用、装配属性及退休现金均不替代实际作用。

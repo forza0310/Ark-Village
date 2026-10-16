@@ -1151,6 +1151,10 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s, bool obs
         return {StartupWorldRuntimeError::invalid_initial_state, {}, {}, {}, {}};
     // 原30/67/88/96载荷在producer已完整安装；退休前拒绝损坏，不以清理掩盖半载荷。
     for(const auto &page:s.scripts.pages) {
+        if((!page.message_commands.empty()||
+            (page.kind==ref::WorldScriptPageKind::raw_page&&page.legacy_page==11))&&
+           !valid_startup_world_event_page(s,page))
+            return {StartupWorldRuntimeError::missing_source,{},ref::WorldSceneError::missing_consumer,{}, {}};
         if(page.kind==ref::WorldScriptPageKind::raw_page&&page.legacy_page==21&&
            !valid_startup_world_build_menu(s,page))
             return {StartupWorldRuntimeError::missing_source,{},ref::WorldSceneError::missing_consumer,{}, {}};
@@ -1303,7 +1307,7 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s, bool obs
                 ref::WorldScheduleError::none, {}};
     }
     if(admitted.scene.framework_paused&&pending.kind==ref::WorldScriptPageKind::raw_page&&
-       (pending.legacy_page==89||pending.legacy_page==92)) {
+       (pending.legacy_page==11||pending.legacy_page==89||pending.legacy_page==92)) {
         admitted.scripts.executing_page.reset();admitted.scene.top_is_main=false;
         return {StartupWorldRuntimeError::none,std::move(admitted),ref::WorldSceneError::none,
                 ref::WorldScheduleError::none,{}};
@@ -1352,7 +1356,8 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s, bool obs
                 ref::WorldSceneError::none, ref::WorldScheduleError::none, {}};
     }
     // 框架j只在当前页回调期间有效；入口重建，不继承已关闭/已删除页的旧引用。
-    if (!initialize_startup_world_menu_pages(admitted) ||
+    if (!initialize_startup_world_event_pages(admitted) ||
+        !initialize_startup_world_menu_pages(admitted) ||
         !initialize_startup_world_save_pages(admitted) ||
         !initialize_startup_world_manual_pages(admitted) ||
         !initialize_startup_world_human_pages(admitted) ||

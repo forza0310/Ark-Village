@@ -37,6 +37,7 @@
 #include "dungeon_village_prototype/steam_main_menu_skin.hpp"
 #include "dungeon_village_prototype/steam_information_skin.hpp"
 #include "dungeon_village_prototype/steam_monster_skin.hpp"
+#include "dungeon_village_prototype/steam_event_skin.hpp"
 #include "dungeon_village_prototype/steam_dungeon_footer_skin.hpp"
 #include "dungeon_village_prototype/startup_world_tax.hpp"
 #include "dungeon_village_prototype/startup_world_village_activity.hpp"
@@ -627,6 +628,65 @@ class ChineseFont {
             const auto next=value.substr(at,lead<128?1:lead<224?2:lead<240?3:4);
             if(!line.empty() && measure(line+next,size)>max_width) {line.clear();y+=size+spacing;}
             text(next,x+measure(line,size),y,current,size);line+=next;at+=next.size();
+        }
+    }
+    // raw11的Noto/raylib研究适配：仅执行br、六位co及正文开头po。
+    // po按已核l/c/r、t/m/b覆盖顺序处理；中途重置布局、其他TAG与原字体后端不在此适配范围。
+    void event_text(const SteamEventTextLayout &layout,Vector2 origin) const {
+        struct Glyph {std::string text;Color color;float x;};
+        struct Line {std::string text;std::vector<Glyph> glyphs;};
+        const auto &r=layout.rectangle;
+        if(r[2]<=0||r[3]<0||layout.line_space<0)throw std::runtime_error("事件正文布局尺寸拒绝");
+        const Color base{static_cast<unsigned char>(layout.rgb[0]),static_cast<unsigned char>(layout.rgb[1]),
+                         static_cast<unsigned char>(layout.rgb[2]),255};
+        Color current=base;int horizontal=layout.anchor&7,vertical=layout.anchor&0x70;
+        std::vector<Line> lines(1);bool content=false;
+        constexpr float size=12;
+        const auto &value=layout.text;
+        for(std::size_t at=0;at<value.size();) {
+            if(value.compare(at,4,"<po=")==0) {
+                if(content)throw std::runtime_error("事件正文中途po布局尚未接入");
+                const auto end=value.find('>',at+4);
+                if(end==std::string::npos)throw std::runtime_error("事件位置标签未闭合");
+                const auto parameter=value.substr(at+4,end-at-4);
+                if(parameter.find_first_not_of("lcrtmb")!=std::string::npos)
+                    throw std::runtime_error("事件位置参数超出研究适配范围");
+                for(const auto axis:std::array<std::pair<char,int>,3>{{{'l',1},{'c',2},{'r',4}}})
+                    if(parameter.find(axis.first)!=std::string::npos)horizontal=axis.second;
+                for(const auto axis:std::array<std::pair<char,int>,3>{{{'t',16},{'m',32},{'b',64}}})
+                    if(parameter.find(axis.first)!=std::string::npos)vertical=axis.second;
+                at=end+1;continue;
+            }
+            // 源布局CR为零增量；此适配不画CR字形，CRLF仍由后继LF唯一换行。
+            if(value[at]=='\r'){++at;continue;}
+            if(value.compare(at,4,"<br>")==0||value[at]=='\n') {
+                at+=value[at]=='\n'?1:4;lines.emplace_back();content=true;continue;
+            }
+            if(value.compare(at,5,"</co>")==0){current=base;at+=5;continue;}
+            if(value.compare(at,4,"<co=")==0) {
+                const auto end=value.find('>',at+4);
+                if(end!=at+10)throw std::runtime_error("事件颜色标签参数尚未接入");
+                const auto digits=value.substr(at+4,6);
+                if(digits.find_first_not_of("0123456789abcdefABCDEF")!=std::string::npos)
+                    throw std::runtime_error("事件颜色参数拒绝");
+                const auto rgb=std::stoul(digits,nullptr,16);
+                current={static_cast<unsigned char>(rgb>>16),static_cast<unsigned char>(rgb>>8),
+                         static_cast<unsigned char>(rgb),255};at=end+1;continue;
+            }
+            if(value[at]=='<')throw std::runtime_error("事件正文出现未支持的文字标签");
+            const auto lead=static_cast<unsigned char>(value[at]);
+            const auto next=value.substr(at,lead<128?1:lead<224?2:lead<240?3:4);
+            if(!lines.back().text.empty()&&measure(lines.back().text+next,size)>r[2])lines.emplace_back();
+            auto &line=lines.back();line.glyphs.push_back({next,current,measure(line.text,size)});
+            line.text+=next;at+=next.size();content=true;
+        }
+        const float extent=lines.size()*size+(lines.size()-1)*layout.line_space;
+        float y=origin.y+r[1]+std::max(0.F,vertical==32?(r[3]-extent)/2:vertical==64?r[3]-extent:0.F);
+        for(const auto &line:lines) {
+            const float measured=measure(line.text,size);
+            const float x=origin.x+r[0]+(horizontal==2?(r[2]-measured)/2:horizontal==4?r[2]-measured:0.F);
+            for(const auto &glyph:line.glyphs)text(glyph.text,x+glyph.x,y,glyph.color,size);
+            y+=size+layout.line_space;
         }
     }
 
@@ -1474,6 +1534,58 @@ void draw_human_overview(const SteamHumanOverviewPlan &plan,SourceSprites &sprit
     else if(plan.soft_labels[0]==7)font.text("详细",18,272);
     if(plan.soft_labels[1]==2)font.text("返回",188,272);
     else if(plan.soft_labels[1]==10)font.text("终止",188,272);
+}
+std::optional<SteamEventSkinPlan> window_event_plan(const StartupWorldRuntimeState &state,
+    std::uint64_t page,const ChineseFont &font) {
+    const auto input=steam_event_input(state,page);if(!input)return {};
+    SteamEventSkinOptions options;options.view_y=23;options.title="活动";
+    options.title_widths=std::array<int,2>{int(font.measure(options.title)),int(font.measure(options.title))};
+    // 与同批240局部页面一致：VIEW_Y仅给helper，研究窗口外层明确安装human_overview_origin。
+    return steam_event_skin(*input,options);
+}
+void draw_event_plan(const SteamEventSkinPlan &plan,SourceSprites &sprites,const ChineseFont &font,
+    Vector2 base=human_overview_origin) {
+    if(plan.soft_labels!=std::array<int,2>{0,0})throw std::runtime_error("事件页软标签来源拒绝");
+    const Vector2 origin{base.x+plan.origin[0],base.y+plan.origin[1]};
+    std::vector<std::array<int,4>> clips;
+    const auto intersect=[](std::array<int,4> a,std::array<int,4> b){
+        const int x=std::max(a[0],b[0]),y=std::max(a[1],b[1]);
+        return std::array<int,4>{x,y,std::max(0,std::min(a[0]+a[2],b[0]+b[2])-x),
+            std::max(0,std::min(a[1]+a[3],b[1]+b[3])-y)};
+    };
+    const auto apply=[&]{if(!clips.empty()){const auto &r=clips.back();
+        BeginScissorMode(int(origin.x)+r[0],int(origin.y)+r[1],r[2],r[3]);}};
+    for(const auto &draw:plan.draws) {
+        if(const auto *frame=std::get_if<SteamStartupFrameDraw>(&draw)) {
+            SteamHumanOverviewPlan part;part.soft_labels={0,0};part.title=plan.title;
+            part.operations.emplace_back(*frame);draw_human_overview(part,sprites,font,origin,false);
+        } else if(const auto *image=std::get_if<StartupSkinDraw>(&draw)) {
+            const auto resource=steam_event_resource(image->package,image->image);
+            if(!resource||resource->sprite!=image->sprite)throw std::runtime_error("事件页正式资源映射拒绝");
+            sprites.published_sprite(image->image,resource->image_path,resource->sprite_path,image->offset,image->frame,
+                image->sprite<0?std::optional<std::array<int,4>>(image->crop):std::nullopt,origin);
+        } else if(const auto *text=std::get_if<SteamEventTextLayout>(&draw))font.event_text(*text,origin);
+        else if(const auto *clip=std::get_if<SteamEventClip>(&draw)) {
+            if(clip->kind==SteamEventClipKind::push_intersect) {
+                clips.push_back(clips.empty()?clip->rectangle:intersect(clips.back(),clip->rectangle));
+                apply(); // 零高正文clip仍是合法的全隐藏请求，不跳过或改为全屏。
+            } else {
+                if(clips.empty())throw std::runtime_error("事件页裁剪栈下溢");
+                clips.pop_back();EndScissorMode();apply();
+            }
+        } else if(const auto *touch=std::get_if<SteamStartupTouch>(&draw)) {
+            if(touch->component!=2||touch->rectangle||touch->image_draw||touch->option)
+                throw std::runtime_error("事件页无矩形确认请求拒绝");
+            // AddTouch2仅交输入适配，不画额外按钮；不据soft2静态消费者接OS Esc。
+        } else throw std::runtime_error("事件页未消费图元");
+    }
+    if(!clips.empty()){EndScissorMode();throw std::runtime_error("事件页裁剪栈未退休");}
+}
+std::optional<SteamEventSkinPlan> event_example(int command,const ChineseFont &font) {
+    // 有界绘制夹具只核计划/资源接线，不注入世界事件、奖励或自然触发结论。
+    SteamEventSkinOptions options;options.view_y=23;options.title="活动";
+    options.title_widths=std::array<int,2>{int(font.measure(options.title)),int(font.measure(options.title))};
+    return steam_event_skin({61,command,"<po=cm>研究绘制夹具<br><co=ce5300>无自然触发认证</co>"},options);
 }
 // 探索底栏独立消费普通clip栈与临时头像ImageClip；后者结束时恢复外层，
 // 只模拟本计划正常未翻转图元，不认证原后端共享ImageClip/GPU越界行为。
@@ -3384,6 +3496,7 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
     const bool monster_fixture=inspect_page=="monster-introduction"||inspect_page=="monster-introduction-early";
     const bool monster_detail_fixture=inspect_page=="monster-detail"||inspect_page=="monster-detail-grown";
     const bool monster_notice_fixture=inspect_page=="monster-boss"||inspect_page=="monster-outbreak";
+    const bool event_fixture=inspect_page=="event-happy"||inspect_page=="event-sad"||inspect_page=="event-special";
     const bool effort_fixture=inspect_page=="effort-result";
     const bool mastery_fixture=inspect_page=="mastery-announcement"||inspect_page=="mastery-bonus"||inspect_page=="mastery-choice";
     const bool clear_fixture=inspect_page=="clear-count"||inspect_page=="clear-score"||inspect_page=="clear-record"||inspect_page=="clear-closing";
@@ -3469,14 +3582,18 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
         reputation_glyphs+="新型怪物怪物情报BOSS出现！正在大量出现支给打倒头数扑街人数倒した数倒された人数出现了研究绘制夹具无自然触发认证!!…";
         for(const auto &monster:startup_world_rules().monsters)reputation_glyphs+=monster.name+monster.description;
     }
+    if(event_fixture)reputation_glyphs+="活动研究绘制夹具无自然触发认证";
     if(build_menu_fixture) {
         reputation_glyphs+="研究绘制夹具无自然触发认证设备一般饮食撤除移动返回详细Ｇ";
         for(const auto &d:startup_world_rules().facilities)reputation_glyphs+=d.name;
     }
     ChineseFont font(font_path,reputation_glyphs);
-    if(magic_fixture||task_fixture||residence_fixture||award_fixture||tax_fixture||present_fixture||monster_fixture||monster_detail_fixture||monster_notice_fixture||effort_fixture||award_result_fixture||mastery_fixture||gift_claim_fixture||clear_fixture||new_game_fixture||config_fixture||commerce_fixture||commerce_result_fixture||commerce_item_fixture||commerce_facility_fixture||commerce_preview_fixture||facility_special_fixture||build_menu_fixture) {
-        std::variant<SteamMagicPotPlan,SteamTaskSelectionPlan,SteamTaskRosterPlan,SteamTaskResultPlan,SteamTaskVictoryPlan,SteamTaskDeadlinePlan,SteamHumanOverviewPlan,SteamTownProgressPlan,SteamNewGamePlan,SteamConfigSkinPlan,SteamCommerceSkinPlan,SteamFacilityDetailSkinPlan,SteamInformationSkinPlan,SteamMonsterSkinPlan,SteamBuildMenuSkinPlan,SteamDungeonFooterPlan> plan;
-        if(footer_fixture) {
+    if(magic_fixture||task_fixture||residence_fixture||award_fixture||tax_fixture||present_fixture||monster_fixture||monster_detail_fixture||monster_notice_fixture||event_fixture||effort_fixture||award_result_fixture||mastery_fixture||gift_claim_fixture||clear_fixture||new_game_fixture||config_fixture||commerce_fixture||commerce_result_fixture||commerce_item_fixture||commerce_facility_fixture||commerce_preview_fixture||facility_special_fixture||build_menu_fixture) {
+        std::variant<SteamMagicPotPlan,SteamTaskSelectionPlan,SteamTaskRosterPlan,SteamTaskResultPlan,SteamTaskVictoryPlan,SteamTaskDeadlinePlan,SteamHumanOverviewPlan,SteamTownProgressPlan,SteamNewGamePlan,SteamConfigSkinPlan,SteamCommerceSkinPlan,SteamFacilityDetailSkinPlan,SteamInformationSkinPlan,SteamMonsterSkinPlan,SteamBuildMenuSkinPlan,SteamDungeonFooterPlan,SteamEventSkinPlan> plan;
+        if(event_fixture) {
+            const auto value=event_example(inspect_page=="event-happy"?0:inspect_page=="event-sad"?1:2,font);
+            if(!value)throw std::runtime_error("Event drawing example rejected");plan=*value;
+        } else if(footer_fixture) {
             const auto value=dungeon_footer_example(inspect_page=="dungeon-footer-entry");
             if(!value)throw std::runtime_error("Dungeon footer example rejected");plan=*value;
         } else if(build_menu_fixture) {
@@ -3573,6 +3690,7 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
             font.text("研究绘制夹具",8,10,WHITE,10);std::visit([&](const auto &value){
                 if constexpr(std::is_same_v<std::decay_t<decltype(value)>,SteamFacilityDetailSkinPlan>)draw_facility_detail(value,sprites,font);
                 else if constexpr(std::is_same_v<std::decay_t<decltype(value)>,SteamInformationSkinPlan>)draw_information_directory(value,sprites,font);
+                else if constexpr(std::is_same_v<std::decay_t<decltype(value)>,SteamEventSkinPlan>)draw_event_plan(value,sprites,font);
                 else if constexpr(std::is_same_v<std::decay_t<decltype(value)>,SteamDungeonFooterPlan>)draw_dungeon_footer(value,sprites,human_overview_origin);
                 else draw_facility_ceremony(value,sprites,font,info_fixture?Vector2{0,0}:human_overview_origin);
             },plan);
@@ -6031,6 +6149,19 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     if(session.acknowledge_page(page->id)!=StartupWorldRuntimeError::none)
                         throw std::runtime_error("保存结果确认失败");
                 }
+            } else if(raw==11) {
+                const auto plan=window_event_plan(session.state(),page->id,font);
+                if(!plan&&page->lifecycle!=0)throw std::runtime_error("事件页输入载荷拒绝");
+                const bool registered=plan&&std::any_of(plan->draws.begin(),plan->draws.end(),[](const auto &draw){
+                    const auto *touch=std::get_if<SteamStartupTouch>(&draw);
+                    return touch&&touch->component==2&&!touch->rectangle&&!touch->image_draw;
+                });
+                // Touch2无矩形，仅接研究Enter确认；不猜全屏鼠标热区、不逐段改paragraph_index。
+                if(registered&&IsKeyPressed(KEY_ENTER)) {
+                    ++confirmation_inputs;
+                    if(session.acknowledge_page(page->id)!=StartupWorldRuntimeError::none)
+                        throw std::runtime_error("事件页确认失败");
+                }
             } else if (page->legacy_page != 58 && page->legacy_page != 97 && page->legacy_page != 98 &&
                        (hit({176, 265, 58, 24}) || IsKeyPressed(KEY_ENTER))) {
                 ++confirmation_inputs;
@@ -6043,7 +6174,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                         throw std::runtime_error("共同世界页面输入消费者失败");
                 }
             }
-            if (CheckCollisionPointRec(mouse, {12, 196, 216, 64}))
+            if (raw!=11&&CheckCollisionPointRec(mouse, {12, 196, 216, 64}))
                 body_scroll = std::clamp(body_scroll - GetMouseWheelMove() * 17, 0.0F,
                                          std::max(body_extent - 64, 0.0F));
         }
@@ -6678,6 +6809,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
             const bool steam_commerce_facility=page->legacy_page==85;
             const bool steam_tax=page->legacy_page==90;
             const bool steam_monster=page->legacy_page==89||page->legacy_page==92||page->legacy_page==99||page->legacy_page==100;
+            const bool steam_event=page->kind==ref::WorldScriptPageKind::raw_page&&page->legacy_page==11;
             const bool steam_reputation=page->legacy_page==82;
             const bool steam_effect=page->legacy_page>=75&&page->legacy_page<=77;
             const bool steam_facility=page->legacy_page==74&&
@@ -6691,7 +6823,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
             const bool steam_gift_result=page->legacy_page==66&&startup_world_human_page_ready(state,page->id);
             const bool steam_attribute_result=(page->legacy_page==68||page->legacy_page==69)&&startup_world_human_page_ready(state,page->id);
             const bool steam_profession=(page->legacy_page==62||page->legacy_page==63)&&startup_world_human_page_ready(state,page->id);
-            if (page->legacy_page != 21&&!steam_residence_directory&&!steam_award_question&&!steam_monster&&!steam_tax&&!steam_commerce_top&&!steam_commerce_result&&!steam_commerce_item&&!steam_commerce_facility&&!steam_gift_claim&&!steam_info&&!steam_task&&!steam_residence&&!steam_magic&&!steam_reputation&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result) DrawRectangle(5, 170, 230, 119, paper);
+            if (page->legacy_page != 21&&!steam_event&&!steam_residence_directory&&!steam_award_question&&!steam_monster&&!steam_tax&&!steam_commerce_top&&!steam_commerce_result&&!steam_commerce_item&&!steam_commerce_facility&&!steam_gift_claim&&!steam_info&&!steam_task&&!steam_residence&&!steam_magic&&!steam_reputation&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result) DrawRectangle(5, 170, 230, 119, paper);
             std::string title = page->title;
             if (title.empty() && page->kind == ref::WorldScriptPageKind::raw_page) {
                 if (page->legacy_page == 30 || page->legacy_page == 31 || page->legacy_page == 32)
@@ -6712,7 +6844,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                          page->monster_definition)
                     title = rules.monsters.at(*page->monster_definition).name;
             }
-            if (page->legacy_page != 21&&!steam_residence_directory&&!steam_award_question&&!steam_monster&&!steam_tax&&!steam_commerce_top&&!steam_commerce_result&&!steam_commerce_item&&!steam_commerce_facility&&!steam_gift_claim&&!steam_info&&!steam_task&&!steam_residence&&!steam_magic&&!steam_reputation&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result)
+            if (page->legacy_page != 21&&!steam_event&&!steam_residence_directory&&!steam_award_question&&!steam_monster&&!steam_tax&&!steam_commerce_top&&!steam_commerce_result&&!steam_commerce_item&&!steam_commerce_facility&&!steam_gift_claim&&!steam_info&&!steam_task&&!steam_residence&&!steam_magic&&!steam_reputation&&!steam_effect&&!steam_commodity&&!steam_facility&&!steam_human&&!steam_catalogue&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result&&!steam_attribute_result)
                 font.text(title, 12, 177, ink, font.measure(title) > 208 ? 10 : 12);
             if(steam_gift_claim) {
                 const auto plan=window_town_progress_plan(state,page->id,font);
@@ -6892,7 +7024,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 font.paragraph(job.name + "的\n" + human_name(human.identity) + "可以到访了!", 12, 198, 208);
                 EndScissorMode();
             }
-            if (!page->paragraphs.empty()&&!steam_award_question) {
+            if (!page->paragraphs.empty()&&!steam_award_question&&!steam_event) {
                 BeginScissorMode(12, 196, 212, 64);
                 body_extent =
                     font.paragraph(page->paragraphs.at(static_cast<std::size_t>(paragraph_index)),
@@ -6905,7 +7037,11 @@ int run_startup_world_window(const std::filesystem::path &assets,
                                   12, GRAY);
                 }
             }
-            if (steam_residence_directory) {
+            if(steam_event) {
+                const auto plan=window_event_plan(state,page->id,font);
+                if(plan)draw_event_plan(*plan,sprites,font);
+                else if(page->lifecycle!=0)throw std::runtime_error("事件页正式皮肤载荷拒绝");
+            } else if (steam_residence_directory) {
                 const auto plan=window_residence_award_plan(state,page->id,font,human_scroll_drag&&human_scroll_drag->page==page->id);
                 if(plan)draw_human_overview(*plan,sprites,font);
                 else if(page->lifecycle!=0)throw std::runtime_error("Residence/award drawing source rejected");
@@ -6994,7 +7130,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 font.text("确定", 190, 272);
             } else if (page->legacy_page == 83)
                 font.text("取消", 18, 270);
-            else if (!steam_residence_directory&&!steam_award_question&&!steam_gift_claim&&!steam_info&&!steam_task&&!steam_residence&&!steam_effect&&!steam_facility&&page->legacy_page != 21&&page->legacy_page != 97 && page->legacy_page != 72 &&
+            else if (!steam_event&&!steam_residence_directory&&!steam_award_question&&!steam_gift_claim&&!steam_info&&!steam_task&&!steam_residence&&!steam_effect&&!steam_facility&&page->legacy_page != 21&&page->legacy_page != 97 && page->legacy_page != 72 &&
                      page->legacy_page != 79 && page->legacy_page != 82 &&
                      (page->legacy_page < 41 || page->legacy_page > 47) &&
                      (page->legacy_page != 59 || (state.page_counters.count(page->id) &&

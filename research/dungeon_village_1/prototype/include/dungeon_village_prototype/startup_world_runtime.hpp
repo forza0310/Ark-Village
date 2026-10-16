@@ -420,6 +420,10 @@ bool initialize_startup_world_town_progress_pages(StartupWorldRuntimeState &cand
 // raw94赠予人及主钟生命周期；奖励定义仍按原领取时点读取，不提前发奖。
 bool valid_startup_world_gift_notice_page(const StartupWorldRuntimeState &state,const ref::WorldScriptPage &page);
 bool initialize_startup_world_gift_notice_pages(StartupWorldRuntimeState &candidate);
+// raw11事件卡复用冻结命令/正文、page_phases段索引和page_counters主钟；不补已Init缺键。
+// life0无主钟/阶段，真实Init一次建立；关闭待Finish仍保留完整载荷。
+bool valid_startup_world_event_page(const StartupWorldRuntimeState &state,const ref::WorldScriptPage &page);
+bool initialize_startup_world_event_pages(StartupWorldRuntimeState &candidate);
 // raw89仅怪物定义与主钟业务边界：pending无钟，准入后完整；不代表共享怪物表现已还原。
 // 查询/恢复不补钟，关闭待退休仍保留完整载荷到框架Finish。
 bool valid_startup_world_monster_intro_page(const StartupWorldRuntimeState &state,const ref::WorldScriptPage &page);

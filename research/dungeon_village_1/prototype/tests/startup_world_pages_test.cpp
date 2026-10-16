@@ -3169,9 +3169,10 @@ void task_display() {
     }
 }
 void event_message_and_shop_return() {
-    for (int command : {0, 1, 2}) {
+    for (int command : {0, 1, 2, -1, std::numeric_limits<int>::max()}) {
         auto s = fixture(11);
         const auto id = s.scripts.pages.back().id;
+        s.scripts.pages.back().lifecycle = 0; // 调用点载荷也必须经过真实Init，不能依赖默认阶段/主钟。
         s.scripts.pages.back().message_commands = {command};
         s.scripts.pages.back().paragraphs = {"调用点夹具"};
         const auto funds = s.scene.world.world.ai.accounting.funds();
@@ -3179,11 +3180,11 @@ void event_message_and_shop_return() {
         check(
             tick.candidate && tick.candidate->page_counters.at(id) == 1 &&
                 test_support::audio_ids(tick.candidate->sound_requests) ==
-                    (command == 2 ? std::vector<int>{} : std::vector<int>{command == 0 ? 4 : 6}) &&
+                    (command != 0 && command != 1 ? std::vector<int>{} : std::vector<int>{command == 0 ? 4 : 6}) &&
                 tick.candidate->scene.world.updates == 0 &&
                 tick.candidate->scene.random.draws() == 0,
             "raw11 source sound only on first page update, no world/random tick");
-        check(command == 2 || tick.candidate->sound_requests.front().operation == StartupAudioOperation::jingle,
+        check((command != 0 && command != 1) || tick.candidate->sound_requests.front().operation == StartupAudioOperation::jingle,
               "raw11来源D4/D6保留jingle资格，不是按ID猜普通播放");
         s = *tick.candidate;
         check(acknowledge_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::none &&
@@ -3201,6 +3202,85 @@ void event_message_and_shop_return() {
                   s.scripts.pages.back().lifecycle == 4 &&
                   s.scene.world.world.ai.accounting.funds() == funds,
               "raw11 second confirm only closes, no extra reward/payment");
+    }
+    {
+        auto pending = fixture(11);
+        auto &page = pending.scripts.pages.back();
+        const auto id = page.id;
+        page.lifecycle = 0;page.message_commands = {0, 2};page.paragraphs = {"第一段", "第二段"};
+        auto paused = pending;paused.scene.framework_paused = true;
+        const auto stopped = prepare_startup_world_runtime(paused);
+        check(stopped.candidate && stopped.candidate->scripts.pages.back().lifecycle == 0 &&
+                  !stopped.candidate->page_counters.count(id) && !stopped.candidate->page_phases.count(id) &&
+                  stopped.candidate->sound_requests.empty(),
+              "raw11 paused pending page remains uninitialized without sound");
+        for (int fault = 0; fault < 3; ++fault) {
+            auto bad = pending;
+            if (fault == 0) bad.page_counters[id] = 0;
+            if (fault == 1) bad.page_phases[id] = 0;
+            if (fault == 2) bad.page_secondary_counters[id] = 0;
+            const auto before = startup_world_state_digest(bad);
+            check(!initialize_startup_world_event_pages(bad) && startup_world_state_digest(bad) == before,
+                  "raw11 pending page rejects partial preinstalled clocks atomically");
+        }
+        check(initialize_startup_world_event_pages(pending) && pending.scripts.pages.back().lifecycle == 1 &&
+                  pending.page_phases.at(id) == 0 && pending.page_counters.at(id) == 0 && pending.sound_requests.empty(),
+              "raw11 real Init installs phase/main exactly once without playing update sound");
+        const auto initialized = startup_world_state_digest(pending);
+        check(initialize_startup_world_event_pages(pending) && startup_world_state_digest(pending) == initialized,
+              "raw11 repeated initializer preserves initialized payload");
+        page_tick(pending);
+        check(pending.page_counters.at(id) == 1 && pending.page_phases.at(id) == 0,
+              "raw11 first framework update consumes initialized phase/main");
+        for (int fault = 0; fault < 11; ++fault) {
+            auto bad = pending;
+            if (fault == 0) bad.page_counters.erase(id);
+            if (fault == 1) bad.page_phases.erase(id);
+            if (fault == 2) bad.page_phases.at(id) = -1;
+            if (fault == 3) bad.page_phases.at(id) = 2;
+            if (fault == 4) bad.page_counters.at(id) = -1;
+            if (fault == 5) bad.page_counters.at(id) = std::numeric_limits<int>::max();
+            if (fault == 6) bad.scripts.pages.back().message_commands.clear();
+            if (fault == 7) bad.scripts.pages.back().paragraphs.pop_back();
+            if (fault == 8) bad.page_secondary_counters[id] = 0;
+            if (fault == 9) bad.scripts.pages.back().legacy_page = 12;
+            if (fault == 10) bad.scripts.pages.back().kind = ref::WorldScriptPageKind::dialogue;
+            const auto before = startup_world_state_digest(bad);
+            check(!prepare_startup_world_runtime(bad).candidate &&
+                      acknowledge_startup_world_runtime_page(bad,id) == StartupWorldRuntimeError::missing_source &&
+                      cancel_startup_world_runtime_page(bad,id) == StartupWorldRuntimeError::missing_source &&
+                      startup_world_state_digest(bad) == before,
+                  "raw11 corrupt live payload rejects update/confirm/cancel without mutation");
+        }
+        auto wrapped = pending;wrapped.page_counters.at(id) = std::numeric_limits<int>::max()-1;
+        page_tick(wrapped);
+        check(wrapped.page_counters.at(id) == 0 && wrapped.sound_requests.size() == 1,
+              "raw11 main wraps by source modulo without an extra first-update sound");
+        auto second = pending;second.page_phases.at(id) = 1;
+        check(acknowledge_startup_world_runtime_page(second,id) == StartupWorldRuntimeError::none &&
+                  second.page_phases.at(id) == 1 && second.page_counters.at(id) == 40 &&
+                  acknowledge_startup_world_runtime_page(second,id) == StartupWorldRuntimeError::none &&
+                  second.page_phases.at(id) == 1 && second.scripts.pages.back().lifecycle == 4,
+              "raw11 confirms fast-forward/close current frozen paragraph without inventing next-paragraph action");
+        auto bad_closed = second;bad_closed.page_phases.erase(id);
+        check(!prepare_startup_world_runtime(bad_closed).candidate && bad_closed.page_counters.count(id),
+              "raw11 malformed closed payload rejects before Finish can erase evidence");
+        page_tick(second);
+        check(!second.page_counters.count(id) && !second.page_phases.count(id) &&
+                  std::none_of(second.scripts.pages.begin(),second.scripts.pages.end(),[&](const auto &p){return p.id==id;}),
+              "raw11 real Finish releases both clocks and frozen arrays with page retirement");
+        auto cancelled = pending;
+        check(cancel_startup_world_runtime_page(cancelled,id) == StartupWorldRuntimeError::none &&
+                  cancelled.scripts.pages.back().lifecycle == 4 && cancelled.page_counters.at(id) == 1 &&
+                  cancelled.scene.random.draws() == pending.scene.random.draws(),
+              "raw11 proven soft2 Owner action closes immediately without fast-forward or random");
+        auto pair = pending;pair.scripts.pages.back().lifecycle = 0;
+        pair.page_counters.erase(id);pair.page_phases.erase(id);
+        auto bad_page = pair.scripts.pages.back();bad_page.id=pair.scripts.next_page_id++;
+        bad_page.paragraphs.pop_back();pair.scripts.pages.push_back(bad_page);
+        const auto before = startup_world_state_digest(pair);
+        check(!initialize_startup_world_event_pages(pair) && startup_world_state_digest(pair) == before,
+              "raw11 multi-page Init validates every page before installing any clock");
     }
     auto invalid = fixture(11);
     const auto invalid_id = invalid.scripts.pages.back().id;

@@ -1058,6 +1058,10 @@ struct Validation {
             return fail("scripts: 页身份/续体校验失败");
         std::size_t scenes{};
         for (const auto &p : s.scripts.pages) {
+            if((!p.message_commands.empty()||
+                (p.kind==ref::WorldScriptPageKind::raw_page&&p.legacy_page==11))&&
+               !valid_startup_world_event_page(s,p))
+                return fail("event page11: 命令/正文/主钟/段索引或关闭待退休载荷非法");
             pages.emplace(p.id, &p);
             if (p.kind == ref::WorldScriptPageKind::scene)
                 ++scenes;
@@ -1170,13 +1174,6 @@ struct Validation {
                 if (phase && !selected(*phase, p.paragraphs.size()))
                     return fail("page: 文本段选择越界");
                 continue;
-            }
-            if (raw == 11) {
-                const auto phase = get(s.page_phases, id);
-                if (p.message_commands.empty() ||
-                    p.message_commands.size() != p.paragraphs.size() ||
-                    !selected(phase ? *phase : 0, p.message_commands.size()))
-                    return fail("message page: 段落/命令/选择失配");
             }
             if (raw == 59 && !human(p.legacy_f))
                 return fail("human page: 解锁人物不存在");

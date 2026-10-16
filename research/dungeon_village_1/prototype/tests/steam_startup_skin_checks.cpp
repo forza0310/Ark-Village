@@ -4,6 +4,11 @@
 #include "dungeon_village_prototype/steam_record_skin.hpp"
 #include "dungeon_village_prototype/steam_font_metrics.hpp"
 #include "dungeon_village_prototype/steam_dialogue_skin.hpp"
+#include "dungeon_village_prototype/steam_event_skin.hpp"
+#include "dungeon_village_prototype/startup_world_persistence.hpp"
+#include "dungeon_village_prototype/steam_news_skin.hpp"
+#include "dungeon_village_prototype/startup_world_projection.hpp"
+#include "support/world_fixture.hpp"
 #include "dungeon_village_tools/sprite.hpp"
 #include <raylib.h>
 #include <algorithm>
@@ -124,6 +129,99 @@ void dialogue_page(Checks &check) {
     u.paragraph=-1;check(!steam_dialogue_update(u),"负段号拒绝");
     u.paragraph=2;check(!steam_dialogue_update(u),"越界段号拒绝");
     u.paragraphs.clear();u.paragraph=0;check(!steam_dialogue_update(u),"空正文拒绝，不补演示句");
+}
+// 事件卡主责原序、独立数组采样和严格只读桥；奖励/声音时点仍由pages套件负责。
+void event_card(Checks &check,const std::filesystem::path &root) {
+    SteamEventSkinInput in{0,0,"正文<br><co=0064FF>原标签</co>"};
+    SteamEventSkinOptions options;options.title="事件";options.title_widths=std::array<int,2>{24,24};
+    options.width=239;options.height=261;options.view_y=23;
+    auto p=steam_event_skin(in,options);
+    check(p&&p->origin==std::array<int,2>{0,10}&&p->soft_labels==std::array<int,2>{0,0},
+          "11两软标签皆0且标准零位页共同居中，VIEW_Y不重复进origin");
+    const auto first_image=std::find_if(p->draws.begin(),p->draws.end(),[](const auto &v){return std::holds_alternative<StartupSkinDraw>(v);});
+    check(first_image!=p->draws.end(),"11背景请求存在");
+    const auto at=static_cast<std::size_t>(first_image-p->draws.begin());
+    const auto &background=std::get<StartupSkinDraw>(p->draws.at(at));
+    check(background.package==StartupSkinPackage::event&&background.image==9&&background.sprite==-1&&
+          background.crop==std::array<int,4>{0,0,180,80}&&background.offset==std::array<int,2>{30,67}&&
+          std::get<SteamEventClip>(p->draws.at(at+1)).rectangle==std::array<int,4>{0,159,240,0}&&
+          std::get<SteamEventTextLayout>(p->draws.at(at+2)).text==in.text&&
+          std::get<SteamEventTextLayout>(p->draws.at(at+2)).rectangle==std::array<int,4>{28,159,182,46}&&
+          std::get<SteamEventTextLayout>(p->draws.at(at+2)).anchor==34&&
+          std::get<SteamEventTextLayout>(p->draws.at(at+2)).line_space==6&&
+          std::get<SteamEventClip>(p->draws.at(at+3)).kind==SteamEventClipKind::pop&&
+          std::get<SteamEventClip>(p->draws.at(at+4)).rectangle==std::array<int,4>{0,67,240,79},
+          "11窗/box后背景→真正文clip/标签TextLayout/恢复→人物clip，零高不漏掉裁剪");
+    const auto actors=parts<StartupSkinDraw>(*p);
+    check(actors.size()==5&&actors[1].image==1&&actors[1].sprite==0&&actors[1].frame==0&&
+          actors[1].offset==std::array<int,2>{65,161}&&actors[2].offset==std::array<int,2>{120,161}&&
+          actors[3].offset==std::array<int,2>{175,161}&&actors[4].image==7&&
+          actors[4].crop==std::array<int,4>{0,0,180,24}&&actors[4].offset==std::array<int,2>{30,67}&&
+          std::get<SteamEventClip>(p->draws.at(p->draws.size()-2)).kind==SteamEventClipKind::pop&&
+          std::get<SteamStartupTouch>(p->draws.back()).component==2&&
+          !std::get<SteamStartupTouch>(p->draws.back()).rectangle,
+          "11Happy三人x65/120/175与OY首13，三人后烟花裁片，恢复clip后无矩形Touch2");
+    struct Sample {int main,happy,sad,reveal;bool marker;};
+    constexpr std::array<Sample,10> samples{{{4,158,146,0,false},{5,158,146,0,false},
+        {6,157,146,1,false},{10,154,147,6,false},{22,148,151,23,false},
+        {39,151,147,46,false},{40,151,146,48,false},{52,148,148,48,false},
+        {60,148,148,48,false},{61,148,148,48,true}}};
+    for(const auto &sample:samples)for(int command:{0,1}) {
+        in.main=sample.main;in.command=command;p=steam_event_skin(in,options);
+        const auto images=parts<StartupSkinDraw>(*p);const auto clips=parts<SteamEventClip>(*p);
+        const auto actor=std::find_if(images.begin(),images.end(),[](const auto &v){return v.package==StartupSkinPackage::event&&v.sprite>=0;});
+        const auto marker=std::find_if(images.begin(),images.end(),[](const auto &v){return v.package==StartupSkinPackage::common;});
+        check(actor!=images.end()&&actor->offset==std::array<int,2>{65,command==0?sample.happy:sample.sad}&&
+              actor->sprite==(command==0?0:3)&&actor->frame==0&&clips[0].rectangle[3]==sample.reveal&&
+              (marker!=images.end())==sample.marker,"11独立数组样点/RateConvert边界/恰60不画而61画继续标");
+        if(sample.marker)check(marker->image==72&&marker->sprite==2&&marker->frame==0&&
+            marker->offset==std::array<int,2>{213,204},"11继续SEB2不是标题AddTouch动态箭头");
+        if(command==0)check(images.back().image==7&&images.back().crop==
+            std::array<int,4>{0,(sample.main%20<10)?0:24,180,24},"11烟花两24高裁片按20槽切换，不画整48高");
+    }
+    options.japanese=true;in.main=61;in.command=2;p=steam_event_skin(in,options);
+    const auto text=parts<SteamEventTextLayout>(*p);
+    check(text.size()==1&&text[0].rectangle==std::array<int,4>{28,159,182,49}&&text[0].anchor==2&&
+          text[0].rgb==std::array<int,3>{92,51,31}&&parts<StartupSkinDraw>(*p).size()==2&&
+          parts<StartupSkinDraw>(*p)[0].image==10,"11命令2沿非0背景而无三人/烟花，JP正文49高anchor2");
+    for(int command:{-7,99}) {
+        in.command=command;
+        check(steam_event_skin(in,options)&&parts<StartupSkinDraw>(*steam_event_skin(in,options)).size()==2,
+              "11源通用else接受其它int，不凭当前原表只0/1造新业务禁令");
+    }
+    for(int gate=0;gate<3;++gate) {
+        auto hidden=options;hidden.title_widths.reset();hidden.on_top=gate!=0;
+        hidden.until_active_hide=gate==1;hidden.wait=gate==2?1:0;
+        check(steam_event_skin(in,hidden)&&steam_event_skin(in,hidden)->draws.empty(),"11三种共同隐藏门槛均不消费缺失测宽");
+    }
+    auto owner=test_support::page_fixture(11);const auto id=owner.scripts.pages.back().id;
+    auto &page=owner.scripts.pages.back();page.lifecycle=0;page.message_commands={0,1};page.paragraphs={"实际首段","实际次段"};
+    check(!steam_event_input(owner,id)&&initialize_startup_world_event_pages(owner),"11未Init桥拒绝，通过真实初始化创建已有phase/main");
+    owner.page_phases.at(id)=1;owner.page_counters.at(id)=52;
+    const auto before=startup_world_state_digest(owner);const auto read=steam_event_input(owner,id);
+    check(read&&read->command==1&&read->main==52&&read->text=="实际次段"&&startup_world_state_digest(owner)==before,
+          "11桥按真实phase读取配对命令/正文，不推进主钟/页面/奖励/随机或输出");
+    for(int fault=0;fault<6;++fault) {
+        auto bad=owner;
+        if(fault==0)bad.page_phases.erase(id);
+        if(fault==1)bad.page_counters.erase(id);
+        if(fault==2)bad.scripts.pages.back().paragraphs.pop_back();
+        if(fault==3)bad.page_phases.at(id)=2;
+        if(fault==4)bad.scripts.pages.back().lifecycle=4;
+        if(fault==5)bad.scripts.pages.push_back(bad.scripts.pages.back());
+        const auto frozen=startup_world_state_digest(bad);
+        check(!steam_event_input(bad,id)&&startup_world_state_digest(bad)==frozen,
+              "11桥拒缺字段/数组失配/越界/退休/重复ID，不用默认0或map[]补建");
+    }
+    for(int image:{1,2,3,4,5,6,7,9,10}) {
+        const auto source=steam_event_resource(StartupSkinPackage::event,image);
+        check(source&&std::filesystem::is_regular_file(root.parent_path()/source->image_path)&&
+              (!source->sprite_path||std::filesystem::is_regular_file(root.parent_path()/source->sprite_path)),
+              "11原图/SEB已有明确出版路径，资源表不猜同名重提取");
+    }
+    check(steam_event_resource(StartupSkinPackage::common,72)->sprite==2&&
+          !steam_event_resource(StartupSkinPackage::event,72)&&!steam_event_resource(StartupSkinPackage::title,9),
+          "11素材映射保留包身份，未知包/索引拒绝");
 }
 // 字体请求数值与本地化准入独立于字形后端，不以渲染截图生成这些期望值。
 void font_metrics(Checks &check) {
@@ -297,6 +395,97 @@ void record_page(Checks &check) {
         if(fault==27){bad.japanese=false;bad.english=true;bad.labels.english_title=std::string(4097,'x');}
         check(!steam_record_skin(bad),"坏纪录页/钟/测宽/目录及重复引用整体拒绝，不返回部分画面");
     }
+}
+// raw15只测排版观测的消费、原输入顺序及局部计划；不复制TextLayout字形算法。
+void news_page(Checks &check) {
+    check(steam_news_rows(false,11)==6&&steam_news_rows(false,10)==7&&
+          steam_news_rows(false,-1)==7&&steam_news_rows(true,{})==7&&
+          !steam_news_rows(false,{}),"NEWS字号阈值及泰语短路，不猜缺失字体");
+    check(steam_news_page_count(102,18,6)==1&&steam_news_page_count(120,18,6)==2&&
+          steam_news_page_count(120,18,7)==1&&steam_news_page_count(0,18,6)==0,
+          "MakeNews真实高度/行距的两次整数除法，合法0页不钳成1");
+    check(!steam_news_page_count(-1,18,6)&&!steam_news_page_count(10,0,6)&&
+          !steam_news_page_count(10,18,5)&&
+          !steam_news_page_count(std::numeric_limits<int>::max(),18,6)&&
+          !steam_news_page_count(std::numeric_limits<int>::max()-6,1,7),
+          "NEWS非法观测及原32位加法溢出显式拒绝，不以宽整数改变源结果");
+    SteamNewsUpdateInput u;u.pages=3;u.secondary=197;
+    auto updated=steam_news_update(u);
+    check(updated&&updated->main==2&&updated->secondary==198&&updated->page==0&&
+          updated->checked_keys==std::array<bool,5>{true,true,true,false,true},
+          "NEWS整轮主钟先共同加1再本页加1，独立副钟只加1");
+    u.left_repeat=true;u.right_repeat=true;u.confirm_pulse=true;u.back_soft_label=true;
+    updated=steam_news_update(u);
+    check(updated&&updated->page==1&&updated->request_pop&&updated->checked_keys[4],
+          "NEWS左右独立依次循环，确认未越尾仍消费soft2");
+    u.page=2;u.left_repeat=false;u.right_repeat=false;
+    updated=steam_news_update(u);
+    check(updated&&updated->page==3&&updated->request_pop&&!updated->checked_keys[4],
+          "NEWS确认越尾只发Pop请求并保留越尾候选，不假装Pop已成功");
+    u.page=0;u.confirm_pulse=false;u.back_soft_label=false;u.debug_held=true;
+    check(steam_news_update(u)->page==0&&!steam_news_update(u)->checked_keys[3],
+          "DEBUG held没有DEBUG_CMD资格不成为正常确认按钮");
+    u.debug_command=true;
+    check(steam_news_update(u)->page==1&&steam_news_update(u)->checked_keys[3],
+          "DEBUG_CMD有资格且无Pulse时才检查调试held");
+    u.confirm_pulse=true;
+    check(!steam_news_update(u)->checked_keys[3],"正常确认短路调试held观测");
+    u.confirm_pulse=false;u.debug_command=false;u.main=std::numeric_limits<int>::max()-1;
+    u.secondary=u.main;
+    check(steam_news_update(u)->main==1&&steam_news_update(u)->secondary==0,
+          "NEWS先共同INT_MAX模再本页模20，不错误整体加2后模20");
+    u.pages=0;
+    check(steam_news_update(u)&&!steam_news_update(u)->request_pop,
+          "0页没有左右输入仍可正常等待，不把合法计算0改成演示1页");
+    u.confirm_pulse=true;
+    check(steam_news_update(u)->page==1&&steam_news_update(u)->request_pop,
+          "0页确认仍按原递增和越尾比较请求Pop");
+    u.confirm_pulse=false;u.right_repeat=true;
+    check(!steam_news_update(u),"0页实际执行左右取模才显式拒绝除零");
+
+    SteamNewsSkinInput in;in.width=239;in.height=261;in.view_y=23;in.pages=3;in.page=2;in.main=19;
+    in.japanese=true;in.configured_text_layout=true;in.rendering_font_size=11;in.line_step=18;
+    in.window_title="通信 3/3";in.title_widths=std::array<int,2>{45,47};in.name="当前文章名";
+    in.arrow_selected={true,false};
+    auto skin=steam_news_skin(in);
+    check(skin&&skin->origin==std::array<int,2>{0,10}&&skin->title=="通信 3/3"&&
+          parts<SteamNewsLogoDraw>(*skin)[0].position==std::array<int,2>{29,62}&&
+          parts<SteamNewsLogoDraw>(*skin)[0].common_image==125,
+          "NEWS共同居中保留负奇数向零，图125整图实际坐标不借内框坐标");
+    const auto arrows=parts<SteamManualArrowRequest>(*skin);
+    check(arrows.size()==2&&arrows[0].position==std::array<int,2>{41,46}&&
+          arrows[0].bounds_frame==3&&arrows[0].selected&&
+          arrows[1].position==std::array<int,2>{196,46}&&arrows[1].bounds_frame==0&&!arrows[1].selected,
+          "NEWS真实按下选态交同AddTouch箭头helper，不直接绘common箭头SEB");
+    const auto body=parts<SteamNewsBodyDraw>(*skin);
+    const auto touches=parts<SteamStartupTouch>(*skin);
+    check(body.size()==1&&body[0].position==std::array<int,2>{41,106}&&body[0].scroll_v==216&&
+          touches.size()==3&&touches[0].value==16&&touches[1].value==18&&
+          touches[2].component==2&&touches[2].option==2&&!touches[2].rectangle,
+          "NEWS页2按6行与真实18行距滚动216，末尾登记无矩形touch2");
+    const auto &last=skin->draws.back();
+    check(std::holds_alternative<SteamStartupTouch>(last)&&parts<SteamNewsFont>(*skin).empty()&&
+          parts<SteamNewsColor>(*skin)[0].role==SteamNewsColorRole::window_blue,
+          "NEWS日本语不改字号，标题颜色保留具名源Role");
+    in.japanese=false;in.english=true;in.rendering_font_size=10;
+    skin=steam_news_skin(in);
+    const auto fonts=parts<SteamNewsFont>(*skin);
+    check(fonts.size()==2&&fonts[0].action==SteamNewsFontAction::set_size11&&
+          fonts[1].action==SteamNewsFontAction::reset&&parts<SteamNewsBodyDraw>(*skin)[0].scroll_v==252,
+          "NEWSEnglish只包围name改字号再恢复；正文仍用原实例7行观测");
+    in.english=false;in.window_title.reset();in.title_widths.reset();
+    skin=steam_news_skin(in);
+    check(skin&&skin->title.empty()&&parts<SteamNewsLogoDraw>(*skin).size()==1&&
+          parts<SteamNewsBodyDraw>(*skin).size()==1&&parts<SteamNewsFont>(*skin).empty(),
+          "Jp/En均假只跳外框题头，仍画报纸内框正文及touch，不要求不消费的测宽");
+    in.pages=0;in.page=0;
+    check(steam_news_skin(in)&&parts<SteamManualArrowRequest>(*steam_news_skin(in)).empty(),
+          "合法0页静态画面保留而不产生左右按钮，不冒充可导航");
+    in.line_step.reset();check(!steam_news_skin(in),"缺真实TextLayout行距拒绝");
+    in.on_top=false;
+    check(steam_news_skin(in)->draws.empty(),"隐藏NEWS不消费尚无的正文布局观测");
+    in.on_top=true;in.line_step=std::numeric_limits<int>::max();in.page=std::numeric_limits<int>::max()-1;
+    check(!steam_news_skin(in),"NEWS滚动乘法先检查源int边界，不触发宿主宽整数溢出");
 }
 void record_update(Checks &check) {
     struct Case {bool left,right,back;int page;std::array<bool,3> checked;bool pop;};
@@ -1103,5 +1292,7 @@ int check_steam_startup_skin(const std::filesystem::path &root) {
     record_update(check);
     font_metrics(check);
     dialogue_page(check);
+    event_card(check,root);
+    news_page(check);
     return check.count;
 }

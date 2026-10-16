@@ -48,12 +48,9 @@ bool unlock_human_valid(const State &s, const ref::WorldScriptPage &p) {
                        [&](const auto &h) { return h.identity == p.legacy_f; });
 }
 std::optional<int> event_message_command(const State &s, const ref::WorldScriptPage &p) {
+    if(!valid_startup_world_event_page(s,p)||p.lifecycle==0)return {};
     const auto phase = s.page_phases.find(p.id);
-    const int index = phase == s.page_phases.end() ? 0 : phase->second;
-    if (p.message_commands.empty() || p.message_commands.size() != p.paragraphs.size() ||
-        index < 0 || static_cast<std::size_t>(index) >= p.message_commands.size())
-        return {};
-    return p.message_commands.at(static_cast<std::size_t>(index));
+    return p.message_commands.at(static_cast<std::size_t>(phase->second));
 }
 bool consume_task_display(State &s, const ref::WorldScriptPage &page,
                           ref::WorldTaskDisplayAction action) {
@@ -351,6 +348,37 @@ bool consume_award_display(State &s, std::uint64_t id, bool confirm, int raw) {
     return true;
 }
 } // namespace
+
+bool valid_startup_world_event_page(const State &s,const ref::WorldScriptPage &p) {
+    if(!p.id||p.id>=s.scripts.next_page_id||p.kind!=ref::WorldScriptPageKind::raw_page||p.legacy_page!=11||
+       p.lifecycle<0||p.lifecycle>4||
+       std::count_if(s.scripts.pages.begin(),s.scripts.pages.end(),[&](const auto &v){return v.id==p.id;})!=1||
+       p.message_commands.empty()||p.message_commands.size()!=p.paragraphs.size()||
+       p.message_commands.size()>static_cast<std::size_t>(std::numeric_limits<int>::max())||
+       s.page_secondary_counters.count(p.id))return false;
+    const auto actual=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[&](const auto &v){return v.id==p.id;});
+    if(actual->kind!=p.kind||actual->legacy_page!=11||actual->lifecycle!=p.lifecycle||
+       actual->message_commands!=p.message_commands||actual->paragraphs!=p.paragraphs)return false;
+    const auto phase=s.page_phases.find(p.id),main=s.page_counters.find(p.id);
+    if(p.lifecycle==0)return phase==s.page_phases.end()&&main==s.page_counters.end();
+    return phase!=s.page_phases.end()&&main!=s.page_counters.end()&&phase->second>=0&&
+           static_cast<std::size_t>(phase->second)<p.message_commands.size()&&main->second>=0&&
+           main->second<std::numeric_limits<int>::max();
+}
+bool initialize_startup_world_event_pages(State &s) {
+    bool pending=false;
+    for(const auto &p:s.scripts.pages) {
+        const bool event=p.kind==ref::WorldScriptPageKind::raw_page&&p.legacy_page==11;
+        if((event&&!valid_startup_world_event_page(s,p))||(!event&&!p.message_commands.empty()))return false;
+        pending|=event&&p.lifecycle==0;
+    }
+    if(!pending||s.scene.framework_paused)return true;
+    auto next=s;
+    for(auto &p:next.scripts.pages)if(p.kind==ref::WorldScriptPageKind::raw_page&&p.legacy_page==11&&p.lifecycle==0) {
+        next.page_phases.emplace(p.id,0);next.page_counters.emplace(p.id,0);p.lifecycle=1;
+    }
+    s=std::move(next);return true;
+}
 
 bool valid_startup_world_residence_award_page(const State &s, std::uint64_t id) {
     const auto p = std::find_if(s.scripts.pages.begin(), s.scripts.pages.end(),
@@ -946,6 +974,9 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
     if (state.scene.framework_paused || top == state.scripts.pages.rend() || top->id != id ||
         top->kind == ref::WorldScriptPageKind::scene)
         return Error::invalid_page;
+    if((!top->message_commands.empty()&&!(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==11))||
+       (top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==11&&
+        (top->lifecycle!=2||!valid_startup_world_event_page(state,*top))))return Error::missing_source;
     if (follows_award_page(state, id) && !state.award_question_ui.count(id))
         return Error::missing_source;
     if (state.award_question_ui.count(id) || top->legacy_page == 80 || top->legacy_page == 87) {
@@ -1023,8 +1054,8 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
             // b/g:11367：确认只快进到40或关闭；不再次执行奖励/指令22续体。
             if (!event_message_command(next, *top))
                 return Error::missing_source;
-            if (next.page_counters[id] < 40)
-                next.page_counters[id] = 40;
+            if (next.page_counters.at(id) < 40)
+                next.page_counters.at(id) = 40;
             else {
                 const auto closed =
                     ref::prepare_world_script_close_page(startup_world_runtime_scripts(next), id);
@@ -1143,6 +1174,16 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
 Error cancel_startup_world_runtime_page(State &state, std::uint64_t id) {
     const auto catalogue = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
                                        [](const auto &p) { return p.lifecycle != 4; });
+    if(catalogue!=state.scripts.pages.rend()&&catalogue->id==id&&
+       (!catalogue->message_commands.empty()||(catalogue->kind==ref::WorldScriptPageKind::raw_page&&catalogue->legacy_page==11))) {
+        // Steam 1032831B查soft2后走10328336 Pop；这是Owner动作，不推出OS Esc映射。
+        if(state.scene.framework_paused)return Error::invalid_page;
+        if(catalogue->lifecycle!=2||!valid_startup_world_event_page(state,*catalogue))return Error::missing_source;
+        auto next=state;next.scripts.executing_page=id;
+        const auto closed=ref::prepare_world_script_close_page(startup_world_runtime_scripts(next),id);
+        if(!closed.candidate||!write_startup_world_runtime_scripts(next,closed.candidate->state))return Error::script_failed;
+        next.scripts.executing_page.reset();state=std::move(next);return Error::none;
+    }
     if (catalogue != state.scripts.pages.rend() && catalogue->id == id &&
         follows_award_page(state, id) && !state.award_question_ui.count(id))
         return Error::missing_source;
@@ -1331,6 +1372,10 @@ std::optional<State> update_startup_world_runtime_page(const State &state,
     }
     const auto notice=std::find_if(state.scripts.pages.rbegin(),state.scripts.pages.rend(),
         [](const auto &p){return p.lifecycle!=4;});
+    if(notice!=state.scripts.pages.rend()&&
+       ((!notice->message_commands.empty()&&!(notice->kind==ref::WorldScriptPageKind::raw_page&&notice->legacy_page==11))||
+        (notice->kind==ref::WorldScriptPageKind::raw_page&&notice->legacy_page==11&&
+         (notice->lifecycle!=2||!valid_startup_world_event_page(state,*notice)))))return {};
     if(notice!=state.scripts.pages.rend()&&notice->kind==ref::WorldScriptPageKind::raw_page&&
        (notice->legacy_page==99||notice->legacy_page==100)&&state.task_display_initialized.count(notice->id)) {
         const auto count=state.page_counters.find(notice->id);
@@ -1481,12 +1526,12 @@ std::optional<State> update_startup_world_runtime_page(const State &state,
             return {};
         return next;
     }
-    auto &counter = top->kind==ref::WorldScriptPageKind::raw_page&&(top->legacy_page==89||top->legacy_page==92)
+    auto &counter = top->kind==ref::WorldScriptPageKind::raw_page&&(top->legacy_page==11||top->legacy_page==89||top->legacy_page==92)
         ? next.page_counters.at(top->id):next.page_counters[top->id];
     if (counter == std::numeric_limits<int>::max())
         return {};
     ++counter;
-    if(top->legacy_page==27||top->legacy_page==67||top->legacy_page==88||top->legacy_page==89||top->legacy_page==92||top->legacy_page==94||top->legacy_page==99||top->legacy_page==100)counter%=std::numeric_limits<int>::max();
+    if(top->legacy_page==11||top->legacy_page==27||top->legacy_page==67||top->legacy_page==88||top->legacy_page==89||top->legacy_page==92||top->legacy_page==94||top->legacy_page==99||top->legacy_page==100)counter%=std::numeric_limits<int>::max();
     if(top->legacy_page==50||top->legacy_page==30||top->legacy_page==96) {
         auto &secondary=next.page_secondary_counters.at(top->id);
         counter%=std::numeric_limits<int>::max();

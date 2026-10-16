@@ -35,6 +35,65 @@ int check_startup_world_restore_contracts(
     };
     expect(baseline, true, "natural baseline");
     {
+        // 只冻结调用点正文；页面身份/挂起父页由真实producer建立，不重复经营前缀。
+        using E=p::StartupWorldRuntimeError;
+        const auto require=[&](bool ok,const char *why){++checks;if(!ok)throw std::runtime_error(std::string("restore event11: ")+why);};
+        auto state=baseline;
+        r::WorldScriptPage page;page.kind=r::WorldScriptPageKind::raw_page;page.legacy_page=11;
+        page.message_commands={0,2,-1};page.paragraphs={"事件甲","事件乙","事件丙"};
+        const auto made=r::prepare_world_script_page(p::startup_world_runtime_scripts(state),page);
+        require(made.candidate&&made.candidate->last_page&&p::write_startup_world_runtime_scripts(state,made.candidate->state),
+                "actual page producer accepts frozen event payload");
+        const auto id=*made.candidate->last_page;
+        const auto tick=[&](auto &s){const auto next=p::prepare_startup_world_runtime(s);require(next.candidate.has_value(),"real framework");s=*next.candidate;};
+        const auto replay=[&](const auto &source,const auto &consume,const char *why){
+            expect(source,true,why);const auto bytes=p::persistence_detail::encode_state(source);
+            auto restored=p::persistence_detail::decode_state(bytes,*source.rules),live=source;
+            require(p::persistence_detail::encode_state(restored)==bytes,"all event arrays and clocks restore exactly");
+            consume(live);consume(restored);expect(live,true,why);expect(restored,true,why);
+            require(p::persistence_detail::encode_state(live)==p::persistence_detail::encode_state(restored),
+                    "same short event input preserves complete Owner, outputs and random");
+        };
+        replay(state,tick,"11 pending Init snapshot");
+        auto paused=state;paused.scene.framework_paused=true;
+        replay(paused,[&](auto &s){tick(s);require(!s.page_counters.count(id)&&!s.page_phases.count(id),"pause does not initialize pending event");},
+               "11 paused pending snapshot");
+        for(int fault=0;fault<3;++fault){
+            auto bad=state;if(fault==0)bad.page_counters[id]=0;if(fault==1)bad.page_phases[id]=0;
+            if(fault==2)bad.page_secondary_counters[id]=0;
+            expect(bad,false,"11 pending partial payload cannot become default phase/main");
+        }
+        require(p::initialize_startup_world_event_pages(state),"explicit source Init");
+        replay(state,tick,"11 initialized pre-first-update snapshot");tick(state);
+        for(int fault=0;fault<10;++fault){
+            auto bad=state;
+            if(fault==0)bad.page_counters.erase(id);
+            if(fault==1)bad.page_phases.erase(id);
+            if(fault==2)bad.page_phases.at(id)=-1;
+            if(fault==3)bad.page_phases.at(id)=3;
+            if(fault==4)bad.page_counters.at(id)=-1;
+            if(fault==5)bad.page_counters.at(id)=std::numeric_limits<int>::max();
+            if(fault==6)bad.scripts.pages.back().message_commands.clear();
+            if(fault==7)bad.scripts.pages.back().paragraphs.pop_back();
+            if(fault==8)bad.page_secondary_counters[id]=0;
+            if(fault==9)bad.scripts.pages.back().legacy_page=12;
+            expect(bad,false,"11 missing clock, invalid phase/arrays or wrong owner is never repaired by restore");
+            require(!p::prepare_startup_world_runtime(bad).candidate,"invalid loaded payload refuses before update");
+        }
+        auto boundary=state;boundary.page_counters.at(id)=std::numeric_limits<int>::max()-1;
+        replay(boundary,[&](auto &s){tick(s);require(s.page_counters.at(id)==0,"source main modulo");},"11 clock modulo snapshot");
+        const auto confirm=[&](auto &s){require(p::acknowledge_startup_world_runtime_page(s,id)==E::none,"actual event confirm");};
+        state.page_counters.at(id)=39;
+        replay(state,confirm,"11 early confirm snapshot");confirm(state);
+        require(state.page_counters.at(id)==40&&state.scripts.pages.back().lifecycle==2,"early confirm only sets40");
+        replay(state,confirm,"11 ready confirm snapshot");confirm(state);
+        auto damaged=state;damaged.page_phases.erase(id);expect(damaged,false,"closed11 missing phase must reject before retirement");
+        replay(state,tick,"11 closed pending-Finish snapshot");tick(state);
+        require(!state.page_counters.count(id)&&!state.page_phases.count(id)&&
+                    std::none_of(state.scripts.pages.begin(),state.scripts.pages.end(),[&](const auto &v){return v.id==id;}),
+                "Finish releases page, both clocks and frozen references");
+    }
+    {
         // 复用实际增长producer；只冻结演出门槛，不重复自然经营到大师的长前缀。
         using E=p::StartupWorldRuntimeError;
         const auto require=[&](bool ok,const char *why){++checks;if(!ok)throw std::runtime_error(std::string("restore mastery/gift: ")+why);};

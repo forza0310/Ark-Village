@@ -1,5 +1,7 @@
 #pragma once
 
+#include "dungeon_village_prototype/steam_text_reveal.hpp"
+
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -91,4 +93,26 @@ struct SteamTextLayoutResult {
 // 属维护资源策略，不认证原异常前缀有事务性；后端抛错原样传播。
 std::optional<SteamTextLayoutResult> steam_make_text_blocks(
     const SteamTextLayoutInput &,SteamTextLayoutBackend &);
+
+struct SteamTextSetInput {
+    SteamTextLayoutInput layout; // 已完成公开Replace／TranslateConsoleText的真实text_。
+    SteamTextRevealState reveal;
+    std::optional<std::int32_t> request_font_scale; // 仅!adjust且多行时消费，不能猜平台比例。
+    bool adjust_font_size{};
+};
+struct SteamTextSetResult {
+    SteamTextLayoutResult layout;
+    SteamLayoutFontRef font; // 首排后复制的备份；最终块仍持有末次重排的冻结Font。
+    SteamTextRevealState reveal;
+    float height{-1}; // 多行自动适配可能扩大框高；写回后不再重排。
+    bool adjust_font_size{};
+};
+// 私有SetText在真实text_准备后的字号准备→排块/自适应→长度→Font换回。
+// layout.font必须是宿主本次私有呈现候选：会原序修改该Font对象，旧别名不回滚；
+// 不额外复制候选来伪装源调用。仅成功结果可安装，已执行后端操作无事务保证。
+// relayout_budget是维护调用预算（1..65536，含首排），不是原版循环上限。
+// 失败时尽力换回已经取得的备份，不重试失败清理；首排前失败可能没有备份。
+// 不执行公开Replace/平台文案转换、不创建Owner/存档，也不代替实例Draw重排。
+std::optional<SteamTextSetResult> steam_set_prepared_text(
+    const SteamTextSetInput &,SteamTextLayoutBackend &,std::uint32_t relayout_budget=65536);
 } // namespace dungeon_village_prototype

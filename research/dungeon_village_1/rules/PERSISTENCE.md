@@ -165,7 +165,7 @@ Steam `SubForm.Init` RVA `312460`在VA `10314BDF`以“ゲームセーブ中”�
 
 设置12的返回同样是保存产生者，但只写系统。APK `b/g.java:11418–11423,11458–11464`先调用`d/a.d()`再退休页面；该函数仅序列化J至记录0。Steam SubForm.Update的VA10326D28／1032715E调用SaveSystem RVA264060，写sysSave_至RecordStore0／record0；非日文另刷新GameForm缓存，SubForm.Finish RVA1EDFA0本身没有保存。画质／速度在世界P12／P13、音量／方向在系统J3／J4／J13，故不能把设置返回解释为保存当前世界，也不能把返回当撤销。
 
-菜单项、键盘／鼠标门控差异和说明页随机见[设置／说明合同](../ui/PAGES.md#设置12值所属与返回边界)。维护系统2尚不承载这些完整设置，世界虽保存通关镜像也不能替代系统J9跨局权威；后续须按明确持久／平台输出契约实现，不能塞进opaque后宣称已还原设置存取。本批只补来源，不改维护文件格式。
+菜单项、键盘／鼠标门控差异和说明页随机见[设置／说明合同](../ui/PAGES.md#设置12值所属与返回边界)。早期维护系统2尚不承载完整设置；当前已按[批准合同](../prototype/PERSISTENCE.md#设置12的跨局权威与系统格式3待确认)升级系统3，以独立设置分区及应用即时权威接入，旧版本拒绝不迁移。世界通关镜像仍不能替代系统J9；真实平台输出与原档兼容另验。
 
 ### 载入
 
@@ -728,6 +728,18 @@ SaveAll已证true→false→system的顺序保留，完整生命周期上游仍�
 
 同批重新扫描全部可执行区的E8／E9目的地址，`SetReserveSave`仍只有五处已核Billing直调，`SetReserveSaveEnable`没有直接调用命中。后者RVA `0x795290`还被多个无关类型的布尔setter共享，包括通知、字体／图像管理及Unity配置；单凭该地址或`+0x0C`写入不能识别KairoBase配置。基构造VA `0x108CDA26`的使能true已证，但全部间接／内联赋值仍未穷尽，不能承诺使能运行期间始终为true。来源是同身份DLL、既有`work/persistence-replay-analysis/exe/methods.json`与`dumper/dump.cs`的具体方法／槽声明，无新增过程产物。
 
+2026-10-16继续沿具名GetInstance调用者核对，已找到三处**运行期内联使能写者**。接收者均先由`KairoBase.GetInstance 108C2070`返回、保存到局部，再由同一局部读对象并写`+0x0C`；不能只按偏移辨认成应用termination或其它布尔setter。该GetInstance在`108C20D0–20D6`返回已注册instance，无服务时可另走dummy，故对象类型及实际保存效果仍取决于原注册资格。
+
+| 具名入口 | 同接收者身份链 | 关闭／恢复使能VA |
+| --- | --- | --- |
+| `BillingManager.LaunchPurchaseFlow(BillingItem)` RVA1E2D40 | `101E2DB9`取实例→保存`[ebp−14]`，关闭与两恢复均取此局部 | 关闭`101E2E5F`；成功尾`101E2FFD`，purchase为空尾`101E3065`写true |
+| `InstallManager.LaunchBonusFlow()` RVA1D7A70 | `101D7B0E`取实例→`[ebp−1C]`，随后esi指向同局部 | 关闭`101D7C14`；结果处理尾`101D7FF5`，无结果尾`101D802A`写true |
+| `StoreBase.ProcessIncompletePayment` RVA245290 | `10245328`取实例→`[ebp−14]`，关闭及正常尾均取此局部 | 关闭`1024538A`，正常尾`102454A1`写true；先要求商品ProvisionType满足IsPaymentProduct |
+
+已核最短上游是`BillingForm.Run`：自身`+D4==1`时于`101C510C`调用MyBilling继承的购买入口。该入口关闭使能后，`101E2EA1`直接调用metadata具名的`StoreBase.LaunchPurchaseFlow(string)` RVA1C3620；固定DLL方法体为`xor eax,eax;ret`，正常返回必为null，于`101E2EAD`转purchase空分支。`101E3059`先虚分派同一KairoBase的槽17 **Save**，正常返回才在`101E3065`写true并返回false；成功尾`101E2FED`也先直接Save，再恢复使能。这不是SetReserveSave请求，恢复true也不是恢复此前捕获的旧值。关闭的是预留分派资格，不能据它推出期间禁止所有直接Save；Save异常后是否仍恢复以及完整EH展开未证，不写成finally保证。未完成付款的上游`ProcessIncompletePayments`只在存在未完成付款、找到相同product ID商品时于`102456B0`调用。
+
+本批局部覆盖73个具名GetInstance调用者正文及KairoBase／两种登记派生类型，不构成全程序间接／内联写者穷尽。没有执行购买、网络、原程序或存档；这些平台入口在一代Steam正常玩家菜单的实际可达性仍未证，不能为维护世界新增购买功能或假定每次退出都经过它们。
+
 普通暂停的通知旁支现另有局部排除：`OnApplicationPause(true)`在VA `0x10787E44`调用已有通知实例的`DoNotify`，后于`0x10787E64`调用`SetNotificationBackground(true)`。`DoNotify`（RVA `0x8CE560`）要求KairoBase实例非空且`isPlaying_ +0x64`为真；这里读的是游玩标志，**不是**`reserveSaveEnable +0x0C`。它先调用`CancelNotifications(false,true)`，再于`0x108CE5E3`分派通知实例槽4。`MyNotify.GetInstance`在`0x101DE9AC`登记到同一`NotifyManager.instance_`；该游戏类的槽4 `OnNotify`明确使用`0x101C9750`的空返回实现。两个插件包装所取委托槽`0x110EBD98`／`0x110EC8C4`已分别解码为MethodDef4915 `<CancelNotifications>b__125_0`／4924 `<SetNotificationBackground>b__134_0`，均为同一空返回；包装通过`RunOnUiThread(wait=true)`提交它们，不产生保存请求或修改保存使能。此结论只覆盖已登记MyNotify及这两个具体回调；不把等待空回调当作档案刷新，也不认证整个UI线程队列、账号服务、OS退出或强制终止。源码仍是上述固定DLL及metadata，未操作游戏／存档、未新增分析产物。
 
 2026-10-14同身份续核将**窗口失焦与应用暂停分开**。`IApplication.OnApplicationFocus`（RVA `0x7877C0`）先要求静态`bootError_`为空；原TypeInfo槽`0x110F77B4`映射IApplication（TypeDef925），`+0x30`是此异常引用，不能按实例同偏移的viewportWidth解释。`0x110F404C`映射Config（TypeDef551），静态`+0x28`为`UNITY_EDITOR`；仅该标志及`openBrowsing_`特殊分支才能到`0x1078788A`调用`OnApplicationPause(!focusStatus)`，不能把任意失焦当作前述暂停链。非编辑器的失焦路径在`0x10787906`调用管理器`Deactivate`，随后`0x1078791D`分派应用槽8 `OnStop`、`0x10787933`调用`SoundPlayer.Suspend`；复焦在`0x10787959`分派槽7 `OnRestart`。本游戏Main未覆盖槽7／8，继承实现为`0x101C9750`空返回；Deactivate（`0x107E52A0..0x107E52BE`）只清`endUpdateForm_ +0x68`引用，SoundPlayer.Suspend（`0x107C8B40..0x107C8B51`）只设置自身`suspend2_ +0x20`。这些具体接收者不提出预留保存请求；字段改变不等于世界已保存，也不单独证明后台更新是否继续。固定APK的Main继承IApplication且无onPause／onStop／onDestroy覆盖，基类的既有暂停／停止／销毁边界仍保持独立，不套Steam焦点协议。
@@ -744,7 +756,7 @@ SaveAll已证true→false→system的顺序保留，完整生命周期上游仍�
 
 在**固定DLL、已登记Main／游戏表单／MyNotify接收者、普通暂停true与退出托管回调**这一静态范围内，上游已闭合为不提出新的业务预留保存请求；非编辑器焦点链及上述恢复false的账号协程局部同样不提出业务请求，账号Prefs副作用独立保留。这里没有待命名的游戏暂停／退出delegate可据猜测补成SaveAll；既有Billing／其它服务请求可能已在进入回调前预留，不由本结论否定。当前可实施的是已有显式请求的条件分派，不能自行给失焦／关闭增加SaveAll。上述本轮消费者资格已经静态收窄；整个库的间接／内联调用穷尽、其它恢复false后台服务／网络原生行为和强制终止保证仍未闭合。五处Billing setter记录仍不是全程序入口清单或玩家动态认证。
 
-后续最小动态条件是：自然请求产生后，核对**同一KairoBase接收者**的reserveSave／reserveSaveEnable，以及失焦／退出前是否实际进入`Main.OnUpdate→Execute→_execute`并到达上述尾段；同时区别请求清零、业务保存调用与文件写入结果。外层`IApplication.Update`在`0x1078F550`先调用TerminateCheck，true分支`0x1078F55A`跳离稍后的槽11 OnUpdate（`0x1078FA9E`）；TerminateCheck的原条件不检查预留保存是否仍待消费。因此不能仅凭“退出回调发生／窗口最后一帧”保证还有一次尾段，也不应再用无自然预留请求的重复失焦实验认证SaveAll。构造后的reserveSaveEnable实际改写仍缺有接收者身份的具体配置入口或运行证据；共享setter地址不补成已闭合链，本轮未重扫全程序调用点。
+后续最小动态条件是：自然请求产生后，核对**同一KairoBase接收者**的reserveSave／reserveSaveEnable，以及失焦／退出前是否实际进入`Main.OnUpdate→Execute→_execute`并到达上述尾段；同时区别请求清零、业务保存调用与文件写入结果。外层`IApplication.Update`在`0x1078F550`先调用TerminateCheck，true分支`0x1078F55A`跳离稍后的槽11 OnUpdate（`0x1078FA9E`）；TerminateCheck的原条件不检查预留保存是否仍待消费。因此不能仅凭“退出回调发生／窗口最后一帧”保证还有一次尾段，也不应再用无自然预留请求的重复失焦实验认证SaveAll。构造后的三处使能内联改写已有上述具名接收者证据，但其Steam正常入口可达及其它写者仍未穷尽；不能把共享setter地址或有限调用者核对补成全程序闭合。
 
 2026-10-16补核到达该更新点前的两版资格：APK管理器`kairo/android/a/b.java:191–199`在锁屏、前台标志false或无窗口焦点时，调用`IApplication.b(100)`的绘制等待后提前返回，未到`:321`的表单Update；`kairo/android/ui/IApplication.java:347/364/370`由onRestart／onStart置前台true、onStop置false。Steam `OnApplicationPause 10787AD0`写isPause_，但`IApplication.Update 1078F636–F648`仅在`Config.UNITY_EDITOR && isPause_`时因该标志提前离开；固定MyConfig的UNITY_EDITOR=false不走此门，通过其它资格后才在`1078FA99–FA9E`分派OnUpdate。这不证明Unity后台实际持续调用Update，也不能将APK后台门外推Steam；回调不提出请求与后续是否取得业务更新机会分别认证。同批有限核KairoBase Reset／两种Restart／Init／Reboot／Start／Finish／Update共6176字节，未发现同一this.reserveSaveEnable的运行期写入；仍没有可命名的新配置入口，不将构造true改判为永久true，不新增失焦SaveAll或最后保存轮。
 
@@ -761,7 +773,7 @@ SaveAll已证true→false→system的顺序保留，完整生命周期上游仍�
 
 | 对象 | 已实施政策 | 尚不支持／不承诺 |
 | --- | --- | --- |
-| normal | 稳定主场景、无建设／模态且声音已领取；保存Owner与维护随机，OS输入重新采集；raw14沿严格稳定导出提交当前manual，应用系统2维护四目录 | 原轮内自动文件、任意模态普通存档、完整原档两栏兼容、APK／Steam导入及旧demo迁移 |
+| normal | 稳定主场景、无建设／模态且声音已领取；保存Owner与维护随机，OS输入重新采集；raw14沿严格稳定导出提交当前manual，应用系统3维护设置／四目录 | 原轮内自动文件、任意模态普通存档、完整原档两栏兼容、APK／Steam导入及旧demo迁移 |
 | replay | 完整外层测试轮末的Session／页载荷／随机／控制器／历史；当前世界5／应用8完整快照支持已验计分、保存请求等短恢复，范围见维护模块 | 旧语义／布局明确拒绝；原日历轮内直接续帧及未认证控制器不自动支持，历史自然快照不充作当前身份 |
 | 失败安全 | 同目录独占临时文件、完整写闭、回读、替换；失败旧档／当前Owner不变；解码与控制器联合安装 | 所有文件系统掉电耐久性、任意格式无限兼容或任意长度历史永远成功 |
 | 持续覆盖 | 新持久字段同步显式清单／codec／校验／往返／续跑；可选且不影响引用的附属段原样保留，未知必需段拒绝 | 补零原字段、跳过未知实体引用、用完整update自动“修好”损坏状态 |

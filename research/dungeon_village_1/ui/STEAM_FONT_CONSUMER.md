@@ -245,7 +245,9 @@ Steam私有SetText的非空／空串共同上游还包括字号准备与自适�
 
 自适应共同资格为`autoScale_!=0 && height_>0`，NaN不进入，**单行也受高度资格约束**。多行在`107CC59E–5C1`比较`float32(GetHeight()) > float32(height_+1.0F)`（常量VA10DDE55C为1.0F），成立才缩字。每轮`107CC5C3–5E4`重新读取当前Font.usedSize，按int32减1调用`SetSize(value,false)`并完整重排；先检查本轮这个**减一实参恰等于1**，为1退出，否则再查询高度／比较。退出后`107CC616–64F`另取GetHeight，若严格大于当前height，再取一次GetHeight并将该整数转float写回height；即使从未缩字，也可能扩大框高。单行`107CC651–697`另要求width>0且缓存textWidth>width，按同样usedSize−1／false／重排／实参1退出，否则重比缓存宽，不测内容高度或改width。原分支没有任意比例／字号下终止保证，不可擅自夹成最小字号1或合并重复查询。
 
-各次重排沿用首次排块保存的requestFontSize，不反复清−1。`107CC699–71A`只对最终块重算渐显length：pic／btn各1，其余按实际UTF-16长度作int32累加；`107CC71A–729`最后把布局Font指针换为首排后的备份，不再次排块或重算长度。循环曾修改的旧Font对象可能仍被外部引用；换回指针不代表那些对象恢复，也没有认证异常路径的回滚。现`steam_make_text_blocks`仍只交排块主干，尚未安装上述SetText外层字号准备／循环；公开Replace、TranslateConsoleText及运行标签转换也不得由此当作已实现。这一循环是Steam局部合同，不倒填为固定APK已有同一实现。
+各次重排沿用首次排块保存的requestFontSize，不反复清−1。`107CC699–71A`只对最终块重算渐显length：pic／btn各1，其余按实际UTF-16长度作int32累加；`107CC71A–729`最后把布局Font指针换为首排后的备份，不再次排块或重算长度。循环曾修改的旧Font对象可能仍被外部引用；换回指针不代表那些对象恢复，也没有认证异常路径的回滚。这一循环是Steam局部合同，不倒填为固定APK已有同一实现。
+
+现同模块的`steam_set_prepared_text`接上述外层，复用真实排块器并返回最终块、备份Font、框高、adjust标志及渐显数值尾候选；公开Replace、TranslateConsoleText及运行标签转换仍须由真实上游供给。调用方须将输入Font隔离为本次私有呈现候选，函数会按源序修改它，不额外复制以伪造原调用时点。缺少实际消费的比例、零除、不能表示的数值、坏Font或排块拒绝均不返回成功候选；已执行后端操作不回滚。取得首排后备份后，失败时尽力换回一次，失败清理不重试，这是维护策略。每次调用的重排预算为1…65536（含首排），超限拒绝、不夹成某个字号或假装适配成功；它不是原循环上限，也不新增持久字段、平台字体缓存或长期重排历史。实例Draw仍只调用排块重排，不借此重算渐显长度或做一次SetText复位。
 
 Init RVA7CB430是另一组赋值：重建Font，text设空、清渐显时间／位置、width_/height_设−1，并在107CB570将textWidth清0；**没有写textBlocks或length_**。新构造RVA7CD4A0先在107CD4CC–4E3建零长块数组，再内联同Init赋值，不能由新对象的零状态推断对旧对象再Init会联合清空所有字段。若仅重复Init而未SetText／重排，旧块及length仍在、GetHeight仍读那些块，但pos0暂不消费文字；没有据此认证原页面真的执行这种复用链。固定APK `aa.a(String)`（744行起）同样归一null、置文本／pos、调用f，再清总长度并按块求和；f的空串早退留下旧m宽，b()按空块返回高度0。APK构造初始化空块／m0，但没有此Steam独立Init入口；其失真的非空换行循环不参与上述小型调用链结论。
 

@@ -4,9 +4,11 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <functional>
 #include <limits>
 #include <map>
 #include <memory>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -23,7 +25,8 @@ struct Checks {
 };
 struct FixtureFont final:SteamLayoutFont {
     int identity{},used{12},request{12},font_style{};
-    std::int32_t used_size() const override {return used;}
+    std::function<void(const FixtureFont &)> used_probe;
+    std::int32_t used_size() const override {if(used_probe)used_probe(*this);return used;}
     std::int32_t request_size() const override {return request;}
     std::int32_t style() const override {return font_style;}
 };
@@ -32,13 +35,18 @@ class FixtureBackend final:public SteamTextLayoutBackend {
 public:
     std::vector<std::string> calls;
     std::vector<std::pair<int,int>> copies;
+    std::vector<std::pair<int,int>> outside_copies; // SetText首排后备份，不能混同样本内工作/块复制。
+    struct SizeCall {int identity{},request{};bool preset{};};
+    std::vector<SizeCall> sizes;
+    std::map<int,int> explicit_used; // 具名setter oracle：请求值与后继used可不同。
     std::vector<std::pair<int,std::u16string>> widths;
     std::vector<SteamLayoutFontRef> fonts,installed;
     std::optional<std::u16string> translation;
     std::optional<std::u16string> language;
     std::map<std::u16string,float> width_overrides; // 明确的组合测宽夹具，不模拟Unicode字形算法。
     std::string fail_operation;
-    bool fail_cleanup{},japanese{true},localize{},disabled{},chanakya{true};
+    int fail_occurrence{1};
+    bool fail_cleanup{},fail_install{},japanese{true},localize{},disabled{},chanakya{true};
     int samples{},auto_depth{},localize_depth{},next_identity{2};
     static std::shared_ptr<FixtureFont> font(const SteamLayoutFontRef &value) {
         const auto out=std::dynamic_pointer_cast<FixtureFont>(value);
@@ -60,16 +68,24 @@ public:
         call("needsLocalize");return localize&&localize_depth==0;
     }
     SteamLayoutFontRef copy_font(const SteamLayoutFontRef &from) override {
-        call("copy");auto out=std::make_shared<FixtureFont>(*font(from));
+        call("copy");if(samples==0)call("outsideCopy");
+        auto out=std::make_shared<FixtureFont>(*font(from));
         out->identity=next_identity++;copies.emplace_back(font(from)->identity,out->identity);
+        if(samples==0)outside_copies.emplace_back(font(from)->identity,out->identity);
         fonts.push_back(out);return out;
     }
     std::int32_t localized_request(const SteamLayoutFontRef &) override {call("localizedRequest");return 10;}
-    void install_layout_font(const SteamLayoutFontRef &value) override {call("install");installed.push_back(value);}
+    void install_layout_font(const SteamLayoutFontRef &value) override {
+        call("install");if(fail_install)throw LayoutBackendFailure{"install"};installed.push_back(value);
+    }
     void set_size(const SteamLayoutFontRef &value,std::int32_t request,bool preset) override {
         call("setSize");auto out=font(value);out->request=request;
+        sizes.push_back({out->identity,request,preset});
         if(preset&&request>=0&&request<3)out->used=std::array<int,3>{12,24,30}[request];
-        else out->used=request;
+        else {
+            const auto observed=explicit_used.find(request);
+            out->used=observed==explicit_used.end()?request:observed->second;
+        }
     }
     void set_style(const SteamLayoutFontRef &value,std::int32_t style) override {
         call("setStyle");font(value)->font_style=style;
@@ -134,7 +150,9 @@ public:
 private:
     void call(const char *name) {
         calls.emplace_back(name);
-        if(fail_operation==name) {fail_operation.clear();throw LayoutBackendFailure{name};}
+        if(fail_operation==name&&--fail_occurrence==0) {
+            fail_operation.clear();throw LayoutBackendFailure{name};
+        }
     }
     // 限定ASCII样本的测试文化适配；不作为原Int32.Parse/CompareTo的生产替代。
     static std::int32_t parse_fixture(const std::u16string &text,int radix) {
@@ -350,10 +368,189 @@ void boundaries_and_cleanup(Checks &check) {
               original.text==u"A"&&FixtureBackend::font(original.font)->used==12,
           "末尾Chanakya恢复抛错仍恰执行一次EndSample，不重放失败恢复或用宿主回滚掩盖错误");
 }
+
+// SetText外层只消费宿主已准备的text_；各字号/宽/调用次数为独立夹具oracle。
+void prepared_text_outer(Checks &check) {
+    for(const auto c:std::array<std::array<int,2>,2>{{{150,5},{50,48}}}) {
+        SteamTextSetInput in;in.layout=input(u"A");in.layout.request_font_size=99;
+        in.request_font_scale=c[0];
+        FixtureBackend b;const auto p=steam_set_prepared_text(in,b);
+        check(p&&p->adjust_font_size&&p->layout.request_font_size==c[1]&&
+                  FixtureBackend::font(in.layout.font)->used==c[1]&&p->font!=in.layout.font&&
+                  FixtureBackend::font(p->font)->used==c[1]&&b.sizes.size()==1&&
+                  b.sizes[0].identity==1&&b.sizes[0].request==c[1]&&!b.sizes[0].preset&&
+                  b.outside_copies.size()==1&&b.outside_copies[0].first==1&&
+                  position(b.calls,"setSize")<position(b.calls,"begin")&&
+                  position(b.calls,"end")<position(b.calls,"outsideCopy")&&
+                  b.installed==std::vector<SteamLayoutFontRef>{p->font}&&b.cleaned(),
+              "两次乘100/比例分别截零：150%得5、50%得48；首排之后才备份，非autoScale也换回该新引用");
+    }
+    struct ScaleCase {bool adjust,multi;std::optional<std::int32_t> scale;bool accepted;};
+    for(const auto &c:std::array<ScaleCase,5>{{{true,true,{},true},{false,false,0,true},
+             {true,false,0,true},{false,true,{},false},{false,true,0,false}}}) {
+        SteamTextSetInput in;in.layout=input(u"A");in.layout.multi_line=c.multi;
+        in.adjust_font_size=c.adjust;in.request_font_scale=c.scale;
+        FixtureBackend b;const auto p=steam_set_prepared_text(in,b);
+        check(bool(p)==c.accepted&&b.sizes.empty()&&FixtureBackend::font(in.layout.font)->used==12&&
+                  (c.accepted?b.outside_copies.size()==1:b.calls.empty())&&b.cleaned(),
+              "比例只在未adjust且多行时消费；未消费的缺值/0不拒绝，实际零除先拒绝且不发setter");
+    }
+    struct SingleCase {float height,width;bool auto_scale;};
+    for(const auto c:std::array<SingleCase,5>{{{-1.F,3.F,true},{0.F,3.F,true},
+             {1.F,0.F,true},{1.F,-1.F,true},{1.F,3.F,false}}}) {
+        SteamTextSetInput in;in.layout=input(u"A");in.layout.multi_line=false;
+        in.layout.auto_scale=c.auto_scale;in.layout.height=c.height;in.layout.width=c.width;
+        in.adjust_font_size=true;
+        FixtureBackend b;const auto p=steam_set_prepared_text(in,b);
+        check(p&&b.sizes.empty()&&p->height==c.height&&p->layout.text_width==6.F&&
+                  p->layout.request_font_size==12&&b.outside_copies.size()==1&&b.cleaned(),
+              "单行仍须autoScale且高/宽均正才缩字，其余保留首排宽和框高而不省略备份");
+    }
+    SteamTextSetInput empty;empty.layout=input(u"");empty.layout.previous_text_width=42.F;
+    empty.layout.request_font_size=99;empty.layout.multi_line=false;
+    empty.layout.auto_scale=true;empty.layout.height=1.F;empty.layout.width=1.F;
+    FixtureBackend::font(empty.layout.font)->used=3;
+    FixtureBackend eb;const auto e=steam_set_prepared_text(empty,eb,3);
+    check(e&&e->layout.blocks.empty()&&e->layout.text_width==42.F&&e->layout.request_font_size==-1&&
+              e->reveal.length==0&&FixtureBackend::font(empty.layout.font)->used==1&&
+              FixtureBackend::font(e->font)->used==3&&eb.sizes.size()==2&&
+              eb.sizes[0].request==2&&eb.sizes[1].request==1&&
+              std::count(eb.calls.begin(),eb.calls.end(),"begin")==0&&eb.outside_copies.size()==1&&eb.cleaned(),
+          "空串每次早退保留旧宽42仍触发缩字；request首次清-1且保持，旧Font降至1而返回首排后字号3备份");
+    SteamTextSetInput stop;stop.layout=input(u"A");stop.layout.multi_line=false;
+    stop.layout.auto_scale=true;stop.layout.height=1.F;stop.layout.width=0.5F;
+    stop.adjust_font_size=true;FixtureBackend::font(stop.layout.font)->used=2;
+    FixtureBackend sb;sb.explicit_used.emplace(1,7); // 请求1的后继字号7，独立检测停机条件。
+    const auto s=steam_set_prepared_text(stop,sb,2);
+    check(s&&s->layout.text_width==3.5F&&s->layout.request_font_size==2&&
+              FixtureBackend::font(stop.layout.font)->used==7&&FixtureBackend::font(s->font)->used==2&&
+              FixtureBackend::font(s->layout.blocks.at(0).font)->used==7&&sb.sizes.size()==1&&
+              sb.sizes[0].request==1&&!sb.sizes[0].preset&&
+              std::count(sb.calls.begin(),sb.calls.end(),"begin")==2&&sb.cleaned(),
+          "退出依据减一实参恰1而非后继used=7或宽已适配；首排request2沿用，最终块保留末次Font而旧别名不回滚");
+    struct MultiCase {float height,expected;int reads,passes;};
+    for(const auto c:std::array<MultiCase,3>{{{11.F,12.F,3,1},{12.F,12.F,2,1},{10.9F,11.F,4,2}}}) {
+        SteamTextSetInput in;in.layout=input(u"A");in.layout.auto_scale=true;
+        in.layout.height=c.height;in.adjust_font_size=true;
+        FixtureBackend b;std::vector<int> height_fonts;
+        FixtureBackend::font(in.layout.font)->used_probe=[&](const FixtureFont &font) {
+            if(b.samples==0&&font.identity!=1) {
+                height_fonts.push_back(font.identity);b.calls.emplace_back("heightRead");
+            }
+        };
+        const auto p=steam_set_prepared_text(in,b);
+        check(p&&p->height==c.expected&&p->layout.request_font_size==12&&
+                  height_fonts.size()==static_cast<std::size_t>(c.reads)&&
+                  std::count(b.calls.begin(),b.calls.end(),"begin")==c.passes&&
+                  position(b.calls,"outsideCopy")<position(b.calls,"heightRead")&&
+                  position(b.calls,"heightRead")<position(b.calls,"install")&&
+                  b.sizes.size()==static_cast<std::size_t>(c.passes-1)&&b.cleaned(),
+              "多行先比框高+1；离阈值内不缩仍可扩框，扩高赋值再独立GetHeight，不缓存重复Font读取");
+        if(c.passes==2)
+            check(b.sizes[0].request==11&&height_fonts.front()!=height_fonts.back()&&
+                      height_fonts[1]==height_fonts[2]&&height_fonts[2]==height_fonts[3]&&
+                      FixtureBackend::font(in.layout.font)->used==11&&FixtureBackend::font(p->font)->used==12,
+                  "多行首排高度读旧块一次，重排后新块再读三次；备份仍为首排字号12");
+    }
+    SteamTextSetInput mixed;mixed.layout=input(u"A\U0001F600<pic=fixture><btn=0>");
+    mixed.adjust_font_size=true;mixed.reveal={77,123,25,6,4,9,5};
+    FixtureBackend mb;const auto m=steam_set_prepared_text(mixed,mb);
+    std::ostringstream mixed_diagnostic;
+    mixed_diagnostic<<"最终长度按普通UTF16三单元+pic/btn各1，相邻特殊标签之间和末尾的普通空块均保留；"
+                    <<"SetText仅清位置/两时间值，保留speed/frame/lastAppFrame；实际";
+    if(m) {
+        mixed_diagnostic<<"length="<<m->reveal.length<<", blocks="<<m->layout.blocks.size();
+        for(std::size_t i=0;i<m->layout.blocks.size();++i) {
+            const auto &block=m->layout.blocks[i];
+            mixed_diagnostic<<" ["<<i<<": kind="<<static_cast<int>(block.kind)
+                            <<", start="<<block.start<<", length="<<block.length<<", UTF16=";
+            for(const auto unit:block.text)mixed_diagnostic<<std::hex<<static_cast<unsigned>(unit)<<' ';
+            mixed_diagnostic<<std::dec<<']';
+        }
+    } else mixed_diagnostic<<"拒绝候选";
+    check(m&&m->layout.blocks.size()==5&&m->layout.blocks[0].text==u"A\U0001F600"&&
+              m->layout.blocks[1].kind==SteamLayoutBlockKind::pictograph&&
+              m->layout.blocks[2].kind==SteamLayoutBlockKind::ordinary&&m->layout.blocks[2].text.empty()&&
+              m->layout.blocks[3].kind==SteamLayoutBlockKind::button&&
+              m->layout.blocks[4].kind==SteamLayoutBlockKind::ordinary&&m->layout.blocks[4].text.empty()&&
+              m->reveal.length==5&&m->reveal.pos==0&&m->reveal.begin_time==0&&m->reveal.time_offset==0&&
+              m->reveal.speed==25&&m->reveal.frame==4&&m->reveal.last_app_frame==5&&mb.cleaned(),
+          mixed_diagnostic.str().c_str());
+    SteamTextSetInput special;special.layout=input(u"<pic=fixture><btn=0>");
+    special.layout.auto_scale=true;special.layout.height=1.F;special.adjust_font_size=true;
+    FixtureBackend pb;int special_height_reads=0;
+    FixtureBackend::font(special.layout.font)->used_probe=[&](const FixtureFont &font) {
+        if(pb.samples==0&&font.identity!=1)++special_height_reads;
+    };
+    const auto pictures=steam_set_prepared_text(special,pb,1);
+    check(pictures&&pictures->reveal.length==2&&pictures->height==1.F&&pb.sizes.empty()&&
+              special_height_reads==0&&pb.cleaned(),
+          "特殊块长度各1，但GetHeight仍按实际空text跳过；不以特殊块类型补高或读取其Font字号");
+}
+
+void prepared_text_failures(Checks &check) {
+    struct FailureCase {const char *operation;int used;};
+    for(const auto c:std::array<FailureCase,4>{{{"setSize",12},
+             {"width",5},{"outsideCopy",5},{"install",5}}}) {
+        SteamTextSetInput in;in.layout=input(u"A");in.layout.localize_font_enable=false;
+        in.request_font_scale=150;
+        FixtureBackend b;b.fail_operation=c.operation;
+        bool exact=false;
+        try {(void)steam_set_prepared_text(in,b,3);}
+        catch(const LayoutBackendFailure &failure) {exact=failure.operation==c.operation;}
+        check(exact&&FixtureBackend::font(in.layout.font)->used==c.used&&b.cleaned()&&
+                  std::count(b.calls.begin(),b.calls.end(),c.operation)==1&&
+                  (std::string(c.operation)!="install"||b.installed.empty()),
+              "准备/首排/备份/末尾换回失败传播原错误，清理不重试失败调用，也不回滚已完成的原Font修改");
+    }
+    for(const bool cleanup_fails:std::array<bool,2>{false,true}) {
+        SteamTextSetInput in;in.layout=input(u"A");in.layout.multi_line=false;
+        in.layout.auto_scale=true;in.layout.height=1.F;in.layout.width=1.F;
+        in.layout.localize_font_enable=false;in.adjust_font_size=true;
+        FixtureBackend b;b.fail_operation="width";b.fail_occurrence=3;b.fail_install=cleanup_fails;
+        bool exact=false;
+        try {(void)steam_set_prepared_text(in,b,3);}
+        catch(const LayoutBackendFailure &failure) {exact=failure.operation=="width";}
+        check(exact&&b.cleaned()&&FixtureBackend::font(in.layout.font)->used==11&&
+                  b.outside_copies.size()==1&&std::count(b.calls.begin(),b.calls.end(),"begin")==2&&
+                  std::count(b.calls.begin(),b.calls.end(),"end")==2&&
+                  std::count(b.calls.begin(),b.calls.end(),"install")==1&&
+                  b.installed.size()==(cleanup_fails?0U:1U),
+              "第二次排块测宽失败先清本轮栈，再尽力换回备份一次；换回也失败仍保留测宽首错与旧别名11");
+    }
+    SteamTextSetInput metric;metric.layout=input(u"A");metric.layout.auto_scale=true;
+    metric.layout.height=10.F;metric.adjust_font_size=true;
+    FixtureBackend hb;int reads=0;
+    FixtureBackend::font(metric.layout.font)->used_probe=[&](const FixtureFont &font) {
+        if(hb.samples==0&&font.identity!=1) {++reads;throw LayoutBackendFailure{"height"};}
+    };
+    bool height_error=false;
+    try {(void)steam_set_prepared_text(metric,hb,3);}
+    catch(const LayoutBackendFailure &failure) {height_error=failure.operation=="height";}
+    check(height_error&&reads==1&&hb.cleaned()&&hb.outside_copies.size()==1&&hb.installed.size()==1,
+          "首排已清理后读取块Font高度抛错，不重放GetHeight，仍尽力释放本次备份安装义务");
+    for(const std::uint32_t budget:std::array<std::uint32_t,2>{1,2}) {
+        SteamTextSetInput in;in.layout=input(u"A");in.layout.multi_line=false;
+        in.layout.auto_scale=true;in.layout.height=1.F;in.layout.width=1.F;in.adjust_font_size=true;
+        FixtureBackend b;if(budget==2)b.explicit_used.emplace(11,12); // 每次请求11仍used12，不保证自然停机。
+        const auto p=steam_set_prepared_text(in,b,budget);
+        check(!p&&b.cleaned()&&b.outside_copies.size()==1&&b.installed.size()==1&&
+                  b.sizes.size()==budget&&std::count(b.calls.begin(),b.calls.end(),"begin")==static_cast<int>(budget)&&
+                  FixtureBackend::font(in.layout.font)->used==(budget==1?11:12),
+              "小重排预算含首排；耗尽前已执行的SetSize不回滚，停滞不靠夹字号或默认65536轮凑通过");
+    }
+    for(const std::uint32_t budget:std::array<std::uint32_t,2>{0,65537}) {
+        SteamTextSetInput in;in.layout=input(u"A");FixtureBackend b;
+        check(!steam_set_prepared_text(in,b,budget)&&b.calls.empty()&&
+                  FixtureBackend::font(in.layout.font)->used==12,
+              "非法预算在任何后端调用前拒绝，不建立备份或成功候选");
+    }
+}
 } // namespace
 
 int steam_text_layout_checks() {
     Checks check;ordinary_and_source_ranges(check);fonts_and_tags(check);
     combination_words_and_empty(check);boundaries_and_cleanup(check);
+    prepared_text_outer(check);prepared_text_failures(check);
     return check.count;
 }

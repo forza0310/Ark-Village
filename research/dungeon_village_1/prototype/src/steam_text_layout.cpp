@@ -394,4 +394,86 @@ std::optional<SteamTextLayoutResult> steam_make_text_blocks(
     } catch(const Rejected &) {scope.unwind();return {};}
       catch(...) {scope.unwind();throw;}
 }
+
+std::optional<SteamTextSetResult> steam_set_prepared_text(
+        const SteamTextSetInput &in,SteamTextLayoutBackend &out,std::uint32_t budget) {
+    if(!budget||budget>65536||in.layout.text.size()>text_budget)return {};
+    auto current=in.layout;
+    SteamTextSetResult result;
+    result.height=current.height;result.adjust_font_size=in.adjust_font_size;
+    SteamLayoutFontRef backup;
+    bool restore_pending{};
+    auto restore=[&] {
+        if(restore_pending) {restore_pending=false;out.install_layout_font(backup);}
+    };
+    auto cleanup=[&]() noexcept {try {restore();}catch(...) {}};
+    try {
+        // 107CC4DE–538只在此分支读一次静态比例；两次乘法分别回卷、除法分别截零。
+        if(!result.adjust_font_size&&current.multi_line) {
+            if(!in.request_font_scale)throw Rejected{};
+            const auto scale=*in.request_font_scale;
+            auto size=used(current.font);
+            for(int n=0;n<2;++n) {
+                size=signed32(static_cast<std::uint32_t>(size)*100U);
+                if(!scale||(size==std::numeric_limits<std::int32_t>::min()&&scale==-1))throw Rejected{};
+                size/=scale;
+            }
+            out.set_size(current.font,size,false);
+            result.adjust_font_size=true;
+        }
+        current.request_font_size=-1;
+        auto layout=[&] {
+            if(!budget)throw Rejected{};
+            --budget;
+            // 上次宽／首次请求已在current，旧块在新排块前退休，不保留每轮Font或字符串。
+            result.layout={};
+            auto next=steam_make_text_blocks(current,out);
+            if(!next)throw Rejected{};
+            result.layout=std::move(*next);
+            current.previous_text_width=result.layout.text_width;
+            current.request_font_size=result.layout.request_font_size;
+        };
+        layout();
+        // 107CC551–576正常路径始终复制；空串首排也不能把Font缺失视作合法。
+        if(!current.font)throw Rejected{};
+        backup=out.copy_font(current.font);
+        if(!backup||backup==current.font)throw Rejected{};
+        restore_pending=true;
+        // GetHeight每次重新遍历/读取非空块Font。与窄范围指标DTO分别校验，不裁成65536高。
+        auto height=[&] {
+            float maximum=0;
+            for(const auto &block:result.layout.blocks)if(!block.text.empty())
+                maximum=std::max(maximum,bounded(f32(block.y+static_cast<float>(used(block.font)))));
+            return integer(f32(maximum+0.9F));
+        };
+        auto smaller=[&] {
+            const auto request=sub32(used(current.font),1);
+            out.set_size(current.font,request,false);
+            layout();
+            return request; // 原退出看SetSize实参，不看后继usedSize或首次请求字号。
+        };
+        if(current.auto_scale&&current.height>0) {
+            (void)bounded(current.height);
+            if(current.multi_line) {
+                while(static_cast<float>(height())>f32(current.height+1.0F))
+                    if(smaller()==1)break;
+                if(static_cast<float>(height())>current.height)
+                    result.height=static_cast<float>(height()); // 源再取一次，不复用比较值。
+            } else if(current.width>0) {
+                (void)bounded(current.width);
+                while(result.layout.text_width>current.width)
+                    if(smaller()==1)break;
+            }
+        }
+        std::int32_t length=0;
+        for(const auto &block:result.layout.blocks)
+            length=add32(length,block.kind==SteamLayoutBlockKind::ordinary?
+                static_cast<std::int32_t>(block.text.size()):1);
+        result.reveal=steam_text_reveal_set_text_tail(in.reveal,length);
+        result.font=backup;
+        restore(); // 最后只换布局引用；旧Font对象及其外部别名已经可能被缩字。
+        return result;
+    } catch(const Rejected &) {cleanup();return {};}
+      catch(...) {cleanup();throw;}
+}
 } // namespace dungeon_village_prototype

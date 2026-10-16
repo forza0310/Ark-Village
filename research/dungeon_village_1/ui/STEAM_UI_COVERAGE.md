@@ -73,12 +73,12 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 31 | QUEST_FINISH_MONSTER | 任务 | [五行战绩纯皮肤](PAGES.md#steam任务成果与期限的后继定位)及示例已交，合法重复X／独立数字单位已验；Owner选择／首行持久化和严格窗口桥已接，原动态另验 |
 | 32 | QUEST_FINISH_DUNGEON | 任务 | [奖励五行纯皮肤](PAGES.md#steam任务成果与期限的后继定位)及示例已交，四类图标／0价格／仅首行滚动已核；Owner首行持久化和严格窗口桥已接，原动态另验 |
 | 33 | QUEST_CONTINUE | 任务 | [按钮／期限／三人演出合同](PAGES.md#steam任务成果与期限的后继定位)与纯计划／例图已交，原男职业图、首次同定义实例动作／HPafter、全队倒下、普通Mapchip和怪物传入step／最终计时帧分开；Owner按钮持久化／严格来源桥及窗口已接，原动态另验 |
-| 34 | INFO_TOWN | 情报／赠礼入口 | 静态：[统计／34→39及完整局部Draw](INFORMATION_MENU.md)已核；维护：Owner与语言／五星／测宽底栏计划已接。动态：无本页完整认证；字体／热区和Steam平台成就实际授予仍未证 |
-| 35 | INFO_MEMBERLIST | 情报／赠礼入口 | 静态：[非0目录、贡献／NEW、四页及60追踪来源](INFORMATION_MENU.md)已核；维护：Owner、恢复与四页有序裁剪／人物计划已接。动态：未全页认证；字体、共享scratch附加效果与平台成就仍独立 |
-| 36 | INFO_INCOME | 情报／赠礼入口 | 静态：[月年统计、独立左右／关闭、完整局部Draw](INFORMATION_MENU.md)已核；维护：Owner及金额文本／端点线／箭头计划已接。动态：未全页认证；字体、OS输入和实际测宽仍独立 |
-| 37 | INFO_ITEM | 情报／赠礼入口 | 静态：[正库存原序、空15、关闭清NEW及局部Draw](INFORMATION_MENU.md)已核；维护：Owner与五行／说明／滚动计划已接。动态：未全页认证；原字体、最终触摸与动态SEB执行仍独立 |
-| 38 | INFO_EQUIP | 情报／赠礼入口 | 静态：[Steam flags过滤、未知行、四页与局部Draw](INFORMATION_MENU.md)已核；维护：Owner与图标／属性／GET／滚动计划已接。动态：未全页认证；字体、实际点击和动态手形仍独立 |
-| 39 | INFO_TENANT | 情报／赠礼入口 | 静态：[kind3原序、编号／截至当月利润、scene7及局部Draw](INFORMATION_MENU.md)已核；维护：稳定ID目录／恢复、镜头交接及五行／正负金额计划已接。动态：未全页认证；字体／物理输入仍缺，确认不冒称打开商店详情 |
+| 34 | INFO_TOWN | 情报／赠礼入口 | 静态：[统计／34→39及完整局部Draw](INFORMATION_MENU.md)已核；维护：Owner与语言／五星／测宽底栏计划已接。普通研究窗口已消费正式皮肤／源热区候选；独立拖动仍未接。动态：无本页完整认证；字体／热区和Steam平台成就实际授予仍未证 |
+| 35 | INFO_MEMBERLIST | 情报／赠礼入口 | 静态：[非0目录、贡献／NEW、四页及60追踪来源](INFORMATION_MENU.md)已核；维护：Owner、恢复与四页有序裁剪／人物计划已接。普通研究窗口已消费正式皮肤／源热区候选；独立拖动仍未接。动态：未全页认证；字体、共享scratch附加效果与平台成就仍独立 |
+| 36 | INFO_INCOME | 情报／赠礼入口 | 静态：[月年统计、独立左右／关闭、完整局部Draw](INFORMATION_MENU.md)已核；维护：Owner及金额文本／端点线／箭头计划已接。普通研究窗口已消费正式皮肤／源热区候选；独立拖动仍未接。动态：未全页认证；字体、OS输入和实际测宽仍独立 |
+| 37 | INFO_ITEM | 情报／赠礼入口 | 静态：[正库存原序、空15、关闭清NEW及局部Draw](INFORMATION_MENU.md)已核；维护：Owner与五行／说明／滚动计划已接。普通研究窗口已消费正式皮肤／源热区候选；独立拖动仍未接。动态：未全页认证；原字体、最终触摸与动态SEB执行仍独立 |
+| 38 | INFO_EQUIP | 情报／赠礼入口 | 静态：[Steam flags过滤、未知行、四页与局部Draw](INFORMATION_MENU.md)已核；维护：Owner与图标／属性／GET／滚动计划已接。普通研究窗口已消费正式皮肤／源热区候选；独立拖动仍未接。动态：未全页认证；字体、实际点击和动态手形仍独立 |
+| 39 | INFO_TENANT | 情报／赠礼入口 | 静态：[kind3原序、编号／截至当月利润、scene7及局部Draw](INFORMATION_MENU.md)已核；维护：稳定ID目录／恢复、镜头交接及五行／正负金额计划已接。普通研究窗口已消费正式皮肤／源热区候选；独立拖动仍未接。动态：未全页认证；字体／物理输入仍缺，确认不冒称打开商店详情 |
 | 40 | MEMBER_PRESENT | 情报／赠礼入口 | 静态：真实raw4入口、首次98、三页独立布局／输入／清NEW及40→64已核；维护沿现Owner交正式纯皮肤、严格三页／当前居住绑定，不套35四页。原字体／完整scratch／OS动态另验，见[40合同](INFORMATION_MENU.md#steam40赠礼人物目录三页与35分开) |
 | 41 | DEVELMP_TOP | 魔法壶 | [局部合同](STEAM_MAGIC_POT.md)：主页壶／知识／四元素、按钮及整轮输入已接；静态来源／维护短测与原窗口动态分开，字体／OS待证 |
 | 42 | DEVELMP_ITEMSELECT | 魔法壶 | [局部合同](STEAM_MAGIC_POT.md)：五行原序库存／元素等级、Steam独立margin及marker16已接；静态来源／维护短测与原窗口动态分开，字体／OS待证 |

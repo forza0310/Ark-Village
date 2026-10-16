@@ -740,6 +740,12 @@ SaveAll已证true→false→system的顺序保留，完整生命周期上游仍�
 
 后续最小动态条件是：自然请求产生后，核对**同一KairoBase接收者**的reserveSave／reserveSaveEnable，以及失焦／退出前是否实际进入`Main.OnUpdate→Execute→_execute`并到达上述尾段；同时区别请求清零、业务保存调用与文件写入结果。外层`IApplication.Update`在`0x1078F550`先调用TerminateCheck，true分支`0x1078F55A`跳离稍后的槽11 OnUpdate（`0x1078FA9E`）；TerminateCheck的原条件不检查预留保存是否仍待消费。因此不能仅凭“退出回调发生／窗口最后一帧”保证还有一次尾段，也不应再用无自然预留请求的重复失焦实验认证SaveAll。构造后的reserveSaveEnable实际改写仍缺有接收者身份的具体配置入口或运行证据；共享setter地址不补成已闭合链，本轮未重扫全程序调用点。
 
+### 强制终止与浏览器延迟不提供最后保存轮
+
+2026-10-16固定Steam局部续核：`IApplication.TerminateCheck`在VA`1078D7C0–1078D803`即使`force=true`仍要求静态`TerminateCheckEnable +4C`为真及实例`delayQuitFrames_ +D8 <= 0`；force仅绕过普通的部分splash／Xbox与非空表单门槛，不检查`reserveSave`。调用Terminate后，`1078D806–1078D8F9`比较`Canvas.lastOpenBrowserFrame_ +24`和`IApplication.totalFrames_ +2C`：不同则直接`Application.Quit`，相同才写退出延迟3。这里是Canvas字段，不是保存请求的时间戳。
+
+后继Update在`1078F53A–1078F545`发现正延迟即跳到`1078FCD9–1078FCF4`：大于1只减一并退出，本轮值1则Quit并退出；三次都绕开`Main.OnUpdate`及业务Execute／保存尾段。因此“延迟3帧”不能解释为多给三次保存机会。APK独立正常路径同样没有补最后轮：`Main.java:98/155`在表单集合大小为0后调用继承终止入口，`IApplication.java:171–181`防重入、置终止标志、中断线程、清线程引用并`Activity.finish()`；`onDestroy:316–319`另分析收尾后killProcess。异常诊断、原生SDK、系统最终耐久性及其它退出入口不由这些有限路径认证；维护仍不得借关闭／延迟暗加SaveAll。
+
 ## 当前C++边界与持续存取
 
 正常文件和精确回放已按[独立设计](../stages/PERSISTENCE_REPLAY.md)实施，完整接口／布局／预算／命令的唯一正文是[维护模块](../prototype/PERSISTENCE.md)。

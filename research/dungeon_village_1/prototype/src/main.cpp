@@ -100,6 +100,10 @@ Options parse_options(int argc, char **argv) {
         } else
             throw std::invalid_argument("未知或不完整参数: " + arg);
     }
+    const std::array<const char *,6> information_pages{{"world-information-town","world-information-adventurers",
+        "world-information-income","world-information-items","world-information-equipment","world-information-facilities"}};
+    const bool information_inspection=std::any_of(information_pages.begin(),information_pages.end(),
+        [&](const auto *name){return options.inspect_page==name;});
     if (options.screenshot && ((!options.demo && options.frames == 0) || options.check))
         throw std::invalid_argument("截图参数只能用于有界窗口验收");
     if (options.demo && (options.paused || options.frames != 0))
@@ -121,12 +125,12 @@ Options parse_options(int argc, char **argv) {
           options.inspect_page != "world-facility-bonuses" && options.inspect_page != "world-facility-details" && options.inspect_page != "world-facility-items" && options.inspect_page != "world-facility-improvement" && options.inspect_page != "world-facility-result" && options.inspect_page != "world-menu" &&
           options.inspect_page != "world-adventure" && options.inspect_page != "world-village" &&
           options.inspect_page != "world-save" && options.inspect_page != "world-manual" && options.inspect_page != "world-manual-about" &&
-          options.inspect_page != "world-system" && options.inspect_page != "world-information")))
+          options.inspect_page != "world-system" && options.inspect_page != "world-information" && !information_inspection)))
         throw std::invalid_argument("共同世界不能与旧夹具混用；快照检查支持 "
                                     "visitor/world-month/world-active/task-team/world-award/"
                                     "world-building/world-building-preview/world-building-return/world-construction/world-details/world-human/world-human-directory/world-human-attributes/world-human-equipment/world-human-magic/world-human-professions/world-human-gifts/world-human-items/world-human-equipment-result/world-human-item-result/world-human-equipment-info/world-human-gift-confirm/world-human-gift-opening/world-human-gift-result/world-human-profession-preview/world-human-profession-result/world-activities/"
                                     "world-commerce/world-item-gift/world-editing/world-goods/world-goods-attributes/world-shop-details/world-equipment-info/world-magic-pot/world-facility-bonuses/world-facility-details/world-facility-items/world-facility-improvement/world-facility-result/"
-                                    "world-menu/world-system/world-information/world-adventure/world-village/world-save/world-manual/world-manual-about");
+                                    "world-menu/world-system/world-information[-town/-adventurers/-income/-items/-equipment/-facilities]/world-adventure/world-village/world-save/world-manual/world-manual-about");
     if (!options.inspect_page.empty() &&
         (options.frames == 0 || options.fixture || options.check ||
          (options.inspect_page != "roads" && options.inspect_page != "shops" && options.inspect_page != "facility-notices" &&
@@ -203,7 +207,7 @@ Options parse_options(int argc, char **argv) {
              options.inspect_page == "world-facility-bonuses" || options.inspect_page == "world-facility-details" || options.inspect_page == "world-facility-items" || options.inspect_page == "world-facility-improvement" || options.inspect_page == "world-facility-result" || options.inspect_page == "world-menu" ||
              options.inspect_page == "world-adventure" || options.inspect_page == "world-village" ||
              options.inspect_page == "world-save" || options.inspect_page == "world-manual" || options.inspect_page == "world-manual-about" ||
-             options.inspect_page == "world-system" || options.inspect_page == "world-information")))))
+             options.inspect_page == "world-system" || options.inspect_page == "world-information" || information_inspection)))))
         throw std::invalid_argument("页面检查需要有界窗口及对应模式的页面名称");
     if ((options.load_file || options.save_file) &&
         (!options.world || options.fixture ||

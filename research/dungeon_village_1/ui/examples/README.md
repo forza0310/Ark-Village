@@ -1,5 +1,7 @@
 # 产品侧小窗 UI 示例
 
+[村情报、人物、收支、物品、装备与设施六页](steam-information-pages.png)（1440×1280／202062字节）：上排34／35／36，下排37／38／39，六张480×640普通研究窗口原尺寸拼接。`--world --inspect-page world-information-town/adventurers/income/items/equipment/facilities --frames 8`各自从真实新局经3→9、必要时34→39到达，不注入库存、人物、资金、日期或开放位；均0世界更新／0抽／5000G。复用正式图元／Owner桥与已出版素材；未知装备不泄露名称／属性，人物定义目录不当作活跃W。中文／Noto、40像素画布平移、手形关键帧0及简化富文本为适配；滚条拖动、原字体、完整TextLayout和OS动态未认证，详见[信息合同](../INFORMATION_MENU.md#研究窗口执行与边界)。既有40三页另有原图，本批执行器复用后逐像素不变，不增重复图片。
+
 [事件开心／悲伤／通用分支](steam-event.png)（1440×640／59576字节）：`event-happy`／`event-sad`／`event-special`各8帧、0世界更新，不加`--world`。三个480×640窗口原尺寸横排，main61与命令0／1／2是显示夹具，正文明确为研究文字，不认证自然事件或命令2可达。消费[正式事件计划](../PAGES.md#steam脚本事件11报纸15与等待16)及既有原PNG／SEB，保留烟花裁片、三人位置、两层裁剪、正文和继续标；通用分支不画人物／烟花。中文Noto、VIEW_Y23、40像素画布平移与开头po／br／co有限排版是研究适配，未知标签明确拒绝。正常窗口仅将Enter交唯一Owner确认，不猜无矩形Touch2的鼠标范围或Esc，不补可见软按钮；本图不认证原字体、完整TextLayout、OS动态或游戏事件实际触发。
 
 [人物解锁入场／就绪](steam-human-unlock.png)（960×640／37498字节）：`human-unlock-early`／`human-unlock-ready`各8帧、0世界更新，不加`--world`。真实页面producer及Init只绑定定义1；main20／70是显示条件，当前职业、姓名／性别和武器取真实新局，不创建W、不改人气／日期／资金或认证自然解锁。原尺寸横排消费[59正式计划](../PAGES.md#steam-human-unlock)，入场位移、人物／正文各自clip、60后问候及三行保持原序；70已可确认而继续标恰处25槽隐藏段，不能据图无箭头判未就绪。中文后缀、Noto、研究背景／VIEW_Y23及正常action0身体／武器适配不认证原LT、共享scratch、SDK成就或OS动态。共同执行器的事件11开心图已与既有拼图对应半幅逐像素一致。

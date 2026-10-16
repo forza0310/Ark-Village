@@ -85,6 +85,27 @@ std::optional<SteamTouchArrowFrame> advance_steam_touch_arrow_effect(
 // 不代调Frame/退休，不把BlendMode请求简化成已核等价tint或推进世界/随机。
 std::optional<SteamTouchArrowDraw> steam_touch_arrow_effect_skin(
     const SteamTouchArrowState &,const SteamTouchArrowSurface &,const SteamTouchEffectClock &);
+
+// 仅id0的实际临时表现池：buffer保留全部槽，active保存原加入顺序；不持平台对象。
+// Add复用首个闲槽，Frame逆序、Draw正序；Clear/Remove只撤active，状态仍留buffer。
+// Frame读钟失败时全池不提交是维护原子策略，不认证原异常路径具备相同保证。
+class SteamTouchArrowEffects {
+  public:
+    using SurfaceQuery=std::function<std::optional<SteamTouchArrowSurface>(std::uint64_t)>;
+    std::optional<std::size_t> add(const SteamTouchArrowEffect &,std::uint64_t surface,
+                                  int image_width,const SteamTouchEffectClock &);
+    bool frame(const SteamTouchEffectClock &);
+    std::optional<std::vector<SteamTouchArrowDraw>> draw(const SurfaceQuery &,
+                                                        const SteamTouchEffectClock &) const;
+    bool remove(std::size_t slot) noexcept;
+    void clear() noexcept { active_.clear(); }
+    std::size_t active_count() const noexcept { return active_.size(); }
+    std::size_t retained_count() const noexcept { return buffer_.size(); }
+    std::optional<SteamTouchArrowState> state(std::size_t slot) const;
+  private:
+    std::vector<SteamTouchArrowState> buffer_;
+    std::vector<std::size_t> active_;
+};
 // 触摸在原绘制位置登记；image_draw索引引用本draws中的箭头，不能自行改成OS矩形。
 // 此处StartupSkinRect只借几何载体保留Steam DrawRect调用实参，不沿用其APK像素+1语义；
 // raylib描边/DPI实际像素覆盖仍由后端单独验，不把153×55实参称为已核半开覆盖区域。

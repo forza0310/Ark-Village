@@ -95,7 +95,11 @@ dy = (y_×q+float(surface.y_))−grow×0.5f
 
 `TouchEffectManager.AddEffect` RVA2AF8C0顺序找buffer中不在active的首对象，无则创建并加入buffer，Init后加入active。本链没有正常null返回；叶端null会抛异常，原KeyDown已先发生，创建失败不回滚键状态。退休／RemoveEffect仅从active移除；`Clear` RVA2AFB40也仅清active，**buffer持有全部已分配对象，退休不清arg／Image／surface引用**，不能称退回池时释放引用或永久有界。
 
-维护[公共箭头接口](../prototype/include/dungeon_village_prototype/steam_manual_skin.hpp)已消费同一DOWN请求：`prepare_steam_touch_arrow_effect`冻结组件key、surface、paint、实际密度、行及vx；`advance_steam_touch_arrow_effect`返回积分候选或退休请求；`steam_touch_arrow_effect_skin`返回有序混合→图像→固定模式恢复。时钟在源调用位置读取，缺失／异常不发布部分候选；非0 surface是维护绑定资格。状态仅属临时表现，不写世界／文件，也不创建效果池；宿主须按次消费候选与绘制计划，并在实际退休后撤下active引用。静态`steam_manual_arrow_skin`仍不是动态效果。现窗口`SourceSprites::crop`支持同PNG缓存、目的宽高和tint，但实际效果池调度、surface宿主、RenderMode后端与原OS动态尚未接，不能单凭tint宣称后端等价或将原buffer保留解释为引用释放。
+维护[公共箭头接口](../prototype/include/dungeon_village_prototype/steam_manual_skin.hpp)已消费同一DOWN请求：`prepare_steam_touch_arrow_effect`冻结组件key、surface、paint、实际密度、行及vx；`advance_steam_touch_arrow_effect`返回积分候选或退休请求；`steam_touch_arrow_effect_skin`返回有序混合→图像→固定模式恢复。时钟在源调用位置读取，缺失／异常不发布部分候选；非0 surface是维护绑定资格，状态仅属临时表现，不写世界／文件。
+
+同模块`SteamTouchArrowEffects`消费完整id0池生命周期：buffer按分配序保留状态，Add复用首个非active槽，active按加入顺序追加；Frame逆序采样／更新，Draw正序逐个获取真实surface观测与墙钟。Remove／退休／Clear仅撤active，保留buffer及标量绑定；复用时完整Init，返回槽号会重复，不是全局实体ID。Add失败不发布半槽，Frame全部候选成功后才联合安装，Draw晚失败不返回部分计划；这是维护失败安全，原KeyDown先行及管理器异常路径不据此升级为同样的事务。buffer按实际峰值保留，无新固定容量预算；几何扩容不按每轮复制整个世界，反复复用不等于任意峰值永久有界。
+
+宿主须按次消费绘制计划，并明确绑定ID对应的实际资源／surface寿命；维护池本身不持平台对象，不认证原Image／surface对象已释放。静态`steam_manual_arrow_skin`仍不是动态效果。现窗口`SourceSprites::crop`支持同PNG缓存、目的宽高和tint，但正常窗口的池接线、真实surface宿主、RenderMode后端与原OS动态尚未接，不能单凭tint宣称后端等价或将原buffer保留解释为引用释放。
 
 ### 列表确认与Canvas同步回调
 

@@ -38,6 +38,14 @@ Internal_GetDefaultSkin的包装RVA`14DA80`将当次整数交helper `869C30`；�
 
 本样本仅导出UnityMain；PE调试目录指向`UnityPlayer_Win32_player_il2cpp_x86.pdb`，研究副本未附该PDB／map。现有iced解码足以沿上述注册表闭合入口及局部指针／资源请求，但没有具名字形解析符号或实际运行对象来认证fallback列表。二进制中虽有Font的OS字体枚举及fontNames访问器注册字符串，它们只能证明接口存在，不能证明某段中文实际使用哪项。本批不调用这些枚举、不读系统字库／偏好，也不盲扫全引擎；未知继续限定为真实Font实例、fallback供给及单串glyph选择。
 
+### 普通测宽的原生Font对象选择
+
+2026-10-16沿同一固定UnityPlayer的真实注册表继续核对10,320字节有限方法窗口。GameAssembly `GUIStyle.CalcSize RVA C2E790`与`Internal_CalcSize C2F670`经槽1115AEC0调用`Internal_CalcSize_Injected`；原生注册索引161对应RVA14D000。`1014D06D–1014D07F`先将GUIContent经862210转换，再交style的864810，以零约束进入864D10；非空文字且imagePosition不为ImageOnly(2)时，`10864DCB–10864E0B`调用8680E0，读取结果+2C／+30作为文字宽高，再组合图像、padding及fixedWidth／fixedHeight。因此CalcSize不是字体裸字宽，图像／样式不能在产品测宽适配中被悄悄丢弃。
+
+文字消费者8680E0在`1086825E／1086828E`调用原生helper867750，按以下顺序寻找有效Font对象：当前native GUIStyle +FC→原生默认引用11568F54→独立兜底缓存11568F58→请求字面`Arial.ttf`并缓存返回对象+4引用。首项字段由注册索引115的`GUIStyle.set_font`→RVA14B590交叉：`1014B62C–1014B637`处理输入对象后写同一+FC。有效性经过200F50／D5C20及必要的2266C0对象解析，不是只判引用非零；失效引用继续兜底，最终仍可能返回null并记录`Couldn't load default font or font material!`。
+
+资源请求`1085A6D0–1085A707`交已有资源入口3E02B0／3E0450，字符串1131AAEC为精确`Arial.ttf`。这是引擎内建资源请求，未与磁盘Font path10102或任何系统字体文件直接配对。此前SetDefaultFont(null)的合同不变：setter只写引用，兜底发生在**后续测宽消费者**。该对象级顺序不等于中文缺字的glyph／family回退；本链未认证中文字形文件、kerning／baseline或非BMP栅格化。GUIContent包装保留字符串对象，不能因未见主动拆代理对就宣称完整非BMP支持；原图、维护Noto及真实字形证据仍分开。
+
 ## OnGUI与DrawString的字体交接
 
 `IApplication.OnGUI`（RVA `0x7889D0`）进入时检查静态`initFont_`。若Unity对象相等判断认为它为空，就读取当时`GUI.skin.font`并缓存；不是每轮重新发现系统字体，也没有在该段按中文创建命名字体。`GUISkin.get_font`与多个无关getter共用地址，本批按实际接收对象及元数据完整别名认证，不能采用探针注释的第一条JLocale／JThread别名。

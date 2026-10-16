@@ -5,9 +5,12 @@
 #include <cstdint>
 #include <limits>
 #include <cmath>
+#include <type_traits>
+#include <utility>
 
 namespace dungeon_village_prototype {
 namespace {
+static_assert(std::is_trivially_copyable_v<SteamTouchArrowState>);
 std::int32_t low_age(std::int64_t now,std::int64_t then) {
     const auto bits=static_cast<std::uint32_t>(now)-static_cast<std::uint32_t>(then);
     return static_cast<std::int32_t>(bits<=0x7fffffffU ? static_cast<std::int64_t>(bits) :
@@ -86,6 +89,75 @@ std::optional<SteamTouchArrowDraw> steam_touch_arrow_effect_skin(
         plan.operations.emplace_back(SteamTouchArrowBlend{0,255,0});
         return plan;
     } catch(...) { return {}; }
+}
+std::optional<std::size_t> SteamTouchArrowEffects::add(const SteamTouchArrowEffect &request,
+    std::uint64_t surface,int image_width,const SteamTouchEffectClock &clock) {
+    try {
+        std::size_t slot=0;
+        while(slot<buffer_.size() && std::find(active_.begin(),active_.end(),slot)!=active_.end())++slot;
+        // 所有可能分配先完成；Init读钟失败不能留下半初始化的活动槽。
+        if(active_.size()==active_.max_size() || (slot==buffer_.size() && buffer_.size()==buffer_.max_size()))return {};
+        const auto reserve_one=[](auto &items) {
+            if(items.size()==items.capacity()) {
+                const auto growth=std::min(items.capacity()?items.capacity():std::size_t{1},
+                                           items.max_size()-items.capacity());
+                items.reserve(items.capacity()+growth);
+            }
+        };
+        reserve_one(active_);
+        if(slot==buffer_.size())reserve_one(buffer_);
+        const auto initial=prepare_steam_touch_arrow_effect(request,surface,image_width,clock);
+        if(!initial)return {};
+        if(slot==buffer_.size())buffer_.push_back(*initial);
+        else buffer_[slot]=*initial;
+        active_.push_back(slot);
+        return slot;
+    } catch(...) { return {}; }
+}
+bool SteamTouchArrowEffects::frame(const SteamTouchEffectClock &clock) {
+    try {
+        std::vector<SteamTouchArrowFrame> staged;
+        std::vector<std::size_t> next_active;
+        staged.reserve(active_.size());next_active.reserve(active_.size());
+        for(auto i=active_.rbegin();i!=active_.rend();++i) {
+            const auto next=advance_steam_touch_arrow_effect(buffer_[*i],clock);
+            if(!next)return false;
+            staged.push_back(*next);
+        }
+        // 按原顺序保留存活active；以下只有不抛异常的标量赋值及已预留容量写入。
+        for(std::size_t i=0;i<active_.size();++i) {
+            const auto &next=staged[active_.size()-1-i];
+            buffer_[active_[i]]=next.state;
+            if(!next.retire)next_active.push_back(active_[i]);
+        }
+        active_.swap(next_active);
+        return true;
+    } catch(...) { return false; }
+}
+std::optional<std::vector<SteamTouchArrowDraw>> SteamTouchArrowEffects::draw(
+    const SurfaceQuery &surface,const SteamTouchEffectClock &clock) const {
+    if(!active_.empty() && (!surface || !clock))return {};
+    try {
+        std::vector<SteamTouchArrowDraw> plans;plans.reserve(active_.size());
+        for(const auto slot:active_) {
+            const auto &s=buffer_[slot];const auto observed=surface(s.surface);
+            if(!observed)return {};
+            auto plan=steam_touch_arrow_effect_skin(s,*observed,clock);
+            if(!plan)return {};
+            plans.push_back(std::move(*plan));
+        }
+        return plans;
+    } catch(...) { return {}; }
+}
+bool SteamTouchArrowEffects::remove(std::size_t slot) noexcept {
+    const auto found=std::find(active_.begin(),active_.end(),slot);
+    if(found==active_.end())return false;
+    active_.erase(found);
+    return true;
+}
+std::optional<SteamTouchArrowState> SteamTouchArrowEffects::state(std::size_t slot) const {
+    if(slot>=buffer_.size())return {};
+    return buffer_[slot];
 }
 std::optional<SteamManualArrowPlan> steam_manual_arrow_skin(
     const SteamManualArrowRequest &in,std::array<int,4> bounds,int image_width) {

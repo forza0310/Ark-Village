@@ -1,5 +1,13 @@
 # 当前研究验证与历史索引
 
+## 箭头复用池与原生测宽字体选择 2026-10-16
+
+沿[箭头源合同](ui/STEAM_INTERACTIONS.md#箭头toucheffect-id0资源墙钟与退休)，现`steam_manual_skin`补实际临时池：首闲槽复用、active加入序、Frame逆序／Draw正序及逐效果观测、Remove／退休／Clear只撤active，完整Init覆盖复用槽。Add／Frame／Draw失败不发布部分池／计划是维护策略；不把原先已发生的KeyDown视为可回滚。无平台对象／文件状态，普通窗口接线、GPU混合和原OS动态仍独立；宿主按次消费计划，buffer及标量绑定退休后仍保留，不认证原引用已释放。
+
+Windows单Release动态构建、独立严格C++17语法检查通过；既有visuals **1/1通过1.80秒**。扩现套件覆盖两创建时点的逆序读钟、复用槽后的加入序、400ms退休、晚失败整池回滚、缺surface／clock及异常、清池后复用；合并两组相同状态比较辅助，未复制几何矩阵。64次Clear／Init保持两保留槽，未外推任意峰值永久有界；实现无新固定预算，容量几何扩展。未编译三份他人在途住宅存取测试，不重跑世界长测。无新文件／target／素材／codec；Release1399文件／226014058字节，assets872文件／9504668字节，无.pending，原两份受审批限制AST保留。
+
+并行只读10,320字节明确方法窗口，合入[字体后端](ui/STEAM_FONT_BACKEND.md#普通测宽的原生font对象选择)：CalcSize实际组合文字／图像／样式，原生Font按style→默认→有效兜底缓存→内建Arial.ttf请求；setter写null与后续消费者兜底分开，不认证中文glyph／family或磁盘Font对象配对。没有新增报告、audit或指纹。构建／短测和静态任务已结束；仅本批已验研究白名单本地提交，不推送，保留待确认91设计及其他维护者修改。
+
 ## 设置副作用、初值与后台更新资格 2026-10-16
 
 [设置合同](ui/STEAM_INTERACTIONS.md#游戏设置与标题平台按钮)交叉两版系统模板、新局保留J／重建P、画质按应用尺寸覆盖及世界读取归属。现`steam_config_setting_effects`将实际setter请求展开为有序属性／声音／Canvas计划：音量同值不输出、SE归零仍请求资源槽7，画质／速度同值仍写；Steam滤镜消费者为空实现，不认证GPU变化或将APK音频字节自动同一化。实际输出、跨局权威及系统必需分区设计尚未接，不新增Owner／codec／格式或借opaque占位。

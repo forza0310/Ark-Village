@@ -41,6 +41,11 @@ auto sprite(const std::filesystem::path &p) {
     if(!input) throw std::runtime_error("Steam皮肤公共资源缺失："+p.string());
     return dungeon_village_tools::parse_legacy_seb({std::istreambuf_iterator<char>(input),{}});
 }
+bool same_arrow_state(const SteamTouchArrowState &a,const SteamTouchArrowState &b) {
+    return a.surface==b.surface&&a.component_key==b.component_key&&
+        a.texture_index==b.texture_index&&a.x==b.x&&a.y==b.y&&a.velocity_x==b.velocity_x&&
+        a.arguments==b.arguments&&a.created==b.created&&a.last_frame==b.last_frame;
+}
 void touch_arrow_effect(Checks &check) {
     // 从现公共DOWN计划取得真实id0请求；不重放KeyDown或把绘制当作Frame。
     SteamTouchCommandInput input;
@@ -63,11 +68,7 @@ void touch_arrow_effect(Checks &check) {
               initialized->created==1000&&initialized->last_frame==1000,
           "id0原裁片与0.75目的尺寸分开，Init只读一次钟并保留surface/组件绑定");
     const auto original=*initialized;
-    const auto same=[](const SteamTouchArrowState &a,const SteamTouchArrowState &b) {
-        return a.surface==b.surface&&a.component_key==b.component_key&&
-            a.texture_index==b.texture_index&&a.x==b.x&&a.y==b.y&&a.velocity_x==b.velocity_x&&
-            a.arguments==b.arguments&&a.created==b.created&&a.last_frame==b.last_frame;
-    };
+    const auto same=same_arrow_state;
     const std::array<std::int64_t,3> clocks{1300,1250,1280};reads=0;
     const auto moved=advance_steam_touch_arrow_effect(original,[&]() -> std::optional<std::int64_t> {
         return clocks.at(static_cast<std::size_t>(reads++));
@@ -172,6 +173,133 @@ void touch_arrow_effect(Checks &check) {
     reads=0;
     check(!steam_touch_arrow_effect_skin(original,{0,0,100},unavailable)&&reads==1&&
               same(original,*initialized),"Draw无时钟拒绝且不制造模式或图像输出");
+}
+void touch_arrow_pool(Checks &check) {
+    const auto same=same_arrow_state;
+    SteamTouchArrowEffects pool;
+    int reads{},surfaces{};
+    const auto empty_draw=pool.draw([&](std::uint64_t) -> std::optional<SteamTouchArrowSurface> {
+        ++surfaces;return {};
+    },[&]() -> std::optional<std::int64_t> {++reads;return {};});
+    check(pool.frame({})&&empty_draw&&empty_draw->empty()&&reads==0&&surfaces==0&&
+              pool.active_count()==0&&pool.retained_count()==0,
+          "空池Frame和Draw不查询时钟或surface，不制造槽位");
+    const SteamTouchArrowEffect first{{100,80,3,11},2,10.F},second{{200,90,0,22},3,-10.F};
+    const auto a=pool.add(first,41,128,[] {return std::optional<std::int64_t>{1000};});
+    const auto b=pool.add(second,42,128,[] {return std::optional<std::int64_t>{1100};});
+    check(a&&b&&*a==0&&*b==1&&pool.active_count()==2&&pool.retained_count()==2,
+          "Add按首闲槽建立buffer，返回值是可复用槽而非全局实体ID");
+    const auto initial_a=*pool.state(0),initial_b=*pool.state(1);
+    for(const bool throws:std::array<bool,2>{false,true}) {
+        const auto failed=pool.add(first,43,128,[&]() -> std::optional<std::int64_t> {
+            if(throws)throw std::runtime_error("pool Init fixture");return {};
+        });
+        check(!failed&&pool.active_count()==2&&pool.retained_count()==2&&
+                  same(*pool.state(0),initial_a)&&same(*pool.state(1),initial_b),
+              "Init缺钟或异常不发布半初始化新槽，原活动池保持");
+    }
+    // 独立创建时点令同一1400观测只可能使槽0退休；先以不同积分钟核逆序访问。
+    const std::array<std::int64_t,6> frame_clocks{1400,1300,1350,1399,1200,1250};reads=0;
+    check(pool.frame([&]() -> std::optional<std::int64_t> {
+              return frame_clocks.at(static_cast<std::size_t>(reads++));
+          })&&reads==6&&pool.active_count()==2&&pool.state(0)->x==95.25F&&
+              pool.state(0)->last_frame==1250&&pool.state(1)->x==193.5F&&
+              pool.state(1)->last_frame==1350,
+          "Frame按active逆序读钟，各效果独立保留三次观察而非同轮合并");
+    std::vector<int> calls;reads=0;
+    const auto draw=pool.draw([&](std::uint64_t surface) {
+        calls.push_back(static_cast<int>(surface));return std::optional<SteamTouchArrowSurface>{SteamTouchArrowSurface{0,0,100}};
+    },[&]() -> std::optional<std::int64_t> {calls.push_back(0);return ++reads==1?1399:1400;});
+    check(draw&&draw->size()==2&&calls==std::vector<int>{41,0,42,0}&&
+              (*draw)[0].surface==41&&(*draw)[1].surface==42&&
+              (*draw)[0].operations.size()==3&&(*draw)[1].operations.size()==3&&
+              std::get<SteamTouchArrowBlend>((*draw)[0].operations[0]).source==34&&
+              std::get<SteamTouchArrowBlend>((*draw)[1].operations[0]).source==52,
+          "Draw按加入顺序逐个surface后读钟，不能按Frame逆序或共用一次观测");
+    const auto retiring=*pool.state(0);reads=0;
+    check(pool.frame([&] {++reads;return std::optional<std::int64_t>{1400};})&&reads==4&&
+              pool.active_count()==1&&pool.retained_count()==2&&same(*pool.state(0),retiring)&&
+              pool.state(1)->last_frame==1400&&!pool.remove(0)&&!pool.remove(99)&&!pool.state(99),
+          "400ms只撤退休active，保留原state和绑定，存活效果仍更新且非法槽不命中");
+    const SteamTouchArrowEffect replacement{{300,100,0,33},3,-10.F};
+    const auto reused=pool.add(replacement,43,256,[] {return std::optional<std::int64_t>{1401};});
+    check(reused&&*reused==0&&pool.active_count()==2&&pool.retained_count()==2&&
+              pool.state(0)->surface==43&&pool.state(0)->component_key==33&&
+              pool.state(0)->texture_index==3&&pool.state(0)->x==295.5F&&pool.state(0)->y==91.F&&
+              pool.state(0)->velocity_x==-10.F&&
+              pool.state(0)->arguments==std::array<float,6>{15.F,19.5F,104.F,114.F,40.F,52.F}&&
+              pool.state(0)->created==1401&&pool.state(0)->last_frame==1401,
+          "退休槽首闲复用时完整Init覆盖绑定、运动、源参数和两钟，不保留旧字段");
+    calls.clear();
+    const auto reordered=pool.draw([&](std::uint64_t surface) {
+        calls.push_back(static_cast<int>(surface));return std::optional<SteamTouchArrowSurface>{SteamTouchArrowSurface{0,0,100}};
+    },[] {return std::optional<std::int64_t>{1401};});
+    check(reordered&&reordered->size()==2&&calls==std::vector<int>{42,43}&&
+              (*reordered)[0].surface==42&&(*reordered)[1].surface==43,
+          "槽0复用后追加active尾端，Draw不能按buffer槽号排序");
+    const auto before_a=*pool.state(0),before_b=*pool.state(1);
+    const auto unchanged=[&] {
+        return pool.active_count()==2&&pool.retained_count()==2&&
+            same(*pool.state(0),before_a)&&same(*pool.state(1),before_b);
+    };
+    check(!pool.frame({})&&unchanged(),"活动池缺Frame时钟显式拒绝，全部状态保持");
+    for(const bool retire_first:std::array<bool,2>{false,true})
+        for(const bool throws:std::array<bool,2>{false,true}) {
+            reads=0;
+            const int fail_at=retire_first?2:4;
+            check(!pool.frame([&]() -> std::optional<std::int64_t> {
+                      if(++reads==fail_at) {if(throws)throw std::runtime_error("pool Frame fixture");return {};}
+                      return retire_first?1801:1450;
+                  })&&reads==fail_at&&unchanged(),
+                  "后一效果读钟失败或抛异常时，前一效果已积分或已退休候选均不得发布");
+        }
+    const SteamTouchArrowEffects::SurfaceQuery surface=[](std::uint64_t) {
+        return std::optional<SteamTouchArrowSurface>{SteamTouchArrowSurface{0,0,100}};
+    };
+    check(!pool.draw({},[] {return std::optional<std::int64_t>{1450};})&&
+              !pool.draw(surface,{})&&unchanged(),
+          "Draw缺surface查询或时钟不返回部分计划，池状态保持");
+    for(const bool fail_surface:std::array<bool,2>{true,false})
+        for(const bool throws:std::array<bool,2>{false,true}) {
+            reads=surfaces=0;
+            const auto failed=pool.draw([&](std::uint64_t) -> std::optional<SteamTouchArrowSurface> {
+                if(++surfaces==2&&fail_surface) {
+                    if(throws)throw std::runtime_error("pool surface fixture");return {};
+                }
+                return SteamTouchArrowSurface{0,0,100};
+            },[&]() -> std::optional<std::int64_t> {
+                if(++reads==2&&!fail_surface) {
+                    if(throws)throw std::runtime_error("pool Draw clock fixture");return {};
+                }
+                return 1450;
+            });
+            check(!failed&&surfaces==2&&reads==(fail_surface?1:2)&&unchanged(),
+                  "第二效果缺surface或时钟及其异常均丢弃首效果绘制候选，不修改池");
+        }
+    check(pool.remove(1)&&!pool.remove(1)&&pool.active_count()==1&&pool.retained_count()==2&&
+              same(*pool.state(0),before_a)&&same(*pool.state(1),before_b),
+          "Remove只撤active一次，buffer中的两个状态和绑定原样保留");
+    pool.clear();
+    const auto cleared_draw=pool.draw({},{});
+    check(pool.active_count()==0&&pool.retained_count()==2&&same(*pool.state(0),before_a)&&
+              same(*pool.state(1),before_b)&&pool.frame({})&&cleared_draw&&cleared_draw->empty(),
+          "Clear不清buffer或残留绑定，空active即使保留槽也无需时钟和surface");
+    const auto after_clear=pool.add(first,44,128,[] {return std::optional<std::int64_t>{2000};});
+    check(after_clear&&*after_clear==0&&pool.active_count()==1&&pool.retained_count()==2&&
+              pool.state(0)->surface==44&&pool.state(0)->component_key==11&&
+              pool.state(0)->texture_index==2&&pool.state(0)->x==93.25F&&pool.state(0)->y==71.F&&
+              pool.state(0)->velocity_x==10.F&&pool.state(0)->created==2000&&
+              pool.state(0)->last_frame==2000&&
+              pool.state(0)->arguments==std::array<float,6>{15.F,19.5F,31.F,57.F,20.F,26.F}&&
+              same(*pool.state(1),before_b),
+          "Clear后Add仍取buffer首闲槽并重新Init，未复用槽不受影响");
+    bool reused_only=true;
+    for(int n=0;n<64;++n) {
+        pool.clear();
+        const auto slot=pool.add(first,44,128,[n] {return std::optional<std::int64_t>{2001+n};});
+        reused_only=reused_only&&slot&&*slot==0&&pool.retained_count()==2&&pool.active_count()==1;
+    }
+    check(reused_only,"重复Clear/Init维持已分配两槽，不为每个反馈追加buffer；不外推任意峰值永久有界");
 }
 void touch_commands(Checks &check) {
     SteamTouchCommandInput in;in.admission=SteamTouchAdmission::ready;
@@ -1990,6 +2118,7 @@ int check_steam_startup_skin(const std::filesystem::path &root) {
     font_metrics(check);
     touch_commands(check);
     touch_arrow_effect(check);
+    touch_arrow_pool(check);
     touch_menu_and_marker(check);
     touch_flow(check);
     dialogue_page(check);

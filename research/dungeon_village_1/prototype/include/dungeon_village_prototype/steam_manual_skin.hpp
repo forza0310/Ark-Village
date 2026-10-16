@@ -98,6 +98,7 @@ class SteamTouchArrowEffects {
     std::optional<std::vector<SteamTouchArrowDraw>> draw(const SurfaceQuery &,
                                                         const SteamTouchEffectClock &) const;
     bool remove(std::size_t slot) noexcept;
+    std::size_t remove_surface(std::uint64_t surface) noexcept; // 原按surface对象身份逆序撤active。
     void clear() noexcept { active_.clear(); }
     std::size_t active_count() const noexcept { return active_.size(); }
     std::size_t retained_count() const noexcept { return buffer_.size(); }

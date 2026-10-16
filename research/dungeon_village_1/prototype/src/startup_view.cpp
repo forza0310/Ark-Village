@@ -837,6 +837,23 @@ struct SourceBlendScope {
     SourceBlendScope(const SourceBlendScope &)=delete;
     SourceBlendScope &operator=(const SourceBlendScope &)=delete;
 };
+// 限正常id0年龄的已核生成资格：src<=160时type3的order1全弃，order2普通源alpha。
+// 不用于负年龄、附加BlendMode/clip/custom Material；默认模式入口和固定恢复由此执行器独占。
+void draw_touch_arrow_plan(const SteamTouchArrowDraw &plan,SourceSprites &sprites) {
+    if(plan.operations.empty())return;
+    if(plan.operations.size()!=3)throw std::runtime_error("箭头效果绘制序列拒绝");
+    const auto *blend=std::get_if<SteamTouchArrowBlend>(&plan.operations[0]);
+    const auto *image=std::get_if<SteamTouchArrowImage>(&plan.operations[1]);
+    const auto *restore=std::get_if<SteamTouchArrowBlend>(&plan.operations[2]);
+    if(!plan.surface||!blend||!image||!restore||blend->mode!=1||blend->source<=0||blend->source>160||
+       blend->destination!=255-blend->source||restore->mode!=0||restore->source!=255||restore->destination!=0)
+        throw std::runtime_error("箭头效果局部RenderMode资格拒绝");
+    SourceBlendScope mode;
+    const auto &c=image->crop;const auto &d=image->destination;
+    sprites.crop("steam-common/buttoneffect.png",{float(c[0]),float(c[1]),float(c[2]),float(c[3])},
+                 {d[0],d[1]},true,Vector2{d[2],d[3]},{},
+                 Color{255,255,255,static_cast<unsigned char>(blend->source)});
+}
 void draw_startup_fill(const SteamStartupFill &fill,Vector2 origin) {
     if(fill.source_ratio<0||fill.source_ratio>256)throw std::runtime_error("启动填色混合比例拒绝");
     const auto &r=fill.rectangle;
@@ -3299,6 +3316,52 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
     Window window;
     Canvas canvas;
     SourceSprites sprites(assets / "original");
+    if(inspect_page=="touch-arrow-effects") {
+        // 条件表现示例，50ms步进是固定观测输入，不是原帧率或世界tick换算。
+        std::array<SteamTouchArrowDraw,8> plans;
+        constexpr std::array<int,4> ages{0,100,200,300};
+        const SteamTouchArrowEffects::SurfaceQuery surface=[](std::uint64_t) {
+            return std::optional<SteamTouchArrowSurface>{SteamTouchArrowSurface{0,0,100}};
+        };
+        for(int row=0;row<2;++row)for(int column=0;column<4;++column) {
+            SteamTouchArrowEffects effects;
+            const SteamTouchArrowEffect request{{30+60*column,100+95*row,row==0?3:0,
+                static_cast<std::uint64_t>(row*4+column+1)},row==0?2:3,row==0?-10.F:10.F};
+            if(!effects.add(request,1,128,[] {return std::optional<std::int64_t>{1000};}))
+                throw std::runtime_error("箭头示例Init失败");
+            for(std::int64_t now=1000;now<1000+ages[column];now+=50) {
+                const SteamTouchEffectClock clock=[now] {return std::optional<std::int64_t>{now};};
+                if(!effects.draw(surface,clock)||!effects.frame(clock))
+                    throw std::runtime_error("箭头示例Draw/Frame顺序失败");
+            }
+            const auto draw=effects.draw(surface,[&] {return std::optional<std::int64_t>{1000+ages[column]};});
+            if(!draw||draw->size()!=1)throw std::runtime_error("箭头示例绘制失败");
+            plans[row*4+column]=draw->front();
+        }
+        int count{};
+        while(!WindowShouldClose()&&count<frames) {
+            BeginTextureMode(canvas.value);ClearBackground(Color{83,141,77,255});
+            DrawText("RESEARCH / ARROW ID0",8,8,10,WHITE);
+            DrawText("DRAW THEN FRAME / FIXED INPUT",8,26,10,WHITE);
+            for(int row=0;row<2;++row)for(int column=0;column<4;++column) {
+                DrawText(std::to_string(ages[column]).c_str(),20+60*column,64+95*row,10,WHITE);
+                draw_touch_arrow_plan(plans[row*4+column],sprites);
+            }
+            DrawText("AGES IN MS / NO WORLD UPDATE",8,280,10,WHITE);
+            DrawText("SOURCE PNG / BACKEND ADAPTER",8,299,10,WHITE);
+            EndTextureMode();BeginDrawing();ClearBackground(BLACK);
+            DrawTexturePro(canvas.value.texture,{0,0,width,-height},{0,0,width*scale,height*scale},{0,0},0,WHITE);
+            EndDrawing();++count;
+            if(count==frames&&screenshot) {
+                if(!screenshot->parent_path().empty())std::filesystem::create_directories(screenshot->parent_path());
+                auto pixels=LoadImageFromScreen();if(!pixels.data)throw std::runtime_error("箭头示例截图失败");
+                const bool saved=ExportImage(pixels,screenshot->string().c_str());UnloadImage(pixels);
+                if(!saved)throw std::runtime_error("箭头示例截图写入失败");
+            }
+        }
+        std::cout<<"touch arrow drawing fixture: frames="<<count<<" plans=8 world_updates=0 original_gpu_verified=false\n";
+        return 0;
+    }
     if(inspect_page=="facility-notices") {
         // 只读表现条件图：原定义与已有实例上更换通知年龄，不安装世界、不发完工奖励。
         StartupSession initial;

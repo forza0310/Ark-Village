@@ -99,7 +99,21 @@ dy = (y_×q+float(surface.y_))−grow×0.5f
 
 同模块`SteamTouchArrowEffects`消费完整id0池生命周期：buffer按分配序保留状态，Add复用首个非active槽，active按加入顺序追加；Frame逆序采样／更新，Draw正序逐个获取真实surface观测与墙钟。Remove／退休／Clear仅撤active，保留buffer及标量绑定；复用时完整Init，返回槽号会重复，不是全局实体ID。Add失败不发布半槽，Frame全部候选成功后才联合安装，Draw晚失败不返回部分计划；这是维护失败安全，原KeyDown先行及管理器异常路径不据此升级为同样的事务。buffer按实际峰值保留，无新固定容量预算；几何扩容不按每轮复制整个世界，反复复用不等于任意峰值永久有界。
 
-宿主须按次消费绘制计划，并明确绑定ID对应的实际资源／surface寿命；维护池本身不持平台对象，不认证原Image／surface对象已释放。静态`steam_manual_arrow_skin`仍不是动态效果。现窗口`SourceSprites::crop`支持同PNG缓存、目的宽高和tint，但正常窗口的池接线、真实surface宿主、RenderMode后端与原OS动态尚未接，不能单凭tint宣称后端等价或将原buffer保留解释为引用释放。
+宿主须按次消费绘制计划，并明确绑定ID对应的实际资源／surface寿命；维护池本身不持平台对象，不认证原Image／surface对象已释放。静态`steam_manual_arrow_skin`仍不是动态效果。现`draw_touch_arrow_plan`在独立[有界示例](examples/README.md)消费正常年龄、默认混色／无clip等明确资格，复用同PNG并设置RGB／alpha分别混合；缺序列／非法比例拒绝。正常窗口的池接线、真实surface宿主、任意RenderMode后端与原OS动态仍未接，不能将这条局部适配升级为后端全域等价或将原buffer保留解释为引用释放。
+
+#### 实际surface调度与按绑定清退
+
+2026-10-16有限核20KiB明确方法，`surface.SurfaceManager.Draw RVA2AF1F0`先取同一TouchEffectManager，再于`102AF23D／102AF24F／102AF257`依序调用SurfaceManagerBase.Draw→效果Draw→效果Frame；**不是逻辑世界先Frame再绘制**。基础surface按名单正序调用OnDraw→各Draw，GameView.Draw内又先画表单栈；管理器效果因此覆盖基础surface，但尚未进入后置组件层。外层`FormManagerBase.OnDraw RVA7E7400`仍先核非空栈、drawskip_及Canvas.BeginPaint的非空Graphics，再BeginTouchRegist→surface虚槽5.Draw→PrintForm→EndTouchRegist→虚槽6.DrawComponents→Canvas后置绘制→EndPaint（`107E7501–107E787E`）。本方法没有另外按世界pause过滤效果；更上层OS／准入是否实际调用OnDraw仍独立，前部抛异常也不保证已经执行效果Frame。
+
+GameView构造`10240F29`保存同一静态TouchEffectManager；AddEffect在`102396ED`把**this GameView**作为surface交池，不是当前Form或CurrentSurface。SurfaceManager.Setup保留唯一GameView，MyFormBase.Init在`102009A6–B8`取得该view；标题／世界Init均调用这条基类路径，故正常入口共用池，不为每个弹窗新建。基类Init／Finish分别在`102009FF／1020044A`调用RemoveSurface；布局`102AF0B3／102AF0EC`仅在GamePad／GameView宽或高改变时清退各自绑定，不由任意位置变化触发。RemoveSurface RVA2B0290按active逆序比较surface对象同一性，仅撤active。维护`SteamTouchArrowEffects::remove_surface`以稳定绑定ID表达同一请求，保留buffer，不推成每页Pop必调base Finish或每次切页Clear；本轮正常调用者未命中Clear不等于全程序无入口。原管理器Draw还会捕获所核Exception并继续下一effect（`102AFC8C–102AFD2F`），维护晚失败不发布整批计划仍是另行安全策略。
+
+#### 图像透明分类与箭头的条件合成
+
+`Image.GetAlphaType RVA79BA90`先按实例alpha：0直接返回1，其他小于255返回2；alpha≥255才读缓存+90。缓存−1时先置0，再取得Texture2D，经UI线程wait=true调用闭包7A3AE0，按120×120块扫描**全纹理**；没有有效纹理或后续异常不会恢复−1承诺自动重试。三种已核构造初始化alpha255／缓存−1（`107A1D78／107A2148／107A2722`），SetAlphaType则直接覆写，不能只凭PNG统计认定实际缓存。扫描将alpha<0.01记透明，0.01≤alpha≤0.999记中间，其余不透明；只有不透明为0，无中间但有透明为1，有中间无不透明为2，中间与不透明并存为3。现128图离线按该阈值计11195透明／3165中间／2024不透明，**仅在运行纹理保持原样且实际扫描时**推为3；裁片统计不能代替全图或认证解码／图集／显式覆盖。
+
+GetRenderPass在`1076E528`读取该分类；type3且非`isGUI && !glRender`时，`1076E815–E89E`复制pass组，第一组order1、第二组order2。真实_drawBitmap在`10779457–107795A1`逐pass Begin并传order给MaterialManager。ShaderBuilder.Init在非零RenderMode下虽强置alphaType2，GetNameId仍独立保留order的0x800／0x1000。GetCode `1073CFDE–CFFC`由真实槽110EE6D8／110EE704分别生成`AlphaTest Greater 0.99`／`AlphaTest LEqual  0.99`，替换模板<alpha>；不是两次无条件同像素合成。
+
+普通mode1、src+dst=255、无额外BlendMode／自定义Material／figure clip等已核生成资格下，两组都保留texture×primary、ZWrite Off及下文[普通混合方程](#平台按钮高亮与控制器附加图标)。令`A=T.a×P.a×src/255`，两组分别接收A>0.99／A≤0.99。id0正常Draw年龄0…399时src至多160，若T.a及P.a在[0,1]，则A≤160/255，order1全弃，order2按普通源alpha方程合成，可作为研究后端局部适配依据；**负年龄回卷、额外混色／clip、运行Image资格、预编译Material及GPU采样**不由该条件推导认证。不能把任意type3全局降为单pass或以当前截图代替运行材质证据。
 
 ### 列表确认与Canvas同步回调
 
@@ -198,6 +212,8 @@ raw12同身份静态子批进一步核定以下生命周期；字段含义及四
 | 新局 | APK `d/a.java:1017–1036`及Steam `1025F203–1025F4BC`保留J，先写所选栏J8并SaveSystem，再新建P；P13沿模板0，不继承旧局速度。P12先置0，应用GetWidth／GetHeight任一≤480再置1；不是按研究窗口固定240坐标猜设备初值。 |
 | 世界读取 | APK `d/a.java:1280–1290`及Steam `1025A183–1025A2CA`先经NewGame，再用世界默认模板重建P并SetData，因此P12／P13由所读世界字节恢复。两版tag1都复用非空模板数组，短声明保留尾项，超长消费但不扩容；Steam已核完整4字节才覆盖单项，物理截断抛异常且已写前缀不回滚，见[整数读取合同](../rules/PERSISTENCE.md#steam已初始化整数数组的兼容读取)。不外推其它tag或全部旧版兼容。 |
 | 系统读取／保存 | APK `d/a.java:3905–3933`先初始化J再读记录0，保存只写J；Steam SaveSystem的同一归属见上文。世界档的速度／画质与跨局J权威分别恢复，不由高分或世界镜像重新推算音量／高速资格。 |
+
+这里的尺寸是**P12判定时已解析的GetWidth／GetHeight返回值**。Steam getter `107861B0／10785820`转KairoPlugin.GetAppWidth／Height，经直接或UI线程wait=true委托归同一`GetSteamScreenSize 108776B0–10877782`：先读Unity Screen.width／height，若w>h×250/100且screenLimit为真则w=h×250/100，否则w<h×100/75时h=w×75/100（原整数运算）。不读取独立viewport字段，也不直接认证Windows DPI／物理客户像素；screenLimit实际运行值未知。APK `kairo/android/ui/IApplication.java:277–291`独立读取Display.metrics.widthPixels，高度在特定旧API／大屏分支先试getRawHeight，失败或其它条件取heightPixels，无density除法；不能互套平台值。维护应由适配层显式供给最终两个返回值，回放记录输入，核心只做480阈值，不猜固定240画布或在恢复时重查屏幕。
 
 J9的进入计分开启／保存时点及加载旧世界仍保留资格见[通关权威合同](../rules/STARTUP_RECORDS.md#通关六类计分固定apk及steam有限交叉)；P14与J9不能绑成恒等条件。标题Init也不沿用“改值才生效”的设置setter过滤：APK `b/h.java:294–298`与Steam `1020B007／1020B04A／1020B089／1020B0CC／1020B0E4`依序直接SetVolume(0,J3×51)→SetMute(0,J3==0)→SetVolume(1,J4×51)→SetMute(1,J4==0)→PlayBgm(0)。标题这一层没有额外显式Reflect或SE试听7；PlayBgm内部后继独立，不因省略外层Reflect就删改。当前应用只请求BGM0，不代表这四项初始音量操作已接。
 

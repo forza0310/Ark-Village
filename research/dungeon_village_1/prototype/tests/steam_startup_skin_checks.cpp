@@ -300,6 +300,21 @@ void touch_arrow_pool(Checks &check) {
         reused_only=reused_only&&slot&&*slot==0&&pool.retained_count()==2&&pool.active_count()==1;
     }
     check(reused_only,"重复Clear/Init维持已分配两槽，不为每个反馈追加buffer；不外推任意峰值永久有界");
+    const auto other=pool.add(second,45,128,[] {return std::optional<std::int64_t>{2100};});
+    const auto shared=pool.add(first,44,128,[] {return std::optional<std::int64_t>{2100};});
+    check(other&&shared&&pool.active_count()==3&&pool.retained_count()==3,
+          "按surface清退夹具使用同一池中的两个绑定，不创建每页私有池");
+    const auto retained0=*pool.state(0),retained2=*pool.state(2);
+    check(pool.remove_surface(44)==2&&pool.active_count()==1&&pool.retained_count()==3&&
+              same(*pool.state(0),retained0)&&same(*pool.state(2),retained2)&&
+              pool.remove_surface(44)==0&&pool.remove_surface(0)==0,
+          "RemoveSurface撤同一绑定的全部active且保留buffer，不误清其它surface或重复退休");
+    const auto left=pool.draw([](std::uint64_t surface) -> std::optional<SteamTouchArrowSurface> {
+        if(surface!=45)return {};return SteamTouchArrowSurface{0,0,100};
+    },[] {return std::optional<std::int64_t>{2101};});
+    check(left&&left->size()==1&&left->front().surface==45&&
+              pool.add(first,46,128,[] {return std::optional<std::int64_t>{2102};})==std::optional<std::size_t>{0},
+          "按surface退休后其余绑定可绘，后续Add仍复用buffer首闲槽");
 }
 void touch_commands(Checks &check) {
     SteamTouchCommandInput in;in.admission=SteamTouchAdmission::ready;

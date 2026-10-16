@@ -1,12 +1,12 @@
 # 当前研究验证与历史索引
 
-## 箭头复用池与原生测宽字体选择 2026-10-16
+## 箭头实际surface时序、透明分支与有界示例 2026-10-16
 
-沿[箭头源合同](ui/STEAM_INTERACTIONS.md#箭头toucheffect-id0资源墙钟与退休)，现`steam_manual_skin`补实际临时池：首闲槽复用、active加入序、Frame逆序／Draw正序及逐效果观测、Remove／退休／Clear只撤active，完整Init覆盖复用槽。Add／Frame／Draw失败不发布部分池／计划是维护策略；不把原先已发生的KeyDown视为可回滚。无平台对象／文件状态，普通窗口接线、GPU混合和原OS动态仍独立；宿主按次消费计划，buffer及标量绑定退休后仍保留，不认证原引用已释放。
+`dba657e`交Init／Frame／Draw候选，`5ee5221`补首闲槽复用池。[箭头合同](ui/STEAM_INTERACTIONS.md#实际surface调度与按绑定清退)闭合实际SurfaceManager基础绘制→效果Draw→效果Frame，位于组件／Canvas后置绘制之前，不能按世界tick推进。正常标题／世界共用GameView和池；现池补`remove_surface`，仅撤同绑定active，保留buffer及其它surface，不新增任意切页Clear。原Draw捕获异常后继续与维护整批失败安全分别登记。设置P12的两版平台尺寸来源也已补核，维护显式环境参数不得猜逻辑画布；91及设置格式设计仍单独待确认，未提前编码。
 
-Windows单Release动态构建、独立严格C++17语法检查通过；既有visuals **1/1通过1.80秒**。扩现套件覆盖两创建时点的逆序读钟、复用槽后的加入序、400ms退休、晚失败整池回滚、缺surface／clock及异常、清池后复用；合并两组相同状态比较辅助，未复制几何矩阵。64次Clear／Init保持两保留槽，未外推任意峰值永久有界；实现无新固定预算，容量几何扩展。未编译三份他人在途住宅存取测试，不重跑世界长测。无新文件／target／素材／codec；Release1399文件／226014058字节，assets872文件／9504668字节，无.pending，原两份受审批限制AST保留。
+同版图像透明扫描／缓存和type3双pass核至实际shader AlphaTest字符串：order1接最终alpha>0.99，order2接≤0.99。正常id0年龄、默认材质／无附加混色等资格下，高alpha组全弃，另一组按源alpha合成；负年龄、clip、自定义／预编译材质与真实Image状态不外推。现窗口增加条件执行器和`--inspect-page touch-arrow-effects`，消费同原PNG、完整池和有序计划；[正式示例](ui/examples/steam-touch-arrows.png)480×640／21661字节已查看，8帧正常退出、八计划、0世界更新。四年龄／50ms采样是显示夹具输入，不认证原帧率、原OS或GPU动态。
 
-并行只读10,320字节明确方法窗口，合入[字体后端](ui/STEAM_FONT_BACKEND.md#普通测宽的原生font对象选择)：CalcSize实际组合文字／图像／样式，原生Font按style→默认→有效兜底缓存→内建Arial.ttf请求；setter写null与后续消费者兜底分开，不认证中文glyph／family或磁盘Font对象配对。没有新增报告、audit或指纹。构建／短测和静态任务已结束；仅本批已验研究白名单本地提交，不推送，保留待确认91设计及其他维护者修改。
+Windows单Release动态构建、独立严格C++17语法检查通过；既有visuals **1/1通过1.85秒**，扩现池套件仅补按surface清退／复用和其余绑定仍可绘制，不重复几何矩阵或自然长测，未编译三份他人在途住宅存取测试。无新target／codec／持久字段；唯一新正式文件为上述必要例图，未新增audit／指纹／过程报告。Release1399文件／226148189字节，assets872文件／9504668字节，无.pending；原两份受审批限制AST保留。候选／计划按次消费，buffer按并发峰值保留而非永久有界；本轮构建、短测、窗口及静态子任务均已结束，仅提交已验研究白名单、不推送，保留待确认设计与其他维护者改动。
 
 ## 设置副作用、初值与后台更新资格 2026-10-16
 
@@ -20,13 +20,11 @@ Windows单Release动态构建、独立严格C++17语法检查通过，既有visu
 
 同一后继补核[通关J9权威](rules/STARTUP_RECORDS.md#通关六类计分固定apk及steam有限交叉)：进入计分即写P14／J9并经继承快照SaveSystem，旧世界P14=0与系统J9=1允许并存；正常0／1写者不认证原档全域bool。标题Init四次音量／静音后才PlayBgm0，没有本层额外Reflect或SE试听；合同明确这些操作与应用系统权威尚未接，不把现BGM0请求或世界镜像充作已实现。结论合现规则／交互合同，不增新设计、文件或测试。
 
-## 箭头id0生命周期与标题／字体纠正 2026-10-16
-
-沿[公共触摸合同](ui/STEAM_INTERACTIONS.md#箭头toucheffect-id0资源墙钟与退休)，复用现`steam_manual_skin`增加正常DOWN后箭头的Init／Frame候选与有序混合绘制计划。保留TEXTURES2／3、实际纹理密度、0.75目的几何、Init一次／存活Frame三次／退休Frame一次／Draw一次读钟、低32年龄与完整long积分、float32存储、400ms退休和独立淡出；缺时钟／异常不发布部分候选。临时表现不写Owner／codec，不创建效果池，实际宿主、GPU混合及原OS动态仍未接。计划须按次消费，退休请求不等于原buffer释放引用。
-
-Windows单Release动态构建与独立严格C++17语法检查通过，既有visuals **1/1通过1.83秒**。扩现套件覆盖真实DOWN请求、双向箭头、128／256密度、surface偏移／比例、固定模式恢复、负年龄截零、int64回卷、低32与long差分离和第三次读钟失败；未编译三份他人在途住宅存取测试，不重复世界长跑。没有新文件、target、素材或持久布局；Release1399文件／225764421字节，assets872文件／9504668字节，无.pending，两份此前受审批限制AST保留。构建／短测均已退出；合法世界历史不称永久有界。
+## 标题／字体局部合同纠正 2026-10-16
 
 同批静态纠正合入[新局合同](ui/STARTUP_SKIN.md)：村名编辑默认值与回调均归标题newGameName_，正常入口每次新分配91，外部FEP异步回包不能当同步成功；维护保名政策仍是已批准差异。[字体合同](ui/STEAM_FONT_CONSUMER.md#实例draw重排与报纸分页)区分raw15当前布局字号与旧首块行高，补setter不重排及构造页数冻结，不新增排版／恢复字段或认证字形。仅研究白名单本地提交、不推送，保留产品及其他维护者修改。
+
+并行只读10,320字节明确方法窗口，合入[字体后端](ui/STEAM_FONT_BACKEND.md#普通测宽的原生font对象选择)：CalcSize实际组合文字／图像／样式，原生Font按style→默认→有效兜底缓存→内建Arial.ttf请求；setter写null与后续消费者兜底分开，不认证中文glyph／family或磁盘Font对象配对。没有新增报告、audit或指纹。构建／短测和静态任务已结束；仅本批已验研究白名单本地提交，不推送，保留待确认91设计及其他维护者修改。
 
 ## 标题Rank独立页钟与应用恢复 2026-10-16
 

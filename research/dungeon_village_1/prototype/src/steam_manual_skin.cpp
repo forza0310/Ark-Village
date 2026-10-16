@@ -155,6 +155,15 @@ bool SteamTouchArrowEffects::remove(std::size_t slot) noexcept {
     active_.erase(found);
     return true;
 }
+std::size_t SteamTouchArrowEffects::remove_surface(std::uint64_t surface) noexcept {
+    std::size_t removed=0;
+    for(auto i=active_.size();i>0;--i) {
+        if(buffer_[active_[i-1]].surface!=surface)continue;
+        active_.erase(active_.begin()+static_cast<std::ptrdiff_t>(i-1));
+        ++removed;
+    }
+    return removed;
+}
 std::optional<SteamTouchArrowState> SteamTouchArrowEffects::state(std::size_t slot) const {
     if(slot>=buffer_.size())return {};
     return buffer_[slot];

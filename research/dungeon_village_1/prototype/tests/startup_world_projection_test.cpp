@@ -266,6 +266,13 @@ void catalogue() {
           rules.tasks[0].dungeon_background_row==2&&rules.tasks[1].dungeon_background_row==1&&
           rules.tasks[3].dungeon_background_row==3&&rules.tasks[6].dungeon_background_row==5,
           "questData column4 preserves six distinct source row groups instead of task kind/stage/site IDs");
+    std::array<int,4> auras{};
+    for(const auto &monster:rules.monsters) {
+        check(monster.aura_size>=0&&monster.aura_size<4,"monster aura index fits four independently verified Steam resources");
+        ++auras[static_cast<std::size_t>(monster.aura_size)];
+        if(monster.identity>=30)check(monster.aura_size==3,"six source boss definitions use aura3 independently of zero defeat count");
+    }
+    check(auras==std::array<int,4>{15,9,5,7},"monster column3 publishes all36 aura indices rather than deriving from body/difficulty/kills");
     check(rules.facilities[54].exit_effects.size() == 1 &&
               rules.facilities[54].exit_effects[0].attribute_index == 5 &&
               rules.unconsumed_exit_deltas.at(54) == std::vector<int>{3} &&

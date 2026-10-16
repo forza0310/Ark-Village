@@ -229,6 +229,217 @@ void monster_detail_skin(Checks &check,const std::filesystem::path &root) {
         check(!steam_monster_detail_skin(bad,id,options),"92坏Owner来源/计数与退休页拒绝，不补演示数值");
     }
 }
+void monster_notice_skin(Checks &check,const std::filesystem::path &root) {
+    SteamMonsterSkinOptions options;options.view_y=23;options.japanese=true;
+    options.title_widths=std::array<int,2>{48,48};
+    SteamMonsterNoticeInput boss;boss.legacy_page=99;boss.monster={0,0,2,3,"原怪物名"};
+    // 独立期望沿PAGES的13段原表：检查起末边界及整数移动，不用被测插值生成oracle。
+    struct Case {int counter,x,direction,frame;};
+    const std::vector<Case> edges{{0,120,2,0},{4,120,2,0},{5,120,2,0},{6,117,2,1},
+        {10,101,2,1},{16,78,2,2},{17,74,2,2},{21,74,2,3},{22,74,2,0},{33,74,2,0},
+        {34,74,2,1},{43,74,2,3},{44,74,1,3},{46,81,1,3},{50,97,1,0},{67,162,1,3},
+        {68,166,1,3},{72,166,1,0},{73,166,1,0},{84,166,1,0},{85,166,1,2},{94,166,1,3},
+        {95,166,2,3},{96,163,2,0},{106,124,2,1},{107,120,2,1},{111,120,2,2},
+        {112,120,2,0},{123,120,2,0},{124,120,2,0},{128,120,2,1},{129,120,2,0},{130,120,2,0}};
+    for(const auto &c:edges) {
+        boss.monster.counter=c.counter;const auto plan=steam_monster_notice_skin(boss,options);
+        check(plan&&plan->title=="ボス出現！"&&plan->soft_labels==std::array<int,2>{0,0},"99通知标题与无软标签");
+        int bodies{},shadows{};
+        for(const auto &op:plan->operations) {
+            if(const auto *v=std::get_if<SteamMonsterBody>(&op)) {
+                ++bodies;check(v->image==2&&v->sprite==c.direction&&v->frame==c.frame&&
+                    v->position==std::array<int,2>{c.x,138},"99十三段边界/129循环/整数移动与最终身体帧，counter="+std::to_string(c.counter));
+            } else if(const auto *v=std::get_if<SteamHumanImage>(&op))if(v->asset==SteamHumanAsset::shadow) {
+                ++shadows;check(v->frame==3&&v->position==std::array<int,2>{c.x,138},"99阴影沿真实定义且不跟随跳高");
+            }
+        }
+        check(bodies==1&&shadows==1,"99每次只有一个身体及阴影");
+    }
+    // float32抛物helper的逐槽已核整数高度，三个跳阶段均停最终身体frame0。
+    constexpr std::array<int,12> heights{0,2,4,6,7,8,8,7,6,4,2,0};
+    for(const auto jump:std::array<std::array<int,3>,3>{{{22,74,2},{73,166,1},{112,120,2}}})
+        for(int tick=0;tick<12;++tick) {
+            boss.monster.counter=jump[0]+tick;const auto plan=steam_monster_notice_skin(boss,options);
+            check(plan.has_value(),"99跳跃逐槽合法");
+            int bodies{},shadows{};
+            for(const auto &op:plan->operations) {
+                if(const auto *v=std::get_if<SteamMonsterBody>(&op)) {
+                    ++bodies;check(v->frame==0&&v->sprite==jump[2]&&v->position==std::array<int,2>{jump[1],138-heights[tick]},
+                        "99跳跃使用单精度独立高度序列，最终帧停0");
+                } else if(const auto *v=std::get_if<SteamHumanImage>(&op))if(v->asset==SteamHumanAsset::shadow) {
+                    ++shadows;check(v->position==std::array<int,2>{jump[1],138},"99跳跃不改变地面阴影");
+                }
+            }
+            check(bodies==1&&shadows==1,"99跳跃图元规模固定");
+        }
+    for(const auto gate:std::array<std::array<int,3>,5>{{{4,1,1},{0,1,0},{4,0,0},{8,5,0},{5,1,1}}})
+        for(int aura=0;aura<4;++aura) {
+            boss.flags=gate[0];boss.defeats=gate[1];boss.aura_size=aura;boss.monster.counter=27;
+            const auto plan=steam_monster_notice_skin(boss,options);check(plan.has_value(),"99aura资格输入合法");
+            int auras{};std::size_t aura_at{},shadow_at{},body_at{};
+            for(std::size_t i=0;i<plan->operations.size();++i) {
+                const auto &op=plan->operations[i];
+                if(const auto *v=std::get_if<SteamMonsterImage>(&op)) {
+                    ++auras;aura_at=i;const auto r=steam_monster_resource(v->asset);
+                    check(r&&std::string(r->group)=="effect"&&r->sprite==13+aura&&r->image==14+aura&&
+                        v->frame==1&&v->position==std::array<int,2>{74,132},"99aura用独立auraSize、页钟及跳高，而非累计击杀当图号");
+                } else if(const auto *v=std::get_if<SteamHumanImage>(&op)) {
+                    if(v->asset==SteamHumanAsset::shadow)shadow_at=i;
+                } else if(std::holds_alternative<SteamMonsterBody>(op))body_at=i;
+            }
+            check(auras==gate[2]&&shadow_at<body_at&&(!auras||aura_at<shadow_at),"99flags4且累计击杀至少1才先aura后阴影身体");
+        }
+    boss.flags=0;boss.defeats=0;boss.aura_size=0;
+    for(const int start:{34,85,124})for(const auto sample:std::array<std::array<int,2>,7>{{{0,0},{2,0},{3,1},{5,1},{6,2},{8,2},{9,2}}}) {
+        if(start==124&&sample[0]>=5)continue;
+        boss.monster.counter=start+sample[0];const auto plan=steam_monster_notice_skin(boss,options);
+        check(plan.has_value(),"99烟效原行合法");int smokes{};std::size_t body_at{},smoke_at{},clip_at{};
+        for(std::size_t i=0;i<plan->operations.size();++i) {
+            const auto &op=plan->operations[i];
+            if(std::holds_alternative<SteamMonsterBody>(op))body_at=i;
+            else if(const auto *v=std::get_if<SteamMonsterImage>(&op)) {
+                ++smokes;smoke_at=i;check(v->asset==SteamMonsterAsset::smoke&&v->frame==sample[1]&&
+                    v->position==std::array<int,2>{start==34?74:start==85?166:120,142},"99烟效3/6/9门槛与末帧封顶");
+            } else if(const auto *v=std::get_if<SteamHumanClip>(&op))if(v->kind==SteamHumanClipKind::push_intersect)clip_at=i;
+        }
+        check(smokes==1&&body_at<smoke_at&&smoke_at<clip_at,"99仅4/8/12段在身体后/文字clip前画烟");
+    }
+    for(int raw:{99,100})for(const auto timing:std::array<std::array<int,3>,6>{{{5,0,0},{6,1,0},{39,46,0},{40,48,1},{54,48,1},{55,48,0}}}) {
+        auto in=boss;in.legacy_page=raw;in.monster.counter=timing[0];
+        if(raw==100)in.outbreak=std::array<std::array<std::int32_t,9>,8>{};
+        const auto plan=steam_monster_notice_skin(in,options);check(plan.has_value(),"99/100文字和箭头门槛输入");
+        int lines{},arrows{},text_clips{},touches{};bool inside{};
+        for(std::size_t i=0;i<plan->operations.size();++i) {
+            const auto &op=plan->operations[i];
+            if(const auto *v=std::get_if<SteamHumanClip>(&op)) {
+                if(v->kind==SteamHumanClipKind::push_intersect&&v->rectangle[1]==158) {
+                    ++text_clips;inside=true;check(v->rectangle==std::array<int,4>{0,158,240,timing[1]},"99/100独立展开文字clip");
+                } else if(v->kind==SteamHumanClipKind::pop)inside=false;
+            } else if(const auto *v=std::get_if<SteamHumanOverviewText>(&op)) {
+                check(inside&&v->value==(lines==0?"原怪物名が":raw==99?"出現しました!!":"大量発生しています!!")&&
+                    v->rectangle==std::array<int,4>{120,lines==0?164:188,0,0}&&v->anchor==2,"99/100两文字原序y164/188，不沿89的165/187");++lines;
+            } else if(const auto *v=std::get_if<SteamHumanImage>(&op))if(v->asset==SteamHumanAsset::continue_cursor) {
+                ++arrows;check(!inside&&v->position==std::array<int,2>{212,204}&&v->frame==0,"99/100箭头在clip恢复后");
+            }
+            if(const auto *v=std::get_if<SteamStartupTouch>(&op)) {
+                ++touches;check(i+1==plan->operations.size()&&v->component==2&&v->option==2&&!v->rectangle,"99/100末Touch2原无矩形");
+            }
+        }
+        check(lines==2&&text_clips==1&&arrows==timing[2]&&touches==1,"99/100文字/箭头/输出消费门槛");
+    }
+    SteamMonsterNoticeInput outbreak;outbreak.legacy_page=100;outbreak.monster={31,0,2,3,"原怪物名"};
+    outbreak.outbreak=std::array<std::array<std::int32_t,9>,8>{};
+    const std::array<int,8> px{-199,7777,199,-99,21999,8888,12000,22000};
+    const std::array<int,8> directions{1,1,0,2,1,0,-4,1},states{1,0,2,1,2,0,-1,1};
+    for(std::size_t i=0;i<8;++i) {
+        auto &row=(*outbreak.outbreak)[i];row[0]=px[i];row[2]=directions[i];row[3]=int(i)*17;row[7]=states[i];
+    }
+    for(const auto clock:std::array<std::array<int,2>,2>{{{31,1},{36,2}}}) {
+        outbreak.monster.counter=clock[0];const auto plan=steam_monster_notice_skin(outbreak,options);
+        check(plan&&plan->title=="ﾓﾝｽﾀｰ大量発生","100独立大量发生标题");
+        constexpr std::array<int,6> x{-1,1,0,219,120,220},dir{2,1,1,2,1,2};
+        int bodies{},shadows{},clips{},effects{};bool clipped{};
+        for(const auto &op:plan->operations) {
+            if(const auto *v=std::get_if<SteamHumanClip>(&op)) {
+                ++clips;if(v->kind==SteamHumanClipKind::push_intersect) {
+                    check(!clipped,"100clip不可嵌套遗留");clipped=true;
+                    if(clips==1)check(v->rectangle==std::array<int,4>{30,66,180,82},"100八行共用场景clip");
+                } else {check(clipped,"100恢复必须匹配clip");clipped=false;}
+            } else if(const auto *v=std::get_if<SteamHumanImage>(&op)) {
+                if(v->asset==SteamHumanAsset::shadow) {
+                    check(clipped&&shadows<6&&shadows==bodies&&v->frame==3&&v->position==std::array<int,2>{x[shadows],139},"100原序每行先阴影，STATE0隐藏且PX/100向零");++shadows;
+                }
+            } else if(const auto *v=std::get_if<SteamMonsterBody>(&op)) {
+                check(clipped&&bodies<6&&shadows==bodies+1&&v->image==2&&v->sprite==dir[bodies]&&
+                    v->frame==clock[1]&&v->position==std::array<int,2>{x[bodies],139},"100DIRECT恰1才dir2，最终步帧来自页钟而非各行CNT");++bodies;
+            } else if(std::holds_alternative<SteamMonsterImage>(op))++effects;
+        }
+        check(bodies==6&&shadows==6&&clips==4&&!clipped&&effects==0,"100八行原序/双clip配对，无99的aura或烟");
+    }
+    for(int fault=0;fault<7;++fault) {
+        auto bad=boss;bad.flags=4;bad.defeats=1;
+        if(fault==0)bad.legacy_page=98;if(fault==1)bad.monster.counter=-1;
+        if(fault==2)bad.monster.counter=std::numeric_limits<int>::max();if(fault==3)bad.aura_size=-1;
+        if(fault==4)bad.aura_size=4;if(fault==5)bad.defeats=-1;if(fault==6)bad.legacy_page=100;
+        check(!steam_monster_notice_skin(bad,options),"99/100坏页/钟/aura/累计值/缺数组明确拒绝");
+    }
+    // 仅新增effect资源主责检查；common/monster裁片复用既有89覆盖。
+    struct Effect {SteamMonsterAsset asset;const char *name;int image,sprite,frames,w,h,ox,oy;};
+    const std::array<Effect,5> effects{{{SteamMonsterAsset::aura0,"aura10",14,13,2,17,23,-8,-23},
+        {SteamMonsterAsset::aura1,"aura11",15,14,2,17,31,-8,-31},{SteamMonsterAsset::aura2,"aura12",16,15,2,25,36,-12,-36},
+        {SteamMonsterAsset::aura3,"aura13",17,16,2,40,60,-20,-60},{SteamMonsterAsset::smoke,"satSmoke02",8,8,3,38,14,-19,-14}}};
+    for(const auto &e:effects) {
+        const auto r=steam_monster_resource(e.asset);
+        check(r&&std::string(r->group)=="effect"&&r->image==e.image&&r->sprite==e.sprite&&
+            std::string(r->published_image)==std::string("original/effect/")+e.name+".png"&&
+            std::string(r->published_sprite)==std::string("original/effect/")+e.name+".seb","99effect资源槽与真实出版路径");
+        const auto seb=tools::parse_legacy_seb(read_bytes(root.parent_path()/r->published_sprite));
+        auto image=LoadImage((root.parent_path()/r->published_image).string().c_str());
+        check(image.data&&seb.frame_count==e.frames&&image.width==e.frames*e.w&&image.height==e.h,"99aura两帧/烟三帧真实图幅");
+        int parts{};
+        for(const auto &layer:seb.layers)for(const auto &part:layer.parts)if(part.image_index>=0) {
+            ++parts;check(part.frame>=0&&part.frame<e.frames&&part.image_index==e.image&&
+                part.source_x==part.frame*e.w&&part.source_y==0&&part.width==e.w&&part.height==e.h&&
+                part.offset_x==e.ox&&part.offset_y==e.oy&&part.source_x+part.width<=image.width&&part.height<=image.height,
+                "99真实effect裁片/内部offset与帧界独立oracle");
+        }
+        check(parts==e.frames,"99effect每帧仅一有效裁片");UnloadImage(image);
+    }
+    check(!steam_monster_resource(static_cast<SteamMonsterAsset>(99)),"怪物未知资源拒绝");
+    for(int raw:{99,100}) {
+        // 调用点夹具不伪装自然发生；通过真实确认与Update创建演出标记/计数和100数组。
+        auto state=test_support::page_fixture(raw);const auto id=state.scripts.pages.back().id;
+        state.scripts.pages.back().monster_definition=3;
+        check(!steam_monster_notice_skin(state,id,options),"99/100只读桥不补初始化标记和主钟");
+        check(acknowledge_startup_world_runtime_page(state,id)==StartupWorldRuntimeError::none,"99/100真实早确认初始化演出，不关闭");
+        const auto ready=prepare_startup_world_runtime(state);check(ready.candidate.has_value(),"99/100真实框架Update准入");state=*ready.candidate;
+        const auto before=startup_world_state_digest(state);const auto first=steam_monster_notice_skin(state,id,options);
+        const auto again=steam_monster_notice_skin(state,id,options);
+        check(first&&again&&first->operations.size()==again->operations.size()&&startup_world_state_digest(state)==before,
+            "99/100重复只读不推进演出/世界/随机/输出，有限图元规模稳定");
+        auto wrapped=state;wrapped.page_counters.at(id)=std::numeric_limits<int>::max()-1;
+        const auto wrapped_draws=wrapped.scene.random.draws();const auto rollover=prepare_startup_world_runtime(wrapped);
+        check(rollover.candidate&&rollover.candidate->page_counters.count(id)&&rollover.candidate->page_counters.at(id)==0&&
+            rollover.candidate->task_display_initialized.count(id)&&rollover.candidate->scene.random.draws()==wrapped_draws&&
+            steam_monster_notice_skin(*rollover.candidate,id,options),
+            "99/100主钟MAX-1经真实Update回卷0，不重复Init演出或重抽19票");
+        auto missing_clock=state;missing_clock.page_counters.erase(id);
+        const auto missing_before=startup_world_state_digest(missing_clock);
+        check(acknowledge_startup_world_runtime_page(missing_clock,id)!=StartupWorldRuntimeError::none&&
+            !prepare_startup_world_runtime(missing_clock).candidate&&startup_world_state_digest(missing_clock)==missing_before,
+            "99/100已Init却缺主钟时确认/Update均拒绝，不用map[]补0或留下部分状态");
+        for(int fault=0;fault<9;++fault) {
+            auto bad=state;if(fault==0)bad.page_counters.erase(id);if(fault==1)bad.task_display_initialized.erase(id);
+            if(fault==2)bad.scripts.pages.back().monster_definition.reset();if(fault==3)bad.scripts.pages.back().monster_definition=999;
+            if(fault==4)bad.scripts.pages.back().lifecycle=4;if(fault==5)bad.scripts.pages.back().legacy_page=98;
+            if(fault==6)bad.page_counters.at(id)=-1;if(fault==7)bad.scripts.pages.back().lifecycle=0;
+            if(fault==8)bad.scene.world.world.ai.monster_growth.erase(3);
+            check(!steam_monster_notice_skin(bad,id,options),"99/100Owner桥拒缺钟/标记/定义、坏页/钟及未Init/退休");
+        }
+        if(raw==100) {
+            auto bad=state;bad.task_display_table[0][2]=2;
+            check(!steam_monster_notice_skin(bad,id,options),"100Owner拒坏方向，独立于纯Draw的恰1/其它方向谓词");
+            bad=state;bad.task_display_table[0][7]=-1;
+            check(!steam_monster_notice_skin(bad,id,options),"100Owner拒坏状态，独立于纯Draw的STATE非零可见谓词");
+        }
+        check(!steam_monster_notice_skin(state,id+1,options),"99/100Owner桥拒陈旧页身份");
+        const auto draws=state.scene.random.draws();const auto actors=state.scene.world.world.ai.battle.actors.size();
+        const auto order=state.scene.world.world.ai.monster_order;const auto table=state.task_display_table;
+        state.page_counters.at(id)=40;
+        check(acknowledge_startup_world_runtime_page(state,id)==StartupWorldRuntimeError::none&&
+            !steam_monster_notice_skin(state,id,options)&&
+            state.scene.random.draws()==draws&&state.scene.world.world.ai.battle.actors.size()==actors&&
+            state.scene.world.world.ai.monster_order==order&&state.task_display_table==table,
+            "99/100满40真实确认标记退休后皮肤拒绝，不抽票、不增怪物、不改全局演出历史");
+        // ack标生命周期4；计数/标记由下一框架Finish释放，暂停父世界以隔离退休职责。
+        state.scene.framework_paused=true;const auto finished=prepare_startup_world_runtime(state);
+        check(finished.candidate&&!finished.candidate->task_display_initialized.count(id)&&
+            !finished.candidate->page_counters.count(id)&&!steam_monster_notice_skin(*finished.candidate,id,options)&&
+            finished.candidate->scene.random.draws()==draws&&finished.candidate->scene.world.world.ai.battle.actors.size()==actors&&
+            finished.candidate->scene.world.world.ai.monster_order==order&&finished.candidate->task_display_table==table,
+            "99/100真实框架Finish释放退休页计数与初始化引用，暂停父世界不留下演出副作用");
+    }
+}
 void income_information(Checks &check) {
     // 条件夹具只检验raw36统计口径，不声称这些现金桶由自然经营获得。
     StartupInformationCash buckets{};
@@ -3810,6 +4021,7 @@ int check_startup_skin(const std::filesystem::path &source_root,
     steam_clear_score_skin_checks(check);
     monster_introduction_skin(check,source_root);
     monster_detail_skin(check,source_root);
+    monster_notice_skin(check,source_root);
     steam_new_game_skin_checks(check);
     steam_config_skin_checks(check);
     steam_commerce_skin_checks(check,source_root);

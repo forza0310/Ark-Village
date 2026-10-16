@@ -134,8 +134,26 @@ Draw不在此推进／删除该列表；不能把它混入人物经验条。右�
 
 百分比原调用`Tenant.GetDungeonSearchRate(value)`（2C40D0）取当前实例`dungeonCnt_ +24`为value，
 分母仍经全局选中Quest取得其实例`dungeonCntMax_ +28`，与APK g/h的归属一致，不能直接取人物进度。
-本批未独立解Steam `IMG_DATA`初始化四槽，因此上文APK的`(64,0,13,18)`不能冒充Steam已核常量；
-`Draw_icon(5,0)`最终阴影绑定、Steam各图片／SEB裁片与中文资源仍须按实际资源索引闭合。
+Steam `IMG_DATA`现已独立核为`[64,0,13,18]`：UserData.cctor局部`102F46DE–102F4705`创建四槽int数组，
+经`RuntimeHelpers.InitializeArray`填充后发布到static+150。实际句柄槽`110F3C8C`解到fieldRef205，
+其typeIndex5607与类型4129的byvalTypeIndex一致；相对字段205→绝对字段25343，默认数据位于metadata`2FB4E2`，
+16字节独立按小端解析为上述四值，并与原编译器数据字段名校验一致。这是独立交叉后与APK相同，未读写运行内存，
+未复核无关cctor字段或把整段大构造器宣称为已完整解释。
+
+`Draw_icon(5,0)`也已闭合：具名入口30C350在`1030C39D–C3A3`直接分流mode5，
+`1030CDB8–CE16`消费common图片24，源`(index*18,0,18,18)`，目标坐标不再偏移，**不经过SEB**。
+Steam自身common `img.inf`将24映射为`icon_back00.gif`（实际归档图为PNG），与[已核图标helper](STEAM_HUMAN_DETAIL.md)一致；
+此处index0，因此是`(0,0,18,18)`的**图标背景垫片**，不能混成common3／SEB25的地面阴影。
+上文APK“阴影”的概括在这条函数链中也应以同一mode5背景请求为准，不由观感另选shadow00。
+
+**越界源矩形目前只闭合直接转交，未认证最终像素。** `Graphics.DrawImage(Image,dx,dy,sx,sy,w,h)`
+（760C50，240字节）没有以图片宽高钳源；它把w/h同时作目标尺寸与源尺寸，于`10760D27`交`_drawImage`。
+该具名后端的已核普通路径先处理独立ImageClip、翻转及可选优化缩放；无ImageClip、无翻转且`optimizePass_==0`时，
+`1077AC73–ACD3`仍将原sx/sy/sw/sh递交`_drawBitmap`（778250），不是自动套APK的min宽。
+本次只展开`_drawImage`至该普通转交点，及`_drawBitmap`至`107786FF`的入口／图集／特殊模式缓存前缀，
+没有完成其后所有缓存、分块纹理和GPU提交；底栏127当前实际优化／图集资格也未动态取得。
+因此越界最终是裁掉、透明、边缘延伸或其它效果仍不定论，产品不能据此把普通clip或ImageClip当作源界限修复。
+Steam各图片／SEB实际裁片、中文资源及这条底层越界行为继续分别补证。
 已核直接Draw中的抖动请求点`102DA870`；帧冻结与一次消费沿现表现请求，不由重复生成只读计划重新抽签。
 
 ## 完成、奖励与验收边界

@@ -47,9 +47,13 @@ std::optional<int> event_message_command(const State &s, const ref::WorldScriptP
 }
 bool consume_task_display(State &s, const ref::WorldScriptPage &page,
                           ref::WorldTaskDisplayAction action) {
-    if (!page.monster_definition || *page.monster_definition < 0 ||
+    if (!s.rules||!page.monster_definition || *page.monster_definition < 0 ||
         *page.monster_definition >= static_cast<int>(s.rules->monsters.size()))
         return false;
+    const auto count=s.page_counters.find(page.id);
+    if(s.task_display_initialized.count(page.id)&&
+       (count==s.page_counters.end()||count->second<0||count->second==std::numeric_limits<int>::max()))
+        return false; // 已Init载荷损坏不能用[]重新造主钟。
     const ref::WorldTaskDisplayState display{
         page.legacy_page, s.task_display_initialized.count(page.id) != 0, s.task_display_table};
     const auto result = ref::prepare_world_task_display_page(
@@ -1054,6 +1058,13 @@ Error input_startup_world_runtime_rank_page(State &s,std::uint64_t id,const Star
 }
 
 std::optional<State> update_startup_world_runtime_page(const State &state) {
+    const auto notice=std::find_if(state.scripts.pages.rbegin(),state.scripts.pages.rend(),
+        [](const auto &p){return p.lifecycle!=4;});
+    if(notice!=state.scripts.pages.rend()&&notice->kind==ref::WorldScriptPageKind::raw_page&&
+       (notice->legacy_page==99||notice->legacy_page==100)&&state.task_display_initialized.count(notice->id)) {
+        const auto count=state.page_counters.find(notice->id);
+        if(count==state.page_counters.end()||count->second<0||count->second==std::numeric_limits<int>::max())return {};
+    }
     if (state.scene.framework_paused) {
         const auto page = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
                                       [](const auto &p) { return p.lifecycle != 4; });
@@ -1193,7 +1204,7 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
     if (counter == std::numeric_limits<int>::max())
         return {};
     ++counter;
-    if(top->legacy_page==27||top->legacy_page==67||top->legacy_page==88||top->legacy_page==89||top->legacy_page==92||top->legacy_page==94)counter%=std::numeric_limits<int>::max();
+    if(top->legacy_page==27||top->legacy_page==67||top->legacy_page==88||top->legacy_page==89||top->legacy_page==92||top->legacy_page==94||top->legacy_page==99||top->legacy_page==100)counter%=std::numeric_limits<int>::max();
     if(top->legacy_page==50||top->legacy_page==30||top->legacy_page==96) {
         auto &secondary=next.page_secondary_counters.at(top->id);
         counter%=std::numeric_limits<int>::max();

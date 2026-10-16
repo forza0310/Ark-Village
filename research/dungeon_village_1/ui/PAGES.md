@@ -599,7 +599,15 @@ ChangeMAState RVA`2C9620`在切state2时按原序抽目标（Random100映射区�
 
 100 Draw_ma完整范围`102D2820–102D2EB1`在背景后push clip(30,66,180,82)，按行0→7仅画STATE!=0的条目：x=`trunc(PX/100)`，阴影锚(x,139)；size／sizeIndex／shadow仍来自本页绑定的同一真实怪物定义。DIRECT恰1传显示dir2，其余传dir1；无此状态的隐藏行不画。身体锚(x,139)，没有99的跳跃、aura或烟效分支。helper先用**UserData.frame_ +0xB4**算外层步帧，但SetDispMonsterData的最后更新钟是**pageFrame**，DrawDispMonster再按这个钟重算实际身体帧；不能把世界钟、页钟或行CNT合成一个值。八行后PopClip，再画上述文字／箭头；Draw本身不抽随机，100的随机来自Init及Update状态转换。
 
-供产品的最小只读输入是页类型／绑定怪物定义／pageFrame，加99所需flags、dieCnt_total、auraSize以及size、sizeIndex、shadowFrame、name；100另需原序8×9演出状态及原UserData.frame_用于保持setter请求实参。资源复用现common39／3／72、SEB25／2、monster身体与effect aura／satsmoke02，不另复制图片。共享显示的初始化／合法相机／非调试充分前提沿[已核scratch合同](../rules/STEAM_MONSTER_PROGRESSION.md#raw89介绍页的输入绘制与共享请求)，不能认证任意残留血条／伤害／附效；本节也未实现新的Owner快照字段、未取得原窗口动态或提供维护UI例图。100的演出状态与随机恢复必须由唯一Owner保存／安装，不能交给只读Draw重建或重复Init来“补齐画面”。
+99抛物线另核`GameUtil.GetParabolaValue` RVA`2A43F0`的`102A4424–102A44AF`：令`h=trunc(T/2)`，所有下列浮点运算各步为float32且不可融合。`h==1`时`v=a=0`；否则`v=(D+D)/float(h−1)`，`a=h==0?0:(D×−2)/float(h×(h−1))`。返回`max(0,(((float(now)×a)×float(now+1))×0.5)+(float(now)×v))`，括号就是实际乘加次序；常量VA`10DDE62C／10DDE528`分别−2／0.5。调用点先将返回float存为double再向零转int，最后取负，不用另一条连续曲线替换。此页D8／T12的局部钟0…11所取整高度为`0,2,4,6,7,8,8,7,6,4,2,0`。
+
+素材身份沿现[全量索引](../assets/IMAGE_COVERAGE.json)的实际EXE容器与索引项交叉：common来自TextAsset1148，effect1147，monster1129；本局部common5文件、effect10文件与monster35张身体PNG／8个方向1、2的walk SEB均重新读取已出版`assets/original/`文件核对EXE记录字节一致，不因路径含original就假定Steam同图。common图3／39／72与SEB25／2确实分别指向shadow00／mp_back／arrow01；shadow四帧、arrow两帧。effect SEB13…16／图片14…17分别是aura10…13，每组两帧；auraSize0…3分别对应原裁片17×23／17×31／25×36／40×60、偏移(−8,−23)／(−8,−31)／(−12,−36)／(−20,−60)，frame1在PNG右半。effect SEB8／图片8为**satSmoke02**，共三帧，源x0／38／76、每帧38×14、偏移(−19,−14)，因此时钟越过门槛9封到有效末帧2。均不新增素材副本或猜帧。
+
+Steam `MonsterData.Load` RVA`21C670`在`1021C70C–1021C723`明确将表第3列parse后写入auraSize实例+0x24；第2／4／5列才分别写size／sizeIndex／shadowFrame。Steam原表36定义的auraSize为0…3，六BOSS30…35均为3；这只是固定表可达域，不能把坏输入默默夹进0…3，也不把累计击杀代作aura。最小只读输入为页类型／绑定定义／pageFrame、99的flags／dieCnt_total／auraSize及体型／变体／影子／名字，100另需原序8×9演出状态。原setter接世界步帧再被页钟覆盖；下面只读计划直接输出正常身体最终帧，不保留无后续效果的临时赋值。共享显示前提沿[已核scratch合同](../rules/STEAM_MONSTER_PROGRESSION.md#raw89介绍页的输入绘制与共享请求)，不能认证任意残留血条／伤害／附效；100数组和随机由唯一Owner保存／安装，不在Draw重建。
+
+[现怪物模块](../prototype/include/dungeon_village_prototype/steam_monster_skin.hpp)的`steam_monster_notice_skin`已提供99／100原序皮肤与Owner只读桥：读取真实栈顶、主钟、初始化标记、绑定定义及八行数组，不抽票、不创建怪物或推进演出；未Init／退休、缺钟／定义／标记显式拒绝。纯100保留`STATE!=0`及`DIRECT==1`谓词，Owner桥另按既有合法状态域校验，二者不混为原Draw范围。99读取新增不可变`StartupWorldMonster.aura_size`（原表第3列），不改Owner／codec字段；现runtime拒绝已初始化通知丢钟，并按源公共Update让主钟在INT_MAX处回卷。关闭先标退休，下一次真正框架Finish才清主钟／初始化引用，全局演出数组保留历史。
+
+研究窗口已消费同一计划；`monster-boss`／`monster-outbreak`为调用点夹具，各真实推进该页40轮后冻结，后者沿既有共同随机初始化／更新，世界不推进。99设原BOSS定义30已击败一次以展示光环，不认证自然战果。中文／Noto、窗口背景及VIEW_Y23是适配，原LT、字体和物理输入仍分开；原窗口动态待补，见[合并例图](examples/steam-monster-introduction.png)。
 
 ### Steam任务选择与募集22–24
 

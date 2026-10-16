@@ -10,7 +10,7 @@ struct SteamMonsterBody {
     int image{}, sprite{}, frame{};
     std::array<int,2> position{};
 };
-enum class SteamMonsterAsset { money };
+enum class SteamMonsterAsset { money, aura0, aura1, aura2, aura3, smoke };
 std::optional<SteamFacilityResource> steam_monster_resource(SteamMonsterAsset);
 struct SteamMonsterImage {
     SteamMonsterAsset asset;
@@ -53,5 +53,21 @@ std::optional<SteamMonsterSkinPlan> steam_monster_introduction_skin(
 std::optional<SteamMonsterSkinPlan> steam_monster_detail_skin(
     const SteamMonsterDetailInput &,const SteamMonsterSkinOptions &);
 std::optional<SteamMonsterSkinPlan> steam_monster_detail_skin(
+    const StartupWorldRuntimeState &,std::uint64_t page,const SteamMonsterSkinOptions &);
+
+// raw99/100共用通知窗；99只消费flags/累计击杀/aura，100只消费已由Owner推进的8x9数组。
+struct SteamMonsterNoticeInput {
+    int legacy_page{}; // 必须显式99或100；缺值不能当作一种有效通知。
+    SteamMonsterIntroductionInput monster;
+    std::uint32_t flags{};
+    int defeats{}, aura_size{};
+    std::optional<std::array<std::array<std::int32_t,9>,8>> outbreak;
+};
+// 输出正常共享scratch前提下的最终身体帧；不把已被SetDrawParam覆盖的外层步帧当最终帧。
+// 顺序包括99的aura/阴影/身体/烟，及100原八行/clip；不初始化演出、抽随机或创建战斗实体。
+std::optional<SteamMonsterSkinPlan> steam_monster_notice_skin(
+    const SteamMonsterNoticeInput &,const SteamMonsterSkinOptions &);
+// 读取真实栈顶、已初始化标记/主钟/怪物定义；缺字段明确拒绝，不用map.at异常或默认值代偿。
+std::optional<SteamMonsterSkinPlan> steam_monster_notice_skin(
     const StartupWorldRuntimeState &,std::uint64_t page,const SteamMonsterSkinOptions &);
 } // namespace dungeon_village_prototype

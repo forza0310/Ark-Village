@@ -16,7 +16,7 @@ raw17复用`page_secondary_counters`保存原独立`frame_`，`page_counters`仍
 
 正常新分配91、源更新顺序与外部FEP事实见[新局合同](../ui/STARTUP_SKIN.md)。本设计只覆盖该入口；保留用户已批准的草稿自定义名跨取消重进政策，不将其改写成原changeName的寿命。
 
-- 应用新增`new_game_ui_: optional<StartupNewGameUi>`，仅保存selection（0…3）和main（0…INT_MAX−1），与活动configure external严格一一对应，记录页／世界页不能残留。实际开配置初始化0／0而不重置共享draft；返回、退休、开始成功、读世界及重开标题释放。父标题钟不随91更新偷跑。标题内存controller升v5，完整应用codec／分类／schema保存该载荷；缺键、错父、返回状态、非法选择／钟及旧布局显式拒绝，不迁移；128MiB、文件协议和普通档边界不变。
+- 应用新增`new_game_ui_: optional<StartupNewGameUi>`，仅保存selection（0…3）和main（0…INT_MAX−1），与活动configure external严格一一对应，记录页／世界页不能残留。实际开配置初始化0／0而不重置共享draft；返回、退休、开始成功、读世界及重开标题释放。父标题钟不随91更新偷跑。标题内存controller须在设置批现v5上另升v6，完整应用codec／分类／schema保存该载荷；缺键、错父、返回状态、非法选择／钟及旧布局显式拒绝，不迁移；128MiB、文件协议和普通档边界不变。
 - 带真实页ID的已准入整轮输入在唯一候选中先加main模INT_MAX，再调用现`steam_new_game_update`；早返回false仍是已提交的更新结果，保留加钟而不Pop。候选按源序更新选择／性别、必要默认名，再执行编辑／开始／返回。开始沿现世界候选和系统单提交点，失败保留原草稿、页钟、目录、随机及输出。Touch选择另以带页ID命令核0…3并写入，不重放确认或偷加钟。既有高层edit／start／cancel研究命令也须核完整91及无编辑悬挂。
 - 编辑不是同步字符串setter。Owner生成一次请求：不透明票据、源页ID、村名／姓名target、当前草稿defaultText、原参数14／12及有序标签／面板／DrawAllForms动作。票据采用进程内新分配的共享对象身份，不用可随快照回滚的计数或游戏随机。请求领取一次后pending仍存在；同一Owner至多一项pending，不持native callback。宿主实际创建失败／不可用必须回传明确失败，不能默认成功。
 - 回包同时核票据对象、活动原页ID及target。非null合法文本才写对应草稿，姓名置custom_name；显式取消不改值，启动失败／平台不可用释放挂起并回报未执行。重复／旧票据、错页／target及非法文本拒绝且不改状态；非法文本保留pending，宿主可随后显式取消。回包不加钟、不抽随机、不自动开始。pending期间拒绝新的91输入、编辑、开始及取消，是维护挂起策略；不认证原平台后台调度或一次回包保证。

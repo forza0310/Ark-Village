@@ -241,6 +241,12 @@ LF（U+000A）独立置断行标志，不要求multiLine_为真，也不受W=−
 
 SetText的autoScale路径也保留这一区别：多行时用GetHeight，空块为0；单行且配置宽高为正时，107CC651–697比较的是旧textWidth，过宽可反复以`当前usedSize−1`调用SetSize(...,false)并再次_makeTextBlocks，空早退仍不更新该宽。局部退出检查是该次减一实参恰1或宽度条件解除，不据此保证任意比例／字号下循环终止。正常尾107CC71A–729恢复此前复制的Font；不能把这些临时调用说成空串真实字形缩小或缓存宽已重置，全部异常路径亦未由此认证。
 
+Steam私有SetText的非空／空串共同上游还包括字号准备与自适应重排，不能只调用一次`_makeTextBlocks`便当作整个SetText完成。`107CC4DE–538`在`!adjustFontSize_ && multiLine_`时读取布局Font.usedSize，按signed32回卷乘法依次执行两次`*100/requestFontScale`，以最终值调用`SetSize(value,false)`再置adjust=true。`107CC53F`将requestFontSize清−1，`107CC546`首次排块；非空排块在`107CDAAD–DAC1`才按活动基准Font的usedSize填首次请求字号。首排完成后，无论autoScale是否开启，`107CC551–576`均复制当时Font作为最后恢复的备份；不能把备份提到字号准备／首排之前。
+
+自适应共同资格为`autoScale_!=0 && height_>0`，NaN不进入，**单行也受高度资格约束**。多行在`107CC59E–5C1`比较`float32(GetHeight()) > float32(height_+1.0F)`（常量VA10DDE55C为1.0F），成立才缩字。每轮`107CC5C3–5E4`重新读取当前Font.usedSize，按int32减1调用`SetSize(value,false)`并完整重排；先检查本轮这个**减一实参恰等于1**，为1退出，否则再查询高度／比较。退出后`107CC616–64F`另取GetHeight，若严格大于当前height，再取一次GetHeight并将该整数转float写回height；即使从未缩字，也可能扩大框高。单行`107CC651–697`另要求width>0且缓存textWidth>width，按同样usedSize−1／false／重排／实参1退出，否则重比缓存宽，不测内容高度或改width。原分支没有任意比例／字号下终止保证，不可擅自夹成最小字号1或合并重复查询。
+
+各次重排沿用首次排块保存的requestFontSize，不反复清−1。`107CC699–71A`只对最终块重算渐显length：pic／btn各1，其余按实际UTF-16长度作int32累加；`107CC71A–729`最后把布局Font指针换为首排后的备份，不再次排块或重算长度。循环曾修改的旧Font对象可能仍被外部引用；换回指针不代表那些对象恢复，也没有认证异常路径的回滚。现`steam_make_text_blocks`仍只交排块主干，尚未安装上述SetText外层字号准备／循环；公开Replace、TranslateConsoleText及运行标签转换也不得由此当作已实现。这一循环是Steam局部合同，不倒填为固定APK已有同一实现。
+
 Init RVA7CB430是另一组赋值：重建Font，text设空、清渐显时间／位置、width_/height_设−1，并在107CB570将textWidth清0；**没有写textBlocks或length_**。新构造RVA7CD4A0先在107CD4CC–4E3建零长块数组，再内联同Init赋值，不能由新对象的零状态推断对旧对象再Init会联合清空所有字段。若仅重复Init而未SetText／重排，旧块及length仍在、GetHeight仍读那些块，但pos0暂不消费文字；没有据此认证原页面真的执行这种复用链。固定APK `aa.a(String)`（744行起）同样归一null、置文本／pos、调用f，再清总长度并按块求和；f的空串早退留下旧m宽，b()按空块返回高度0。APK构造初始化空块／m0，但没有此Steam独立Init入口；其失真的非空换行循环不参与上述小型调用链结论。
 
 游标及块start_/length_基于UTF-16代码单元。TextBlock构造在107DB4EA–F1令start=−1、length=0；普通追加门槛为D>0或组合续体（107CF14F–167）。通过时仅首个接受单元设置start，此后每次写`length=当前源索引−start+1`，三单元组合资格另加1（107CF1CF–1E9）；未通过则不扩范围、不追加临时text，也不增加width。全部块最后在107CF6E1–73F对start≠−1者，用**翻译／字符转换／br替换后的局部串**执行`Substring(start,length)`覆盖text。此后本方法不再测宽，原width和已排坐标保留。

@@ -24,6 +24,8 @@ Windows单Release动态构建、新模块严格C++17语法及独立源复核通�
 
 完整排块批结束时，Release1404文件／226600254字节，assets仍872文件／9504668字节，无.pending。受影响文档本地链接及diff检查通过；未编译三份他人在途住宅存取测试，未清理受限AST或他人构建。构建／短测进程已退出，静态复核子任务均交回后仅提交本批研究白名单；设置方案的新实现另行验收。
 
+接设置批`95f0e16`，继续只读核Steam私有SetText `107CC4DE–729`，将首排前双次比例补偿、首排后才备份Font、单行亦需height>0、每轮usedSize−1的实参1退出、多行退出后可能扩大height、最终长度及只换回Font指针的别名限制，合入[现字体合同](ui/STEAM_FONT_CONSUMER.md)。未把静态闭合称为已安装外层消费者，未新增代码、素材或过程报告；纯文档差异／本地链接检查通过，不重复游戏回归。设置UI覆盖表同步本批实际层次，91待确认设计版本顺延以免复用设置已占用的v5；该分支仍未编码。
+
 ## 公共SubForm更新与文字渐显消费者 2026-10-16
 
 [公共前段](prototype/include/dungeon_village_prototype/steam_subform_update.hpp)接真实Update准入，交独立候选及重画／jingle／共享SEB22→21→23／页面分派原序。三钟精确保留int32回卷后signed余数，wait提前返回仍保留已更新双钟；wait1和箭头1的双重画不合并。实际声音／SEB和本页结果由后继消费，纯计划不冒称已安装Owner或原异常可回滚。[字体合同](ui/STEAM_FONT_CONSUMER.md#渐显时钟复位与完成资格)补最终块UTF-16长度、raw0快进不同时换段、裸TotalFrames回卷、signed64除法及blink边界，未新增排版／字体／持久状态认证。

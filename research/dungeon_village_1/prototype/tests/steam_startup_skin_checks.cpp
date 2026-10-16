@@ -2,6 +2,7 @@
 #include "dungeon_village_prototype/steam_main_menu_skin.hpp"
 #include "dungeon_village_prototype/steam_manual_skin.hpp"
 #include "dungeon_village_prototype/steam_record_skin.hpp"
+#include "dungeon_village_prototype/steam_subform_update.hpp"
 #include "dungeon_village_prototype/steam_font_metrics.hpp"
 #include "dungeon_village_prototype/steam_dialogue_skin.hpp"
 #include "dungeon_village_prototype/steam_event_skin.hpp"
@@ -45,6 +46,78 @@ bool same_arrow_state(const SteamTouchArrowState &a,const SteamTouchArrowState &
     return a.surface==b.surface&&a.component_key==b.component_key&&
         a.texture_index==b.texture_index&&a.x==b.x&&a.y==b.y&&a.velocity_x==b.velocity_x&&
         a.arguments==b.arguments&&a.created==b.created&&a.last_frame==b.last_frame;
+}
+void subform_update_prefix(Checks &check) {
+    const auto tail=[](const SteamSubformPrefixPlan &p,std::size_t begin) {
+        return !p.immediate_return&&p.operations.size()==begin+4&&
+            std::holds_alternative<SteamSubformSebFrame>(p.operations[begin])&&
+            std::get<SteamSubformSebFrame>(p.operations[begin]).common==22&&
+            std::holds_alternative<SteamSubformSebFrame>(p.operations[begin+1])&&
+            std::get<SteamSubformSebFrame>(p.operations[begin+1]).common==21&&
+            std::holds_alternative<SteamSubformSebFrame>(p.operations[begin+2])&&
+            std::get<SteamSubformSebFrame>(p.operations[begin+2]).common==23&&
+            std::holds_alternative<SteamSubformDispatch>(p.operations[begin+3]);
+    };
+    constexpr auto lo=std::numeric_limits<std::int32_t>::min();
+    constexpr auto hi=std::numeric_limits<std::int32_t>::max();
+    struct ClockCase {std::array<std::int32_t,3> before,after;};
+    // 独立字面oracle：原inc先按32位回卷，随后signed idiv取余，不用被测算法算期望。
+    for(const auto &c:std::array<ClockCase,4>{{
+            {{hi-1,hi,lo},{0,-1,0}},
+            {{-1,lo+1,-2},{0,-2147483646,-1}},
+            {{0,123,hi-2},{1,124,hi-1}},
+            {{-2,hi-1,hi},{-1,0,-1}}}}) {
+        const SteamSubformPrefixInput in{{c.before[0],c.before[1],c.before[2],0,0,-1,true},
+                                         SteamSubformUpdateAdmission::ready};
+        const auto p=steam_subform_update_prefix(in);
+        check(p&&p->candidate.frame==c.after[0]&&p->candidate.frame2==c.after[1]&&
+                  p->candidate.loop_counter==c.after[2]&&!p->candidate.until_active_hide&&tail(*p,0)&&
+                  in.state.frame==c.before[0]&&in.state.frame2==c.before[1]&&
+                  in.state.loop_counter==c.before[2]&&in.state.until_active_hide,
+              "三钟独立支持完整signed32域与回卷，纯候选不安装Owner或更改输入");
+    }
+    const SteamSubformPrefixInput delayed{{8,17,hi-1,2,1,7,true},SteamSubformUpdateAdmission::ready};
+    const auto early=steam_subform_update_prefix(delayed);
+    check(early&&early->immediate_return&&*early->immediate_return&&early->operations.size()==1&&
+              std::holds_alternative<SteamSubformRedraw>(early->operations[0])&&
+              early->candidate.frame==9&&early->candidate.frame2==18&&
+              !early->candidate.until_active_hide&&early->candidate.wait==1&&
+              early->candidate.ud_arrow_counter==1&&early->candidate.loop_counter==hi-1&&
+              early->candidate.jingle==7&&delayed.state.wait==2&&delayed.state.jingle==7,
+          "wait2只请求重画并提前true，双钟和hide已更新而loop/箭头/jingle保持");
+    const SteamSubformPrefixInput last_wait{{4,9,hi,1,1,6,true},SteamSubformUpdateAdmission::ready};
+    const auto continued=steam_subform_update_prefix(last_wait);
+    check(continued&&tail(*continued,3)&&
+              std::holds_alternative<SteamSubformRedraw>(continued->operations[0])&&
+              std::holds_alternative<SteamSubformRedraw>(continued->operations[1])&&
+              std::holds_alternative<SteamSubformJingle>(continued->operations[2])&&
+              std::get<SteamSubformJingle>(continued->operations[2]).id==6&&
+              continued->candidate.frame==5&&continued->candidate.frame2==10&&
+              continued->candidate.loop_counter==-1&&continued->candidate.wait==0&&
+              continued->candidate.ud_arrow_counter==0&&continued->candidate.jingle==-1&&
+              !continued->candidate.until_active_hide&&last_wait.state.jingle==6,
+          "wait1与箭头1保留两次重画，再jingle、22/21/23和局部分派请求，不冒充实际执行");
+    for(const auto counters:std::array<std::array<std::int32_t,2>,4>{{
+            {0,0},{-1,-1},{lo,lo},{0,2}}}) {
+        const auto p=steam_subform_update_prefix({{0,0,0,counters[0],counters[1],-1,false},
+                                                  SteamSubformUpdateAdmission::ready});
+        check(p&&tail(*p,0)&&p->candidate.wait==counters[0]&&
+                  p->candidate.ud_arrow_counter==(counters[1]==2?1:counters[1])&&
+                  p->candidate.loop_counter==1&&p->candidate.jingle==-1&&
+                  !p->candidate.until_active_hide,
+              "零及负wait/箭头原样跳过，箭头2只减至1，jingle负一无请求且仍继续局部分派");
+    }
+    const auto negative_jingle=steam_subform_update_prefix({{0,0,0,-1,-1,-2,false},
+                                                            SteamSubformUpdateAdmission::ready});
+    check(negative_jingle&&tail(*negative_jingle,1)&&
+              std::holds_alternative<SteamSubformJingle>(negative_jingle->operations[0])&&
+              std::get<SteamSubformJingle>(negative_jingle->operations[0]).id==-2&&
+              negative_jingle->candidate.jingle==-1,
+          "非负一的负jingle原值进入请求；最终清除只是后继成功后可安装候选，非播放成功");
+    for(const auto admission:std::array<SteamSubformUpdateAdmission,2>{
+            SteamSubformUpdateAdmission::unverified,static_cast<SteamSubformUpdateAdmission>(999)})
+        check(!steam_subform_update_prefix({delayed.state,admission}),
+              "无真实更新准入或未知资格拒绝，不从绘制次数补跑共同前段");
 }
 void touch_arrow_effect(Checks &check) {
     // 从现公共DOWN计划取得真实id0请求；不重放KeyDown或把绘制当作Frame。
@@ -2130,6 +2203,7 @@ int check_steam_startup_skin(const std::filesystem::path &root) {
     manual_page(check,root);
     record_page(check);
     record_update(check);
+    subform_update_prefix(check);
     font_metrics(check);
     touch_commands(check);
     touch_arrow_effect(check);

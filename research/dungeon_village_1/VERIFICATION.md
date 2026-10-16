@@ -1,5 +1,11 @@
 # 当前研究验证与历史索引
 
+## 公共SubForm更新前段与文字数值边界 2026-10-16
+
+[公共前段](prototype/include/dungeon_village_prototype/steam_subform_update.hpp)接真实Update准入，交独立候选及重画／jingle／共享SEB22→21→23／页面分派原序。三钟精确保留int32回卷后signed余数，wait提前返回仍保留已更新双钟；wait1和箭头1的双重画不合并。实际声音／SEB和本页结果由后继消费，纯计划不冒称已安装Owner或原异常可回滚。[字体合同](ui/STEAM_FONT_CONSUMER.md#渐显时钟复位与完成资格)补最终块UTF-16长度、raw0快进不同时换段、裸TotalFrames回卷、signed64除法及blink边界，未新增排版／字体／持久状态认证。
+
+Windows单Release动态构建及新模块独立严格C++17语法检查通过；扩既有visuals套件，**1/1通过1.93秒**，覆盖回卷、负计数、早返、双重画、准入拒绝和输入不变；无新测试target，不编译三份他人在途住宅存取测试。无新增素材、Owner／codec或一次性核对产物；Release1400文件／226131176字节，assets872文件／9504668字节，无.pending，受限制两份AST保留。候选和有序请求按次消费，不持平台实体或永久历史；构建与短测进程已退出，产品及原档未改，仅白名单提交、不推送。
+
 ## 箭头实际surface时序、透明分支与有界示例 2026-10-16
 
 `dba657e`交Init／Frame／Draw候选，`5ee5221`补首闲槽复用池。[箭头合同](ui/STEAM_INTERACTIONS.md#实际surface调度与按绑定清退)闭合实际SurfaceManager基础绘制→效果Draw→效果Frame，位于组件／Canvas后置绘制之前，不能按世界tick推进。正常标题／世界共用GameView和池；现池补`remove_surface`，仅撤同绑定active，保留buffer及其它surface，不新增任意切页Clear。原Draw捕获异常后继续与维护整批失败安全分别登记。设置P12的两版平台尺寸来源也已补核，维护显式环境参数不得猜逻辑画布；91及设置格式设计仍单独待确认，未提前编码。

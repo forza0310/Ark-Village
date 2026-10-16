@@ -148,7 +148,7 @@ APK `aa.f()`同三组使用十进制参数，`</si>`回原Font请求`n.c()`，`<
 `Frame` RVA7CACD0完整432字节、`Flush` 7CAC70／96字节、`IsEnd` 7CB640／32字节及
 `SetSpeed` 7CC0B0／96字节分别顺序核对；渐显位置不是按世界tick直接累加。
 外部时间来自JSystem.CurrentTimeMillis RVA849830：DateTime.UtcNow减共享基准，取TotalMilliseconds转long，
-不是已证单调计时器。TotalFrames getter 790F60返回当前IApplication的int32 totalFrames_，本批未追其全部写者／回绕策略。
+不是已证单调计时器。TotalFrames getter 790F60返回当前IApplication的int32 totalFrames_；已核正常Update以裸inc在INT_MAX→INT_MIN回卷，不能沿页面钟模INT_MAX。其它写者和平台准入仍沿[共同调度](INPUT_RENDER_REQUESTS.md#steam公共subform单轮页面钟手形与待发jingle)的证据限制。
 
 Frame先在beginTime_（int64，+30）恰0时取一次墙钟并写`begin=now0−50`（107CACF7–CAD11）；
 然后读取**第一次**TotalFrames，符号扩为int64，与lastAppFrame_（+40）相等才使timeOffset_（int32，+38）加50。
@@ -156,7 +156,7 @@ Frame先在beginTime_（int64，+30）恰0时取一次墙钟并写`begin=now0−
 令`L=int32(length_*1000)`、`E=int64(now−begin+sign_extend(timeOffset_))`，原次序为
 `P=trunc_toward_zero(int64(E*speed_)/50)`，先把负P置0，再把大于符号扩展L的P置L，最后低32位写pos_（+28）。
 乘法helper 196150、除法helper 195FC0保留有符号64位阶段；length乘1000、offset加50及速度换算是32位，
-上述32位及64位乘加均无溢出保护；L回绕为负时后一步可把0再改成负值，不能扩大为任意输入下合法的0..总长度clamp。
+上述32位及64位乘加均无溢出保护；L回绕为负时后一步可把0再改成负值，不能扩大为任意输入下合法的0..总长度clamp。signed64除法helper `10195FC0–10196067`按补码绝对值／unsigned除法／符号恢复，MIN／−1返回MIN位型，无溢出检查；零分母在`1019600B`触发x86 #DE，局部没有构造托管异常，外层转换未知。维护不能依赖C++ signed溢出或MIN／−1除法的未定义行为。
 正长度且无溢出时，负时差会使正speed的位置退到0；Frame无“只增不减”或“已完成则不动”守卫。
 同一应用帧重复Frame可通过offset继续推进，即使墙钟未变；不是由绘制次数或固定秒率推导。
 
@@ -168,10 +168,10 @@ SetSpeed先原样写speed_（+2C），非Japanese时再以`trunc_toward_zero(int
 
 公开SetText归一null及替换后，每次实际进入私有SetText均在107CC4C2–4D7清pos／begin／offset；
 不清lastAppFrame、speed或两个动画计数，同串也没有此入口的相等早退；重建块及长度沿前后既有合同。
+SetText尾107CC699–107CC71A按**最终实际排版块**重算length：pic／btn块各计1，其余计block.text的UTF-16单元数；不是原正文UTF-8字节、Unicode码点或字形数。最终无块时length为0，pos0已满足IsEnd，但raw0仍须实际确认换段。raw0未结束时的确认只Flush并返回true，不同次换段；已结束才增加段索引，末段Pop的返回不能固定为成功。
 Reset RVA7CBA00则清pos／begin／offset及lastAppFrame，不清speed、原块／长度、blink或动画计数；
 Init的默认speed1000不经过SetSpeed的非JP换算，其再Init与空SetText的分工仍沿下节，不能互换为完整复位。
-每次Frame随后独立更新块blink，规则见上节，不要求TotalFrames改变或文字尚未完成；仅commonFramesUpdate_真时
-还把实例frame_（+58）递增至INT_MAX后保持。Draw自己的draw_（+5C）另在107CA11D–A128封顶递增，二者不是渐显时钟。
+每次Frame随后按块序更新blink：仅period>0才按`wrap32(counter+1) % wrap32(2*period)`写signed余数（107CAE1A–1C），非正period保留计数。大正period的双倍可回卷为负，但必为非零偶数，不产生除0或MIN／−1商溢出；负余数仍保留，不按数学非负模修正。坏块引用可在渐显pos及前块已更新后失败，不能声称原过程回滚。全部块处理后107CAE5C才读commonFramesUpdate_，为真且frame_<INT_MAX才加1，负frame也照常加1，MAX保持。Draw自己的draw_（+5C）另在107CA11D–A128封顶递增，二者不是渐显时钟。
 以上只给外部时钟／实例读取合同，SDK时钟精度与跨线程可见性未验；raw0可消费真实Frame后的IsEnd结果，不据此新增Owner时钟、持久布局或像素认证。
 
 ### 实例Draw重排与报纸分页

@@ -94,9 +94,13 @@ h不含目标但旧位置在内且旧raw为DOWN0时是types0／5／1／3／6，�
 | 5．三个共享SEB | `10321C36–10321CF1`依次对common **22→21→23**调用Seb.Frame；之后才分派本页Update／Update2。三者是共享资源对象，不为每页新建，返回父页不从父主钟重算手形 |
 | 6．本页局部动作 | 通用未专门处理的类型于`10321E94–10321E9F`调用Update2并返回其结果；89／92的确认、快进／关闭发生在上述共同前段之后。暂停或没有真实回调时不能仅为显示补跑前段 |
 
+现标准C++[共同前段接口](../prototype/include/dungeon_village_prototype/steam_subform_update.hpp)消费真实准入及页面字段，返回独立候选和上述有序重画／jingle／SEB／本页分派请求。三钟按原int32加1回卷后signed余INT_MAX，不只用无溢出数学式：正常INT_MAX−1→0，异常字段INT_MAX→−1，负字段也不夹零；原前段没有额外值域拒绝。负wait／箭头计数原样保留，wait1和箭头1可发两次重画，不因最终同一管理器bool而合并。wait早返的immediate_return为true，其余为空，必须取得真实本页分派结果，不能把91早false改成成功true。候选不写Owner／codec、不抽随机或实际Frame；消费共享SEB时仍逐对象验证并读取当时门槛。jingle只保留原int值，实际PlayJingle目录／音频失败必须由后继处理；候选中清−1不代表原失败路径也清。原先已发生的字段／声音／SEB修改无整段回滚保证，维护联合安装须由事务调用者实现；不得先安装最终候选再假装全部请求已成功。
+
 Seb.Frame（RVA `7BFF00`，176字节）还有实际门槛：`AutoAnimation=false`且`IApplication.commonFramesUpdate_=true`才令`currentFrame_ +0x0C=(currentFrame+1)%maxFrame_ +0x10`（`107BFF6F–107BFFAA`）；否则本次Frame不改变相位。两TypeInfo槽`110FFA5C`／`110F77B4`独立解析为Seb／IApplication。common21／22／23分别为finger_r／finger_l／finger_d，三个原SEB的maxFrame均6，图片引用分别70／70／71，沿[正式资源索引](../assets/IMAGE_COVERAGE.json)复用；6个逻辑帧不等于PNG有6列裁片。
 
 IApplication cctor把commonFramesUpdate_置true（`107909A7`）。实际Update先更新分辨率，再令`totalFrames_ +0x2C++`（`1078F96A`），随后置共同标志true（`1078F98B`），才进入有条件的UI任务、Update任务、应用虚槽11及Updated事件回调。不能由声明的COMMON_FRAME_MAX=3推断“每三次页面更新才推进”。AutoAnimation按静态标量零默认为false，已读Seb cctor未设置它；本批未穷尽两门槛的运行期写者、回调及框架补帧联合时序，最小平台上下文仍须明确给出门槛、应用总帧和共享SEB相位，不能用FPS或页面钟猜值。
+
+2026-10-16有限正常初始化链续核：Main构造→IApplication构造／Init、Main.OnCreate及IApplication.Start未取得AutoAnimation开启写者，GameForm.UpdateOffscreen两个候选调用实际为空体；set_AutoAnimation RVA7C6520本身只写Seb静态+C，不清名单／相位。上述不穷尽间接／内联／反射／原生写入，故仅在无其它writer前提下保留静态false初值，不认证当前运行永远手动。totalFrames的`1078F96A`明确为裸int32 inc，INT_MAX→INT_MIN，getter790F60直接返回；它与页面模INT_MAX钟不同。仍未取得commonFramesUpdate=false的具名正常生产者，不猜三轮节奏或伪造恢复上下文。
 
 自动路径与手动Frame互斥。OnGUI在共同标志为true时调用ThisFrameRenderAnimation（`10788ED7–10788EF4`），随后无论共同标志真假都调用ResetThisFrameRender（`10788F12`），再进入本次GUI绘制；正常无全局dialogue分支在`10789078`分派应用Draw。两个helper自身均要求AutoAnimation=true。因此已核正常顺序为**旧活跃名单推进→旧名单复位→本次绘制注册新名单**；不是本次刚画的对象立即在同一次OnGUI前段加帧。其它dialogue／尺寸捕获分支及实际OS调用次数不由这条正常路径认证。
 

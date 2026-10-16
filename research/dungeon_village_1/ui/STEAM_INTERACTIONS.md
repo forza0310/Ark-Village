@@ -80,6 +80,22 @@ raw12同身份静态子批进一步核定以下生命周期；字段含义及四
 
 `DrawWindow2 102000E4–102000FC`在顶层仍推进独立arwFrame；raw12只有BOX标志，所核局部不读取它绘箭头。维护纯查询不推进它，不能反称原Draw无副作用。设置主体及平台键盘的研究窗口见示例；原字体／平台语言、OS输入、真实设置保存仍分别验收，独立皮肤通过不等于完整设置消费者已完成。
 
+### 设置12的四行键盘更新候选边界
+
+2026-10-16重新核同一DLL的Update局部`1032692E–10326D73`及既有基类setter；本段只覆盖现皮肤对应的`Jp()==false && En()==true`四行，不拿它代替JP目录或实际平台语言资格。raw12先对已由通用Update推进的主钟再作`(+1)%20`，Jp／En均不命中时仍完成这次加钟，但不查询下表输入；独立纯候选若仅消费已准入四行body，不得再模拟上游wait或通用共享SEB。
+
+| 原序 | 可直接表达的纯逻辑及原锚 |
+| --- | --- |
+| 上→下 | `103269A2/103269FE`均为Repeat，分别选择`(row+3)%4`／`(row+1)%4`，独立执行；先定最终行，再读该行当前实际值，不能先改旧行或把上／下改成互斥。 |
+| 左→右 | 先把画质／速度实际值作`(value+1)%2`得到显示索引，音量原值不反转；`10326B50/10326BD4`均为Repeat，按本行MAX分别减1／加1绕环，最后才反转回存储值。音量0向左为5、5向右为0，不是夹限。速度行且J9为0在`10326B08–10326B37`直接越过两个方向查询；仅行选择变化、无方向或左右同轮净值不变都不调用setter。 |
+| 改值→返回 | 净值改变才在`10326CEB`请求当前行setter；之后一律在`10326D03`查询soft2，没有确认键提交分支。soft2命中时请求顺序是SaveSystem→ResetOffscreen→Pop，并把实际Pop bool交还调用者；同轮改值在保存前已生效，不是返回撤销。 |
+
+声音只随有效setter发生：BGM在`10201480/102014C3/102014CB`依次SetVolume(type0,value×51)→SetMute(type0,value==0)→Reflect；SE在`102011DD/10201220/10201228`用type1执行同序，再于`10201261`Play(resSound_[7])。归零仍保留试听请求，实际静音由播放器决定，不能因听不到便删请求；页内没有新增“方向声／确认声”，通用待发jingle仍归上游。速度setter`1020139C–102013DA`只写P13，没有额外J9资格或重绘；画质setter`10201509–1020156D`写P12后还调用Canvas后继与DrawAllForms，不用纯值变化冒称平台画质已经刷新。
+
+现[steam_config_english_update](../prototype/include/dungeon_village_prototype/steam_config_skin.hpp)复用既有设置皮肤输入的四个实际值、当前行、speed_unlocked，另接四个具名Repeat与soft2查询结果，返回下一值／行、实际检查轨迹、单次setter及返回动作的有序请求；它不新增Owner／持久布局。setter以row、before、after的实际存储值表达，真实执行者独占后继声音／画质操作，不能同时执行setter与另一路拆分输出而重复试听。音量／画质后继、跨局权威J字段、系统文件写入失败与Pop结果均留给真正执行者，不能仅安装候选便宣称完整设置完成。原SaveSystem异常可能捕获后直接Pop（`10326DA2–10326E22`），不回滚已经改值；维护的原子提交与失败保留仍须独立契约，不照搬该原异常行为。Touch6／19即时setter及拖动行回写是既有另一条输入路径，不把键盘J9门控外推给它或重复消费一次。
+
+候选值域沿现皮肤：P12／P13为0..1，J3／J4为0..5。按现明确提供的中文选项顺序，画质stored0／1分别显示“速度优先”／“画质优先”，速度stored0／1分别显示“普通”／“高速”；中文名称是当前适配文案，反向索引来自原数组。J9的原字段名为`SYSSAVEI_OPEN_HIGHSPEED`，资格是`!=0`而非恰等于1；最终行被锁时检查轨迹应为上、下、soft2，不虚报已经查询左右。`MyFormBase.Jp RVA200A20`和`SubForm.En RVA30E210`分别委托Language.Japanese／English，调用者须明确提供本分支资格，不能把“研究窗口显示中文”直接当作En真。
+
 ### 平台按钮事件与显式动作
 
 `<DrawButton>b__16_0` RVA7B9320与`<DrawKeyboardButton>b__18_0` RVA7B9580都是`void(TouchEvent)`，不返回是否传播；`SurfaceBase.DoEnd`在1088D88B–1088D914发现opt.onTouchEvent后调用该delegate并绕过普通hook／OnTouchEvent支。传给DrawButton的外层AddTouchDelegate是绘制时注册器：设好margin及事件delegate后恰调用一次（107B6BAE／107B70FB），事件回调不再调用它。不能套语言页bool handler或重复注册。

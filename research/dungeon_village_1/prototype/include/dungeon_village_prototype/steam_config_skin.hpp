@@ -52,4 +52,21 @@ struct SteamConfigSkinPlan {
 // 不读取Owner、不修改设置或时钟、不写系统文件；原页面main不参与此绘制。
 std::optional<SteamConfigSkinPlan> steam_config_skin(const SteamConfigSkinInput &input,
                                                     const SteamConfigSkinOptions &options);
+
+// 仅已准入的Jp=false且En=true四行Update主体；不模拟通用wait/双钟或Touch即时setter。
+struct SteamConfigUpdateInput {
+    SteamConfigSkinInput state;
+    bool up_repeat{}, down_repeat{}, left_repeat{}, right_repeat{}, back_soft_label{};
+};
+struct SteamConfigSettingRequest { int row{}, before{}, after{}; }; // 实际存储值，不是反向显示索引。
+enum class SteamConfigReturnRequest { save_system, reset_offscreen, pop };
+using SteamConfigUpdateOperation=std::variant<SteamConfigSettingRequest,SteamConfigReturnRequest>;
+struct SteamConfigUpdatePlan {
+    SteamConfigSkinInput candidate;
+    std::array<bool,5> checked_keys{}; // 上、下、左、右、soft2；原分支没有确认键查询。
+    std::vector<SteamConfigUpdateOperation> operations; // setter在前，再SaveSystem→ResetOffscreen→Pop。
+};
+// 有序纯请求：真正setter负责声音/画质/速度输出；本接口不重复试听或执行文件/平台操作。
+// 返回并非撤销当轮设置；实际执行失败策略仍由应用Owner独立设计，不复制原异常后继续Pop。
+std::optional<SteamConfigUpdatePlan> steam_config_english_update(const SteamConfigUpdateInput &input);
 } // namespace dungeon_village_prototype

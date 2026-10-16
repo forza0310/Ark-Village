@@ -108,4 +108,36 @@ std::optional<SteamConfigSkinPlan> steam_config_skin(const SteamConfigSkinInput 
     if(o.steam_platform&&o.on_top)p.operations.emplace_back(SteamConfigPlatformKeyboard{{21,51},2,o.platform_keyboard_touched});
     return p;
 }
+std::optional<SteamConfigUpdatePlan> steam_config_english_update(const SteamConfigUpdateInput &in) {
+    if(in.state.selection<0||in.state.selection>=4)return {};
+    for(int row=0;row<4;++row)
+        if(in.state.values[row]<0||in.state.values[row]>(row<2?1:5))return {};
+    SteamConfigUpdatePlan plan;plan.candidate=in.state;
+    auto &state=plan.candidate;
+    plan.checked_keys[0]=true;
+    if(in.up_repeat)state.selection=(state.selection+3)%4;
+    plan.checked_keys[1]=true;
+    if(in.down_repeat)state.selection=(state.selection+1)%4;
+    const int row=state.selection,before=state.values[row],count=row<2?2:6;
+    int display=row<2?(before+1)%2:before;
+    // 键盘禁改整个未解锁速度行，区别于Draw只禁高速选项的Touch注册。
+    if(row!=1||state.speed_unlocked) {
+        plan.checked_keys[2]=true;
+        if(in.left_repeat)display=(display+count-1)%count;
+        plan.checked_keys[3]=true;
+        if(in.right_repeat)display=(display+1)%count;
+        const int after=row<2?(display+1)%2:display;
+        if(after!=before) {
+            state.values[row]=after;
+            plan.operations.emplace_back(SteamConfigSettingRequest{row,before,after});
+        }
+    }
+    plan.checked_keys[4]=true;
+    if(in.back_soft_label) {
+        plan.operations.emplace_back(SteamConfigReturnRequest::save_system);
+        plan.operations.emplace_back(SteamConfigReturnRequest::reset_offscreen);
+        plan.operations.emplace_back(SteamConfigReturnRequest::pop);
+    }
+    return plan;
+}
 } // namespace dungeon_village_prototype

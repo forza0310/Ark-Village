@@ -1191,6 +1191,65 @@ void steam_config_skin_checks(Checks &check) {
     for(int repeat=0;repeat<4;++repeat)check(steam_config_skin(in,o)->operations.size()==baseline.operations.size()&&
         in.values==values&&in.selection==3&&o.graphics_origin==std::array<int,2>{10,20},
         "Steam12重复纯查询输出规模稳定，不写设置、选择或消费坐标，未新增Owner或平台任务");
+    // EN四行键盘主体；原setter的音频/画质副作用不在此重复展开或执行。
+    using Return=SteamConfigReturnRequest;
+    constexpr std::array<int,6> left_volume{5,0,1,2,3,4},right_volume{1,2,3,4,5,0};
+    for(int row=0;row<4;++row)for(int value=0;value<(row<2?2:6);++value)for(int direction=0;direction<4;++direction) {
+        SteamConfigUpdateInput input;input.state={{0,0,0,0},row,true};input.state.values[row]=value;
+        input.left_repeat=(direction&1)!=0;input.right_repeat=(direction&2)!=0;
+        const auto result=steam_config_english_update(input);
+        const int expected=direction==0||direction==3?value:row<2?1-value:
+            direction==1?left_volume[value]:right_volume[value];
+        auto expected_values=input.state.values;expected_values[row]=expected;
+        check(result&&result->candidate.values==expected_values&&result->candidate.selection==row&&
+            result->candidate.speed_unlocked&&std::all_of(result->checked_keys.begin(),result->checked_keys.end(),[](bool b){return b;}),
+            "Steam12四行实际存储值与音量绕环；左右独立查询且双向净值不变");
+        check(result->operations.size()==(expected==value?0U:1U),
+            "Steam12仅净改值产生一次setter请求，无方向/确认声或双向试听");
+        if(expected!=value) {
+            const auto *request=std::get_if<SteamConfigSettingRequest>(&result->operations.front());
+            check(request&&request->row==row&&request->before==value&&request->after==expected,
+                "Steam12setter携原实际值，不把显示索引交给系统/播放器");
+        }
+    }
+    for(int speed=0;speed<2;++speed) {
+        SteamConfigUpdateInput input;input.state={{0,speed,2,3},1,false};
+        input.left_repeat=input.right_repeat=input.back_soft_label=true;
+        const auto result=steam_config_english_update(input);
+        check(result&&result->candidate.values==input.state.values&&result->checked_keys==
+            std::array<bool,5>{true,true,false,false,true}&&result->operations.size()==3,
+            "Steam12速度锁跳过左右查询但仍返回，不偷改合法历史高速值");
+        for(int n=0;n<3;++n)check(std::get<Return>(result->operations[n])==
+            std::array<Return,3>{Return::save_system,Return::reset_offscreen,Return::pop}[n],
+            "Steam12返回SaveSystem→ResetOffscreen→Pop有序，不代表实际保存/Pop成功");
+    }
+    SteamConfigUpdateInput mixed;mixed.state={{0,0,0,0},0,false};mixed.down_repeat=true;
+    mixed.right_repeat=true;mixed.back_soft_label=true;
+    const auto blocked=steam_config_english_update(mixed);
+    check(blocked&&blocked->candidate.selection==1&&blocked->candidate.values==mixed.state.values&&
+        !blocked->checked_keys[2]&&!blocked->checked_keys[3]&&blocked->operations.size()==3,
+        "Steam12先换最终行再判断速度门控，不能修改旧画质行");
+    mixed.state.selection=1;mixed.up_repeat=true;mixed.down_repeat=false;
+    const auto changed=steam_config_english_update(mixed);
+    check(changed&&changed->candidate.selection==0&&changed->candidate.values[0]==1&&changed->operations.size()==4&&
+        std::get<SteamConfigSettingRequest>(changed->operations[0]).row==0,
+        "Steam12导航回画质后先改值，再同轮保存；back不是撤销");
+    for(int n=0;n<3;++n)check(std::get<Return>(changed->operations[n+1])==
+        std::array<Return,3>{Return::save_system,Return::reset_offscreen,Return::pop}[n],
+        "Steam12真实setter请求必须排在返回三请求之前");
+    mixed.state.selection=0;mixed.up_repeat=mixed.down_repeat=true;
+    const auto both=steam_config_english_update(mixed);
+    check(both&&both->candidate.selection==0&&both->candidate.values[0]==1,
+        "Steam12上下Repeat独立执行，四行环绕后相消再改最终行");
+    for(int repeat=0;repeat<3;++repeat)check(steam_config_english_update(mixed)->operations.size()==4&&
+        mixed.state.values==std::array<int,4>{0,0,0,0}&&mixed.state.selection==0,
+        "Steam12纯请求重复计算不安装设置、不发声/写文件或追加平台任务");
+    for(int fault=0;fault<10;++fault) {
+        auto bad=mixed;
+        if(fault<2)bad.state.selection=fault==0?-1:4;
+        else {const int row=(fault-2)/2;bad.state.values[row]=(fault%2==0)?-1:(row<2?2:6);}
+        check(!steam_config_english_update(bad),"Steam12非法行/实际值显式拒绝，不能靠返回或速度锁掩盖坏来源");
+    }
 }
 void steam_commerce_skin_checks(Checks &check,const std::filesystem::path &root) {
     // raw83纯输入条件夹具；NEW不是购买资格，rank不是现金，不运行Owner事务。

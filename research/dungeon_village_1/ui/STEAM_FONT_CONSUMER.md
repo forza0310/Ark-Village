@@ -62,6 +62,14 @@ HEIGHT来自Font.cctor RVA77EDD0的实际InitializeArray调用（1077EE60，slot
 
 可用于产品独立数值校验的源公式样例：preset0／1／2在100%为12／24／30；显式0／1／2仍为0／1／2；请求3在100%为3；显式11在98%为10，preset0在98%为11，显式11在125%为13。这些是静态公式结果，不是字形实际像素高度或运行字体测量。后继本地化比例与最终GUI比例仍分别执行，不能并成一次舍入。
 
+### 可直接消费的字号数值接口
+
+现[steam_font_metrics.hpp](../prototype/include/dungeon_village_prototype/steam_font_metrics.hpp)与[实现](../prototype/src/steam_font_metrics.cpp)独立消费上述三段：`steam_font_size`返回请求／preset模式／比例及usedSize；`steam_font_needs_localize`将非空栈顶作为权威，再检查锁、日文和usedSize≥6；`steam_font_localized_request`只计算新请求，不重复准入。语言ko／zh前缀是外部已核查询结果，不在纯接口里猜Culture或把null语言视作false。它们不安装Font、写Owner、排任务、选择字体或调用平台。
+
+本地化常量来自当前DLL位型：默认`0x3F547AE1`、亚洲`0x3F7AE148`，补偿`0x3DCCCCCD`。原`mulss`后、`addss`后分别float32舍入，再向零截断；纯实现强制两次落回float32，不能改成double或融合乘加。独立静态公式样例：默认U130→108、U630→522，亚洲U105→103；这些不是字形实测。`GetLocalizeScale`返回的是**新请求字号**：普通DrawString在`10766749`调用后，于`10766759–1076675F`用`SetSize(newRequest,true)`再走实例比例。例如请求12／preset／98%先得U11，亚洲本地化请求10，再以98%得U9；顶锚补偿(11−9)×0.5=1，不能把两次缩放合并。
+
+维护仅拒绝负请求／负比例／负usedSize，以及_setSize的32位乘法溢出；原乘法先截32位且未提供这些保护。合法显式0、比例0和算成0均保留，不夹成最小1。接口没有原线程／GUIStyle的局部写入与异常半状态，调用者先验资格再安装结果；不将纯计算成功当作字体重载成功。现visuals的启动公共套件短测preset／边界／舍入／栈顶／重复缩放，不把Noto窗口替换、原中文fallback或完整TextLayout登记为完成。
+
 ## 测宽不是字数乘固定字宽
 
 `_stringWidth`（`0x780620`）与`_stringWidthF`（`0x77FFB0`）都先拒绝null文本或缺GUIStyle并返回0。整数入口先翻译文本；浮点入口在`LT_DISABLE_TEXTLAYOUT=false`时翻译。自动TextLayout开启且文本含`<`时，分别转`StringWidth2`／`StringWidthF2`，不能把包含标签的字符串直接交普通字宽分支。

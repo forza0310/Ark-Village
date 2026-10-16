@@ -8,7 +8,7 @@
 
 当前回应[启动Owner／字体缺口](../../../docs/reference/RESEARCH_REQUESTS.md#startup-owner-font-gaps)：91纯皮肤已修正为接收维护合法空村名／姓名并原样留空，产品无需再填占位后还原；这不是原平台空串输入资格的新认证。91已补[Update2纯候选](../ui/STARTUP_SKIN.md#steam91整轮输入性别切换不限定当前行)，允许所有行左右独立切性别，同轮左右净不变时不重设姓名；四个早脉冲、确认优先及真实result=-1／Pop请求分开。选择／主钟的Owner载荷、平台编辑及其精确副作用仍未交付。80／87目录、问答及84真实反馈金额已由`d8d38e1`交付；后继84整轮Update／应用与窗口接线、五行目录与成交反馈皮肤已定向短验，见[商会合同](../rules/COMMERCE.md)。反馈1可同轮再次交易，反馈2确认只清反馈；不能在独立act后再Update重复减钟。
 
-设置12主体及平台键盘参考已交（`2d8745a`／`b230c2c`），后继已补[四行键盘纯候选](../ui/STEAM_INTERACTIONS.md#设置12的四行键盘更新候选边界)，音量绕环及返回前单次setter／保存／刷新／Pop按序输出；真实设置输出／跨局持久仍独立；字体新增bo／ff／btn／pic局部消费者，以[字体合同](../ui/STEAM_FONT_CONSUMER.md)明确边界，不据静态合同宣称现产品parser已支持。剩余玩家页面的当前状态统一查[覆盖表](../ui/STEAM_UI_COVERAGE.md)，下方记录保留其各自提交时范围，不把历史“未开放”重复列为当前缺口。
+设置12主体及平台键盘参考已交（`2d8745a`／`b230c2c`），后继已补[四行键盘纯候选](../ui/STEAM_INTERACTIONS.md#设置12的四行键盘更新候选边界)，音量绕环及返回前单次setter／保存／刷新／Pop按序输出；真实设置输出／跨局持久仍独立；字体新增bo／ff／btn／pic局部消费者及[字号数值接口](../ui/STEAM_FONT_CONSUMER.md#可直接消费的字号数值接口)，以[字体合同](../ui/STEAM_FONT_CONSUMER.md)明确边界，不据静态合同宣称现产品parser已支持。剩余玩家页面的当前状态统一查[覆盖表](../ui/STEAM_UI_COVERAGE.md)，下方记录保留其各自提交时范围，不把历史“未开放”重复列为当前缺口。
 
 控制器后备已补三套原PNG／SEB与[纯选择接口](../prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)：按实际input_type分流，先互斥消费原frame0／1的OK／Cancel映射，再仅对layer1的16–19改32–35，所有层最终归0。它不调用Steam、发现设备或执行完整btn排版，动态glyph仍优先；无控制器的frame7取独立鼠标图，不能直接用RB后备代替。建设21已由`9cee27a`完成完整目录、Owner游标／双钟、同轮输入、21→74返回、严格快照和退休，不再等待该设计确认，见[业务合同](../ui/STEAM_BUILD_LIST_BUSINESS.md)；原字体／OS输入与落点后续仍另验。语言普通结果有序请求由`5708375`交付，启动文字表与翻译委托分开；字体已追至Unity原生默认皮肤／Font交接，仍未认证实际中文字形提供者，不能据Arial资源引用改产品字体。
 

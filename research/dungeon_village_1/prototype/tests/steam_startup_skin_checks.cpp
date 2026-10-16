@@ -2,6 +2,7 @@
 #include "dungeon_village_prototype/steam_main_menu_skin.hpp"
 #include "dungeon_village_prototype/steam_manual_skin.hpp"
 #include "dungeon_village_prototype/steam_record_skin.hpp"
+#include "dungeon_village_prototype/steam_font_metrics.hpp"
 #include "dungeon_village_tools/sprite.hpp"
 #include <raylib.h>
 #include <algorithm>
@@ -30,6 +31,54 @@ auto sprite(const std::filesystem::path &p) {
     std::ifstream input(p,std::ios::binary);
     if(!input) throw std::runtime_error("Steam皮肤公共资源缺失："+p.string());
     return dungeon_village_tools::parse_legacy_seb({std::istreambuf_iterator<char>(input),{}});
+}
+// 字体请求数值与本地化准入独立于字形后端，不以渲染截图生成这些期望值。
+void font_metrics(Checks &check) {
+    struct Size {int request,scale;bool preset;int used;};
+    constexpr std::array<Size,13> sizes{{
+        {0,100,true,12},{1,100,true,24},{2,100,true,30},{3,100,true,3},
+        {0,100,false,0},{1,100,false,1},{2,100,false,2},{11,98,false,10},
+        {0,98,true,11},{11,125,false,13},{1,0,true,0},{1,1,false,0},
+        {1,std::numeric_limits<int>::max(),false,21474836}}};
+    for(const auto &sample:sizes) {
+        const auto result=steam_font_size(sample.request,sample.scale,sample.preset);
+        check(result&&result->request==sample.request&&result->scale==sample.scale&&
+            result->use_preset==sample.preset&&result->used_size==sample.used,
+            "Steam字体源preset12/24/30与实例整数缩放，显式0及scale0不造最小字号");
+    }
+    for(const auto bad:std::array<Size,4>{{{-1,100,true,0},{1,-1,false,0},
+        {std::numeric_limits<int>::max(),2,false,0},{0,std::numeric_limits<int>::max(),true,0}}})
+        check(!steam_font_size(bad.request,bad.scale,bad.preset),
+            "Steam字体维护拒负/32位乘法溢出，不依赖C++ UB或暗中夹值");
+    struct Localize {int used,normal,asia;};
+    // 原float位型逐阶段推导的独立整数oracle，含可检出改用double/融合计算的边界。
+    constexpr std::array<Localize,12> local{{
+        {0,0,0},{6,5,5},{9,8,8},{10,8,9},{11,9,10},{12,10,11},
+        {24,20,23},{30,25,29},{130,108,127},{630,522,617},{105,87,103},{1,0,1}}};
+    for(const auto &sample:local)for(bool asia:{false,true})for(bool language:{false,true}) {
+        const auto result=steam_font_localized_request(sample.used,asia,language);
+        check(result&&*result==(asia&&language?sample.asia:sample.normal),
+            "Steam本地化采用源float32乘加次序/<=9下限，亚洲须两个独立资格都成立");
+    }
+    const auto first=steam_font_size(12,98,true);
+    const auto request=steam_font_localized_request(first->used_size,true,true);
+    const auto final=steam_font_size(*request,98,true);
+    check(first->used_size==11&&request==10&&final&&final->used_size==9&&
+        (first->used_size-final->used_size)*0.5F==1.F,
+        "Steam本地化返回新请求，须再过实例scale；顶锚字号差补偿1不能合并舍入");
+    for(const auto top:std::array<std::optional<bool>,3>{std::nullopt,false,true})
+        for(bool config:{false,true})for(bool locked:{false,true})for(bool japanese:{false,true}) {
+            SteamFontLocalizeGate in{6,top,config,locked,japanese};
+            const auto result=steam_font_needs_localize(in);
+            check(result&&*result==(top.value_or(config)&&!locked&&!japanese),
+                "Steam本地化栈顶覆盖全局，false不回退；锁/日文各自抑制");
+        }
+    check(steam_font_needs_localize({5,std::nullopt,true,false,false})==std::optional<bool>(false)&&
+        !steam_font_needs_localize({-1,std::nullopt,true,false,false})&&
+        !steam_font_localized_request(-1,true,true),
+        "Steam字号5不准入，本地化helper不偷偷执行守卫；负维护状态拒绝");
+    check(steam_font_localized_request(1,false,false)==0,
+        "Steam派生字号函数独立于准入，合法小字号按原式计算，不夹到6");
 }
 // RankForm独立页面合同；共用窗框和人物SEB继续由各自主责套件验证。
 void record_page(Checks &check) {
@@ -959,5 +1008,6 @@ int check_steam_startup_skin(const std::filesystem::path &root) {
     manual_page(check,root);
     record_page(check);
     record_update(check);
+    font_metrics(check);
     return check.count;
 }

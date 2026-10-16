@@ -1,5 +1,13 @@
 # 当前研究验证与历史索引
 
+## 字体数值消费者与新标题附效边界 2026-10-16
+
+接`ffc56e4`，新增实际职责模块`steam_font_metrics`并显式加入现application target，独立维护Font的preset12／24／30、实例整数比例、本地化准入与逐阶段float32新请求；没有平台字体依赖、Owner字段或新target。源位型及再次SetSize次序合入[字体合同](ui/STEAM_FONT_CONSUMER.md#可直接消费的字号数值接口)：合法0保留，负值／乘法溢出拒绝明确属于维护保护，原字形、语言比较、线程与真实Font不由纯数值代替。现启动公共皮肤套件增加92项有独立源数值的检查，Windows单Release动态构建、visuals **1/1通过1.73秒**；模块另仅用标准C++17头作严格语法编译通过。没有Draw变化或完整字体接线，不重复窗口／长跑，不编译他人在途存取主套件。
+
+同批只读核[标题scratch](ui/STEAM_TITLE_ACTORS.md#scratch副作用与交付边界)：新对象hitTime0／空effect表分别短路伤害和效果子树，haveObj−1／state0跳携物和倒地；相机同uid仍可画选中／HP，零powerBar仍可有边框，Map.DISP_ENEMYAREA才是该调试叠层门控。effect_pos收尾写已纠正，原环境／非空效果和任意返回历史不外推。来源与限制合现合同，没有新增过程报告／素材／audit／指纹；两份AST仍按上批审批限制本地保留。
+
+新数值结果固定大小、无实体引用／长期输出，合法世界历史不称永久有界。Release1394文件／224933590字节，assets872文件／9504668字节。本轮研究编译、测试及静态子任务均结束；同时看到的产品x64构建未干预，仅提交已验research、不推送。纪录页时钟设计仍待已有确认，不提前编码。
+
 ## 新局91与设置12输入纯候选 2026-10-16
 
 接`a0238f7`，91输入由`719c0ae`交付。重新核当前DLL字节，补四早脉冲短路false、上下Pulse／左右Repeat各自独立、所有行可切性别、净改变且未自定义才请求默认名、确认优先soft2及result=-1后Pop。[现合同](ui/STARTUP_SKIN.md#steam91整轮输入性别切换不限定当前行)也核编辑参数14／12、标签清理／恢复、MainPanel／DrawAllForms与NewGame→切主表单。`steam_new_game_update`只返短期候选和未执行请求，不猜默认译名、不重复主钟／wait，不把平台请求当成功；现visuals新增128项方向／返回／拒绝检查，单Release动态构建及短验1/1通过1.92秒。

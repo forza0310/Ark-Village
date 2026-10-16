@@ -125,7 +125,7 @@ human图片索引没有32，现有37图均核实际像素／尺寸及所需身�
 
 ## scratch副作用与交付边界
 
-`SetDispPlayerData`只改共享显示人物的`seb_/bodyImg_/animeIndex_/direct_/sebCnt_`五项。`SetDrawParam`还写共享临时字段和`draw_param[5…10]`；`Draw_human`结尾写旧画面坐标。它们不是严格纯函数。
+`SetDispPlayerData`只改共享显示人物的`seb_/bodyImg_/animeIndex_/direct_/sebCnt_`五项。`SetDrawParam`还写共享临时字段和`draw_param[5…10]`；`Draw_human`结尾写`effect_pos[0/1]`，不能误标为另一份`old_screen_pos_`。它们不是严格纯函数。
 
 2026-10-14已闭合**重新执行标题Init时的scratch构造来源**：TitleForm.Init（RVA20ADF0，完整1936字节）的正常完成路径在`1020B322`实际调用UserData.Setting（2E89D0），不是仅由方法名推定。Setting在`102EA205–102EA2A8`新建Character2、调用其构造29D2E0，把新引用写入`UserData.dispHuman_ static+14`，再执行Init(0,0,0)、uid=−1、jobId=3；接着独立建立dispMonster_，两者不是同一对象，也不是标题20个槽各有一个scratch。此处每次重新构造替换旧static引用，不是清空／复用旧Character2；旧引用的全部别名及GC退休未由该赋值证明。
 
@@ -135,7 +135,17 @@ Character2.Init（284080）的`10284193–1028421D`显式写objType=0、动画�
 
 已核一个真实子页writer：RankForm._draw（203660，完整3680字节）在`10203FB3`按当前展示定义的职业／性别图、步帧、dir1和完整页钟调用SetDispPlayerData(action0)，`10203FDC`再传当前武器绘人物。该局部没有直接写dispHuman.objType／haveObj或重新构造它；下一标题演员的五字段setter会覆盖这些预览参数。DrawDispPlayer／SetDrawParam／Draw_human仍沿共享后端写派生数组与旧坐标，不能由Rank局部无直接写者外推其全部传递调用或任意子页历史都保留空效果。因此纪录返回的生命周期已证，全部残留资格仍须按具体writer和附效子树逐项核，不能对返回动作隐式清零。
 
-身体绘制仍包含相机选中、体力条、携物、倒地、调试、伤害和效果分支；其它使用者若改写haveObj，仍会把行走SEB改用`HUMAN_ANIME_SEB[8]`。已读完整`Draw_human`不直接调SetRenderMode或Random，但它继续调用`DrawEffDamage/DrawEffect`等；已闭合正常重新初始化、纪录Pop恢复及其局部writer，未穷尽共享对象全部别名／历史写者、附效子树及其它父页恢复路径。所以不能宣称整个标题绘制无随机、任意历史进入标题都只有三层，或淡出必然不被深层效果覆盖。
+2026-10-16进一步窄核**新Setting的scratch尚未被其它使用者改写**这一前提，沿`Draw_human RVA27BCF0`实际后继闭合下列资格；不外推纪录返回或任意历史。
+
+| 分支 | 新对象能排除的内容／仍需显式的环境前提 |
+| --- | --- |
+| 伤害／miss | `DrawEffDamage RVA276BF0`在`10276C2B–10276C33`先判`effD_hitTime +0x114<=0`直接返回`10276F86`。新标量0使后续数字、miss和附效分支均不进入，没有图像或随机请求；不必再将这条新对象路径整体列为未知。 |
+| 效果列表 | `DrawEffect RVA277150`在`1027720D`读`effect_ +0x19C`，空表count0于`1027722F–10277231`直接到`1027ADAF`返回。本路径不读第二列表，不执行列表内图像、随机或渲染模式调用；不能外推非空效果条目。 |
+| 携物／倒地 | `1027C075–1027C087`的haveObj−1跳过携物；`1027C213–1027C217`的state0跳过倒地表现。旧haveObj可改变正常行走SEB的既有风险保持。 |
+| 相机选中／HP | `1027BD63–1027BE0D`从AppData.camera.subPlayer检查非null、uid相同且objType0后画选中图；HP在`1027BFC8–1027C067`以`powerBar[4]==1`或相机subPlayer同uid准入。新powerBar零只排前一资格，scratch uid−1也不替代相机检查。无该两项附图的充分环境前提是subPlayer为null或其uid不等于−1；仅objType不同不足以排掉HP。`Draw_powerBar`普通seb0即使powerBar全零也先在`1027D819/1027D867`画边框，不能靠零HP推定无图。 |
+| 调试叠层／收尾 | `1027C408–1027C428`的门控是**Map.DISP_ENEMYAREA==1**，槽110FBACC经metadata独立绑定game.Map静态+0x20，不是Config.DEBUG。未命中才跳过Draw_stateInfo／Draw_actInfo；新scratch不决定这个全局值。正常末尾`1027C514–1027C53F`仍写effect_pos，两次重复Draw并非无状态。 |
+
+因此正常新标题Init已给出空伤害／空效果、无携物／倒地的真实来源；再显式具备上述相机不匹配与Map门控不为1时，本次所核人物附效分支不出图、不抽随机。这是局部充分前提，未认证Title.Init清除了相机选择或该全局开关，也不认证整棵Title.Draw／底层GPU无随机或像素一致。共享对象全部别名／历史写者、非空效果子树及其它父页恢复仍保留；不能据此宣布任意历史的标题人物永远只有基础三层或淡出模式不会被深层覆盖。
 
 维护[标题人物接口](../prototype/include/dungeon_village_prototype/startup_title_actor_skin.hpp)新增`steam_title_actor_projection`：借既有六整数槽DTO，独立校验Steam活跃x范围−18..254与退休保留端点−19／255，全部20槽按源顺序排序后输出人物助手实参及可选边缘模式；输出最多20人，view高度1..65536为维护预算。现visuals已短验非稳定次序、边缘四级模式、退休保留及拒绝边界，[标题组合示例](examples/steam-title-menu-slots.png)仅消费两名中央普通演员。中央无模式请求，边缘请求要求消费方在阴影／人物助手之后清默认模式；投影不展开深层scratch，不调用APK更新／校验器，不新增Owner或快照模式，也不把已认证APK自然轨迹切换成Steam。
 

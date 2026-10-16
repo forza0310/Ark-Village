@@ -12,13 +12,14 @@
 | `startup_world_village_activity`／runtime_pages、`steam_village_activity_skin`／`steam_town_progress_skin` | 51–54村办、48／49／50晋级及95领取；[规则与皮肤](../ui/PAGES.md#steam-village-progress) |
 | `startup_world_runtime_task_pages`、`steam_task_selection_skin`／`steam_task_roster_skin`／`steam_task_result_skin` | 22–24与scene4查看位置、raw29严格信息桥；25–28及31–33已有Owner UI、严格恢复和研究窗口接线；[任务操作与皮肤](../ui/PAGES.md#steam任务选择与募集22–24) |
 | `startup_world_magic_pot`、`steam_magic_pot_skin`／`steam_magic_pot_effect_skin` | 41–47壶目录、投入／处理演出、配方发现／制作确认；[操作与表现](../ui/STEAM_MAGIC_POT.md) |
-| `startup_world_commerce`、`steam_commerce_skin` | 83主页三入口同轮事务、原序只读皮肤及真实NEW查询；85三行图块目录／整轮输入、86交易反馈已接，保留独立93领取和86自动关闭；84金额及皮肤另列；[商会合同](../rules/COMMERCE.md#steam-commerce-top) |
+| `startup_world_commerce`、`steam_commerce_skin` | 83主页三入口同轮事务、原序只读皮肤及真实NEW查询；85三行图块目录／整轮输入、86交易反馈已接，保留独立93领取和86自动关闭；84真实金额／五行皮肤与整轮Update已接；[商会合同](../rules/COMMERCE.md#steam-commerce-top) |
 | `startup_world_menu`／`information`／`manual`／`save`、`steam_information_skin` | 菜单、34–39信息、90税收、13说明及14保存；[信息合同](../ui/INFORMATION_MENU.md)、[菜单](../ui/PAGES.md) |
 | `startup_world_runtime_pages`、`steam_monster_skin` | 89介绍、92共享详情及99／100任务通知：严格主钟／初始化、有序正常皮肤／Owner只读桥与研究窗口；99含跳跃／光环／烟效，100读既有八行演出，不保留实体根或重复初始化；[共享显示前提](../rules/STEAM_MONSTER_PROGRESSION.md)、[后期通知](../ui/PAGES.md#steam-task-notices) |
 | `steam_dungeon_footer_skin`、`startup_world_presentation` | 探索底栏按同次Owner候选／冻结抖动生成有序只读计划；aW同事务生产／退休、条件窗口及正常窗口显式全重绘已接，应用经唯一Owner提交。根／语言素材与独立标准尺寸请求已交；原平台准入／66包装、实际语言安装及GPU越界另验；[底栏合同](../ui/DUNGEON_RENDER.md#steam底栏维护消费者与资源边界) |
 | `startup_application`、应用存储／标题／回放模块 | [应用](STARTUP_APPLICATION.md)、[存储事务](APPLICATION_STORAGE.md)、[标题](TITLE_MENU.md)、[完整回放](APPLICATION_REPLAY.md) |
 | `steam_startup_skin` | Steam共用窗框、标题菜单／选档局部及背景→upper→演员插入点→草／Logo的有序前段；整场组合仍待接；[标题绘制](../ui/STEAM_TITLE_DRAW.md) |
 | `steam_platform_button_skin` | 平台绑定／键盘／语言按钮及NEW原序请求、控制器后备及glyph矩阵几何；语言普通结果输出安装／成功条件共享回调／Pop次序，不调用Steam、安装包或发现设备；[按钮及glyph](../ui/STEAM_FONT_CONSUMER.md#内嵌按钮提示)、[语言结果](../ui/STEAM_LANGUAGE_INSTALL.md#语言页的选择结果与标题回调) |
+| `steam_font_metrics` | 原字号preset／实例整数比例、本地化准入及float32派生请求；不选字形、不改Owner或模拟平台线程；[字体数值合同](../ui/STEAM_FONT_CONSUMER.md#可直接消费的字号数值接口) |
 | `steam_cursor_skin` | 虚拟光标的按下图资格、原SEB两帧、平台坐标补偿和恢复缩放／混合的有序纯计划；不合成Touch或推进平台状态；[原输入与绘制合同](../ui/STEAM_INTERACTIONS.md#虚拟屏幕光标模式位置与合成touch) |
 | `steam_joystick_prompts` | 平台提示表的登记／复用、Reset／Raise／释放及有序DrawButtons计划；保留button7软标签与0..3自动取消请求。`title-platform-prompts`／`title-platform-prompts-faded`有界窗口消费8/9原包后备和局部矩阵，不接SDK、世界Owner或持久格式；[生命周期合同](../ui/STEAM_INTERACTIONS.md)、[四态示例](../ui/examples/steam-title-platform.png) |
 | `startup_world_persistence`／codec／restore_validation | [正常文件、精确回放及字段政策](PERSISTENCE.md) |

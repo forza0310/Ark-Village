@@ -151,7 +151,7 @@ S066–S068自然对话不按旧标签补写具名详情，见[非空p实验](..
 
 ## 26组件与14事件分母
 
-GameView先让顶页处理事件，再通用分派；跳表接受ID0–24，25走默认。17相机由GameForm顶页消费者处理，不能因通用默认项认作缺功能。
+GameView先让顶页处理事件，hook返回false即退出，再通用分派；跳表接受ID0–24，25走默认。17相机由GameForm顶页消费者处理，不能因通用默认项认作缺功能。公共叶分支、编码值及维护请求边界见[交互合同](STEAM_INTERACTIONS.md#公共触摸分派与请求边界)。
 
 | ID／组件 | 实际路由或候选 | 限制 |
 | --- | --- | --- |
@@ -159,21 +159,22 @@ GameView先让顶页处理事件，再通用分派；跳表接受ID0–24，25�
 | 1 DLGPAGE、18 ARROW | 同入口0x1023CCBE | 36／38等页箭头注册及逻辑翻页已有合同；其它页、最终物理输入仍另核 |
 | 2 DLGCMD、9 SUBMENU | 同入口0x1023C9CD | raw9基矩形／值及ENTER选行、UP请求确认已核，见[输入后继](INFORMATION_MENU.md#steam9选行确认与虚拟光标后继静态已核)；维护只接解析后输入，完整命中／guard和其它页仍独立 |
 | 3 DLGSEL、10 LIST、11 SLIST | 同入口0x1023CA42；有marker才标记后确认，无marker的UP直接确认 | 75／21有marker；48／51／52／54无marker注册及不同Margin已核，不能混用全部输入政策 |
-| 4 KEYCLICK、20 PLUS、21 MINUS | OnTouchKeyClick | raw9组件4/value22/flag2无矩形、34测宽底栏value20已核并有计划；不能推广全屏热区，其它参数仍逐页核 |
-| 5 KEYPRESS | OnTouchKeyPress | 同上 |
-| 6 KEYDOWN、7 KEYUP | 通用内联分支 | 位拆分及完整资格链待核 |
-| 8 MAINMENU | OnTouchMainMenu | 完整菜单／解锁待核 |
+| 4 KEYCLICK、20 PLUS、21 MINUS | OnTouchKeyClick；仅CLICK5 | 编码值Set／普通键KeyClick、自定义首key及有序扩展写已核；纯请求接口已短验，raw9／34及raw12注册沿各合同，不推广全屏热区 |
+| 5 KEYPRESS | DOWN0；仅LOST6／CANCEL10释放普通键 | KeyDown(false)／KeyUp已核，UP1不在该分支释放；维护只产请求，OS held／guard另核 |
+| 6 KEYDOWN、7 KEYUP | 分别DOWN0／UP1触发 | 普通键两者实际均KeyDown(true)，编码值走Set；不能按KEYUP名字改成KeyUp，维护只产请求 |
+| 8 MAINMENU | OnTouchMainMenu；仅ENTER2／UP1 | 原主菜单栈查找／同项守卫／Pop后写原accessor、无9时UP确认及DrawMenu2顶页raw3注册已核；维护候选待后继验收，原解锁／OS接线另核 |
 | 12 VSCROLLBAR、14 VSCROLLBAR2、15 VSCROLLBAR3 | OnTouchVScrollBar | 8相对／9绝对滚动及35／37–39、51／54组件12注册已核，维护保留110／111差异；其它页注册及最终输入仍待核 |
 | 13 VSCROLLBTN | OnTouchVScrollButton | ON上下边界已核，注册待核 |
-| 16 UNMARKER | OnTouchUnMarker | 完整生命周期待核 |
+| 16 UNMARKER | OnTouchUnMarker | DOWN／UP依次查12/14/15再marker key、DRAG查key及ClearMarker已核；有效marker组件触发EndTouch贯穿区域注册已核，维护候选待后继验收，完整OS生命周期另核 |
 | 17 CAMERA | GameForm.OnTouchEvent→OnTouchCamera | 主世界／建设局部已核；OS投递及全模式待核 |
-| 19 TRACKBAR | 通用轨条分支 | 具体用途待核 |
-| 22 OVER、24 RECT | 各自通用内联分支 | 用途及注册未知 |
+| 19 TRACKBAR | 仅CELL_DRAG9将e.dx交Set | raw12音量轨道注册及主值后扩展选行已核；dx不拆short／不夹限，纯请求接口已短验，真实设置提交另验 |
+| 22 OVER | 仅ON13作Set，不确认 | 通用消费者及纯请求接口已有；正常注册尚未定位，不能由无命中称不可达 |
+| 24 RECT | ENTER2／UP1作Set，UP再KeyClick确认 | 条件标题广告注册已核，但广告UP先由TitleForm hook消费并退出公共分派；纯请求接口已短验，当前Steam广告可达性未证 |
 | 23 ARROW_UD | 默认入口0x1023CA3B | 51上／下组件17／19及独立margin已核并有计划；最终OS输入及其它页仍缺 |
 | 25 SCROLLBG | 超通用跳表上限 | 35／37–39的背景注册／flag4已核并有计划；不能据注册推成通用跳表已处理，最终命中仍独立 |
 
 14事件为DOWN0、UP1、ENTER2、LEAVE3、MOVE4、CLICK5、LOST6、DRAG7、GRID_DRAG8、CELL_DRAG9、CANCEL10、PINCH_START11、PINCH12、ON13。
-本批核到建设DOWN／UP／CLICK／GRID_DRAG及滚动8／9／13局部分支，其它事件不因声明存在报完成。
+建设及滚动局部分支与上述公共键、轨条、OVER／RECT、MAINMENU／UNMARKER消费者分别有静态证据；不由此认证全部组件注册、最终OS投递或全14事件覆盖。
 TouchOption十四标志是已核声明分母；marker16有75注册证据，其余优先级／取消组合按实际消费者另核，不依赖本地inventory清单。
 Steam CANCEL=10，而APK原始Android ACTION_CANCEL=3；事件适配层不同，不能直接复制数值。
 

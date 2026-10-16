@@ -7,6 +7,7 @@
 #include "dungeon_village_prototype/steam_event_skin.hpp"
 #include "dungeon_village_prototype/startup_world_persistence.hpp"
 #include "dungeon_village_prototype/steam_news_skin.hpp"
+#include "dungeon_village_prototype/steam_touch_commands.hpp"
 #include "dungeon_village_prototype/startup_world_projection.hpp"
 #include "support/world_fixture.hpp"
 #include "dungeon_village_tools/sprite.hpp"
@@ -37,6 +38,229 @@ auto sprite(const std::filesystem::path &p) {
     std::ifstream input(p,std::ios::binary);
     if(!input) throw std::runtime_error("Steam皮肤公共资源缺失："+p.string());
     return dungeon_village_tools::parse_legacy_seb({std::istreambuf_iterator<char>(input),{}});
+}
+void touch_commands(Checks &check) {
+    SteamTouchCommandInput in;in.admission=SteamTouchAdmission::ready;
+    // 固定DLL跳表及各具名入口的触发事件；不从被测函数生成期望资格。
+    const std::array<std::array<int,2>,6> triggers{{{4,5},{5,0},{6,0},{7,1},{20,5},{21,5}}};
+    for(const auto &entry:triggers)for(int event=0;event<14;++event) {
+        in.component=entry[0];in.event_type=event;in.value=16;
+        const auto plan=steam_touch_commands(in);
+        const bool release=in.component==5&&(event==6||event==10);
+        check(plan&&plan->commands.size()==static_cast<std::size_t>(event==entry[1]||release),
+              "公共键组件各有真实触发事件，不按KEYUP名称合成释放");
+        if(plan->commands.empty())continue;
+        const auto &command=plan->commands.front();
+        if(release)check(std::get<SteamTouchKeyUp>(command).bits==0x10000U,
+                         "KEYPRESS仅LOST/CANCEL释放原方向逻辑位");
+        else if(in.component==4||in.component==20||in.component==21)
+            check(std::get<SteamTouchKeyClick>(command).bits==0x10000U,
+                  "KEYCLICK和PLUS/MINUS保留相同Click请求，不擅自加减数值");
+        else {
+            const auto &down=std::get<SteamTouchKeyDown>(command);
+            check(down.bits==0x10000U&&down.pulse==(in.component!=5),
+                  "KEYDOWN及触摸UP触发的KEYUP均KeyDown(true)，KEYPRESS为false");
+        }
+    }
+    in.component=7;in.event_type=1;
+    for(const auto values:std::array<std::array<std::uint32_t,2>,5>{{
+            {0,0x100000U},{20,0x100000U},{31,0x80000000U},{32,1},{65535,0x80000000U}}}) {
+        in.value=static_cast<std::int32_t>(values[0]);
+        const auto plan=steam_touch_commands(in);
+        check(plan&&plan->commands.size()==1&&std::get<SteamTouchKeyDown>(plan->commands[0]).bits==values[1],
+              "值0默认键号20，移位按低五位且bit31无有符号溢出");
+    }
+    for(const auto key:std::array<std::uint32_t,3>{0,0xffffffffU,0x80000010U}) {
+        in.first_key=key;
+        const auto plan=steam_touch_commands(in);
+        check(plan&&std::get<SteamTouchKeyDown>(plan->commands[0]).bits==key,
+              "首自定义键0/负一/复合位原样请求，Canvas实际资格由后继执行器处理");
+    }
+    in.first_key=0;in.value=0x20004;
+    in.extended_values={0x20002,7,-32768,-1};
+    auto plan=steam_touch_commands(in);
+    const std::array<SteamTouchValueWrite,5> expected{{{0x20000,4},{0x20000,2},{0,7},{0xffff0000U,-32768},{0xffff0000U,-1}}};
+    check(plan&&plan->commands.size()==expected.size(),"属性主项及扩展按原序，不合并同类型或丢零类型");
+    for(std::size_t n=0;n<expected.size();++n) {
+        const auto &write=std::get<SteamTouchValueWrite>(plan->commands[n]);
+        check(write.type==expected[n].type&&write.value==expected[n].value,
+              "属性低16位按有符号short，类型保留高16位位型");
+    }
+    in.component=5;in.event_type=6;
+    check(steam_touch_commands(in)->commands.empty(),"KEYPRESS属性请求的LOST不写扩展或发KeyUp");
+    in.component=24;in.event_type=2;
+    plan=steam_touch_commands(in);
+    check(plan&&plan->commands.size()==5&&std::holds_alternative<SteamTouchValueWrite>(plan->commands.back()),
+          "RECT的ENTER写属性及扩展但不确认");
+    in.event_type=1;in.first_key=0;
+    plan=steam_touch_commands(in);
+    check(plan&&plan->commands.size()==6&&std::get<SteamTouchKeyClick>(plan->commands.back()).bits==0x100000,
+          "RECT的UP先完整写值再固定确认，不消费自定义键或标记资格");
+    in.component=22;in.event_type=2;
+    check(steam_touch_commands(in)->commands.empty(),"OVER不按ENTER冒充悬停确认");
+    in.event_type=13;
+    check(steam_touch_commands(in)->commands.size()==5,"OVER仅ON输出Set及扩展");
+    in.component=19;in.event_type=9;in.value=0x80001;in.delta_x=-123;
+    plan=steam_touch_commands(in);
+    check(plan&&plan->commands.size()==5,"TRACKBAR有效主类型和扩展产生完整写序列");
+    const auto &track=std::get<SteamTouchValueWrite>(plan->commands[0]);
+    check(track.type==0x80000&&track.value==-123,
+          "TRACKBAR的Set仍掩主类型高16位，事件dx不拆短数/夹范围/换百分比");
+    in.extended_values.clear();in.value=7;
+    check(steam_touch_commands(in)->commands.empty(),"TRACKBAR纯低位在Set后主type0跳写，不能补默认键");
+    in.value=0;
+    check(steam_touch_commands(in)->commands.empty(),"TRACKBAR值0不能补默认键号20");
+    in.extended_values={7};
+    check(steam_touch_commands(in)->commands.size()==1&&
+              std::get<SteamTouchValueWrite>(steam_touch_commands(in)->commands.front()).type==0,
+          "主type0也不阻止扩展type0按原序调用");
+    in.extended_values.assign(4097,0);in.component=24;in.event_type=1;
+    check(!steam_touch_commands(in),"消费扩展超过维护预算拒绝整个候选，不留半份属性或确认输出");
+    in.extended_values.resize(4096);
+    check(steam_touch_commands(in)->commands.size()==4097,"维护预算边界仍保留全部零类型扩展及末确认");
+    in.extended_values.emplace_back(0);
+    in.component=6;in.event_type=0;in.value=20;
+    check(steam_touch_commands(in)->commands.size()==1,"键分支不消费扩展，预算不误拒未用数据");
+    in.admission=SteamTouchAdmission::intercepted;in.component=-1;in.event_type=99;
+    check(steam_touch_commands(in)->commands.empty(),"顶页截获先短路，通用组件与坏事件均不再读取");
+    in.admission=SteamTouchAdmission::unverified;
+    check(!steam_touch_commands(in),"未证surface/顶页准入不能生成通用请求");
+    in.admission=SteamTouchAdmission::ready;in.component=8;in.event_type=1;
+    check(!steam_touch_commands(in),"主菜单有独立消费者，不套成公共键叶");
+    in.component=16;
+    check(!steam_touch_commands(in),"解除标记有独立生命周期，不套成公共键叶");
+    in.component=6;in.event_type=14;
+    check(!steam_touch_commands(in),"未知事件显式拒绝");
+}
+void touch_menu_and_marker(Checks &check) {
+    SteamTouchMainMenuInput menu;
+    menu.admission=SteamTouchAdmission::ready;
+    menu.value=0x20004;menu.top_form=900;menu.has_submenu_component=false;
+    menu.ordered_forms=std::vector<SteamTouchFormObservation>{{100,9,{}},{200,4,3},{300,4,3},{0,4,{}}};
+    for(int event=0;event<14;++event) {
+        menu.event_type=event;
+        const auto p=steam_touch_main_menu(menu);
+        check(p&&p->main_menu==200&&p->probes[0].form==100&&p->probes[1].form==200,
+              "MAINMENU先正序绑定第一个真实raw3，短路后坏尾项不消费");
+        if(event!=1&&event!=2) {
+            check(p->probes.size()==2&&p->commands.empty(),"非ENTER/UP仅扫描，不查询组件或顶页");
+            continue;
+        }
+        check(p->probes.size()==4&&p->probes[2].kind==SteamTouchMainMenuProbeKind::submenu_component&&
+                  p->probes[3].kind==SteamTouchMainMenuProbeKind::top_form,
+              "无9时先查组件存在再取得当前顶页accessor");
+        const auto &write=std::get<SteamTouchAccessorWrite>(p->commands[0]);
+        check(write.accessor==900&&write.write.type==0x20000&&write.write.value==4&&
+                  p->commands.size()==static_cast<std::size_t>(event==1?2:1),
+              "无9向当时顶页而非扫描到的父菜单写行，只有UP附确认");
+        if(event==1)check(std::get<SteamTouchKeyClick>(p->commands.back()).bits==0x100000U,
+                         "MAINMENU的UP固定确认逻辑位，不消费自定义keys");
+    }
+    menu.event_type=1;menu.has_submenu_component=true;menu.main_menu_value=0;
+    menu.extended_values={0x20002,7,-32768,-1};
+    auto p=steam_touch_main_menu(menu);
+    check(p&&p->probes.size()==5&&p->probes[3].kind==SteamTouchMainMenuProbeKind::main_menu_value&&
+              p->probes[3].form==200&&p->probes[3].type==0x20000&&
+              p->probes[4].kind==SteamTouchMainMenuProbeKind::top_form&&p->commands.size()==6&&
+              std::get<SteamTouchFormPop>(p->commands.front()).form==900,
+          "有9时先读既定父菜单，变化才取顶页并请求Pop，随后不发确认");
+    const std::array<SteamTouchValueWrite,5> expected{{{0x20000,4},{0x20000,2},{0,7},{0xffff0000U,-32768},{0xffff0000U,-1}}};
+    for(std::size_t i=0;i<expected.size();++i) {
+        const auto &write=std::get<SteamTouchAccessorWrite>(p->commands[i+1]);
+        check(write.accessor==200&&write.write.type==expected[i].type&&write.write.value==expected[i].value,
+              "Pop后的主项/扩展仍绑定原首主菜单，重复属性和type0保留原序");
+    }
+    menu.top_form=0;menu.event_type=2;
+    p=steam_touch_main_menu(menu);
+    check(p&&std::get<SteamTouchFormPop>(p->commands[0]).form==0&&
+              std::get<SteamTouchAccessorWrite>(p->commands[1]).accessor==200&&p->commands.size()==6,
+          "有9的ENTER保留原Pop空目标请求及既定父写，不据此承诺弹栈成功或发确认");
+    menu.event_type=1;
+    menu.value=0x2ffff;menu.main_menu_value=65535;menu.top_form.reset();
+    menu.extended_values.assign(4097,0);
+    p=steam_touch_main_menu(menu);
+    check(p&&p->commands.empty()&&p->probes.size()==4,
+          "有9的相等比较取低16位无符号，短路不读缺顶页或超预算扩展");
+    menu.main_menu_value=-1;menu.top_form=900;menu.extended_values.clear();
+    p=steam_touch_main_menu(menu);
+    check(p&&std::get<SteamTouchAccessorWrite>(p->commands[1]).write.value==-1,
+          "65535比较与真正Set的short负一保持不同语义");
+    menu.ordered_forms=std::vector<SteamTouchFormObservation>{{100,9,{}}};
+    check(!steam_touch_main_menu(menu),"有9却没有真实父raw3时拒绝，不以顶页替代");
+    menu.has_submenu_component=false;
+    check(steam_touch_main_menu(menu)->commands.size()==2,"无9不要求父raw3存在，只使用已查询顶页");
+    menu.value=0;menu.top_form=0;
+    check(steam_touch_main_menu(menu)->commands.size()==1,
+          "实际空顶页的type0无扩展Set仍可只请求UP确认，不造属性目标");
+    menu.extended_values={0};
+    check(!steam_touch_main_menu(menu),"空accessor不能吞掉type0扩展写");
+    menu.top_form=900;menu.value=0x20004;menu.extended_values.assign(4097,0);
+    check(!steam_touch_main_menu(menu),"超预算Set整体拒绝，不泄出Pop或确认半计划");
+    menu.extended_values.resize(4096);
+    check(steam_touch_main_menu(menu)->commands.size()==4098,"扩展维护预算边界保留主写/全部扩展/确认");
+    menu.event_type=5;menu.ordered_forms=std::vector<SteamTouchFormObservation>(4096,{100,9,{}});
+    check(steam_touch_main_menu(menu)->probes.size()==4096,"无父菜单的扫描维护预算边界可完成");
+    menu.ordered_forms->push_back({200,4,3});
+    check(!steam_touch_main_menu(menu),"实际首父位于扫描预算之外明确拒绝");
+    menu.ordered_forms->front()={200,4,3};
+    check(steam_touch_main_menu(menu)->probes.size()==1,"早找到首父不校验大列表未扫描的尾部");
+    menu.ordered_forms->front()={200,4,{}};
+    check(!steam_touch_main_menu(menu),"已扫formID4缺真实子页类型明确拒绝");
+    menu.admission=SteamTouchAdmission::intercepted;menu.event_type=99;menu.ordered_forms.reset();
+    check(steam_touch_main_menu(menu)->commands.empty(),"主菜单顶页截获不再读坏事件/缺表单观察");
+    menu.admission=SteamTouchAdmission::ready;
+    check(!steam_touch_main_menu(menu),"主菜单未获有效事件与扫描观察不得成功");
+
+    SteamTouchUnmarkerInput marker;marker.admission=SteamTouchAdmission::ready;marker.marker_key=-2;
+    // 来源按12/14/15/旧key短路，期望查询顺序独立固定，不根据被测计划生成。
+    for(int event:std::array<int,2>{0,1})for(int hit=0;hit<5;++hit) {
+        marker.event_type=event;marker.scrollbar_events={false,false,false};marker.marker_event=false;
+        if(hit<3) {
+            marker.scrollbar_events[hit]=true;
+            for(int i=hit+1;i<3;++i)marker.scrollbar_events[i].reset();
+            marker.marker_event.reset();
+        } else if(hit==3)marker.marker_event=true;
+        const auto q=steam_touch_unmarker(marker);
+        const std::size_t count=hit<3?static_cast<std::size_t>(hit+1):4;
+        check(q&&q->probes.size()==count&&q->commands.size()==static_cast<std::size_t>((event==0?1:0)+(hit==4?1:0)),
+              "解除标记按命中短路，不读取后续缺观察；DOWN重置和最终清除分别输出");
+        const std::array<int,3> ids{12,14,15};
+        for(std::size_t i=0;i<std::min<std::size_t>(3,count);++i)
+            check(q->probes[i].kind==SteamTouchUnmarkerProbeKind::component&&
+                      q->probes[i].component==ids[i]&&q->probes[i].event_type==event,
+                  "解除查询固定12→14→15，事件边沿不替换");
+        if(count==4)check(q->probes.back().kind==SteamTouchUnmarkerProbeKind::marker_key&&q->probes.back().key==-2,
+                          "除-1外的负标记键原位型交真实key查询");
+        if(event==0)check(std::holds_alternative<SteamTouchMarkerFrameReset>(q->commands.front()),
+                         "DOWN无论后续是否保留标记，第一条动作始终只重置frame");
+        if(hit==4)check(std::holds_alternative<SteamTouchMarkerClear>(q->commands.back()),
+                       "当前surface均无匹配事件才请求ClearMarker");
+    }
+    marker.marker_key=-1;marker.scrollbar_events={false,false,false};marker.marker_event.reset();
+    for(int event=0;event<14;++event) {
+        marker.event_type=event;const auto q=steam_touch_unmarker(marker);
+        check(q&&q->probes.size()==static_cast<std::size_t>(event==0?3:0)&&
+                  q->commands.size()==static_cast<std::size_t>(event==0?2:0),
+              "无标记仅DOWN查询三种滚动组件并清除；UP/DRAG和其它事件无查询");
+    }
+    marker.event_type=7;marker.marker_key=std::numeric_limits<std::int64_t>::min();
+    marker.scrollbar_events={};marker.marker_event=true;
+    auto q=steam_touch_unmarker(marker);
+    check(q&&q->commands.empty()&&q->probes.size()==1&&q->probes[0].key==marker.marker_key,
+          "DRAG只查旧key，保留64位最低负边界且不触及滚动查询");
+    marker.marker_event=false;q=steam_touch_unmarker(marker);
+    check(q&&q->commands.size()==1&&std::holds_alternative<SteamTouchMarkerClear>(q->commands[0]),
+          "DRAG无旧key对应事件则清除，不额外重置动作或发键");
+    marker.marker_event.reset();
+    check(!steam_touch_unmarker(marker),"必须查询的marker事件缺观测显式拒绝");
+    marker.event_type=0;
+    check(!steam_touch_unmarker(marker),"DOWN第一条必需滚动查询缺失时不返回部分重置计划");
+    marker.admission=SteamTouchAdmission::intercepted;marker.event_type=99;
+    check(steam_touch_unmarker(marker)->probes.empty(),"顶页截获后解除层不读事件或查询");
+    marker.admission=SteamTouchAdmission::unverified;
+    check(!steam_touch_unmarker(marker),"未证准入不能制造清除标记请求");
+    marker.admission=SteamTouchAdmission::ready;marker.event_type=14;
+    check(!steam_touch_unmarker(marker),"解除层拒绝原14事件之外的编号");
 }
 // raw0按原调用常量验证局部组合；不重复公共木框、人物scratch或TextLayout后端测试。
 void dialogue_page(Checks &check) {
@@ -1365,6 +1589,8 @@ int check_steam_startup_skin(const std::filesystem::path &root) {
     record_page(check);
     record_update(check);
     font_metrics(check);
+    touch_commands(check);
+    touch_menu_and_marker(check);
     dialogue_page(check);
     event_card(check,root);
     news_page(check);

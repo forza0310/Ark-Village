@@ -22,6 +22,7 @@
 | `steam_font_metrics` | 原字号preset／实例整数比例、本地化准入及float32派生请求；不选字形、不改Owner或模拟平台线程；[字体数值合同](../ui/STEAM_FONT_CONSUMER.md#可直接消费的字号数值接口) |
 | `steam_dialogue_skin`／`steam_event_skin`／`steam_news_skin` | 对话0有序纯请求，事件11及人物解锁59完整局部皮肤／严格Owner桥，报纸15真实排版观测的页数／输入／绘制纯计划；11／59接正常研究窗口，59读取当前职业／武器，不创建到访实体；报纸尚无专用Owner或精确恢复；[页面及限制](../ui/PAGES.md#steam脚本事件11报纸15与等待16) |
 | `steam_cursor_skin` | 虚拟光标的按下图资格、原SEB两帧、平台坐标补偿和恢复缩放／混合的有序纯计划；不合成Touch或推进平台状态；[原输入与绘制合同](../ui/STEAM_INTERACTIONS.md#虚拟屏幕光标模式位置与合成touch) |
+| `steam_touch_commands` | 已准入组件的公共按键／属性写入、主菜单切换及解除标记纯请求；保留触发边沿、绑定目标、查询短路、扩展原序与顶页截获，不执行OS命中、Canvas或业务；[公共输入合同](../ui/STEAM_INTERACTIONS.md#公共触摸分派与请求边界) |
 | `steam_joystick_prompts` | 平台提示表的登记／复用、Reset／Raise／释放及有序DrawButtons计划；保留button7软标签与0..3自动取消请求。`title-platform-prompts`／`title-platform-prompts-faded`有界窗口消费8/9原包后备和局部矩阵，不接SDK、世界Owner或持久格式；[生命周期合同](../ui/STEAM_INTERACTIONS.md)、[四态示例](../ui/examples/steam-title-platform.png) |
 | `startup_world_persistence`／codec／restore_validation | [正常文件、精确回放及字段政策](PERSISTENCE.md) |
 | `startup_world_presentation`／`visuals`、`startup_view`／`startup_window_host` | [显式表现请求](../ui/INPUT_RENDER_REQUESTS.md)、只读计划与平台执行；[声音一次输出](AUDIO_REQUESTS.md) |

@@ -1,26 +1,20 @@
-# Steam 2.56：存档入口与设施道具交互
+# Steam 2.56：页面交互与公共触摸
 
-2026-10-07，范围为存档栏、菜单保存、设施详情／道具／结果的交互关系。
+范围为存档栏、菜单保存、设施详情／道具／结果、设置及GameView公共触摸的交互关系。
 依据本机 Steam 原版窗口实验与同身份 IL2CPP 局部机器码；固定 APK 1.0.8 仍是规则基线。
 本批没有再次启动游戏、操作当前原档或修改产品；“EXE 交互”实际定位于 `GameAssembly.dll`，不是启动器。
 
 ## 来源与证据等级
 
-- Windows：实验标题显示 ver 2.56、中文，appID 1859360、buildID 14371088。
-  DLL SHA-256 `9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b55ab1a`；
-  metadata SHA-256 `80e17b3c1f7b7a844d64be27918e16cacfab05d70d7f33c0a61e45d830d7a369`。
+- Windows：实验标题显示 ver 2.56、中文；固定样本身份统一见[Steam评估](../verification/STEAM_ASSESSMENT.md)。
 - 窗口原记录：[RESULT.md](../work/window-restore-observation/20261007-102645-backup-restore-trials/RESULT.md)、
   [ACTIONS.json](../work/window-restore-observation/20261007-102645-backup-restore-trials/ACTIONS.json)；
   设计素材见[截图归档](../references/screenshots/2026-10-07-steam-restore/README.md)。
   没有录像，动作日志时间不等于内部调用计数。截图尺寸不是已测逻辑分辨率或 DPI。
-- 静态定位：复用 Il2CppDumper 6.7.46 方法映射，用 iced-x86 1.21.0 解码19个白名单方法、89,840字节，
-  详细身份、参数、机器码哈希及地址见[本地证据](../work/steam-interaction-analysis/README.md)。
-  元数据只认证类型／字段名，下面标为静态的分支同时检查了机器码。
+- 静态定位：复用方法映射与同身份机器码，正文保留具名函数及VA；元数据只认证类型／字段名，不替代分支核验。
 - APK：对应[设施道具合同](../rules/FACILITY_EFFECTS.md#items-ui-调用与消费次序)及[UI入口](README.md)。
   Steam 的 `SubForm.TYPE_*` 数值是本样本 metadata 独立核出的常量；与 APK raw 页码相同不代表全部行为等价。
-- 后续静态收口：[输入链](../work/steam-input-closure/README.md)24方法／93,104字节，
-  [设施初始化及动画表](../work/facility-animation-closure/README.md)5方法／45,536字节。
-  两批均以同身份机器码验证；动画表另从metadata原字节独立读取，不借用APK数值。
+- 动画表另从metadata原字节独立读取，不借用APK数值；公共输入仍与页面业务、原OS投递分别认证。
 
 窗口实验曾请求启动复制目录，但 Steam 实际转回原安装。实验随后按用户授权采用备份／正常操作／退出后恢复，
 本地原件恢复已由实验报告核验，云端状态未认证。因此本批只分析被冻结的实验文件，不重用“复制启动即隔离”的假设。
@@ -45,6 +39,34 @@
 设施业务变化的本次观察为咖啡店价格490→510G、品质21不变、魅力25→27、坐垫库存2→1。
 真实保存的共享改良和库存差异已由[只读审计](../work/window-save-analysis/ANALYSIS.md)交叉；
 两个保存之间有自然经营，不能把全部差异归给这一操作。人物“好满足！”和设施“升级↑”不是已识别的序列化 `p` 冒泡。
+
+## 公共触摸分派与请求边界
+
+`GameView.OnTouchEvent` RVA23C820先取顶页，满足MyFormBase类型资格时调用其专用hook（1023C865–C91F）；hook返回false即退出，不进入公共处理。随后按组件ID跳表1023CEA0分派，接受0..24，25走默认。下表限定已到达公共叶分支的事件，不能越过顶页拦截、Surface命中、Canvas焦点／DecideKeyState或输入guard，把请求直接当成玩家业务操作；事件0..13沿Steam TouchEvent，不套Android action编号。
+
+| 组件及源锚 | 实际事件与请求 |
+| --- | --- |
+| 4 KEYCLICK、20 PLUS、21 MINUS；OnTouchKeyClick 1023CF10–CFE9 | 仅CLICK5生效。value为0时先代成20；高16位非0则Set，否则Canvas.KeyClick。20／21复用4，名字不表示本函数直接加减数值。 |
+| 5 KEYPRESS；1023D0F0–D244 | DOWN0：编码值执行Set，普通键执行KeyDown(bits,false)。普通键仅在LOST6／CANCEL10执行KeyUp；UP1不在本函数释放。编码值的释放不额外写设置。 |
+| 6 KEYDOWN；1023D000–D0DB及通用内联1023CB0D起 | 仅DOWN0，编码值执行Set，普通键执行KeyDown(bits,true)。 |
+| 7 KEYUP；1023D250–D32B及通用内联1023CBF0起 | 仅UP1，编码值执行Set，普通键实际仍调用**KeyDown(bits,true)**，不是Canvas.KeyUp；不能按组件名改写原调用。 |
+| 8 MAINMENU；1023D340–D522 | 先正序找首个formID4且SubForm.type3的原主菜单；仅ENTER2／UP1处理。无组件9时Set当时顶页，UP再发固定确认；有9时比较原主菜单当前类型值与value低16位的**无符号**值，相同即停，不同先请求Pop当前顶页，再向原主菜单写有符号short值及扩展项，不发键。Pop返回值未检查，handler本身没有重新核解锁。 |
+| 16 UNMARKER；1023D6C0–D80F | DOWN先清marker钟，依次检查12／14／15的同轮DOWN；无时再查有效marker key的DOWN，全无清标记。旧key为−1时仍查三种滚条，全无后也调用ClearMarker（1023D743→D7EF／D805）。UP仅有效key时按同样顺序查UP，全无清；DRAG7仅查该key的DRAG，无则清。其他事件无动作，不Set、不发键。 |
+| 19 TRACKBAR；1023CDCB–CE18／1023D670–D6B9 | 仅CELL_DRAG9，将完整component.value传Set的type参数、e.dx传值；Set内部才掩type的高16位。dx不按short拆分、不在本分支夹限或换算屏幕坐标。主写后仍执行扩展项。 |
+| 22 OVER；1023CE19–CE3A／1023D540–D564 | 仅ON13执行Set(component.value,component)，不是ENTER2，也不产生确认或直接改颜色。本批未定位正常注册来源，不由无命中宣称不可达。 |
+| 24 RECT；1023CE3B–CE86／1023D570–D5BD | ENTER2／UP1先Set，只有UP随后KeyClick(0x100000)。没有DLGSEL的marker二次确认资格；RECT是组件身份，不是画矩形请求。 |
+
+普通键先看TouchOption.keys：非空时只取首key，0与0xffffffff均保留；无首项才用`1u<<(value&31)`。编码值分支先于自定义key，不能让keys覆盖Set。`Set(int,component)`在1023DD92–DDBD将高16位作为type、低16位按有符号short作为value；主type为0时略过主写。`Set(accessor,type,value,component)`在1023DE94再掩主type，1023DEB8–DFBE随后按扩展数组原序逐项拆分并写传入的同一accessor；普通Set取当时顶页，8有9的分支则用已绑定主菜单。扩展type0仍调用，重复项不合并。原Set先写主项再读／写扩展项，后继异常不回滚主项，不具备唯一Owner的维护事务保证。
+
+19的正常注册已有raw12音量轨道来源，非日文DrawConfig_en在10306B76注册ID19，参数见下文设置皮肤表。24的条件来源为TitleForm._draw的1020EC2C／1020EE70：`AddTouch(g,24,0,y,240,63,0xD0000,opt)`，opt左右Margin−15、上下0；它受平台／TRIAL／ADMOB及广告点击次数等资格控制，不证明当前Steam运行配置会显示。标题state0的该广告UP在1020BA02–BC55先被专用hook截获：更新点击次数、尝试SaveSystem、按平台／语言请求OpenBrowser，最后返回false，**不再进入通用RECT确认**。不能把这条注册证据推广成Steam所有页面的可达广告或公共确认路径。
+
+8的`DrawMenu2`来源在10308917–10308980先核顶页raw3；自身也是raw3时，10308B6F–B99登记组件8、`value=0x20000|行索引`及高28的行热区。raw3被覆盖时不登记8，其他菜单登记9；解锁和目录资格在上游。本handler有9分支用Pop前找到的原主菜单accessor，不能替换为Pop后重新取得的顶页，也不能从未检查的Pop bool推成功。无9分支才走通用Set的当时顶页。
+
+16的自动注册在`EndTouchRegist`的1023B237–B39A：发现组件的有效`Check(16)`（flags与denyFlag共同决定）才在1023B923–B983登记贯穿FLAG_THROUGH1的ID16/value0，全游戏逻辑区域`(0,0,GetGameWidth,GetGameHeight)`。marker key−1是无标记；`ClearMarker` RVA23A3C0只写key−1与钟0，构造10240FD1–FE5同初值，`OnKeyDown` RVA23C550无条件清标记。EndTouch尾1088ECD0仅关闭regist标记，不能把它写成所有组件对象已退休；命中、显示及完整平台生命周期仍分别认证。
+
+[标准C++纯请求接口](../prototype/include/dungeon_village_prototype/steam_touch_commands.hpp)的`steam_touch_commands`表达4／5／6／7／19／20／21／22／24已准入叶分支，输出有序键与值写请求；8／16分别由`steam_touch_main_menu`／`steam_touch_unmarker`表达，通用入口仍拒绝这两类。接口不执行Canvas或页面业务。未核准入拒绝，已截获返回空计划；实际消费的扩展项、8实际扫描项各最多4096是维护预算，非原版上限，已短路的未消费项不校验。8用显式稳定身份绑定原主菜单及顶页，Pop空目标仍只保留原调用意图；缺必需观测、无父却需要读父属性或空accessor写入明确拒绝，不模拟原异常副作用。
+
+8／16的probes是本轮**已消费观测**的顺序轨迹，不能照它再查询一次；16的DOWN观测时点在原frame归0之后。命令与观测各自保序，不冒充跨两向量的完整执行trace。维护Owner的联合提交仍由消费者实现，本模块不改Owner、持久布局、随机或声音，也不接OS命中、全表单栈和原物理输入。现有公共皮肤套件的事件／顺序／短路／拒绝及预算短验通过，实际结果查[验证入口](../VERIFICATION.md)。
 
 ## 游戏设置与标题平台按钮
 

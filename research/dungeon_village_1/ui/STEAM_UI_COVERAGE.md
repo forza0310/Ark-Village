@@ -110,14 +110,14 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 68 | CHARA_EQUIP_EFFECT | 人物／成长／礼物 | 静态及维护：冻结装备槽／新ID、当前与差额动画、有序计划与真实消费参考已交付；完整原动态另验，见[人物合同](STEAM_HUMAN_DETAIL.md) |
 | 69 | CHARA_ITEM_EFFECT | 人物／成长／礼物 | 静态及维护：普通道具结果、冻结前值、当前能力动画与实际消费参考已交付；完整原动态另验，见[人物合同](STEAM_HUMAN_DETAIL.md) |
 | 70 | CHARA_LVMAX | 人物／成长／礼物 | [大师合同](STEAM_HUMAN_DETAIL.md#职业大师70与人物奖励后继)：三段原序皮肤、双钟、同轮Owner输入／严格恢复与窗口已接；Steam软标签0/0，APK取消合同不扩成Steam Esc，原字体／成就旁支与动态另验 |
-| 71 | EQUIP_INFO | 装备详情 | 仅声明；更新／绘制／动态链待逐项 |
+| 71 | EQUIP_INFO | 装备详情 | [当前装备X、共享更新及单件／多项绘制已核](STEAM_HUMAN_DETAIL.md#71当前装备入口的静态补核)，不是72单项商品别名；正常产生者／原动态未证，不新增菜单或将73维护入口改签 |
 | 72 | EQUIP_INFO_FROM_TENANT | 装备详情 | 静态及维护：单项装备说明、原1/1／双箭头和79真实父绑定已接；原动态另验，见[商品合同](../rules/COMMERCE.md) |
 | 73 | EQUIP_INFO_FROM_PRESENT | 装备详情 | 静态及维护：只读装备信息、资源／数值与赠礼目录返回已交付；原字体／OS另验，见[人物合同](STEAM_HUMAN_DETAIL.md) |
 | 74 | TENANT_INFO | 设施 | 静态：[普通两页／特殊布局与交接](STEAM_FACILITY_DETAIL.md)及GameView即时滚动条已核；维护普通实例／85定义预览、装备店与植物计划／窗口已接，入住人数模板／严格资格查询与现80交接已接并短验。住宅模板文字／帧及共享副作用已局部核，三个已核正常producer未产生有效住宅74，维护不造入口或演员请求；不等于全程序不可达。动态：S043/S047/S054及[S069–S071](../references/README.md#steam普通设施两页2026-10-11)补两行来源、鼠标翻页／选择／返回；空／长列表、OS拖动及键输入消费仍未闭合，HTML视觉未验 |
 | 75 | TENANT_ITEMSELECT | 设施 | 静态及维护：五行道具／marker16、Owner首行与整轮输入／恢复已交付；S044/S046/S055仅局部动态，见[页面合同](PAGES.md) |
 | 76 | TENANT_ANIME1 | 设施 | 静态及维护：投物、共享J／价格刷新、49自动转页与正式皮肤已接；38声音为Owner一次请求适配，原连续演出另验，见[效果合同](../rules/FACILITY_EFFECTS.md) |
 | 77 | TENANT_ANIME2 | 设施 | 静态及维护：49快进／55关闭、前后数字与角色资源计划已接；S045仅结果局部，完整OS动态另验，见[效果合同](../rules/FACILITY_EFFECTS.md) |
-| 78 | TENANT_SERVICE | 设施 | 仅声明；更新／绘制／动态链待逐项 |
+| 78 | TENANT_SERVICE | 设施 | 所核Steam Init2／Update2均无专支，分别1030E75D→10312333、10317CDD→10320A48直接true，未走soft2关闭；Draw分派跳过78，最终1034C7A6–AC返回，无专属窗口／Touch。APK局部同无显式分支；直接构造调用中未核正常产生者，不据此推全局不可达或补造服务页 |
 | 79 | TENANT_EQUIPLIST | 设施 | 静态及维护：四行两页／NEW、商品信息72与真实Owner整轮输入已交付；确认清标记不购买，原动态另验，见[商品合同](../rules/COMMERCE.md) |
 | 80 | TENANT_RESIDENT_LIST | 设施 | [合同与皮肤](PAGES.md#steam住宅候选80与授勋目录87)、Owner游标及应用／窗口输入已接，保留四行更新／五行绘制及marker16；真实募集producer、取消恢复和退休短验，原OS动态未认证 |
 | 81 | TENANT_LVUP_ANIME | 设施 | 静态：[Init真正升级、40／55确认、独立frame2及完整局部Draw](STEAM_FACILITY_UPGRADE.md)已核；维护：Owner与数字动画／角色／框及触摸计划已接。动态：无连续原窗口认证；原字体、平台热区仍独立 |

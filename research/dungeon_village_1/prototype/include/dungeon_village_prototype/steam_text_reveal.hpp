@@ -64,4 +64,26 @@ std::optional<SteamTextPlainBudgetPlan> steam_text_plain_draw_budget(const Steam
 // 普通块StringWidth不查blink/视口；请求前缀或整串的真实Font.StringWidth。
 std::optional<SteamTextPlainBudgetPlan> steam_text_plain_width_budget(
     std::int32_t budget,std::int32_t utf16_length);
+
+// 已排块的真实投影。null文字不能伪装成空串；由上游拒绝null块本体。
+// 特殊块也提供实际text.Length，本组高度查询不按pic/btn旗标改为长度1。
+struct SteamTextBlockMetrics {
+    std::optional<std::int32_t> utf16_length{};
+    float y{};
+    std::optional<std::int32_t> font_used_size{};
+};
+// GetHeight取非空块float32最大高度，末尾加0.9F再截零；不读渐显/钟/间距。
+// 实际消费的y有限且|y|<=65536，字号0..65536；空文字不读取这两项。
+std::optional<std::int32_t> steam_text_content_height(const std::vector<SteamTextBlockMetrics> &);
+// GetNextHeight有自己的signed32墙钟差/乘法，不复用Frame的int64位置或offset。
+// begin为0时取两次墙钟，局部减50且不写回；按完整块长度扣预算，逐块截整高度。
+// 输入及source失败规则沿上文；未遍历块不校验，不读取TotalFrames/共同门槛。
+std::optional<std::int32_t> steam_text_next_height(const SteamTextRevealState &,
+    const std::vector<SteamTextBlockMetrics> &,SteamTextRevealSource &);
+struct SteamTextLineHeightFallback {}; // 空块目录须走真实Font复制/本地化/缩放，不能补0。
+using SteamTextLineHeight=std::variant<std::int32_t,SteamTextLineHeightFallback>;
+// 非空目录只取首块实际字号，不读该块文字/y或取其余块最大值。
+std::optional<SteamTextLineHeight> steam_text_line_height(const std::vector<SteamTextBlockMetrics> &);
+// 传实际GetLineHeight结果，保持原int32加法；不代替上述fallback执行。
+std::int32_t steam_text_line_step(std::int32_t observed_line_height,std::int32_t line_space);
 } // namespace dungeon_village_prototype

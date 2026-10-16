@@ -182,6 +182,24 @@ Init的默认speed1000不经过SetSpeed的非JP换算，其再Init与空SetText�
 
 SDK时钟精度与跨线程可见性未验；raw0可消费真实Frame后的IsEnd结果，但尚未安装逐字／分段Owner和精确恢复，未新增持久布局或像素认证。Draw重排／draw钟、原字体／字形及失效块对象异常也不由数值DTO替代。
 
+### 内容高度、下一高度与行高并非同一查询
+
+固定Steam的GetHeight RVA7CAE80、GetNextHeight RVA7CB130、GetLineHeight RVA7CAF40、GetLineStep RVA7CB110各自独立顺序核对；不能把“当前渐显位置对应高度”统一实现成Frame后求全块最大值。
+
+| 查询 | 实际来源及次序 |
+| --- | --- |
+| GetHeight | 遍历全部块，空文字不读Font；非空块取`float32(y+Font.usedSize)`，以float32最大值累积且初值0，末尾加**0.9F**再向零截int32（107CAF16–F24，常量VA10DDE558）。不读pos／钟／blink／视口或加lineSpace，不是ceil、四舍五入或+0.5 |
+| GetNextHeight | beginTime恰0才另取墙钟、局部减50，随后再取墙钟；非0只取一次。仅用墙钟与begin的**低32位**做回卷差，再与speed按int32回卷相乘／signed除50，先负数归0，再向下覆盖为wrap32(length×1000)，最后signed除1000作预算。未读timeOffset／TotalFrames／共同门槛，也不写begin、pos或动画钟（107CB13C–1B5） |
+| GetNextHeight遍历 | 正预算才访问下一块，先按该块**完整text.Length**扣预算；空文字不读Font、不增高。只显出首单元也用整个非空块的`float32(y+usedSize)`；严格大于float32旧整数高度才立刻向零截整，整数高度初值0，不加0.9（107CB1C3–25F）。pic／btn旗标此处完全未读，不复用它们渐显逻辑长度1 |
+| GetLineHeight | 非空块数组只取**首块**实际Font.usedSize，不读其文字／y，不取其它块最大值；空目录走下述真实Font临时操作（107CAF64–F96） |
+| GetLineStep | 先执行真实GetLineHeight，再按int32回卷加本布局lineSpace（107CB11A–122），不取GetHeight或自动补段间距 |
+
+GetNextHeight的本地零begin并不初始化对象；重复查询仍会重新取两次墙钟，不能偷用先前Frame的pos或offset。其完整长度扣预算与GetHeight过滤实际text的资格都由StringEx.Length RVA6E9470交叉，null字符串走原空引用错误，不当空串；null数组／块也不是合法空目录。原float比较在NaN时跳过高度更新，超int32转换走原硬件语义；维护数值接口限实际消费的y有限且绝对值≤65536、Font字号0..65536，不用C++未定义cast模拟异常域，也不把该限制说成原版有相同校验。
+
+空目录GetLineHeight先复制布局Font并保存adjustFontSize旧布尔。若旧false且multiLine为真，以`clone.usedSize*100/requestFontScale`再`*100/requestFontScale`（每次int32回卷乘法及signed除法）调用SetSize并临时置adjust=true（107CAFC3–CB00C）；localizeFontEnable为false时PushLocalizeSetting(false)。随后按真实IsNeedLocalizeScale决定GetLocalizeScale→SetSize(...,true)和额外Push(false)，再AdjustFontSize(scaleRatio)，读最终usedSize，正常尾配对Pop并恢复adjust旧值（107CB010–0F1）。这不是默认0／12或恒定只读getter；未证明所有异常都恢复临时Font／设置栈，真实字体解析仍交既有后端。
+
+现[同一数值模块](../prototype/include/dungeon_village_prototype/steam_text_reveal.hpp)提供content_height、next_height及line_height／line_step；块来自真实已排投影，缺文字、非空块缺字号及被访问的坏数值明确拒绝；未访问尾块和空串未用字号不作额外校验。next_height按源序读取显式Source墙钟，不执行Frame或改输入；line_height空目录交typed fallback请求，调用方须完成上述真实解析后才能给line_step供值，不能把请求当成功高度。它们不提供完整排块、字形或新增Owner／codec。
+
 ### 实例Draw重排与报纸分页
 
 实例`Draw` RVA7C9AC0在107C9D0D–9D24比较`Graphics.scale_`（+38）与布局`scaleRatio_`（+64）；不相等或无序时，先写入当前Graphics比例，再调用`_makeTextBlocks`重排。正常尾107CA11D–A128还将布局`draw_`（+5C）递增至INT_MAX后保持，内嵌图标的默认动画可读取该计数。因此已Flush的实例Draw仍有布局／表现状态副作用，不能当成完全冻结的只读查询。
@@ -192,11 +210,11 @@ raw15的`pagesNum_`在MakeNews的10315980–15A22按当时实测高度、行距�
 
 ### 普通宽溢出、显式换行与块提交
 
-`_makeTextBlocks`的107CE90A–CEA40、107CEE44–CF250补齐普通行提交主干；以下自动断行结论限定在未被后述组合探测／整词前瞻改写的路径，不认证完整语言排版。设当前行累计宽L、布局宽W、本字符增量D：新块用工作Font.StringWidthF测当前字符；已有块用`StringWidthF(块当前文字+字符)−块已测宽`，保留float32差值（107CE948–E9DA），不能将每个字独立测宽再相加。自动断行条件为W不等于精确−1、非组合续体、`L+D>W`且multiLine_为真；等宽不换行，也没有epsilon或最小行宽修正。format_为真且溢出字符是U+3001／U+3002时另将D置0而不在该处置断行标志（107CEA18–3A）；当轮跳过普通追加，最终是否进入块字符串由下述源范围重建决定，不据此认证完整标点悬挂算法。
+`_makeTextBlocks`的107CE90A–CEA40、107CEE44–CF250补齐普通行提交主干；以下自动断行结论限定在未被后述组合探测／整词前瞻改写的路径，不认证完整语言排版。**初始行高H来自布局原Font.usedSize**（107CDB9D–BB6），不是复制／设比例后的工作Font；换行后才重置为当前工作Font.usedSize。设当前行累计宽L、布局宽W、本字符增量D：新块用工作Font.StringWidthF测当前字符；已有块用`StringWidthF(块当前文字+字符)−块已测宽`，保留float32差值（107CE948–E9DA），不能将每个字独立测宽再相加。自动断行条件为W不等于精确−1、非组合续体、`L+D>W`且multiLine_为真；等宽不换行，也没有epsilon或最小行宽修正。format_为真且溢出字符是U+3001／U+3002时另将D置0而不在该处置断行标志（107CEA18–3A）；当轮跳过普通追加，最终是否进入块字符串由下述源范围重建决定，不据此认证完整标点悬挂算法。
 
 LF（U+000A）独立置断行标志，不要求multiLine_为真，也不受W=−1豁免；精确`<br>`已在扫描前换成LF。CR（U+000D）不走LF分支，本步不测增量宽，同样交下述源范围规则。发生断行时，107CEE44–EF9E先为当前待排块写旧行坐标，随后清L、把待排起点置当前块数，通常令Y增加`H+lineSpace_`，将下一行高重置为当前工作Font.usedSize并请求新块；ff另沿后节已核路径。**当前溢出字符在旧行提交之后才进入新块**，并按新块重新测宽，不回退源游标或循环重试fit。因此超宽首字符也可能先推进一个空行，再保留超宽字符；连续LF可各推进一行，但没有为LF创建可见字符块。非日式布局的溢出ASCII空格另在107CEE0B–2D把本次增量置0，不能统一成所有行首空格自动裁掉。
 
-普通块只在需要新块且本次D>0、组合续体或pic／btn资格成立时创建（107CF0A0–138）；普通字符追加另检查D>0或组合续体。识别到的样式标签只改变工作状态／请求新块，本身不作为普通字符宽；pic／btn沿各自已核布局宽进入同一溢出与行提交主干，之后作为独立特殊块。循环终点仅在仍有待排块时再收末行并计其H，否则沿已有Y，不无条件补尾部空块／空行（107CF381–4D4）。进入本方法时实例text_长度0，则在107CD918→107CF7EB建立空textBlocks数组并返回，尚未到107CDBAD的textWidth_=0；这与非空原串后来被翻译为空的路径不同。
+普通块只在需要新块且本次D>0、组合续体或pic／btn资格成立时创建（107CF0A0–138）；普通字符追加另检查D>0或组合续体。接受字符时107CF171–1C0会再次真实测量`块当前文字+字符`并减旧块宽，不能沿用断行前增量；每次接受后再按新行宽更新最大缓存宽（107CF223–24B）。换行中心对齐还须读取该字符开始时保存的旧行宽，不能替换为后续新行变量。识别到的样式标签只改变工作状态／请求新块，本身不作为普通字符宽；pic／btn沿各自已核布局宽进入同一溢出与行提交主干，之后作为独立特殊块。循环终点仅在仍有待排块时再收末行并计其H，否则沿已有Y，不无条件补尾部空块／空行（107CF381–4D4）。进入本方法时实例text_长度0，则在107CD918→107CF7EB建立空textBlocks数组并返回，尚未到107CDBAD的textWidth_=0；这与非空原串后来被翻译为空的路径不同。
 
 空串上游由两个SetText入口闭合：公开RVA7CC170先将null转换为空literal，再调用TextLayout.Replace(text,null)，计算hash后交私有RVA7CC200。后者先TranslateConsoleText及特定标记处理，在107CC4A6–4D7安装text／hash、清pos／beginTime／timeOffset；107CC546才调用_makeTextBlocks，未调用Init，也未清textWidth。以下结论限定于该次装入的text_确为空且调用正常完成，不假定运行替换表／平台文案转换必保持所有输入不变，也不将私有null载荷当合法空串。
 
@@ -229,7 +247,7 @@ Init RVA7CB430是另一组赋值：重建Font，text设空、清渐显时间／�
 
 位置参数使用原字符串，不使用已尝试解析的整数。107CE67D–E71E按固定顺序分别`IndexOf(char)`查ASCII小写`l/c/r`与`t/m/b`：有l写横值1，有c覆盖为2，有r再覆盖为4；纵值同理为16／32／64。选择按消费者扫描顺序而非参数出现顺序，因此同串含l/c/r最终r胜出，含t/m/b最终b胜出；某轴没有这些字符则保留该轴旧值，没有小写转换或“必须恰一个字符”的局部校验。初始两轴在107CDB49–57取布局`anchor_&7`／`anchor_&0x70`。TAG没有`</po>`项，不能新增嵌套位置栈；107CE721–E736将当前累计纵坐标清0并请求新块，未同时清当前行宽／待排块起点，不能直接实现成普通换行或新独立文本框。
 
-扫描结束时，仅对仍未排坐标的末行块执行107CF381–F4C9的收尾。设该行已测宽L、当前行高H、累计纵位置Y、布局宽W：横值2取中心，W≠−1时按原float32顺序`W*0.5−L*0.5`，W=−1时`−L*0.5`；横值4取W−L或W=−1时−L；其它值起点0（107CF390–F41A）。按原块序写`block.x_`，每块后加其已测`width_`，不用单字宽重建。每块`y_=Y+trunc_toward_zero((H−block.font.usedSize_)/2)`，整数半高补偿先算再转float（107CF47D–F4B5）；末行存在时最终内容高T=Y+H，没有待排块时T=Y。前段行提交资格见“普通宽溢出、显式换行与块提交”，此处也不以字体请求字号代替块usedSize。
+扫描结束时，仅对仍未排坐标的末行块执行107CF381–F4C9的收尾。设该行已测宽L、当前行高H、累计纵位置Y、布局宽W：横值2取中心，W≠−1时按原float32顺序`W*0.5−L*0.5`，W=−1时`−L*0.5`；横值4取W−L或W=−1时−L；其它值起点0（107CF390–F41A）。按原块序写`block.x_`，每块后加其已测`width_`，不用单字宽重建。每块`y_=Y+trunc_toward_zero(wrap32(H−block.font.usedSize_)/2)`，整数半高补偿先算再转float（107CF47D–F4B5）；末行存在时最终内容高T=Y+H，没有待排块时T=Y。前段行提交资格见“普通宽溢出、显式换行与块提交”，此处也不以字体请求字号代替块usedSize。
 
 随后对**全部块**应用当前纵对齐值（107CF4D4–F564、107CF6AF–F6B9）：设布局高A，纵值32取`(A−T)*0.5`，A=−1时`−T*0.5`；纵值64取A−T，A=−1时−T；其它值偏移0。A≠−1且所得偏移<0时改为0，A=−1则保留负偏移。`−1`是精确float32未定尺寸哨兵（常量VA10E27A90），0.5来自10DDE528；不能把“高度不够仍从顶部开始”误写成缩小字体或裁掉前块。末次po的纵值参与这次全块偏移，不是每块冻结一份纵锚；block绘制还会加调用者dx/dy，不能在计划和窗口转换里重复居中。
 
@@ -245,7 +263,7 @@ APK `aa.f()`同样依次查l/c/r与t/m/b、缺轴保留、清纵累计，末行�
 
 `<ff>`在107CE1E9–E1F7只置一个局部待行收尾标志true并请求新块，未直接写LF、改布局字号／速度、清纵坐标或立即调用Flush；TAG也无`</ff>`。该标志的唯一实际消费在107CEF9E–CF092的行收尾：标志为false或布局autoScale_（+60）为true时仍普通`Y += H+lineSpace`；标志true且autoScale=false时进入下面的对齐路径，最后同样清标志（107CF092）。扫描结束的末行收尾没有该检查，不能把孤立末尾ff无条件解释成一次分页。
 
-设该次行收尾前累计纵坐标Y、该行整数高H、整数行距S、布局高A；仅在原算术有定义的输入域，令`C=int32(H+S)`、`N=trunc_toward_zero(float32(float32(A+S)/float32(C)))`。107CEFC9–CF016先算N，再算`trunc_toward_zero(float32(Y/C+0.1f))%N`；余数非0则按C逐次增加Y，直到该式余数0（107CF01A–F045）。随后先减C再加C（107CF047–F062），因此保留刚对齐的Y；已在边界时可保持原Y，不是严格跳到下一个边界。`0.1f`的原常量10DDE550位型3DCCCCCD。该分支未见C／N非0或A有效高度检查，C=0、N=0等可能走原数值异常；不能自行夹为1、将未定A=−1转成固定页高或宣称原标签安全分页。整数和float32阶段仍分别执行，不合成一次高精度ceil公式。
+设该次行收尾前累计纵坐标Y、该行整数高H、整数行距S、布局高A；仅在原算术有定义的输入域，令`C=int32(H+S)`、`N=trunc_toward_zero(float32(float32(A+S)/float32(C)))`。107CEFC9–CF016先算N，再算`trunc_toward_zero(float32(Y/C+0.1f))%N`；余数非0则按C逐次增加Y，直到该式余数0（107CF01A–F045）。随后依次以float32执行Y减C、再加C（107CF047–F062），不能以数学抵消删除这两次舍入；已在边界时不必循环推进，但尾部两步也不保证逐位保留Y，不是严格跳到下一个边界。`0.1f`的原常量10DDE550位型3DCCCCCD。该分支未见C／N非0或A有效高度检查，C=0、N=0等可能走原数值异常；不能自行夹为1、将未定A=−1转成固定页高或宣称原标签安全分页。整数和float32阶段仍分别执行，不合成一次高精度ceil公式。
 
 上述ff消费前节已核的行提交及源范围重建；全部语言禁则与最终字形仍未认证。APK既有`aa/ab`普通绘制及TAG不消费bo/ff，本批不据其缺项断言所有Android版本均不支持。pic／btn消费者及图标注册有限排查见后节；具体运行注册绑定及实际中文字体仍保留。本轮只读源，无游戏操作、代码、素材或临时磁盘产物。
 
@@ -264,6 +282,8 @@ APK `aa.f()`同样依次查l/c/r与t/m/b、缺轴保留、清纵累计，末行�
 没有可用动态图像时走原SEB回退（10806190–62E8）：默认`Kairolib.resource.seb[13]`（BUTTONS_SWITCH）；`GetInputType` RVA7B7BD0返回PS4=5或PS5=13时取seb19，SteamController=1、Xbox360=2或XboxOne=3时取seb29，其余保留seb13。最终交`Seb.Draw_layer` RVA7BF810，仍使用重映射后的frame与layer。动态图像宽高均大于0时则按较长边缩到60、保持长宽比并居中，交`Graphics.DrawScaledImage` RVA7641B0；未处于局部矩阵时居中偏移先向零截断再加整数坐标，存在局部矩阵时另PushTranslate并于正常收尾Pop（108062F8–6435）。特殊frame7在USE_STEAM链且HasController=false时于10805FB0–10806002调用GetMouseButtonImage(1)，目标最大边改为75（常量10E27EB4），有控制器则在10806007–10806025取SoftR动态图并沿60。GetMouseButtonImage（RVA7B7C90）实际不读取button实参：通过get_RightClick（RVA807250）取kairolib SEB27的frame0／line0，按其图片索引31返回整张`right_click.png`（128×128），不是裁SEB后再缩放；其后75分支沿同一长宽比／矩阵处理。该PNG／SEB已在全量索引登记；现仅出版实际消费的整张PNG，不复制无人消费的SEB，也不替代为后备RB图。
 
 三套后备原PNG／SEB现已出版到[steam-platform](../assets/steam-platform)，资源槽分别为Switch SEB13／image15、PS4／PS5 SEB19／image22、Xbox／SteamController SEB29／image33。每SEB一层44帧44记录，每PNG512×512；各帧按原SEB取裁片／偏移，尤其Xbox帧0／1的裁片X与另两套相反，不能共用同一张图。六文件原字节身份复用[全量索引](../assets/IMAGE_COVERAGE.json)，不新建指纹清单。
+
+实际游戏文字也有具名生产者：ControllerForm.Draw RVA7E0670在107E0849取槽110EB4B8，独立metadata解码为literal1161（268字节），按原序含`<btn=10>`、`<btn=16,1>`、`<btn=29,0>`、`<btn=3>`、`<btn=0>`、`<btn=10>`。107E0888先TranslateText，107E0916再交TextLayout.Draw，接本节TAG12／实际平台glyph及后备链；翻译后的实际文本和设备图仍由各自真实消费者决定，不能直接固定成这段原文字或某一种手柄。现39店铺及61装备空项的`<btn=0,0>`生产者也已分别核到1033A229／1033ED84。这些是实际调用闭包，不仅是库中存在btn解析器；本批没有运行控制器窗口或执行平台绑定。
 
 [后备选择接口](../prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)`steam_controller_button_fallback`接显式input_type、frame／layer、auto_key_reverse及实际被消费的OK／Cancel映射，按上述次序返回资源和最终帧／层；不发现设备、不请求Steam、不推进时钟或写Owner。未消费的可选映射不校验，已出版帧0..43是维护预算，坏请求明确拒绝。调用者必须先走源动态图像优先分支；Steam无控制器的frame7鼠标图不能直接替换成此后备。[同模块](../prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)的`steam_button_image_layout`接已分流的有效Image尺寸、整数锚及localMatrix资格，返回Draw锚、float32目的尺寸及独立Translate请求；普通／右键最大边分别为60／75。无矩阵的负半尺寸先向零截断再加锚；已有矩阵保留浮点TranslateTemporary→PushMatrix并用原锚Draw，两支均在Draw后重查实际矩阵才决定Pop（108063F1–10806454）。128方右键图在锚(20,51)无矩阵时画于(-17,14)、尺寸75×75；有矩阵时仍画于(20,51)，独立平移(-37.5,-37.5)。接口不合并外层矩阵、不调用SDK、不声称后端最终像素；尺寸1..65536与锚±65536只是维护预算。原右键图由`steam_right_click_image_path`提供，宽高取真实Image。字体的外层矩阵、当前设备glyph、输入映射及共享状态仍独立，[原裁片示例](examples/steam-controller-buttons.png)不是原游戏窗口或当前按键绑定证据。
 
@@ -290,6 +310,8 @@ Draw在107DA945–DAA8A取注册Frame／Wait／X／Y，再按非空参数1／2�
 固定样本的`.text`与`il2cpp`两可执行节中，未找到以`E8 rel32`直接调用或以`E9 rel32`直接跳转至`AddPictograph` RVA7C96C0的引用；同范围内Pictograph构造RVA7ADC10的唯一这类调用是Add内部VA107C9787。作为指令边界对照，GetPictograph确有四处直接调用：Add内部107C9727、布局107CE44B、块绘制107DA934、块测宽107DB29E，均可从对应具名方法入口解码抵达。因此已核布局／绘制消费者不能反推为游戏已注册具体图标。
 
 DLL中Add入口绝对VA的唯一四字节匹配在`.data`的1112D608；邻项依次对应SetTextCheckSize、SetRenderRectVisible、GetRenderRectVisible、Add／Get／Remove／ClearPictographs及SetPictographVisible，呈方法指针表排列，**不是具名游戏注册调用证据**。metadata全部11013条字符串literal中，含精确`<pic=`的只有前缀`<pic=`与模板`<pic=>`，没有可直接绑定SEB的具体key实例；这不覆盖外部本地化文本、运行时拼串或资源注入。当前仍无已证游戏调用者／key→SEB绑定，不凭素材名称补注册表，也不据上述有限扫描排除间接／虚调用、反射、Unity或原生注入，更不宣称运行时字典必为空。后继应从实际具名生产者或注册证据继续，不重复扫描helper绘制。
+
+2026-10-16续核AddPictograph的metadata身份为MethodDef9156／TypeDef1020、九参数，未在固定DLL取得对应MethodInfo使用槽。另按现全量索引只读解包18个Unity文本归档、61个文本条目，未取得具体`<pic=`实例；实际存在btn的英语正文及多语言CSV，具名ControllerForm正常消费者已列前节。该有限资源范围仍不排除其它动态／外部注册，故pic保留“库消费者已核、游戏注册未证”，不补空成功绑定或把它与已核btn生产者混为同一缺口。
 
 ## 启动宿主的直接翻译表供给
 

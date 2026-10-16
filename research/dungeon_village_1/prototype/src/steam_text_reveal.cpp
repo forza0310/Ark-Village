@@ -20,6 +20,14 @@ std::int64_t signed64(std::uint64_t bits) {
 std::int32_t length_units(std::int32_t length) {
     return signed32(static_cast<std::uint32_t>(length)*1000U);
 }
+float rounded(float x) {volatile float value=x;return value;}
+bool valid_height_block(const SteamTextBlockMetrics &b) {
+    return std::isfinite(b.y)&&std::abs(b.y)<=65536.0f&&b.font_used_size&&
+        *b.font_used_size>=0&&*b.font_used_size<=65536;
+}
+float block_height(const SteamTextBlockMetrics &b) {
+    return rounded(b.y+static_cast<float>(*b.font_used_size));
+}
 } // namespace
 
 SteamTextRevealFramePlan steam_text_reveal_frame(const SteamTextRevealState &in,
@@ -87,7 +95,6 @@ std::optional<SteamTextPlainBudgetPlan> steam_text_plain_draw_budget(const Steam
         if(!coordinate(in.box_height)||!coordinate(in.block_y)||!coordinate(in.dy)||
            !coordinate(in.box_y)||!in.font_used_size||*in.font_used_size<0||*in.font_used_size>65536)return {};
         // 对应源addss各自落回float32，保留边缘相接，不引入横向裁剪。
-        const auto rounded=[](float x) {volatile float value=x;return value;};
         const auto y=rounded(in.block_y+in.dy);
         if(in.box_y>rounded(y+static_cast<float>(*in.font_used_size))||
            y>rounded(in.box_y+in.box_height)) {
@@ -104,5 +111,50 @@ std::optional<SteamTextPlainBudgetPlan> steam_text_plain_width_budget(
     if(budget==0)plan.skip=SteamTextPlainSkip::zero_budget;
     else plan.text=SteamTextPlainRun{plan.consumed,budget<length};
     return plan;
+}
+// GetHeight 107CAE80–107CAF2B。维持float最大值到最后一次转换，不与NextHeight合并。
+std::optional<std::int32_t> steam_text_content_height(const std::vector<SteamTextBlockMetrics> &blocks) {
+    float height=0;
+    for(const auto &b:blocks) {
+        if(!b.utf16_length||*b.utf16_length<0)return {};
+        if(*b.utf16_length==0)continue;
+        if(!valid_height_block(b))return {};
+        const auto next=block_height(b);
+        if(next>height)height=next;
+    }
+    return static_cast<std::int32_t>(rounded(height+0.9f));
+}
+// GetNextHeight 107CB130–107CB268。读取墙钟仍有外部可见次序，getter不改渐显状态。
+std::optional<std::int32_t> steam_text_next_height(const SteamTextRevealState &s,
+        const std::vector<SteamTextBlockMetrics> &blocks,SteamTextRevealSource &source) {
+    auto begin=static_cast<std::uint32_t>(s.begin_time);
+    if(s.begin_time==0)begin=static_cast<std::uint32_t>(source.current_time_millis())-50U;
+    const auto delta=static_cast<std::uint32_t>(source.current_time_millis())-begin;
+    auto pos=signed32(delta*static_cast<std::uint32_t>(s.speed))/50;
+    if(pos<0)pos=0;
+    const auto limit=length_units(s.length);
+    if(pos>limit)pos=limit;
+    auto budget=pos/1000;
+    std::int32_t height=0;
+    for(const auto &b:blocks) {
+        if(budget<=0)break;
+        if(!b.utf16_length||*b.utf16_length<0)return {};
+        budget=signed32(static_cast<std::uint32_t>(budget)-static_cast<std::uint32_t>(*b.utf16_length));
+        if(*b.utf16_length==0)continue;
+        if(!valid_height_block(b))return {};
+        const auto next=block_height(b);
+        if(next>rounded(static_cast<float>(height)))height=static_cast<std::int32_t>(next);
+    }
+    return height;
+}
+// GetLineHeight非空分支107CAF64–CAF96；空目录的真实Font临时操作沿源合同另行执行。
+std::optional<SteamTextLineHeight> steam_text_line_height(const std::vector<SteamTextBlockMetrics> &blocks) {
+    if(blocks.empty())return SteamTextLineHeightFallback{};
+    const auto size=blocks.front().font_used_size;
+    if(!size||*size<0||*size>65536)return {};
+    return *size;
+}
+std::int32_t steam_text_line_step(std::int32_t height,std::int32_t spacing) {
+    return signed32(static_cast<std::uint32_t>(height)+static_cast<std::uint32_t>(spacing));
 }
 } // namespace dungeon_village_prototype

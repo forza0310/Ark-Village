@@ -306,6 +306,72 @@ void text_plain_budget(Checks &check) {
                   !steam_text_plain_width_budget(pair[0],pair[1]),
               "维护正常域拒绝负预算或负长度，不宣称与原版负数入口等价");
 }
+void text_height_queries(Checks &check) {
+    const auto nan=std::numeric_limits<float>::quiet_NaN();
+    const auto hi=std::numeric_limits<std::int32_t>::max();
+    const auto lo=std::numeric_limits<std::int32_t>::min();
+    const std::vector<SteamTextBlockMetrics> blocks{{0,nan,{}},{2,0.2F,10},{2,0.8F,10}};
+    const auto content=steam_text_content_height(blocks);
+    const auto rounding=steam_text_content_height({{1,0.2F,10}});
+    const auto not_ceil=steam_text_content_height({{1,0.05F,10}});
+    TextRevealSource all_visible({{'t',1200}});
+    const auto next=steam_text_next_height({10,0,1000,0,0,1000,0},blocks,all_visible);
+    check(content&&*content==11&&rounding&&*rounding==11&&not_ceil&&*not_ceil==10&&
+              next&&*next==10&&all_visible.done()&&
+              all_visible.trace()=="t",
+          "GetHeight保留float最大值后加0.9截整，NextHeight逐块截整不加0.9，空串不读取非法几何或字号");
+    const auto empty=steam_text_content_height({});
+    const auto below=steam_text_content_height({{1,-20.F,10}});
+    check(empty&&*empty==0&&below&&*below==0,
+          "内容高度从零起算，空目录及全在零以下的块不制造负高度");
+    const std::vector<SteamTextBlockMetrics> partial{{4,20.75F,7},{std::nullopt,nan,{}}};
+    const SteamTextRevealState initial{10,777,1000,999999,88,0,55};
+    TextRevealSource first_time({{'t',1000},{'t',1050}});
+    const auto partial_height=steam_text_next_height(initial,partial,first_time);
+    check(partial_height&&*partial_height==27&&first_time.done()&&first_time.trace()=="tt"&&
+              initial.begin_time==0&&initial.pos==777&&initial.time_offset==999999&&
+              initial.frame==88&&initial.last_app_frame==55,
+          "NextHeight首次仅局部墙钟减50并再读一次，半显块用整块高度且扣真实长度，不触碰后继坏块或写回渐显状态");
+    TextRevealSource established({{'t',1050}});
+    const auto existing=steam_text_next_height({10,-1,1000,hi,88,1000,55},partial,established);
+    check(existing&&*existing==27&&established.done()&&established.trace()=="t",
+          "非零begin只读一次墙钟，NextHeight不复用pos或timeOffset，也不读取应用帧和共同门槛");
+    struct TimeCase {std::int64_t now;std::int32_t speed;};
+    for(const auto c:std::array<TimeCase,2>{{{4294968296LL,1000},{1073742824LL,4}}}) {
+        TextRevealSource source({{'t',c.now}});
+        const auto p=steam_text_next_height({10,9999,c.speed,hi,0,1000,99},
+                                             {{std::nullopt,nan,{}}},source);
+        check(p&&*p==0&&source.done()&&source.trace()=="t",
+              "NextHeight时间低32差及乘速率各自回卷为零，不偷用Frame的int64积分或访问零预算坏块");
+    }
+    const std::array<SteamTextBlockMetrics,5> invalid{{
+        {std::nullopt,0.F,10},{-1,0.F,10},{1,0.F,std::nullopt},
+        {1,std::numeric_limits<float>::infinity(),10},{1,65537.F,10}}};
+    for(const auto &bad:invalid) {
+        TextRevealSource source({{'t',1050}});
+        check(!steam_text_content_height({bad})&&
+                  !steam_text_next_height({10,0,1000,0,0,1000,0},{bad},source)&&source.done(),
+              "实际读取的文字/字号缺失、负长度或非有限及超维护几何预算显式拒绝，不补空串或默认字号");
+    }
+    const auto excessive_font=steam_text_content_height({{1,0.F,65537}});
+    check(!excessive_font,"实际字号超维护预算拒绝，不冒充原机器异常值等价");
+    const auto line=steam_text_line_height({{std::nullopt,nan,12},{1,100.F,40}});
+    const auto fallback=steam_text_line_height({});
+    check(line&&std::holds_alternative<std::int32_t>(*line)&&std::get<std::int32_t>(*line)==12&&
+              fallback&&std::holds_alternative<SteamTextLineHeightFallback>(*fallback)&&
+              !steam_text_line_height({{0,0.F,std::nullopt}}),
+          "行高只取首块实际字号，不读其文字/y或后块最大值；空目录返回真实字体后继请求而非零");
+    check(steam_text_line_step(12,3)==15&&steam_text_line_step(hi,1)==lo&&
+              steam_text_line_step(lo,-1)==hi,
+          "行步长只加实际行高与行距，并显式保留signed32加法回卷");
+    TextRevealSource failing({{'t',1000},{'t',1050}},1);
+    bool threw=false;
+    try {(void)steam_text_next_height(initial,partial,failing);}
+    catch(const TextRevealReadFailure &) {threw=true;}
+    check(threw&&failing.trace()=="tt"&&initial.begin_time==0&&initial.pos==777&&
+              initial.time_offset==999999&&partial[0].utf16_length==4,
+          "NextHeight末次墙钟失败传播原异常，保留已读源前缀但不写输入状态或块");
+}
 void touch_arrow_effect(Checks &check) {
     // 从现公共DOWN计划取得真实id0请求；不重放KeyDown或把绘制当作Frame。
     SteamTouchCommandInput input;
@@ -2393,6 +2459,7 @@ int check_steam_startup_skin(const std::filesystem::path &root) {
     subform_update_prefix(check);
     text_reveal(check);
     text_plain_budget(check);
+    text_height_queries(check);
     font_metrics(check);
     touch_commands(check);
     touch_arrow_effect(check);

@@ -105,4 +105,79 @@ struct SteamTouchUnmarkerPlan {
 // DOWN先重置frame，再按12→14→15→旧key短路；UP只在有旧key时查同序；DRAG仅查旧key。
 // 已分发事件及实际surface查询由调用者提供；不模拟OS命中、组件注册或保存表现状态。
 std::optional<SteamTouchUnmarkerPlan> steam_touch_unmarker(const SteamTouchUnmarkerInput &input);
+
+// 列表与公共滚动的临时续体：后续读取依赖实际Set及扩展的结果，不能预填未来观测。
+struct SteamTouchFlowInput {
+    SteamTouchAdmission admission{SteamTouchAdmission::unverified};
+    int component{}, event_type{}; // 仅3/10/11及12/13/14/15。
+    std::int32_t value{}; // 原派发调用的v；不提前冻结事件对象的dy或组件ID。
+    // event_identity是维护方为本次事件分配的非0唯一标识，非原TouchEvent字段。
+    // binding指本叶入口实际e.component，使用期间的存活／身份由外层事务保证。
+    std::uint64_t event_identity{}, component_binding{};
+};
+enum class SteamTouchFlowOperation {
+    done, arguments, get_current, set_current, marker_flag, marker_key,
+    component_key, component_id, event_component_key, event_first_key, event_delta_y,
+    write_marker, click_key
+};
+struct SteamTouchFlowRequest {
+    SteamTouchFlowOperation operation{SteamTouchFlowOperation::done};
+    std::uint64_t event_identity{}, sequence{}, component_binding{};
+    std::uint32_t type{};
+    std::int32_t value{};
+    std::uint64_t key{};
+};
+struct SteamTouchFlowArguments { std::optional<std::vector<std::int32_t>> values; };
+struct SteamTouchFlowValue { std::int32_t value{}; };
+struct SteamTouchFlowFlag { bool enabled{}; };
+struct SteamTouchFlowKey { std::uint64_t bits{}; };
+struct SteamTouchFlowFirstKey { std::optional<std::uint32_t> bits; };
+struct SteamTouchFlowCompleted { bool success{}; }; // 整个请求真实完成才true，生成计划不算完成。
+using SteamTouchFlowResult=std::variant<SteamTouchFlowArguments,SteamTouchFlowValue,
+    SteamTouchFlowFlag,SteamTouchFlowKey,SteamTouchFlowFirstKey,SteamTouchFlowCompleted>;
+struct SteamTouchFlowReply {
+    std::uint64_t event_identity{}, sequence{};
+    SteamTouchFlowResult result;
+};
+class SteamTouchFlow {
+public:
+    static std::optional<SteamTouchFlow> begin(const SteamTouchFlowInput &input);
+    const SteamTouchFlowRequest &request() const noexcept { return request_; }
+    // 坏类型、错事件/序号、未完成请求及完成后回复拒绝且保留旧续体。
+    bool resume(const SteamTouchFlowReply &reply);
+private:
+    enum class Phase {
+        done, list_set, list_flag, list_marker, list_compare, list_replace,
+        list_write, list_first_key, list_click, arguments, bar_candidate,
+        bar_relative_dy, bar_absolute_dy, bar_compare, bar_delta, bar_write,
+        bar_selection, bar_component_id, finish_write,
+        button_dec_check, button_inc_check, button_dec_read, button_inc_read,
+        button_move_write, bottom_selection, bottom_first, bottom_read,
+        bottom_write, top_selection, top_first, top_read, top_write,
+        tail_positive, tail_fits, tail_read, tail_write
+    };
+    SteamTouchFlow()=default;
+    void emit(Phase phase,SteamTouchFlowOperation operation,std::int32_t type=0,
+              std::int32_t value=0,std::uint64_t key=0,std::uint64_t binding=0);
+    void get(Phase phase,std::int32_t type);
+    void set(Phase phase,std::int32_t type,std::int32_t value);
+    void done();
+    void bar_candidate(std::int32_t value);
+    bool consume(const SteamTouchFlowResult &result);
+    SteamTouchFlowInput input_;
+    SteamTouchFlowRequest request_;
+    Phase phase_{Phase::done};
+    std::int32_t count_{}, visible_{}, selection_type_{-1}, wanted_{}, delta_{}, selection_{};
+    std::uint64_t old_marker_{};
+};
+// get_current/set_current每次在消费时重新GetTopForm；type0的Get也调用真实getter。
+// 一次Set主项和所有扩展绑定本次accessor，含type0/重复项/原setter副作用，结束才回执。
+// 输入component_binding是本叶入口捕获对象，区别于顶页hook之前的派发组件；component_key/
+// marker_flag/component_id及arguments使用这个固定对象，但内容在请求到达时才读取。
+// event_component_key/event_first_key重新读取当时e.component；event_delta_y在该步读取e.dy。
+// 列表set_current绑定入口对象；滚动set_current的binding为0，消费时先重读e.component、
+// 再GetTopForm；不能把0当成空组件或提前省略其扩展。
+// 列表marker_key/write_marker指派发接收者实例，不凭静态ClearMarker猜成同一对象。
+// 调用方在私有Owner/表现候选的一次事件事务内完整消费，失败弃候选；不保存/跨轮悬挂。
+// 本类固定大小，每次只推进一个请求，不自动执行尾循环；原循环不保证终止。
 } // namespace dungeon_village_prototype

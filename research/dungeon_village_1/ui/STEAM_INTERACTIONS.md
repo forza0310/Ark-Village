@@ -75,23 +75,39 @@
 
 ### 列表确认与Canvas同步回调
 
-3／10／11共用`OnTouchDlgSel` RVA23C730及1023CA42内联：ENTER2／UP1都先Set，不先比较旧选择；仅UP继续检查实际有效marker16（flags与denyFlag共同决定）。无marker直接确认；有marker时比较完整64位组件key，不同只重新写标记key，相同才确认，没有双击时间窗。重标记两次读取事件组件GetKey，第一次比较、第二次写入，叶端没有直接清markerframe。`BitUtil.Join` RVA837CA0将ID的uint32位型放高字、完整value位型放低字，负value不污染高字；3／10／11的相同行值不是同一key。确认仍用custom首key或默认0x100000，纯按“相同行号”比较会丢失资格。此分支尚未接新的纯候选，不由静态合同冒称Owner已接。
+3／10／11共用`OnTouchDlgSel` RVA23C730及1023CA42内联：ENTER2／UP1都先Set，不先比较旧选择；仅UP继续检查实际有效marker16（flags与denyFlag共同决定）。无marker直接确认；有marker时比较完整64位组件key，不同只重新写标记key，相同才确认，没有双击时间窗。入口先缓存当时事件组件cEntry，Set及首次Check／GetKey使用这个对象，但内容到相应调用位置才读取（1023C745–C796）；不等时重新读事件组件并第二次GetKey后写marker，确认时也重新读事件组件再取keys（1023C7A7–C803），叶端没有直接清markerframe。`BitUtil.Join` RVA837CA0将ID的uint32位型放高字、完整value位型放低字，负value不污染高字；3／10／11的相同行值不是同一key。确认仍用custom首key或默认0x100000，纯按“相同行号”比较会丢失资格。现有分步接口见下节，原OS／Owner接线仍独立。
 
 `Canvas.KeyClick` RVA74EB20并非只入队：key为−1直接返回；其它值（包括0）先GetFocusKeypad、写脉冲与来源标志，再在管理器非空时同步调用SurfaceManagerBase.OnKeyDown RVA895840／OnKeyUp RVA895A20。OnKeyDown逆序通知surface虚槽17；已注册GameView的OnKeyDown RVA23C550无条件ClearMarker。因此该正常确认链在KeyClick返回前已使key−1／frame0，不能因列表叶函数没写Clear而称确认后保留marker，也不能另补一次清理当作原调用。−1不通知，是独立特例；当前基础OnKeyUp实现无虚槽通知。上述资格不推成所有自定义surface、焦点和OS实际投递都相同。
 
+marker key／frame为GameView实例字段+D0／+D8。静态ClearMarker经单例引用取得实例；列表消费者直接读写this。未核实例身份时不能把任意派发接收者与这个单例合成一个标记全局。
+
 ### 公共滚动与现设施helper的适用域
 
-12／14／15经1023CC8C调用`OnTouchVScrollBar` RVA23D810，13经1023CC73调用`OnTouchVScrollButton` RVA23D9D0。每次Get均重新取当时顶页并掩type高16位，不冻结整个handler的accessor；每次Set先主写再执行原component的全部扩展，同次扩展使用同一accessor。后续Get必须看到前次Set及扩展结果，不能按初始快照折叠多次写。
+12／14／15经1023CC8C调用`OnTouchVScrollBar` RVA23D810，13经1023CC73调用`OnTouchVScrollButton` RVA23D9D0。每次Get均重新取当时顶页并掩type高16位，不冻结整个handler的accessor；type0也调用实际getter（1023C190–C28A）。每次Set先重新读取当时e.component，再GetTopForm、写主项和该组件的全部扩展，同次扩展使用同一accessor（1023D939／D9A6／DAC5／DB4F／DBFA／DCB0、1023DFD0–E000）。后续Get必须看到前次Set及扩展结果，不能按初始快照折叠多次写。
 
 | 入口 | 原局部次序及边界 |
 | --- | --- |
 | 12／14／15前提 | 先读option.args，null直接返回，非null不足两项原越界；取N=args[0]、M=args[1]及可选K=args[2]（缺省−1），**随后**才检查事件8／9。 |
-| 8／9候选；1023D87A–D966 | 8先int32(Get(v)+e.dy)，9直接e.dy；candidate等于INT_MAX才停。按原有符号int32取wanted=max(0,min(candidate,N−M))；再次Get(v)相同即停，不同则第三次Get(v)计算delta，再Set(v,wanted,component)。 |
-| 选择耦合；1023D969–D9B1 | K恰等于−1才跳过；否则先在首Set及扩展完成后Get(K)。14写max(0,selection+2×delta)，没有N上限；12／15写selection+delta，先夹0，再若≥N改N−1。Set(K,result,component)会再执行扩展。 |
+| 8／9候选；1023D87A–D966 | 8先Get(v)，返回后才读e.dy（1023D8A8）并int32相加；9在args后、首次Get前读e.dy。candidate等于INT_MAX才停。按原有符号int32取wanted=max(0,min(candidate,N−M))；再次Get(v)相同即停，不同则第三次Get(v)计算delta，再Set(v,wanted,component)。 |
+| 选择耦合；1023D969–D9B1 | K恰等于−1才跳过；否则先在首Set及扩展完成后Get(K)，**随后**才读取入口捕获组件cEntry.id（1023D97A–D97D）。该同点ID为14时写max(0,selection+2×delta)，没有N上限；其它ID写selection+delta，先夹0，再若≥N改N−1。不能用顶页hook之前的派发ID或在args阶段冻结的ID代替。Set(K,result,component)会再执行扩展。 |
 | 13前提／方向；1023D9DC–DAD5 | args为空原异常；至少三项且K≠−1才继续，再检查ON13。uint16(v)为0时仅selection>0才再次Get(K)减1并Set；为1时仅selection<N−1才再次Get(K)加1并Set。其它低位方向不改选择，**仍规范视窗**；没有INT_MAX专门哨兵。 |
 | 13跟随／尾循环；1023DAD8–DCE1 | 分别重新Get(K)、Get(v)：selection≥first+M时再Get(K)并Set(v,selection−M+1)；随后重读，两值selection<first时再Get(K)并Set(v,selection)。最后循环重读first，若first>0且N<first+M，就Set(v,first−1)并重试。各Set都带扩展，不能直接折成一次clamp。 |
 
 算术阶段保持原int32，不据有限夹限声称异常args、溢出或受扩展影响的循环必然安全。[现设施helper](../prototype/include/dungeon_village_prototype/steam_facility_skin.hpp)只表达raw74／id12、M=5与稳定合法Owner光标；宽整数相加、拒绝**输入**INT_MAX属于维护保护，不是全int32域等价。例如first=1、相对值INT_MAX，原相加先回卷INT_MIN再夹0，现helper拒绝。它不能替代14双delta或13多次读写；本批不另造第二套页面分页规则。
+
+### 列表与滚动的逐请求接口
+
+同一[公共触摸模块](../prototype/include/dungeon_village_prototype/steam_touch_commands.hpp)的`SteamTouchFlow`表达3／10／11与12／13／14／15的完整局部控制流。`begin`只产生当前请求，调用方真实消费后用`resume`回传该请求的结果，成功才出现下一请求；不预填未来观测、重放查询轨迹或把扩展降成普通map赋值。
+
+| 请求 | 消费与回执 |
+| --- | --- |
+| arguments | 在本叶入口捕获的cEntry读取option.args，回传实际null或数组；只消费前2／3项，不保留整数组。滚条null正常结束，按钮13的null／短数组拒绝。 |
+| get_current／set_current | 每次重新GetTopForm并调用实际getter／setter；Get的type0也消费。列表Set使用cEntry，滚动Set的binding=0表示先重读当前e.component，不能理解成空组件。Set主项及全部扩展真实正常完成，才回传Completed(true)。 |
+| marker_flag／marker_key／component_key | Set完成后，按源序读cEntry有效flag、接收者this的旧marker、cEntry当时GetKey；不等才请求event_component_key取得重新读取的事件组件key并单次write_marker，不附加frame清零。 |
+| event_first_key／click_key | 仅确认分支重新读取事件组件的custom首key，缺自定义时默认0x100000；click请求的key保存32位位型，实际Canvas同步回调由消费层完成，本续体不再自行清一次marker。 |
+| event_delta_y／component_id | 到该步才读事件dy或cEntry.id；relative的dy在首Get之后，ID在Get(K)之后，先前setter／getter的可见影响必须保留。 |
+
+维护方分配非0且不复用的本次event_identity，并保证组件绑定在事务期间存活；它们不是原版新增字段。回复须带同一事件与当前sequence，错事件／序号／类型、未成功完成及Done后回复均拒绝并保留旧续体。调用方在私有Owner／表现候选的一次事件事务内完成后联合发布，失败弃候选；原Set无回滚的事实不变。本类固定大小、每次只推进一个请求，不自动跑13尾循环，不新设原循环终止保证，不持有实体／组件对象或长期队列，不保存／跨轮悬挂。未接通用OS适配、Canvas焦点／surface执行及原窗口动态，不以分步短验升级这些层次。
 
 ## 游戏设置与标题平台按钮
 

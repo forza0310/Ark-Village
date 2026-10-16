@@ -158,13 +158,13 @@ GameView先让顶页处理事件，hook返回false即退出，再通用分派；
 | 0 TITLEMENU | ENTER固定type0x30000写完整值；UP只发确认 | custom/default与扩展原序已有纯请求短验；完整标题Owner／OS仍独立 |
 | 1 DLGPAGE、18 ARROW | DOWN先KeyDown再箭头效果；LOST／CANCEL才KeyUp | paint坐标／TEXTURES2或3／vx原序纯请求已短验；36／38等页注册沿各合同，原效果池及OS另核 |
 | 2 DLGCMD、9 SUBMENU | 同入口0x1023C9CD | raw9基矩形／值及ENTER选行、UP请求确认已核，见[输入后继](INFORMATION_MENU.md#steam9选行确认与虚拟光标后继静态已核)；公共ENTER／UP的Set→custom/default确认纯请求已短验；完整命中／guard和其它页仍独立 |
-| 3 DLGSEL、10 LIST、11 SLIST | 同入口0x1023CA42；有marker才标记后确认，无marker的UP直接确认 | Set先行、完整64位key和同步KeyClick→清marker已核；75／21有marker，48／51／52／54无marker，不混用政策；新纯候选尚未接 |
+| 3 DLGSEL、10 LIST、11 SLIST | 同入口0x1023CA42；有marker才标记后确认，无marker的UP直接确认 | SteamTouchFlow已接Set先行、Set后marker／两次key和custom分步请求并短验；75／21与无marker页分别处理，Canvas／OS仍外接 |
 | 4 KEYCLICK、20 PLUS、21 MINUS | OnTouchKeyClick；仅CLICK5 | 编码值Set／普通键KeyClick、自定义首key及有序扩展写已核；纯请求接口已短验，raw9／34及raw12注册沿各合同，不推广全屏热区 |
 | 5 KEYPRESS | DOWN0；仅LOST6／CANCEL10释放普通键 | KeyDown(false)／KeyUp已核，UP1不在该分支释放；维护只产请求，OS held／guard另核 |
 | 6 KEYDOWN、7 KEYUP | 分别DOWN0／UP1触发 | 普通键两者实际均KeyDown(true)，编码值走Set；不能按KEYUP名字改成KeyUp，维护只产请求 |
 | 8 MAINMENU | OnTouchMainMenu；仅ENTER2／UP1 | 原主菜单栈查找／同项守卫／Pop后写原accessor、无9时UP确认及DrawMenu2顶页raw3注册已核；维护候选待后继验收，原解锁／OS接线另核 |
-| 12 VSCROLLBAR、14 VSCROLLBAR2、15 VSCROLLBAR3 | OnTouchVScrollBar | 8相对／9绝对、加后INT_MAX及重复Get/Set已核；14双delta无上限，12／15普通耦合。现74 helper限id12稳定域，110／111差异保留，OS另核 |
-| 13 VSCROLLBTN | OnTouchVScrollButton | ON方向0/1及其他值仍规范视窗、多次Get/Set／扩展和尾循环已核；完整注册／纯候选及OS另核 |
+| 12 VSCROLLBAR、14 VSCROLLBAR2、15 VSCROLLBAR3 | OnTouchVScrollBar | SteamTouchFlow已短验重复Get/Set、晚读dy／入口ID、14双delta及int32回卷；每次Set含实际扩展，现74 helper不代泛型，OS另核 |
+| 13 VSCROLLBTN | OnTouchVScrollButton | SteamTouchFlow已接方向0/1及未知方向仍规范视窗、重复Get/Set和逐次尾循环并短验；完整注册／OS仍另核 |
 | 16 UNMARKER | OnTouchUnMarker | DOWN／UP依次查12/14/15再marker key、DRAG查key及ClearMarker已核；有效marker组件触发EndTouch贯穿区域注册已核，维护候选待后继验收，完整OS生命周期另核 |
 | 17 CAMERA | GameForm.OnTouchEvent→OnTouchCamera | 主世界／建设局部已核；OS投递及全模式待核 |
 | 19 TRACKBAR | 仅CELL_DRAG9将e.dx交Set | raw12音量轨道注册及主值后扩展选行已核；dx不拆short／不夹限，纯请求接口已短验，真实设置提交另验 |

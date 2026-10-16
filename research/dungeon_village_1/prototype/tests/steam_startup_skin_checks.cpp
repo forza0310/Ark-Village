@@ -19,6 +19,7 @@
 #include <limits>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 using namespace dungeon_village_prototype;
 namespace {
@@ -326,6 +327,208 @@ void touch_menu_and_marker(Checks &check) {
     check(!steam_touch_unmarker(marker),"解除层拒绝原14事件之外的编号");
 }
 // raw0按原调用常量验证局部组合；不重复公共木框、人物scratch或TextLayout后端测试。
+void touch_flow(Checks &check) {
+    using Op=SteamTouchFlowOperation;
+    using Result=SteamTouchFlowResult;
+    check(!SteamTouchFlow::begin({}),"flow默认未证准入拒绝");
+    const auto intercepted=SteamTouchFlow::begin({SteamTouchAdmission::intercepted,-1,99,0,0,0});
+    check(intercepted&&intercepted->request().operation==Op::done,"顶页已截获不读取坏事件或空绑定");
+    check(!SteamTouchFlow::begin({SteamTouchAdmission::ready,8,1,0,77,900}),"其它独立消费者不误入flow");
+    check(!SteamTouchFlow::begin({SteamTouchAdmission::ready,3,14,0,77,900}),"flow未知事件拒绝");
+    check(!SteamTouchFlow::begin({SteamTouchAdmission::ready,3,1,0,0,900}),"事件身份0不能进入可回复事务");
+    check(!SteamTouchFlow::begin({SteamTouchAdmission::ready,3,1,0,77,0}),"列表需Set时缺组件绑定拒绝");
+    check(!SteamTouchFlow::begin({SteamTouchAdmission::ready,12,2,0,77,0}),"滚条即使无动作事件也先需args组件绑定");
+    const auto begin=[&](int id,int event,std::int32_t value=0x28000) {
+        const auto flow=SteamTouchFlow::begin({SteamTouchAdmission::ready,id,event,value,77,900});
+        check(flow&&flow->request().sequence==1,"flow首请求拥有本事件序号，不先消费未来观测");
+        return *flow;
+    };
+    // 每步由手写源顺序给出唯一请求与回复；不在夹具里实现滚动算法或模拟真实Owner。
+    const auto step=[&](SteamTouchFlow &flow,Op operation,Result result,
+                        std::uint32_t type=0,std::int32_t value=0,
+                        std::uint64_t key=0,std::uint64_t binding=0) {
+        const auto before=flow.request();
+        check(before.operation==operation&&before.event_identity==77&&before.type==type&&
+              before.value==value&&before.key==key&&before.component_binding==binding,
+              "flow请求类型、目标、参数及执行先后符合独立源序列");
+        check(flow.resume({77,before.sequence,std::move(result)}),"真实完成本步后才接受下一次读取");
+        check(flow.request().sequence==before.sequence+1,"成功回执只推进一项请求");
+    };
+    const auto reject=[&](SteamTouchFlow &flow,SteamTouchFlowReply reply) {
+        const auto before=flow.request();
+        check(!flow.resume(reply),"错类型/旧事件/旧序号/失败完成显式拒绝");
+        const auto after=flow.request();
+        check(after.operation==before.operation&&after.event_identity==before.event_identity&&
+              after.sequence==before.sequence&&after.component_binding==before.component_binding&&
+              after.type==before.type&&after.value==before.value&&after.key==before.key,
+              "坏回执不推进或破坏原续体");
+    };
+    const auto finished=[&](SteamTouchFlow &flow) {
+        check(flow.request().operation==Op::done,"未消费的未来字段不触发读取");
+        reject(flow,{77,flow.request().sequence,SteamTouchFlowCompleted{true}});
+    };
+    for(const int id:{3,10,11})for(int event=0;event<14;++event) {
+        if(event==1)continue;
+        auto flow=begin(id,event);
+        if(event==2)step(flow,Op::set_current,SteamTouchFlowCompleted{true},0x20000,-32768,0,900);
+        finished(flow); // ENTER也不得读marker或custom keys。
+    }
+    auto flow=begin(3,1);
+    reject(flow,{77,1,SteamTouchFlowFlag{true}});
+    reject(flow,{78,1,SteamTouchFlowCompleted{true}});
+    reject(flow,{77,2,SteamTouchFlowCompleted{true}});
+    reject(flow,{77,1,SteamTouchFlowCompleted{false}});
+    step(flow,Op::set_current,SteamTouchFlowCompleted{true},0x20000,-32768,0,900);
+    reject(flow,{77,1,SteamTouchFlowCompleted{true}});
+    step(flow,Op::marker_flag,SteamTouchFlowFlag{true},0,0,0,900);
+    step(flow,Op::marker_key,SteamTouchFlowKey{0x3ffffffffULL});
+    step(flow,Op::component_key,SteamTouchFlowKey{0xaffffffffULL},0,0,0,900);
+    // 首次key绑定c0；重新读事件组件取得另一key，不能拿首值直接写，也不重置frame。
+    step(flow,Op::event_component_key,SteamTouchFlowKey{0xb00020002ULL});
+    reject(flow,{77,flow.request().sequence,SteamTouchFlowCompleted{false}});
+    step(flow,Op::write_marker,SteamTouchFlowCompleted{true},0,0,0xb00020002ULL);
+    finished(flow);
+    for(const auto custom:std::array<std::optional<std::uint32_t>,3>{std::nullopt,0U,0xffffffffU}) {
+        flow=begin(10,1,0);
+        step(flow,Op::set_current,SteamTouchFlowCompleted{true},0,0,0,900);
+        step(flow,Op::marker_flag,SteamTouchFlowFlag{false},0,0,0,900);
+        step(flow,Op::event_first_key,SteamTouchFlowFirstKey{custom});
+        step(flow,Op::click_key,SteamTouchFlowCompleted{true},0,0,custom.value_or(0x100000U));
+        finished(flow); // -1的Canvas空操作由外层消费，候选仍发真实调用请求。
+    }
+    flow=begin(11,1,0x20001);
+    step(flow,Op::set_current,SteamTouchFlowCompleted{true},0x20000,1,0,900);
+    step(flow,Op::marker_flag,SteamTouchFlowFlag{true},0,0,0,900);
+    step(flow,Op::marker_key,SteamTouchFlowKey{0xb00020001ULL});
+    step(flow,Op::component_key,SteamTouchFlowKey{0xb00020001ULL},0,0,0,900);
+    step(flow,Op::event_first_key,SteamTouchFlowFirstKey{0U});
+    step(flow,Op::click_key,SteamTouchFlowCompleted{true});
+    finished(flow);
+
+    for(const int id:{12,14,15}) {
+        flow=begin(id,2,0x40000);
+        step(flow,Op::arguments,SteamTouchFlowArguments{std::nullopt},0,0,0,900);
+        finished(flow); // null args先于事件判断且允许直接退出。
+        flow=begin(id,2,0x40000);
+        reject(flow,{77,1,SteamTouchFlowArguments{std::vector<std::int32_t>{5}}});
+        step(flow,Op::arguments,SteamTouchFlowArguments{std::vector<std::int32_t>{5,3}},0,0,0,900);
+        finished(flow);
+    }
+    flow=begin(13,2,0x40000);
+    reject(flow,{77,1,SteamTouchFlowArguments{std::nullopt}});
+    reject(flow,{77,1,SteamTouchFlowArguments{std::vector<std::int32_t>{5}}});
+    step(flow,Op::arguments,SteamTouchFlowArguments{std::vector<std::int32_t>{5,3,0x20000}},0,0,0,900);
+    finished(flow);
+    flow=begin(13,13,0x40000);
+    step(flow,Op::arguments,SteamTouchFlowArguments{std::vector<std::int32_t>{5,3}},0,0,0,900);
+    finished(flow); // 缺第三项的-1与合法type0不同。
+
+    constexpr auto max=std::numeric_limits<std::int32_t>::max();
+    constexpr auto min=std::numeric_limits<std::int32_t>::min();
+    flow=begin(12,8,0x40000);
+    step(flow,Op::arguments,SteamTouchFlowArguments{std::vector<std::int32_t>{10,3}},0,0,0,900);
+    step(flow,Op::get_current,SteamTouchFlowValue{max-1},0x40000);
+    reject(flow,{77,flow.request().sequence,SteamTouchFlowFlag{true}});
+    step(flow,Op::event_delta_y,SteamTouchFlowValue{1});
+    finished(flow); // 8先加delta再判INT_MAX；不是先判旧Get。
+    flow=begin(12,8,0x40000);
+    step(flow,Op::arguments,SteamTouchFlowArguments{std::vector<std::int32_t>{10,3}},0,0,0,900);
+    step(flow,Op::get_current,SteamTouchFlowValue{max},0x40000);
+    step(flow,Op::event_delta_y,SteamTouchFlowValue{1});
+    step(flow,Op::get_current,SteamTouchFlowValue{0},0x40000);
+    finished(flow); // max+1回卷为min，再夹到0。
+    flow=begin(15,9,0x40000);
+    step(flow,Op::arguments,SteamTouchFlowArguments{std::vector<std::int32_t>{10,3}},0,0,0,900);
+    step(flow,Op::event_delta_y,SteamTouchFlowValue{max});
+    finished(flow); // 9直接用delta，哨兵不先Get。
+    flow=begin(15,9,0x40000);
+    step(flow,Op::arguments,SteamTouchFlowArguments{std::vector<std::int32_t>{min,1}},0,0,0,900);
+    step(flow,Op::event_delta_y,SteamTouchFlowValue{min});
+    step(flow,Op::get_current,SteamTouchFlowValue{0},0x40000);
+    finished(flow); // count-visible的int32回卷不变成拒绝或64位算术。
+    // 派发ID与Get(K)之后实际读到的入口组件ID分别给出，不能复用派发资格。
+    for(const auto ids:std::array<std::array<int,3>,5>{{{12,12,9},{14,14,16},{15,15,9},
+                                                        {12,14,16},{14,12,9}}}) {
+        flow=begin(ids[0],9,0x40000);
+        step(flow,Op::arguments,SteamTouchFlowArguments{std::vector<std::int32_t>{10,3,0x20000}},0,0,0,900);
+        step(flow,Op::event_delta_y,SteamTouchFlowValue{7});
+        step(flow,Op::get_current,SteamTouchFlowValue{2},0x40000);
+        step(flow,Op::get_current,SteamTouchFlowValue{3},0x40000);
+        reject(flow,{77,flow.request().sequence,SteamTouchFlowValue{8}});
+        reject(flow,{77,flow.request().sequence,SteamTouchFlowCompleted{false}});
+        step(flow,Op::set_current,SteamTouchFlowCompleted{true},0x40000,7);
+        step(flow,Op::get_current,SteamTouchFlowValue{8},0x20000);
+        reject(flow,{77,flow.request().sequence,SteamTouchFlowCompleted{true}});
+        step(flow,Op::component_id,SteamTouchFlowValue{ids[1]},0,0,0,900);
+        step(flow,Op::set_current,SteamTouchFlowCompleted{true},0x20000,ids[2]);
+        finished(flow); // 14双delta且不上夹；12/15才夹到count-1。
+    }
+    flow=begin(12,9,0x40000);
+    step(flow,Op::arguments,SteamTouchFlowArguments{std::vector<std::int32_t>{10,3,0}},0,0,0,900);
+    step(flow,Op::event_delta_y,SteamTouchFlowValue{0});
+    step(flow,Op::get_current,SteamTouchFlowValue{1},0x40000);
+    step(flow,Op::get_current,SteamTouchFlowValue{min},0x40000);
+    step(flow,Op::set_current,SteamTouchFlowCompleted{true},0x40000,0);
+    step(flow,Op::get_current,SteamTouchFlowValue{-1});
+    step(flow,Op::component_id,SteamTouchFlowValue{12},0,0,0,900);
+    step(flow,Op::set_current,SteamTouchFlowCompleted{true},0,9);
+    finished(flow); // delta及selection相加均int32回卷，type0仍须真实Get/Set。
+    flow=begin(12,9,0x40000);
+    step(flow,Op::arguments,SteamTouchFlowArguments{std::vector<std::int32_t>{0,5,0x20000}},0,0,0,900);
+    step(flow,Op::event_delta_y,SteamTouchFlowValue{7});
+    step(flow,Op::get_current,SteamTouchFlowValue{1},0x40000);
+    step(flow,Op::get_current,SteamTouchFlowValue{2},0x40000);
+    step(flow,Op::set_current,SteamTouchFlowCompleted{true},0x40000,0);
+    step(flow,Op::get_current,SteamTouchFlowValue{1},0x20000);
+    step(flow,Op::component_id,SteamTouchFlowValue{12},0,0,0,900);
+    step(flow,Op::set_current,SteamTouchFlowCompleted{true},0x20000,-1);
+    finished(flow); // 原N=0的上限阶段仍能写N-1，不以Owner正常光标范围补夹限。
+    flow=begin(14,9,0x40000);
+    step(flow,Op::arguments,SteamTouchFlowArguments{std::vector<std::int32_t>{10,3,0x20000}},0,0,0,900);
+    step(flow,Op::event_delta_y,SteamTouchFlowValue{0});
+    step(flow,Op::get_current,SteamTouchFlowValue{1},0x40000);
+    step(flow,Op::get_current,SteamTouchFlowValue{min},0x40000);
+    step(flow,Op::set_current,SteamTouchFlowCompleted{true},0x40000,0);
+    step(flow,Op::get_current,SteamTouchFlowValue{5},0x20000);
+    step(flow,Op::component_id,SteamTouchFlowValue{14},0,0,0,900);
+    step(flow,Op::set_current,SteamTouchFlowCompleted{true},0x20000,5);
+    finished(flow); // 双delta在int32先回卷为0，再加selection；不用64位乘法后统一夹0。
+
+    for(const int direction:{0,1}) {
+        flow=begin(13,13,0x40000|direction);
+        step(flow,Op::arguments,SteamTouchFlowArguments{std::vector<std::int32_t>{10,3,0x20000}},0,0,0,900);
+        step(flow,Op::get_current,SteamTouchFlowValue{2},0x20000);
+        step(flow,Op::get_current,SteamTouchFlowValue{4},0x20000);
+        step(flow,Op::set_current,SteamTouchFlowCompleted{true},0x20000,direction?5:3);
+        step(flow,Op::get_current,SteamTouchFlowValue{0},0x20000);
+        step(flow,Op::get_current,SteamTouchFlowValue{0},0x40000);
+        step(flow,Op::get_current,SteamTouchFlowValue{0},0x20000);
+        step(flow,Op::get_current,SteamTouchFlowValue{0},0x40000);
+        step(flow,Op::get_current,SteamTouchFlowValue{0},0x40000);
+        finished(flow); // 边界检查和实际+/-分别Get，不复用前值。
+    }
+    flow=begin(13,13,0x40002);
+    step(flow,Op::arguments,SteamTouchFlowArguments{std::vector<std::int32_t>{5,3,0x20000}},0,0,0,900);
+    step(flow,Op::get_current,SteamTouchFlowValue{9},0x20000);
+    step(flow,Op::get_current,SteamTouchFlowValue{1},0x40000);
+    step(flow,Op::get_current,SteamTouchFlowValue{8},0x20000);
+    step(flow,Op::set_current,SteamTouchFlowCompleted{true},0x40000,6);
+    step(flow,Op::get_current,SteamTouchFlowValue{3},0x20000);
+    step(flow,Op::get_current,SteamTouchFlowValue{6},0x40000);
+    step(flow,Op::get_current,SteamTouchFlowValue{4},0x20000);
+    step(flow,Op::set_current,SteamTouchFlowCompleted{true},0x40000,4);
+    step(flow,Op::get_current,SteamTouchFlowValue{4},0x40000);
+    step(flow,Op::get_current,SteamTouchFlowValue{4},0x40000);
+    step(flow,Op::get_current,SteamTouchFlowValue{4},0x40000);
+    step(flow,Op::set_current,SteamTouchFlowCompleted{true},0x40000,3);
+    step(flow,Op::get_current,SteamTouchFlowValue{3},0x40000);
+    step(flow,Op::get_current,SteamTouchFlowValue{3},0x40000);
+    step(flow,Op::get_current,SteamTouchFlowValue{3},0x40000);
+    step(flow,Op::set_current,SteamTouchFlowCompleted{true},0x40000,2);
+    step(flow,Op::get_current,SteamTouchFlowValue{2},0x40000);
+    step(flow,Op::get_current,SteamTouchFlowValue{2},0x40000);
+    finished(flow); // 未知direction不移动选择，仍规范上下边界并逐次执行尾循环。
+}
 void dialogue_page(Checks &check) {
     SteamDialogueSkinInput in;
     in.width=239;in.height=261;in.view_y=23;in.main=197;
@@ -1654,6 +1857,7 @@ int check_steam_startup_skin(const std::filesystem::path &root) {
     font_metrics(check);
     touch_commands(check);
     touch_menu_and_marker(check);
+    touch_flow(check);
     dialogue_page(check);
     event_card(check,root);
     news_page(check);

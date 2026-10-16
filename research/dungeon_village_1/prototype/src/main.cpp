@@ -171,6 +171,7 @@ Options parse_options(int argc, char **argv) {
           options.inspect_page != "tax-income" && options.inspect_page != "tax-income-tail" &&
           options.inspect_page != "present-equipment" && options.inspect_page != "present-status" && options.inspect_page != "present-combat" &&
           options.inspect_page != "event-happy" && options.inspect_page != "event-sad" && options.inspect_page != "event-special" &&
+          options.inspect_page != "human-unlock-early" && options.inspect_page != "human-unlock-ready" &&
           options.inspect_page != "monster-introduction" && options.inspect_page != "monster-introduction-early" &&
           options.inspect_page != "monster-detail" && options.inspect_page != "monster-detail-grown" &&
           options.inspect_page != "monster-boss" && options.inspect_page != "monster-outbreak" &&

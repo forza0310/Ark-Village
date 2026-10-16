@@ -98,7 +98,7 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 56 | CAMERAMOVE_MAA | 相机／来访 | 仅声明；更新／绘制／动态链待逐项 |
 | 57 | CAMERAMOVE_DUNGEON | 相机／来访 | 仅声明；更新／绘制／动态链待逐项 |
 | 58 | CAMERAMOVE_SELECTQUEST | 相机／来访 | 仅声明；更新／绘制／动态链待逐项 |
-| 59 | MANYAPPEAHUMAN | 相机／来访 | 仅声明；更新／绘制／动态链待逐项 |
+| 59 | MANYAPPEAHUMAN | 相机／来访 | [独立合同](PAGES.md#steam-human-unlock)及正式纯皮肤／当前外观桥、严格Owner恢复已接；1声／60气泡／70确认、当前武器及入场位移分开。main60五成就静态已核但SDK未接；字体／scratch／OS与自然动态另验 |
 | 60 | CHARA_INFO | 人物／成长／礼物 | 静态：[四页及输入](STEAM_HUMAN_DETAIL.md)已核；维护：四页完整局部计划、四槽同轮输入／滚动及Owner桥已交付。完整字体、共享scratch与原窗口全链未认证 |
 | 61 | CHARA_JOBCHANGE_LIST | 人物／成长／礼物 | 静态及维护：职业五行两页、首行／选择、预览返回及整轮输入已交付；原字体／OS动态另验，见[人物合同](STEAM_HUMAN_DETAIL.md) |
 | 62 | CHARA_JOBCHANGE_INFO | 人物／成长／礼物 | 静态及维护：职业预览、当前／可转职分支、真实测宽及63入口已交付；原动态另验，见[人物合同](STEAM_HUMAN_DETAIL.md) |

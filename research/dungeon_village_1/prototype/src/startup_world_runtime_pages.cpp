@@ -41,12 +41,6 @@ bool valid_reward_display(const State &s) {
     }
     return true;
 }
-bool unlock_human_valid(const State &s, const ref::WorldScriptPage &p) {
-    // b/g:3467的X仅含bv[f]；aq由到访排序读取，不在此页直接创建人物实例。
-    return s.rules && s.human_calendar.count(p.legacy_f) &&
-           std::any_of(s.rules->humans.begin(), s.rules->humans.end(),
-                       [&](const auto &h) { return h.identity == p.legacy_f; });
-}
 std::optional<int> event_message_command(const State &s, const ref::WorldScriptPage &p) {
     if(!valid_startup_world_event_page(s,p)||p.lifecycle==0)return {};
     const auto phase = s.page_phases.find(p.id);
@@ -376,6 +370,43 @@ bool initialize_startup_world_event_pages(State &s) {
     auto next=s;
     for(auto &p:next.scripts.pages)if(p.kind==ref::WorldScriptPageKind::raw_page&&p.legacy_page==11&&p.lifecycle==0) {
         next.page_phases.emplace(p.id,0);next.page_counters.emplace(p.id,0);p.lifecycle=1;
+    }
+    s=std::move(next);return true;
+}
+
+bool valid_startup_world_human_unlock_page(const State &s,const ref::WorldScriptPage &p) {
+    if(!s.rules||!p.id||p.id>=s.scripts.next_page_id||p.kind!=ref::WorldScriptPageKind::raw_page||
+       p.legacy_page!=59||p.lifecycle<0||p.lifecycle>4||!p.message_commands.empty()||s.page_phases.count(p.id)||s.page_secondary_counters.count(p.id)||
+       std::count_if(s.scripts.pages.begin(),s.scripts.pages.end(),[&](const auto &v){return v.id==p.id;})!=1||
+       std::count_if(s.rules->humans.begin(),s.rules->humans.end(),[&](const auto &h){return h.identity==p.legacy_f;})!=1||
+       !s.human_calendar.count(p.legacy_f)||!s.scripts.humans.count(p.legacy_f)||!s.human_presence.count(p.legacy_f)||
+       !startup_world_human_profile(s,p.legacy_f))return false;
+    const auto actual=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[&](const auto &v){return v.id==p.id;});
+    if(actual->kind!=p.kind||actual->legacy_page!=59||actual->lifecycle!=p.lifecycle||actual->legacy_f!=p.legacy_f)return false;
+    const auto &ai=s.scene.world.world.ai;
+    const auto growth=ai.growth.find(p.legacy_f);
+    const auto shop=s.shop_humans.find(p.legacy_f);
+    if(growth==ai.growth.end()||shop==s.shop_humans.end())return false;
+    const int job=growth->second.definition.current_profession;
+    if(job<0||job>=static_cast<int>(s.rules->jobs.size()))return false;
+    if(const auto weapon=shop->second.equipment[0];weapon&&
+       std::count_if(s.rules->equipment.begin(),s.rules->equipment.end(),[&](const auto &e){return e.shop.kind==1&&e.shop.id==*weapon;})!=1)
+        return false;
+    const auto counter=s.page_counters.find(p.id);
+    return p.lifecycle==0?counter==s.page_counters.end():
+        counter!=s.page_counters.end()&&counter->second>=0&&counter->second<std::numeric_limits<int>::max();
+}
+bool initialize_startup_world_human_unlock_pages(State &s) {
+    bool pending=false;
+    for(const auto &p:s.scripts.pages)if(p.legacy_page==59) {
+        if(!valid_startup_world_human_unlock_page(s,p))return false;
+        pending|=p.lifecycle==0;
+    }
+    if(!pending||s.scene.framework_paused)return true;
+    auto next=s;
+    // Steam Init10311A85–10311B04：保留共享人物绑定，不创建可移动人物W或随机请求。
+    for(auto &p:next.scripts.pages)if(p.legacy_page==59&&p.lifecycle==0) {
+        next.page_counters.emplace(p.id,0);p.lifecycle=1;
     }
     s=std::move(next);return true;
 }
@@ -977,6 +1008,7 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
     if((!top->message_commands.empty()&&!(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==11))||
        (top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==11&&
         (top->lifecycle!=2||!valid_startup_world_event_page(state,*top))))return Error::missing_source;
+    if(top->legacy_page==59&&(top->lifecycle!=2||!valid_startup_world_human_unlock_page(state,*top)))return Error::missing_source;
     if (follows_award_page(state, id) && !state.award_question_ui.count(id))
         return Error::missing_source;
     if (state.award_question_ui.count(id) || top->legacy_page == 80 || top->legacy_page == 87) {
@@ -1064,10 +1096,8 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
                     return Error::script_failed;
             }
         } else if (top->legacy_page == 59) {
-            if (!unlock_human_valid(next, *top))
-                return Error::missing_source;
             // b/g:4879、aM={60,70}：早确认不快进，满70才写aq10并关闭。
-            if (next.page_counters[id] >= 70) {
+            if (next.page_counters.at(id) >= 70) {
                 next.human_calendar.at(top->legacy_f).absent_months = 10;
                 const auto closed =
                     ref::prepare_world_script_close_page(startup_world_runtime_scripts(next), id);
@@ -1174,6 +1204,8 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
 Error cancel_startup_world_runtime_page(State &state, std::uint64_t id) {
     const auto catalogue = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
                                        [](const auto &p) { return p.lifecycle != 4; });
+    if(catalogue!=state.scripts.pages.rend()&&catalogue->id==id&&catalogue->legacy_page==59)
+        return valid_startup_world_human_unlock_page(state,*catalogue)?Error::invalid_page:Error::missing_source;
     if(catalogue!=state.scripts.pages.rend()&&catalogue->id==id&&
        (!catalogue->message_commands.empty()||(catalogue->kind==ref::WorldScriptPageKind::raw_page&&catalogue->legacy_page==11))) {
         // Steam 1032831B查soft2后走10328336 Pop；这是Owner动作，不推出OS Esc映射。
@@ -1376,6 +1408,8 @@ std::optional<State> update_startup_world_runtime_page(const State &state,
        ((!notice->message_commands.empty()&&!(notice->kind==ref::WorldScriptPageKind::raw_page&&notice->legacy_page==11))||
         (notice->kind==ref::WorldScriptPageKind::raw_page&&notice->legacy_page==11&&
          (notice->lifecycle!=2||!valid_startup_world_event_page(state,*notice)))))return {};
+    if(notice!=state.scripts.pages.rend()&&notice->legacy_page==59&&
+       (notice->lifecycle!=2||!valid_startup_world_human_unlock_page(state,*notice)))return {};
     if(notice!=state.scripts.pages.rend()&&notice->kind==ref::WorldScriptPageKind::raw_page&&
        (notice->legacy_page==99||notice->legacy_page==100)&&state.task_display_initialized.count(notice->id)) {
         const auto count=state.page_counters.find(notice->id);
@@ -1526,12 +1560,12 @@ std::optional<State> update_startup_world_runtime_page(const State &state,
             return {};
         return next;
     }
-    auto &counter = top->kind==ref::WorldScriptPageKind::raw_page&&(top->legacy_page==11||top->legacy_page==89||top->legacy_page==92)
+    auto &counter = top->kind==ref::WorldScriptPageKind::raw_page&&(top->legacy_page==11||top->legacy_page==59||top->legacy_page==89||top->legacy_page==92)
         ? next.page_counters.at(top->id):next.page_counters[top->id];
     if (counter == std::numeric_limits<int>::max())
         return {};
     ++counter;
-    if(top->legacy_page==11||top->legacy_page==27||top->legacy_page==67||top->legacy_page==88||top->legacy_page==89||top->legacy_page==92||top->legacy_page==94||top->legacy_page==99||top->legacy_page==100)counter%=std::numeric_limits<int>::max();
+    if(top->legacy_page==11||top->legacy_page==27||top->legacy_page==59||top->legacy_page==67||top->legacy_page==88||top->legacy_page==89||top->legacy_page==92||top->legacy_page==94||top->legacy_page==99||top->legacy_page==100)counter%=std::numeric_limits<int>::max();
     if(top->legacy_page==50||top->legacy_page==30||top->legacy_page==96) {
         auto &secondary=next.page_secondary_counters.at(top->id);
         counter%=std::numeric_limits<int>::max();
@@ -1541,8 +1575,6 @@ std::optional<State> update_startup_world_runtime_page(const State &state,
         !consume_rank_celebration(next, top->id, false))
         return {};
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 59) {
-        if (!unlock_human_valid(next, *top))
-            return {};
         if (counter == 1)
             next.sound_requests.push_back({StartupAudioOperation::jingle, 5});
     }

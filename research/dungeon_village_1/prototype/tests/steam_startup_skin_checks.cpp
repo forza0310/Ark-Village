@@ -222,6 +222,80 @@ void event_card(Checks &check,const std::filesystem::path &root) {
     check(steam_event_resource(StartupSkinPackage::common,72)->sprite==2&&
           !steam_event_resource(StartupSkinPackage::event,72)&&!steam_event_resource(StartupSkinPackage::title,9),
           "11素材映射保留包身份，未知包/索引拒绝");
+
+    // raw59共用事件窗，主责当前定义外观、入场/气泡/正文/页脚原序；不重复Owner70领取测试。
+    SteamHumanUnlockSkinInput visitor{1,4,0,0,"当前职业","当前姓名"};
+    options.japanese=false;options.human_unlock_text={"多指教","的","可以","到访了!"};
+    struct VisitorSample {int main,x,step;bool greeting,marker;};
+    constexpr std::array<VisitorSample,10> visitor_samples{{{0,220,0,false,false},{1,219,0,false,false},
+        {39,155,1,false,false},{59,122,2,false,false},{60,120,3,true,false},
+        {70,120,1,true,false},{75,120,2,true,true},{89,120,2,true,true},
+        {90,120,2,true,false},{100,120,1,true,true}}};
+    for(const auto &sample:visitor_samples) {
+        visitor.main=sample.main;options.greeting_width=sample.greeting?std::optional<int>{61}:std::nullopt;
+        p=steam_human_unlock_skin(visitor,options);
+        check(p&&p->origin==std::array<int,2>{0,10}&&p->soft_labels==std::array<int,2>{0,0},
+              "59沿共同零位窗及零soft标签，宽高居中不重复VIEW_Y");
+        const auto people=parts<SteamHumanPortrait>(*p);
+        const auto clips=parts<SteamEventClip>(*p);
+        const auto images=parts<StartupSkinDraw>(*p);const auto texts=parts<SteamHumanOverviewText>(*p);
+        check(people.size()==1&&people[0].position==std::array<int,2>{sample.x,144}&&
+              people[0].actor.body.sprite==2&&people[0].actor.body.frame==sample.step&&
+              people[0].actor.weapon&&!people[0].actor.shadow&&!people[0].clip&&
+              clips.size()==4&&clips[0].rectangle==std::array<int,4>{30,67,180,80}&&
+              clips[1].kind==SteamEventClipKind::pop&&clips[2].rectangle[1]==158&&
+              clips[3].kind==SteamEventClipKind::pop,
+              "59整数负乘积插值样点、左向四步、当前武器，无标题阴影；人物与正文分别裁剪");
+        check(images.size()==(sample.marker?2U:1U)&&images[0].image==9&&images[0].package==StartupSkinPackage::event&&
+              images[0].offset==std::array<int,2>{30,67}&&images[0].crop==std::array<int,4>{0,0,180,80}&&
+              (sample.marker?images[1].image==72&&images[1].offset==std::array<int,2>{212,204}:true)&&
+              std::get<SteamStartupTouch>(p->draws.back()).component==2&&
+              std::get<SteamStartupTouch>(p->draws.back()).option==2&&
+              !std::get<SteamStartupTouch>(p->draws.back()).rectangle,
+              "59event9/70后25槽前15槽页脚与Create2触摸，不能套11周期/锚/option");
+        const std::size_t first=sample.greeting?1:0;
+        check(texts.size()==first+3&&texts[first].value=="当前职业的"&&texts[first].rectangle==std::array<int,4>{120,158,0,0}&&
+              texts[first+1].value=="当前姓名可以"&&texts[first+1].rectangle==std::array<int,4>{120,176,0,0}&&
+              texts[first+2].value=="到访了!"&&texts[first+2].rectangle==std::array<int,4>{120,194,0,0}&&
+              !texts[first].layout&&!texts[first].rich&&texts[first].anchor==2&&
+              (!sample.greeting||(texts[0].value=="多指教"&&texts[0].rectangle==std::array<int,4>{120,107,0,0}&&
+                  texts[0].rgb==std::array<int,3>{0,0,0}&&parts<SteamHumanImage>(*p).size()==6)),
+              "59三次普通DrawString不合段重排；60后气泡长串复用原27裁片/尾/端点及黑字");
+    }
+    visitor.main=60;options.greeting_width.reset();
+    check(!steam_human_unlock_skin(visitor,options),"59可见气泡缺真实测宽拒绝，不按字数估算");
+    visitor.main=59;check(steam_human_unlock_skin(visitor,options).has_value(),"59未到60不索取气泡测宽");
+    for(int gate=0;gate<3;++gate) {
+        auto hidden=options;hidden.title_widths.reset();hidden.on_top=gate!=0;
+        hidden.until_active_hide=gate==1;hidden.wait=gate==2?1:0;
+        check(steam_human_unlock_skin(visitor,hidden)&&steam_human_unlock_skin(visitor,hidden)->draws.empty(),
+              "59三种隐藏资格短路，不消费标题/气泡测宽或生成图元");
+    }
+    auto unlock=test_support::page_fixture(59);const auto unlock_id=unlock.scripts.pages.back().id;
+    unlock.scripts.pages.back().legacy_f=0;unlock.scripts.pages.back().lifecycle=2;
+    unlock.page_counters[unlock_id]=73;
+    unlock.human_profiles[0]={"覆盖姓名",1,true};
+    unlock.scene.world.world.ai.growth.at(0).definition.current_profession=4;
+    unlock.shop_humans.at(0).equipment[0]=0;
+    const auto frozen=startup_world_state_digest(unlock);const auto source=steam_human_unlock_input(unlock,unlock_id);
+    check(source&&source->main==73&&source->profession==4&&source->sex==1&&source->weapon==0&&source->name=="覆盖姓名"&&
+          source->profession_name==unlock.rules->jobs.at(4).name&&startup_world_state_digest(unlock)==frozen,
+          "59严格桥读取当前职业/主武器及Owner姓名性别覆盖，不创建到访实体或推进随机/输出");
+    for(int fault=0;fault<9;++fault) {
+        auto bad=unlock;
+        if(fault==0)bad.page_counters.erase(unlock_id);
+        if(fault==1)bad.page_phases[unlock_id]=0;
+        if(fault==2)bad.page_secondary_counters[unlock_id]=0;
+        if(fault==3)bad.scripts.pages.back().legacy_page=11;
+        if(fault==4)bad.scripts.pages.back().lifecycle=4;
+        if(fault==5)bad.scripts.pages.push_back(bad.scripts.pages.back());
+        if(fault==6)bad.scene.world.world.ai.growth.erase(0);
+        if(fault==7)bad.shop_humans.erase(0);
+        if(fault==8)bad.shop_humans.at(0).equipment[0]=std::numeric_limits<int>::max();
+        const auto before_read=startup_world_state_digest(bad);
+        check(!steam_human_unlock_input(bad,unlock_id)&&startup_world_state_digest(bad)==before_read,
+              "59桥拒缺钟/孤立副载荷/错类型/退休/重复页/缺当前外观及非法装备，不补默认值");
+    }
 }
 // 字体请求数值与本地化准入独立于字形后端，不以渲染截图生成这些期望值。
 void font_metrics(Checks &check) {

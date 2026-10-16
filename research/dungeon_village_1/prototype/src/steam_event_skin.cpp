@@ -85,4 +85,72 @@ std::optional<SteamEventSkinPlan> steam_event_skin(const SteamEventSkinInput &in
     plan.draws.emplace_back(SteamStartupTouch{2,0,{},{},0});
     return plan;
 }
+std::optional<SteamHumanUnlockSkinInput> steam_human_unlock_input(const StartupWorldRuntimeState &s,std::uint64_t id) {
+    const ref::WorldScriptPage *page=nullptr;
+    for(const auto &p:s.scripts.pages)if(p.id==id) {
+        if(page||id==0)return {};
+        page=&p;
+    }
+    if(!page||page->lifecycle<1||page->lifecycle>3||!valid_startup_world_human_unlock_page(s,*page))return {};
+    const auto main=s.page_counters.find(id);
+    const auto profile=startup_world_human_profile(s,page->legacy_f);
+    const auto growth=s.scene.world.world.ai.growth.find(page->legacy_f);
+    const auto shop=s.shop_humans.find(page->legacy_f);
+    if(!s.rules||main==s.page_counters.end()||!clock(main->second)||!profile||
+       growth==s.scene.world.world.ai.growth.end()||shop==s.shop_humans.end())return {};
+    const int profession=growth->second.definition.current_profession;
+    if(profession<0||profession>=static_cast<int>(s.rules->jobs.size()))return {};
+    const int weapon=shop->second.equipment[0].value_or(-1);
+    if(!startup_title_actor_skin(profession,profile->sex,weapon,0,2,false))return {};
+    return SteamHumanUnlockSkinInput{main->second,profession,profile->sex,weapon,
+        s.rules->jobs[static_cast<std::size_t>(profession)].name,profile->name};
+}
+std::optional<SteamEventSkinPlan> steam_human_unlock_skin(const SteamHumanUnlockSkinInput &in,const SteamEventSkinOptions &o) {
+    if(!clock(in.main)||o.width<=0||o.height<=0||o.width>65536||o.height>65536||o.wait<0)return {};
+    SteamEventSkinPlan plan;
+    const bool centered=o.width>240||o.height>240;
+    plan.origin={centered?(o.width-240)/2:0,centered?(o.height-240)/2:0};
+    if(!o.on_top||o.until_active_hide||o.wait>0)return plan;
+    if(o.title.size()>4096||in.profession_name.size()>4096||in.name.size()>4096||!o.title_widths)return {};
+    for(const auto value:*o.title_widths)if(value<0||value>4096)return {};
+    for(const auto &value:o.human_unlock_text)if(value.size()>4096)return {};
+    const auto window=steam_startup_window_skin({222,170,0,0,SteamStartupTextRole::message_title,0},o.view_y,o.title_widths);
+    const auto box=steam_startup_box_skin({15,139,224,202},o.view_y);
+    const int step=(in.main%16)/4;
+    const auto actor=startup_title_actor_skin(in.profession,in.sex,in.weapon,step,2,false);
+    if(!window||!box||!actor)return {};
+    plan.title=o.title;frame(plan,*window);frame(plan,*box);
+    plan.draws.emplace_back(StartupSkinDraw{StartupSkinPackage::event,9,-1,0,0,{0,0,180,80},{30,67}});
+    plan.draws.emplace_back(SteamEventClip{SteamEventClipKind::push_intersect,{30,67,180,80}});
+    // 实际call102A4780是整数RateConvert；先负乘积再idiv，t1=219、t59=122。
+    const int x=in.main>=60?120:220+(-100*in.main)/60;
+    plan.draws.emplace_back(SteamHumanPortrait{*actor,{x,144},{},false});
+    plan.draws.emplace_back(SteamEventClip{SteamEventClipKind::pop,{}});
+    const auto text=[&](const std::string &value,int y,std::array<int,3> color=std::array<int,3>{92,51,31}) {
+        if(value.size()>4096)return false;
+        plan.draws.emplace_back(SteamHumanOverviewText{SteamHumanOverviewTextRole::result_message,
+            value,{120,y,0,0},2,0,false,color,0,false});
+        return true;
+    };
+    if(in.main>=60) {
+        if(!o.greeting_width)return {};
+        const auto bubble=steam_human_down_bubble_skin(*o.greeting_width,{120,104});
+        if(!bubble)return {};
+        for(const auto &draw:bubble->draws) {
+            if(const auto *image=std::get_if<SteamHumanImage>(&draw))plan.draws.emplace_back(*image);
+            else if(const auto *rect=std::get_if<StartupSkinRect>(&draw))plan.draws.emplace_back(SteamStartupFrameDraw{*rect});
+        }
+        if(!text(o.human_unlock_text[0],107,{0,0,0}))return {};
+    }
+    const int reveal=in.main<=5?0:in.main>=40?48:(in.main-5)*48/35;
+    plan.draws.emplace_back(SteamEventClip{SteamEventClipKind::push_intersect,{0,158,240,reveal}});
+    // 原三次Graphics.DrawString；逐行交实际LT后端，不能合成一段重排或清掉名称标签。
+    if(!text(in.profession_name+o.human_unlock_text[1],158)||!text(in.name+o.human_unlock_text[2],176)||
+       !text(o.human_unlock_text[3],194))return {};
+    plan.draws.emplace_back(SteamEventClip{SteamEventClipKind::pop,{}});
+    if(in.main>=70&&in.main%25<15)
+        plan.draws.emplace_back(StartupSkinDraw{StartupSkinPackage::common,72,2,0,0,{},{212,204}});
+    plan.draws.emplace_back(SteamStartupTouch{2,0,{},{},2}); // TouchOption.Create(2)，不套raw11无option重载。
+    return plan;
+}
 } // namespace dungeon_village_prototype

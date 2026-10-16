@@ -35,6 +35,62 @@ int check_startup_world_restore_contracts(
     };
     expect(baseline, true, "natural baseline");
     {
+        // 原producer只安装共享人物引用；条件钟用于短回放，不伪造自然到访或新W。
+        using E=p::StartupWorldRuntimeError;
+        const auto require=[&](bool ok,const char *why){++checks;if(!ok)throw std::runtime_error(std::string("restore unlock59: ")+why);};
+        auto state=baseline;r::WorldScriptPage page;
+        page.kind=r::WorldScriptPageKind::raw_page;page.legacy_page=59;page.legacy_f=2;
+        const auto made=r::prepare_world_script_page(p::startup_world_runtime_scripts(state),page);
+        require(made.candidate&&made.candidate->last_page&&p::write_startup_world_runtime_scripts(state,made.candidate->state),"actual page producer");
+        const auto id=*made.candidate->last_page;
+        const auto actors=state.scene.world.world.ai.human_order;
+        const auto tick=[&](auto &s){const auto next=p::prepare_startup_world_runtime(s);require(next.candidate.has_value(),"real framework");s=*next.candidate;};
+        const auto replay=[&](const auto &source,const auto &consume,const char *why){
+            expect(source,true,why);const auto bytes=p::persistence_detail::encode_state(source);
+            auto restored=p::persistence_detail::decode_state(bytes,*source.rules),live=source;
+            require(p::persistence_detail::encode_state(restored)==bytes,"shared binding/life/main exact");
+            consume(live);consume(restored);expect(live,true,why);expect(restored,true,why);
+            require(p::persistence_detail::encode_state(live)==p::persistence_detail::encode_state(restored),"same input restores complete Owner/random/output");
+        };
+        replay(state,tick,"59 pending Init restore");
+        auto paused=state;paused.scene.framework_paused=true;
+        replay(paused,[&](auto &s){tick(s);require(!s.page_counters.count(id),"paused pending stays without main");},"59 paused pending restore");
+        for(int fault=0;fault<3;++fault){auto bad=state;
+            if(fault==0)bad.page_counters[id]=0;if(fault==1)bad.page_phases[id]=0;if(fault==2)bad.page_secondary_counters[id]=0;
+            expect(bad,false,"59 pending partial payload cannot be repaired during load");}
+        require(p::initialize_startup_world_human_unlock_pages(state),"actual Init only");
+        replay(state,tick,"59 initialized pre-first-update restore");tick(state);
+        for(int fault=0;fault<10;++fault){auto bad=state;
+            if(fault==0)bad.page_counters.erase(id);
+            if(fault==1)bad.page_counters.at(id)=-1;
+            if(fault==2)bad.page_counters.at(id)=std::numeric_limits<int>::max();
+            if(fault==3)bad.page_phases[id]=0;
+            if(fault==4)bad.page_secondary_counters[id]=0;
+            if(fault==5)bad.scripts.pages.back().legacy_f=-1;
+            if(fault==6)bad.human_calendar.erase(2);
+            if(fault==7)bad.scene.world.world.ai.growth.at(2).definition.current_profession=-1;
+            if(fault==8)bad.shop_humans.at(2).equipment[0]=999;
+            if(fault==9)bad.scripts.pages.back().kind=r::WorldScriptPageKind::dialogue;
+            expect(bad,false,"59 corrupt clock or shared dependency rejects snapshot");
+            require(!p::prepare_startup_world_runtime(bad).candidate,"loaded damage refuses update before mutation");
+        }
+        auto boundary=state;boundary.page_counters.at(id)=std::numeric_limits<int>::max()-1;
+        replay(boundary,[&](auto &s){tick(s);require(s.page_counters.at(id)==0,"main source modulo");},"59 main modulo restore");
+        auto paused_live=state;paused_live.scene.framework_paused=true;
+        replay(paused_live,[&](auto &s){const auto main=s.page_counters.at(id);tick(s);require(s.page_counters.at(id)==main,"pause freezes live clock");},"59 paused initialized restore");
+        const auto confirm=[&](auto &s){require(p::acknowledge_startup_world_runtime_page(s,id)==E::none,"actual confirm");};
+        state.page_counters.at(id)=69;const auto priority=state.human_calendar.at(2).absent_months;
+        replay(state,confirm,"59 early69 confirm restore");confirm(state);
+        require(state.page_counters.at(id)==69&&state.human_calendar.at(2).absent_months==priority,"early confirm never fast-forwards or grants");
+        tick(state);replay(state,confirm,"59 ready70 confirm restore");confirm(state);
+        require(state.human_calendar.at(2).absent_months==10&&state.scripts.pages.back().lifecycle==4&&state.scene.world.world.ai.human_order==actors,
+                "ready claim changes aq and closes without spawning W");
+        auto damaged=state;damaged.page_counters.erase(id);expect(damaged,false,"59 closed missing clock must reject before Finish");
+        replay(state,tick,"59 closed pending-Finish restore");tick(state);
+        require(!state.page_counters.count(id)&&std::none_of(state.scripts.pages.begin(),state.scripts.pages.end(),[&](const auto &v){return v.id==id;}),
+                "Finish releases page and main without replaying claim");
+    }
+    {
         // 只冻结调用点正文；页面身份/挂起父页由真实producer建立，不重复经营前缀。
         using E=p::StartupWorldRuntimeError;
         const auto require=[&](bool ok,const char *why){++checks;if(!ok)throw std::runtime_error(std::string("restore event11: ")+why);};

@@ -3353,16 +3353,74 @@ void popularity_return() {
 }
 void unlocked_visitor() {
     auto s = fixture(59);
+    s.scripts.pages.back().lifecycle = 0;
     s.scripts.pages.back().legacy_f = 2;
     const auto id = s.scripts.pages.back().id;
     const auto actors = s.scene.world.world.ai.human_order;
     const auto priority = s.human_calendar.at(2).absent_months;
     const auto cash = s.scene.world.world.ai.accounting.funds();
+    auto paused=s;paused.scene.framework_paused=true;
+    const auto stopped=prepare_startup_world_runtime(paused);
+    check(stopped.candidate&&stopped.candidate->scripts.pages.back().lifecycle==0&&
+              !stopped.candidate->page_counters.count(id)&&stopped.candidate->sound_requests.empty(),
+          "raw59 paused pending page keeps absent main and does not spawn or sound");
+    check(acknowledge_startup_world_runtime_page(s,id)==StartupWorldRuntimeError::missing_source,
+          "raw59 pending life0 input cannot install its own counter");
+    for(int fault=0;fault<3;++fault) {
+        auto bad=s;if(fault==0)bad.page_counters[id]=0;if(fault==1)bad.page_phases[id]=0;
+        if(fault==2)bad.page_secondary_counters[id]=0;
+        const auto before=startup_world_state_digest(bad);
+        check(!initialize_startup_world_human_unlock_pages(bad)&&!prepare_startup_world_runtime(bad).candidate&&
+                  startup_world_state_digest(bad)==before,"raw59 pending partial payload rejects instead of being initialized twice");
+    }
+    check(initialize_startup_world_human_unlock_pages(s)&&s.scripts.pages.back().lifecycle==1&&s.page_counters.at(id)==0&&
+              s.sound_requests.empty()&&s.scene.world.world.ai.human_order==actors,
+          "raw59 Init installs only main0 and shared definition binding, never W");
+    const auto initialized=startup_world_state_digest(s);
+    check(initialize_startup_world_human_unlock_pages(s)&&startup_world_state_digest(s)==initialized&&
+              acknowledge_startup_world_runtime_page(s,id)==StartupWorldRuntimeError::missing_source,
+          "raw59 initialized life1 remains exact and cannot confirm before actual framework update");
+    page_tick(s);
+    auto suspended=s;suspended.scripts.pages.back().lifecycle=3;
+    const auto before_suspended=startup_world_state_digest(suspended);
+    check(valid_startup_world_human_unlock_page(suspended,suspended.scripts.pages.back())&&
+              acknowledge_startup_world_runtime_page(suspended,id)==StartupWorldRuntimeError::missing_source&&
+              !update_startup_world_runtime_page(suspended)&&startup_world_state_digest(suspended)==before_suspended,
+          "raw59 suspended payload remains serializable but cannot consume top-page input/update");
     check(acknowledge_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::none &&
-              s.page_counters.at(id) == 0 && s.scripts.pages.back().lifecycle != 4 &&
+              s.page_counters.at(id) == 1 && s.scripts.pages.back().lifecycle != 4 &&
               s.human_calendar.at(2).absent_months == priority,
           "raw59 early confirm does not fastforward or change arrival priority");
-    for (int count = 1; count <= 70; ++count) {
+    for(int fault=0;fault<13;++fault) {
+        auto bad=s;
+        if(fault==0)bad.page_counters.erase(id);
+        if(fault==1)bad.page_counters.at(id)=-1;
+        if(fault==2)bad.page_counters.at(id)=std::numeric_limits<int>::max();
+        if(fault==3)bad.page_phases[id]=0;
+        if(fault==4)bad.page_secondary_counters[id]=0;
+        if(fault==5)bad.human_calendar.erase(2);
+        if(fault==6)bad.scene.world.world.ai.growth.erase(2);
+        if(fault==7)bad.scene.world.world.ai.growth.at(2).definition.current_profession=-1;
+        if(fault==8)bad.shop_humans.erase(2);
+        if(fault==9)bad.shop_humans.at(2).equipment[0]=999;
+        if(fault==10)bad.scripts.pages.back().kind=ref::WorldScriptPageKind::dialogue;
+        if(fault==11)bad.scripts.pages.push_back(bad.scripts.pages.back());
+        if(fault==12)bad.human_presence.erase(2);
+        const auto before=startup_world_state_digest(bad);
+        check(!prepare_startup_world_runtime(bad).candidate&&
+                  acknowledge_startup_world_runtime_page(bad,id)==StartupWorldRuntimeError::missing_source&&
+                  cancel_startup_world_runtime_page(bad,id)==StartupWorldRuntimeError::missing_source&&
+                  startup_world_state_digest(bad)==before,
+              "raw59 malformed live clock/shared human dependency rejects all consumers atomically");
+    }
+    auto wrapped=s;wrapped.page_counters.at(id)=std::numeric_limits<int>::max()-1;
+    page_tick(wrapped);
+    check(wrapped.page_counters.at(id)==0&&wrapped.human_calendar.at(2).absent_months==priority,
+          "raw59 source modulo clock wraps without granting aq or closing");
+    const auto before_cancel=startup_world_state_digest(s);
+    check(cancel_startup_world_runtime_page(s,id)==StartupWorldRuntimeError::invalid_page&&startup_world_state_digest(s)==before_cancel,
+          "raw59 has no soft2 cancellation bypass of seventy-frame confirmation gate");
+    for (int count = 2; count <= 70; ++count) {
         const auto tick = prepare_startup_world_runtime(s);
         check(tick.candidate && tick.candidate->page_counters.at(id) == count &&
                   tick.candidate->scripts.pages.back().lifecycle != 4 &&
@@ -3381,12 +3439,23 @@ void unlocked_visitor() {
                       s.page_counters.at(id) == count && s.scripts.pages.back().lifecycle != 4,
                   "raw59 confirms below70 preserve page and exact counter");
     }
+    auto failed=s;failed.scripts.professions.emplace(999,failed.scripts.professions.begin()->second);
+    const auto before_failure=startup_world_state_digest(failed);
+    check(acknowledge_startup_world_runtime_page(failed,id)==StartupWorldRuntimeError::script_failed&&
+              startup_world_state_digest(failed)==before_failure&&failed.human_calendar.at(2).absent_months==priority,
+          "raw59 late close writeback failure rolls back aq10 together with page state");
     check(acknowledge_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::none &&
               s.human_calendar.at(2).absent_months == 10 && s.scripts.pages.back().lifecycle == 4 &&
               s.scene.world.world.ai.human_order == actors,
           "raw59 ready confirm writes aq10 and closes without direct arrival");
     check(acknowledge_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::invalid_page,
           "raw59 closed page rejects duplicate confirm");
+    auto broken_closed=s;broken_closed.page_counters.erase(id);
+    check(!prepare_startup_world_runtime(broken_closed).candidate&&broken_closed.scripts.pages.back().lifecycle==4,
+          "raw59 closed malformed payload rejects before Finish removes it");
+    page_tick(s);
+    check(!s.page_counters.count(id)&&std::none_of(s.scripts.pages.begin(),s.scripts.pages.end(),[&](const auto &p){return p.id==id;}),
+          "raw59 real Finish retires page/main while preserving claimed aq");
     auto bad = fixture(59);
     bad.scripts.pages.back().legacy_f = -1;
     check(!prepare_startup_world_runtime(bad).candidate && bad.page_counters.empty() &&

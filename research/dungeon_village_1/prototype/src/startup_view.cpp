@@ -1537,9 +1537,17 @@ void draw_human_overview(const SteamHumanOverviewPlan &plan,SourceSprites &sprit
 }
 std::optional<SteamEventSkinPlan> window_event_plan(const StartupWorldRuntimeState &state,
     std::uint64_t page,const ChineseFont &font) {
-    const auto input=steam_event_input(state,page);if(!input)return {};
     SteamEventSkinOptions options;options.view_y=23;options.title="活动";
     options.title_widths=std::array<int,2>{int(font.measure(options.title)),int(font.measure(options.title))};
+    const auto source=std::find_if(state.scripts.pages.begin(),state.scripts.pages.end(),
+        [=](const auto &p){return p.id==page;});
+    if(source!=state.scripts.pages.end()&&source->legacy_page==59) {
+        const auto input=steam_human_unlock_input(state,page);if(!input)return {};
+        options.human_unlock_text={"多指教","的","先生","可以到访了!"};
+        options.greeting_width=int(font.measure(options.human_unlock_text[0]));
+        return steam_human_unlock_skin(*input,options);
+    }
+    const auto input=steam_event_input(state,page);if(!input)return {};
     // 与同批240局部页面一致：VIEW_Y仅给helper，研究窗口外层明确安装human_overview_origin。
     return steam_event_skin(*input,options);
 }
@@ -1565,6 +1573,16 @@ void draw_event_plan(const SteamEventSkinPlan &plan,SourceSprites &sprites,const
             sprites.published_sprite(image->image,resource->image_path,resource->sprite_path,image->offset,image->frame,
                 image->sprite<0?std::optional<std::array<int,4>>(image->crop):std::nullopt,origin);
         } else if(const auto *text=std::get_if<SteamEventTextLayout>(&draw))font.event_text(*text,origin);
+        else if(const auto *portrait=std::get_if<SteamHumanPortrait>(&draw)) {
+            SteamHumanOverviewPlan part;part.operations.emplace_back(*portrait);
+            draw_human_overview(part,sprites,font,origin,false);
+        } else if(const auto *image=std::get_if<SteamHumanImage>(&draw)) {
+            SteamHumanOverviewPlan part;part.operations.emplace_back(*image);
+            draw_human_overview(part,sprites,font,origin,false);
+        } else if(const auto *text=std::get_if<SteamHumanOverviewText>(&draw)) {
+            SteamHumanOverviewPlan part;part.operations.emplace_back(*text);
+            draw_human_overview(part,sprites,font,origin,false);
+        }
         else if(const auto *clip=std::get_if<SteamEventClip>(&draw)) {
             if(clip->kind==SteamEventClipKind::push_intersect) {
                 clips.push_back(clips.empty()?clip->rectangle:intersect(clips.back(),clip->rectangle));
@@ -1574,7 +1592,7 @@ void draw_event_plan(const SteamEventSkinPlan &plan,SourceSprites &sprites,const
                 clips.pop_back();EndScissorMode();apply();
             }
         } else if(const auto *touch=std::get_if<SteamStartupTouch>(&draw)) {
-            if(touch->component!=2||touch->rectangle||touch->image_draw||touch->option)
+            if(touch->component!=2||touch->rectangle||touch->image_draw||(touch->option!=0&&touch->option!=2))
                 throw std::runtime_error("事件页无矩形确认请求拒绝");
             // AddTouch2仅交输入适配，不画额外按钮；不据soft2静态消费者接OS Esc。
         } else throw std::runtime_error("事件页未消费图元");
@@ -1586,6 +1604,17 @@ std::optional<SteamEventSkinPlan> event_example(int command,const ChineseFont &f
     SteamEventSkinOptions options;options.view_y=23;options.title="活动";
     options.title_widths=std::array<int,2>{int(font.measure(options.title)),int(font.measure(options.title))};
     return steam_event_skin({61,command,"<po=cm>研究绘制夹具<br><co=ce5300>无自然触发认证</co>"},options);
+}
+std::optional<SteamEventSkinPlan> human_unlock_example(bool ready,const ChineseFont &font) {
+    StartupSession initial;StartupWorldRuntimeSession world(initial.state(),ref::WorldRandomStream::from_java_seed(1));
+    auto state=world.state();
+    ref::WorldScriptPage page;page.kind=ref::WorldScriptPageKind::raw_page;page.legacy_page=59;page.legacy_f=1;
+    const auto made=ref::prepare_world_script_page(startup_world_runtime_scripts(state),page);
+    if(!made.candidate||!made.candidate->last_page||!write_startup_world_runtime_scripts(state,made.candidate->state)||
+       !initialize_startup_world_human_unlock_pages(state))return {};
+    // 只冻结演出帧；人物当前职业、性别、名称及武器取真实新局定义，不创建W或认证自然解锁。
+    state.page_counters.at(*made.candidate->last_page)=ready?70:20;
+    return window_event_plan(state,*made.candidate->last_page,font);
 }
 // 探索底栏独立消费普通clip栈与临时头像ImageClip；后者结束时恢复外层，
 // 只模拟本计划正常未翻转图元，不认证原后端共享ImageClip/GPU越界行为。
@@ -3496,7 +3525,8 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
     const bool monster_fixture=inspect_page=="monster-introduction"||inspect_page=="monster-introduction-early";
     const bool monster_detail_fixture=inspect_page=="monster-detail"||inspect_page=="monster-detail-grown";
     const bool monster_notice_fixture=inspect_page=="monster-boss"||inspect_page=="monster-outbreak";
-    const bool event_fixture=inspect_page=="event-happy"||inspect_page=="event-sad"||inspect_page=="event-special";
+    const bool human_unlock_fixture=inspect_page=="human-unlock-early"||inspect_page=="human-unlock-ready";
+    const bool event_fixture=human_unlock_fixture||inspect_page=="event-happy"||inspect_page=="event-sad"||inspect_page=="event-special";
     const bool effort_fixture=inspect_page=="effort-result";
     const bool mastery_fixture=inspect_page=="mastery-announcement"||inspect_page=="mastery-bonus"||inspect_page=="mastery-choice";
     const bool clear_fixture=inspect_page=="clear-count"||inspect_page=="clear-score"||inspect_page=="clear-record"||inspect_page=="clear-closing";
@@ -3583,6 +3613,11 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
         for(const auto &monster:startup_world_rules().monsters)reputation_glyphs+=monster.name+monster.description;
     }
     if(event_fixture)reputation_glyphs+="活动研究绘制夹具无自然触发认证";
+    if(human_unlock_fixture) {
+        reputation_glyphs+="多指教的先生可以到访了!";
+        for(const auto &h:startup_world_rules().humans)reputation_glyphs+=h.name;
+        for(const auto &job:startup_world_rules().jobs)reputation_glyphs+=job.name;
+    }
     if(build_menu_fixture) {
         reputation_glyphs+="研究绘制夹具无自然触发认证设备一般饮食撤除移动返回详细Ｇ";
         for(const auto &d:startup_world_rules().facilities)reputation_glyphs+=d.name;
@@ -3591,7 +3626,8 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
     if(magic_fixture||task_fixture||residence_fixture||award_fixture||tax_fixture||present_fixture||monster_fixture||monster_detail_fixture||monster_notice_fixture||event_fixture||effort_fixture||award_result_fixture||mastery_fixture||gift_claim_fixture||clear_fixture||new_game_fixture||config_fixture||commerce_fixture||commerce_result_fixture||commerce_item_fixture||commerce_facility_fixture||commerce_preview_fixture||facility_special_fixture||build_menu_fixture) {
         std::variant<SteamMagicPotPlan,SteamTaskSelectionPlan,SteamTaskRosterPlan,SteamTaskResultPlan,SteamTaskVictoryPlan,SteamTaskDeadlinePlan,SteamHumanOverviewPlan,SteamTownProgressPlan,SteamNewGamePlan,SteamConfigSkinPlan,SteamCommerceSkinPlan,SteamFacilityDetailSkinPlan,SteamInformationSkinPlan,SteamMonsterSkinPlan,SteamBuildMenuSkinPlan,SteamDungeonFooterPlan,SteamEventSkinPlan> plan;
         if(event_fixture) {
-            const auto value=event_example(inspect_page=="event-happy"?0:inspect_page=="event-sad"?1:2,font);
+            const auto value=human_unlock_fixture?human_unlock_example(inspect_page=="human-unlock-ready",font):
+                event_example(inspect_page=="event-happy"?0:inspect_page=="event-sad"?1:2,font);
             if(!value)throw std::runtime_error("Event drawing example rejected");plan=*value;
         } else if(footer_fixture) {
             const auto value=dungeon_footer_example(inspect_page=="dungeon-footer-entry");
@@ -6149,7 +6185,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     if(session.acknowledge_page(page->id)!=StartupWorldRuntimeError::none)
                         throw std::runtime_error("保存结果确认失败");
                 }
-            } else if(raw==11) {
+            } else if(raw==11||raw==59) {
                 const auto plan=window_event_plan(session.state(),page->id,font);
                 if(!plan&&page->lifecycle!=0)throw std::runtime_error("事件页输入载荷拒绝");
                 const bool registered=plan&&std::any_of(plan->draws.begin(),plan->draws.end(),[](const auto &draw){
@@ -6174,7 +6210,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                         throw std::runtime_error("共同世界页面输入消费者失败");
                 }
             }
-            if (raw!=11&&CheckCollisionPointRec(mouse, {12, 196, 216, 64}))
+            if (raw!=11&&raw!=59&&CheckCollisionPointRec(mouse, {12, 196, 216, 64}))
                 body_scroll = std::clamp(body_scroll - GetMouseWheelMove() * 17, 0.0F,
                                          std::max(body_extent - 64, 0.0F));
         }
@@ -6809,7 +6845,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
             const bool steam_commerce_facility=page->legacy_page==85;
             const bool steam_tax=page->legacy_page==90;
             const bool steam_monster=page->legacy_page==89||page->legacy_page==92||page->legacy_page==99||page->legacy_page==100;
-            const bool steam_event=page->kind==ref::WorldScriptPageKind::raw_page&&page->legacy_page==11;
+            const bool steam_event=page->kind==ref::WorldScriptPageKind::raw_page&&(page->legacy_page==11||page->legacy_page==59);
             const bool steam_reputation=page->legacy_page==82;
             const bool steam_effect=page->legacy_page>=75&&page->legacy_page<=77;
             const bool steam_facility=page->legacy_page==74&&
@@ -6834,8 +6870,6 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     title = "任务期限";
                 else if (page->legacy_page == 83)
                     title = "商店追加";
-                else if (page->legacy_page == 59)
-                    title = "活动";
                 else if (page->legacy_page >= 22 && page->legacy_page <= 28)
                     title = page->legacy_page == 22   ? "任务列表"
                             : page->legacy_page == 27 ? "追加队员"
@@ -7005,25 +7039,6 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     font.text(command_feedback, 12, 199, ink, 10);
                 }
             }
-            if (page->kind == ref::WorldScriptPageKind::raw_page && page->legacy_page == 59) {
-                // 定义已解锁但实例尚未到访；这里只读当前职业/性别和页面计数绘制。
-                const auto &human = rules.humans.at(page->legacy_f);
-                const auto profession =
-                    world.ai.growth.at(human.identity).definition.current_profession;
-                const auto &job = rules.jobs.at(profession);
-                const auto count = state.page_counters.find(page->id);
-                const int tick = count == state.page_counters.end() ? 0 : count->second;
-                DrawRectangle(8, 42, 224, 126, paper);
-                const auto portrait = startup_world_portrait(state, human.identity);
-                if (!portrait)
-                    throw std::runtime_error("到访头像资料非法");
-                sprites.actor(false, 2, portrait->image, (tick % 16) / 4, {120, 144});
-                if (tick >= 60)
-                    font.text("多指教", 98, 91);
-                BeginScissorMode(12, 196, 212, 64);
-                font.paragraph(job.name + "的\n" + human_name(human.identity) + "可以到访了!", 12, 198, 208);
-                EndScissorMode();
-            }
             if (!page->paragraphs.empty()&&!steam_award_question&&!steam_event) {
                 BeginScissorMode(12, 196, 212, 64);
                 body_extent =
@@ -7132,9 +7147,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 font.text("取消", 18, 270);
             else if (!steam_event&&!steam_residence_directory&&!steam_award_question&&!steam_gift_claim&&!steam_info&&!steam_task&&!steam_residence&&!steam_effect&&!steam_facility&&page->legacy_page != 21&&page->legacy_page != 97 && page->legacy_page != 72 &&
                      page->legacy_page != 79 && page->legacy_page != 82 &&
-                     (page->legacy_page < 41 || page->legacy_page > 47) &&
-                     (page->legacy_page != 59 || (state.page_counters.count(page->id) &&
-                                                  state.page_counters.at(page->id) >= 70)))
+                     (page->legacy_page < 41 || page->legacy_page > 47))
                 font.text("确定", 190, 270);
             if ((page->legacy_page == 99 || page->legacy_page == 100) && page->monster_definition) {
                 const auto &monster = world.ai.monster_growth.at(*page->monster_definition);

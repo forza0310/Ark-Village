@@ -96,6 +96,15 @@ raw19的`MakeNoMymenu RVA315A70`沿MakeDialog(text,“はい\tいいえ”)再�
 
 原三类工厂提供主要载荷，原Init没有专属内容初始化；维护raw11的life0初始化仅建立现有phase／main镜像，不能倒推原Init新增业务。共同wait／生命周期、SDK及原OS输入不由这些body局部代替。DEBUG额外按键不加入普通玩家输入，不把未核路径声明为不可达；维护字体仍为适配。
 
+<a id="steam-human-unlock"></a>
+### Steam人物解锁通知59
+
+固定DLL `Init2 10311A85–10311B04`仅安装共享定义名单`ary1=[charaDatas[value1]]`，不创建到访W、不抽随机。`MANYHUMAN_ANIME={60,70}`由`1032C4D5／1032C4E6`直接赋值，soft row59是`[0,0]`。Update `1031E63C–1031E99D`的main1发jingle5，早确认不快进，满70确认才写首人`townOutMonth_=10`并Pop；没有soft2查询，DEBUG held另受资格门控。main60按`p!=0`合计人物，依20／16／12／8／4阈值各自达标才顺序调用`Trophy.Unlock(3／6／7／8／9,true)`，不是只取最高档或未达标传false；调用锚`1031E755／E79D／E7E5／E82D／E875`，整数由AppData.cctor `1026AA45–AAB1`分别赋值。此SDK旁支尚无维护执行器，不把静态调用当平台成就已取得。
+
+Draw `1034ED99–1034F27E`按222×170事件窗→Box边界(15,139,224,202)→event9背景(30,67)→clip(30,67,180,80)→当前人物→PopClip→main≥60问候气泡(120,104)→正文clip(0,158,240,RateConvert(main,5,40,0,48,true))→三行→PopClip→main≥70继续标→Touch2。人物action0、方向2、步`(main%16)/4`，当前职业／性别身体及GetWeapon武器，锚`(RateConvert(main,0,60,220,120,true),144)`；真实调用整数helper `102A4780`先负乘积、向零除60再加220，main1／59的x分别219／122。三行原LT分别为当前职业＋“の”、姓名＋“さんが”、“訪れるようになりました!”；锚(120,158／176／194)、anchor2、SC_WINDOW_BLACK。问候“よろしく”用真实Font测宽；继续标是(212,204)、main%25<15，不能套11的40槽与x213。尾`10351A30–10351A54`通过TouchOption.Create(2)注册无矩形Touch2，与11的无option重载不同；Create `10896A40–A88`把flags实参写入，不由此猜OS鼠标热区。
+
+[steam_event_skin](../prototype/include/dungeon_village_prototype/steam_event_skin.hpp)复用既有事件、人物和气泡资源，独立提供59纯计划和严格当前外观桥。Owner只用现legacy_f／main，life0无钟、获准Init一次main0，life1–4完整校验，禁止缺键补0、错人物／错类型、额外phase／副钟及坏关闭载荷；暂停不初始化，原序确认／更新／恢复／Finish共用资格，不增字段或schema。正常研究窗口仅Enter交Owner，不画确定／返回软键、不映射取消；人物当前定义与真正创建实例分开。有限中文后缀、Noto／画布及正常action0演员适配不认证原LT、共享scratch任意附效、字体、OS输入或自然解锁；[条件例图](examples/README.md)和[短验](../VERIFICATION.md)分别记录。
+
 <a id="steam-village-progress"></a>
 
 ## Steam村办、晋级与奖励小窗
@@ -643,7 +652,7 @@ Update `b/g.java:11468–11484`先以确认或右重复输入向后循环，再�
 - 人气奖励终点97按[b/g:6172](../work/decompiled/sources/b/g.java:6172)实际页面更新清R/关闭，没有玩家确认。
   指令21的人物解锁59按[初始化3467](../work/decompiled/sources/b/g.java:3467)保存bv[f]，
   [更新4879](../work/decompiled/sources/b/g.java:4879)首次音效5、满70确认写aq10/关闭，早确认不快进；
-  [绘制3262](../work/decompiled/sources/b/g.java:3262)标题“活动”、60出现问候、70出现页脚。
+  [绘制3262](../work/decompiled/sources/b/g.java:3262)标题“活动”、60出现问候、70出现页脚；Steam独立合同及维护皮肤见[59通知](#steam-human-unlock)。
   解锁定义和真正到访实例分开，不在画面显示时创建人物。
 
 

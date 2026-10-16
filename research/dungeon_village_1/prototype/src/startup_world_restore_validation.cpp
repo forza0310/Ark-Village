@@ -1058,6 +1058,8 @@ struct Validation {
             return fail("scripts: 页身份/续体校验失败");
         std::size_t scenes{};
         for (const auto &p : s.scripts.pages) {
+            if(p.legacy_page==59&&!valid_startup_world_human_unlock_page(s,p))
+                return fail("human unlock59: 人物依赖/主钟/生命周期或关闭待退休载荷非法");
             if((!p.message_commands.empty()||
                 (p.kind==ref::WorldScriptPageKind::raw_page&&p.legacy_page==11))&&
                !valid_startup_world_event_page(s,p))
@@ -1175,8 +1177,6 @@ struct Validation {
                     return fail("page: 文本段选择越界");
                 continue;
             }
-            if (raw == 59 && !human(p.legacy_f))
-                return fail("human page: 解锁人物不存在");
             if ((raw == 67 || raw == 88) && !s.page_human_bindings.count(id))
                 return fail("human page: 奖励显示缺人物绑定");
             if (raw == 94 || raw == 95) {

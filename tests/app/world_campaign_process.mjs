@@ -217,12 +217,12 @@ function report(rows) {
 }
 // Receipt values describe the already-asserted observation; no business algorithm is run here.
 const receiptStages = {
-  points_paid: ['village_activity', 'profession'], effect_queued: 'village_activity', pot_opened: 'village_activity', pot_expanded: 'village_activity',
+  points_paid: ['village_activity', 'profession'], effect_queued: 'village_activity', popularity_queued: 'village_activity', pot_opened: 'village_activity', pot_expanded: 'village_activity',
   satisfaction_applied: 'village_activity', attribute_applied_to_human: 'village_activity', bound_use: 'item',
   attribute_applied: 'item', obtained: 'item', hp_restored: 'item', permanent_spell_learned: 'item', discovered: 'magic_recipe',
   elements_paid_and_crafted: 'magic_recipe', blueprint_points_paid: 'facility',
   blueprint_claimed: 'facility', construction_paid: 'facility', pot_blueprint_queued: 'facility',
-  reward_equipped: ['weapon', 'armour', 'accessory'],
+  reward_equipped: ['weapon', 'armour', 'accessory'], paid_equipped: ['weapon', 'armour', 'accessory'],
   combat_attributes_applied: ['weapon', 'armour', 'accessory'], medal_awarded: 'human', home_admitted: 'human',
   home_tax_collected: 'human', retirement_cash_committed: 'monster', retirement_cash_month_reset: 'monster',
   victory_committed: 'quest', commerce_bought: 'item', facility_bound_use: 'item',
@@ -264,10 +264,29 @@ function* receipts(text, phase) {
         numbers[6] > 0 && numbers[10] === numbers[6] - 1 &&
         numbers[7] > 0 && numbers[11] === numbers[7],
       'receipt pot expansion/source level/capacity/quarter binding');
-    if (['reward_equipped', 'combat_attributes_applied', 'medal_awarded', 'home_admitted', 'home_tax_collected'].includes(stage))
+    if (['reward_equipped', 'paid_equipped', 'combat_attributes_applied', 'medal_awarded', 'home_admitted', 'home_tax_collected'].includes(stage))
       need(numbers[2] >= 0 && numbers[2] < 25, 'receipt source human binding');
-    if (['hp_restored', 'construction_paid', 'reward_equipped', 'combat_attributes_applied', 'home_admitted', 'victory_committed', 'facility_bound_use', 'item_improvement_applied', 'task_loot_claimed', 'retirement_cash_committed', 'retirement_cash_month_reset'].includes(stage))
+    if (['hp_restored', 'construction_paid', 'reward_equipped', 'paid_equipped', 'combat_attributes_applied', 'home_admitted', 'victory_committed', 'facility_bound_use', 'item_improvement_applied', 'task_loot_claimed', 'retirement_cash_committed', 'retirement_cash_month_reset'].includes(stage))
       need(numbers[3] > 0, 'receipt actual subject binding');
+    if (stage === 'paid_equipped') {
+      // SteamPeopleStrategy asserts the actual source quote and synchronized equipment before
+      // emitting this row. The wire binds its paid branch: stock stays, cash falls, slot/ID match.
+      const slots = category === 'weapon' ? [0] : category === 'armour' ? [1, 2] : [3];
+      need(numbers[4] >= 0 && numbers[4] <= 2147483647 && numbers[8] === numbers[4] &&
+        numbers[5] > numbers[9] && numbers[9] >= 0 && slots.includes(numbers[6]) &&
+        numbers[10] === numbers[6] && numbers[7] >= -1 &&
+        (numbers[7] === -1 || catalogue.has(`${category}:${numbers[7]}`)) &&
+        numbers[7] !== id && numbers[11] === id,
+      'receipt paid equipment/stock/cash/slot/definition binding');
+    }
+    if (stage === 'popularity_queued') {
+      const effect = catalogue.get(key)?.record.effect_parameters;
+      need(effect?.type === 2 && numbers[2] === -1 && numbers[3] === 0 &&
+        numbers[4] > 0 && numbers[8] === numbers[4] - 1 &&
+        numbers[5] >= 0 && numbers[9] === numbers[5] && numbers[6] >= 0 &&
+        numbers[10] === numbers[6] + 1 && numbers[7] === effect.value && numbers[11] === effect.value,
+      'receipt popularity queue/source magnitude/quarter binding; not applied popularity');
+    }
     if (['medal_awarded', 'home_admitted', 'home_tax_collected'].includes(stage)) need(id === numbers[2], 'receipt human definition binding');
     if (stage === 'home_tax_collected')
       need(numbers[7] >= 0 && numbers[7] < 12 && numbers[7] === numbers[11] && numbers[9] === 0, 'receipt tax month/reset binding');
@@ -558,6 +577,38 @@ function coverageContract(rows) {
   // Wire qualification only; the C++ source-command fixtures own the actual quote/effect oracle.
   const careerWire = (category, id, stage, before, after, page = 1, step = 2) =>
     ['COVERAGE_RECEIPT', category, id, stage, step, page, 24, 7, ...before, ...after].join('\t');
+  for (const [category, id, limit, slot] of [
+    ['weapon',32,33,0], ['armour',49,50,1], ['armour',49,50,2], ['accessory',29,30,3]]) {
+    const fields = careerWire(category,id,'paid_equipped',[0,5000,slot,-1],[0,4000,slot,id]).split('\t');
+    const parsed = [...receipts(fields.join('\t'),'contract')];
+    need(parsed.length === 1 && parsed[0].key === `${category}:${id}` &&
+      parsed[0].recipient === 24 && parsed[0].subject === 7 &&
+      parsed[0].before.join(',') === `0,5000,${slot},-1` &&
+      parsed[0].after.join(',') === `0,4000,${slot},${id}`, 'paid equipment wire mapping');
+    for (const [field,value] of [[1,'facility'],[2,String(limit)],[6,'-1'],[6,'25'],[7,'0'],
+      [8,'-1'],[12,'1'],[9,'4000'],[13,'5000'],[13,'-1'],[11,String(id)],
+      [11,String(limit)],[15,String(id-1)],[14,String((slot+1)%4)]]) {
+      const bad = [...fields]; bad[field] = value;
+      expectReject(() => [...receipts(bad.join('\t'),'contract')]);
+    }
+    const wrongSlot = category === 'weapon' ? 1 : category === 'armour' ? 3 : 0;
+    const bad = [...fields]; bad[10] = bad[14] = String(wrongSlot);
+    expectReject(() => [...receipts(bad.join('\t'),'contract')]);
+  }
+  const paidHistory = [...receipts('COVERAGE_RECEIPT\tarmour\t38\tpaid_equipped\t309944\t5\t18\t3096\t0\t1030644\t1\t36\t0\t1025044\t1\t38','month196')];
+  need(paidHistory.length === 1 && paidHistory[0].key === 'armour:38' &&
+    paidHistory[0].before[1] - paidHistory[0].after[1] === 5600,
+  'accepted month196 paid equipment receipt is retained without changing historical evidence');
+  const popularityQueued = careerWire('activity',20,'popularity_queued',[5,6633,1,50],[4,6633,2,50]).split('\t');
+  popularityQueued[6] = '-1'; popularityQueued[7] = '0';
+  const queueRows = [...receipts(popularityQueued.join('\t'),'contract')];
+  need(queueRows.length === 1 && queueRows[0].key === 'village_activity:20' &&
+    queueRows[0].stage === 'popularity_queued' && queueRows[0].before[1] === queueRows[0].after[1],
+  'type2 completion records its queue and quarter, without certifying applied popularity');
+  for (const [field,value] of [[2,'7'],[6,'0'],[7,'1'],[8,'0'],[12,'5'],[13,'6634'],[14,'3'],[11,'49'],[15,'49']]) {
+    const bad = [...popularityQueued]; bad[field] = value;
+    expectReject(() => [...receipts(bad.join('\t'),'contract')]);
+  }
   const careerCases = [
     ['profession', 22, 'points_paid', [120,0,2,5], [65,1,2,5]],
     ['profession', 22, 'set', [2,2,54,1], [22,22,55,1]],

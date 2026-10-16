@@ -5477,6 +5477,56 @@
       "source": "research/dungeon_village_1/assets/original/effect/satSmoke02.seb",
       "sha256": "7ffb658beff9941dbd6c837f50cd63519afc78db33954f5966b6f8b9301b313a",
       "bytes": 68
+    },
+    {
+      "file": "steam_common/English.lproj/menuRT00.png",
+      "source": "research/dungeon_village_1/assets/steam-common/English.lproj/menuRT00.png",
+      "sha256": "05d917a90cfc584be33b194095396dc8448fcc265b83e9c3a2454b6af545a41f",
+      "bytes": 4771,
+      "width": 59,
+      "height": 45
+    },
+    {
+      "file": "steam_common/English.lproj/menuRT00.seb",
+      "source": "research/dungeon_village_1/assets/steam-common/English.lproj/menuRT00.seb",
+      "sha256": "5c6db9782b153f91fabab955ccd00b48934fc6423c64ffae520d058f0815ce51",
+      "bytes": 88
+    },
+    {
+      "file": "steam_common/English.lproj/menuRT01.png",
+      "source": "research/dungeon_village_1/assets/steam-common/English.lproj/menuRT01.png",
+      "sha256": "2c90f2a6702e1551045dc4e08b603b8044ab6b3f4adbf8030362757821c37443",
+      "bytes": 3137,
+      "width": 57,
+      "height": 10
+    },
+    {
+      "file": "steam_common/zh-CN/menuRT00.png",
+      "source": "research/dungeon_village_1/assets/steam-common/zh-CN/menuRT00.png",
+      "sha256": "263f665db75d170888f684da37672120171751a679ab3703e6b40e01c436687f",
+      "bytes": 2800,
+      "width": 118,
+      "height": 90
+    },
+    {
+      "file": "steam_common/zh-CN/menuRT00.seb",
+      "source": "research/dungeon_village_1/assets/steam-common/zh-CN/menuRT00.seb",
+      "sha256": "033795ea4763345ec8f205a8376dec95294a3368b261d893ae6e47f474a12fa1",
+      "bytes": 88
+    },
+    {
+      "file": "steam_common/zh/menuRT00.png",
+      "source": "research/dungeon_village_1/assets/steam-common/zh/menuRT00.png",
+      "sha256": "291267dc51cb9ab59d9ce5985b8defb38cd242c564e56bae56d54f58c89817e6",
+      "bytes": 2799,
+      "width": 118,
+      "height": 90
+    },
+    {
+      "file": "steam_common/zh/menuRT00.seb",
+      "source": "research/dungeon_village_1/assets/steam-common/zh/menuRT00.seb",
+      "sha256": "033795ea4763345ec8f205a8376dec95294a3368b261d893ae6e47f474a12fa1",
+      "bytes": 88
     }
   ]
 }

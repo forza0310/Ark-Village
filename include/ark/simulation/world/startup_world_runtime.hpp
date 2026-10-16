@@ -136,7 +136,7 @@ struct StartupWorldRuntimeState {
     std::map<std::uint64_t, ref::WorldMapNeighbourCache> neighbourhood_details;
     std::map<std::uint64_t, ref::WorldExplorationSummary> exploration_summaries;
     std::vector<ref::WorldExplorationGroundDisplay> exploration_displays;
-    std::vector<ref::DungeonCrewRequest> dungeon_labels; // 231的真实x参数/actor待表现消费。
+    std::vector<ref::DungeonCrewRequest> dungeon_labels; // 已应用到aW的231观察输出；不得再次追加效果。
     std::vector<ref::DungeonFinishSurface> surface;
     std::vector<std::array<bool, 2>> road_patches;
     // scripts不持久finance、pending_completion、I、human_order或scene计数；读写时投影。

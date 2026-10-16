@@ -40,6 +40,25 @@ struct SteamDungeonFooterPlan {
 std::optional<SteamDungeonFooterPlan> steam_dungeon_footer_skin(const SteamDungeonFooterInput &);
 // 当前只绑定已核Steam根资源；语言替换由宿主另选，不能把APK中文当Steam语言资源。
 std::optional<SteamFacilityResource> steam_dungeon_footer_resource(int common_image);
+enum class SteamDungeonFooterBaseLanguage { root,english };
+enum class SteamDungeonFooterResourceLanguage { root,english,simplified_chinese,traditional_chinese };
+// 基础语言、语言包目录和线程资源开关是三个不同的原状态；不得从中文文本推英语基础。
+struct SteamDungeonFooterLanguageProfile {
+    SteamDungeonFooterBaseLanguage base{SteamDungeonFooterBaseLanguage::root};
+    SteamDungeonFooterResourceLanguage resource{SteamDungeonFooterResourceLanguage::root};
+    bool use_resource_language{true};
+};
+struct SteamDungeonFooterResourceRequest {
+    SteamFacilityResource resource;
+    std::array<int,2> physical_size{};
+    // INF e59x45 仅基础English生效；不是PNG改尺寸，也不是目标矩形缩放。
+    std::optional<std::array<int,2>> standard_size;
+};
+std::optional<SteamDungeonFooterResourceRequest> steam_dungeon_footer_resource(
+    int common_image,const SteamDungeonFooterLanguageProfile &);
+// 普通Image路径的源坐标换算；保留负源坐标及越界请求，不声称GPU最终像素已认证。
+std::optional<std::array<float,4>> steam_dungeon_footer_physical_source(
+    const SteamDungeonFooterResourceRequest &,std::array<int,4> logical_source);
 // 同次Owner表现提交后的真实事实；视口/侧软键宽度/语言仍为显式平台上下文。
 // 不补缺绑定、不消费dungeon_labels、不重建随机；调用方不得夹入后续世界更新。
 std::optional<SteamDungeonFooterPlan> steam_dungeon_footer_skin(

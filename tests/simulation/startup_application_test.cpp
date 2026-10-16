@@ -340,6 +340,72 @@ void bad_files_and_rollback(Work &work) {
     check(!case_alias.error().empty(), "拒绝Windows尾点别名，不规范化到另一个已授权根");
 #endif
 }
+void presentation_bridge(Work &work) {
+    const auto paths = work.paths("world-presentation");
+    StartupApplication app(paths, ref::WorldRandomStream::from_java_seed(7));
+    StartupPresentationRequest request;
+    request.ordinal = 1;
+    request.mode = StartupPresentationMode::full_redraw;
+    const auto no_world = app.present_world(request);
+    check(!no_world.error.empty() && !no_world.plan && !app.world(),
+          "无世界拒绝表现且不返回冻结计划");
+    good(app.request_new_game(0)); good(app.start_game());
+    const auto pages = startup_world_presentation_pages(app.world()->state(), request.mode);
+    check(pages.has_value(), "真实新局生成本次合法绘制名单");
+    request.expected_pages = *pages;
+    const auto rejected = [&](StartupPresentationRequest bad) {
+        const auto digest = startup_world_session_digest(*app.world());
+        const auto records = bytes(paths.root / "system.avr");
+        auto before = app;
+        const auto output = before.take_audio_requests();
+        const auto result = app.present_world(bad);
+        auto after = app;
+        check(!result.error.empty() && !result.plan &&
+              startup_world_session_digest(*app.world()) == digest &&
+              bytes(paths.root / "system.avr") == records &&
+              after.take_audio_requests() == output,
+              "应用表现拒绝不返回plan，不修改世界、系统或待领取音频");
+    };
+    auto bad = request; bad.ordinal = 0; rejected(bad);
+    bad = request; bad.expected_pages.push_back(app.world()->state().scripts.next_page_id);
+    rejected(bad);
+    bad = request; bad.mode = static_cast<StartupPresentationMode>(-1); rejected(bad);
+    const auto compare_session = [&] {
+        auto session = *app.world();
+        const auto expected = session.present(request);
+        const auto actual = app.present_world(request);
+        good(actual.error);
+        check(expected.error == StartupWorldRuntimeError::none && expected.plan && actual.plan &&
+              expected.plan->ordinal == actual.plan->ordinal &&
+              expected.plan->pages == actual.plan->pages &&
+              expected.plan->random_before == actual.plan->random_before &&
+              expected.plan->random_after == actual.plan->random_after &&
+              expected.plan->cleared_task == actual.plan->cleared_task &&
+              expected.plan->sound_requests == actual.plan->sound_requests &&
+              expected.plan->dungeon_jitters.empty() && actual.plan->dungeon_jitters.empty(),
+              "应用桥与真实Session同次表现计划一致；新局无副本抖动");
+        // 应用统一领取Session输出；对照也消费同一出口后比较完整Owner。
+        check(session.take_audio_requests().empty() &&
+              startup_world_session_digest(*app.world()) == startup_world_session_digest(session),
+              "应用只提交Session完整表现候选，不另造规则状态");
+    };
+    compare_session();
+    check(app.take_audio_requests() == std::vector<StartupAudioRequest>{
+              {StartupAudioOperation::replace_bgm,0},{StartupAudioOperation::replace_bgm,1}} &&
+              app.take_audio_requests().empty(),
+          "表现提交保留原B0/G次序，应用音频仅领取一次");
+    good(app.set_paused(true));
+    ++request.ordinal;
+    compare_session();
+    check(app.world()->state().scene.framework_paused && app.take_audio_requests().empty(),
+          "世界暂停仍允许实际重绘，不推进世界或重播音频");
+    good(app.return_to_title());
+    const auto digest = startup_world_session_digest(*app.world());
+    const auto title = app.present_world(request);
+    check(!title.error.empty() && !title.plan &&
+          startup_world_session_digest(*app.world()) == digest,
+          "标题保留的历史世界不能作为当前表现入口");
+}
 void natural_cash(Work &work) {
     const auto paths = work.paths("cash");
     StartupApplication app(paths, ref::WorldRandomStream::from_java_seed(1));
@@ -406,7 +472,8 @@ int main(int argc, const char **argv) {
         checks += run_startup_application_replay_paths_checks(work.path);
         checks += run_startup_application_replay_state_checks(work.path);
         if (run_startup_system_records_tests(work.path) || run_startup_world_clear_score_tests()) return 1;
-        title_and_files(work); title_replay(work); bad_files_and_rollback(work); natural_cash(work);
+        title_and_files(work); title_replay(work); bad_files_and_rollback(work);
+        presentation_bridge(work); natural_cash(work);
         std::cout << "应用所有权检查通过：" << checks << '\n';
         return 0;
     } catch (const std::exception &e) { std::cerr << e.what() << '\n'; return 1; }

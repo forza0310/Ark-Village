@@ -1,5 +1,16 @@
 # 计划与决策
 
+<a id="research-45b480b-footer-owner"></a>
+## 探索特效、应用表现与桌面底栏接续
+
+维护底座已接正式a9dc1bd，合并4f66ce1/45b480b：真实crew在扣耐力的原时点追加age0的aW，共同前段推进并在8退休；dungeon_labels只作已应用的观察输出，历史不重播。维护应用新增present_world，沿私有候选/既有联合提交校验标题、暂停和计分引用，返回同次冻结表现事实。语言底栏资源按基础语言、资源语言及线程gate分开处理。完整505来源、81项产品适配及全部有效断言已保留，七份出版语言文件进入assets；玩家schema5、独立系统2、随机不保存和775分母保持，不读取research在途文件。本地维护验收、回执解析修正及62段只读审计见[B1](stages/B1-playable-prototype.md#research-a9dc1bd-maintenance)；下述桌面映射仍待确认。
+
+桌面接线方案（用户已明确批准，维护底座先独立完成验收）：复用现Session FIFO、generation/presentation_epoch，每个已发布源更新或输入机会最多准入一次full_redraw；重复/迟到拒绝，表现回执不产生新机会，暂停允许一次获准重绘。worker调用正式表现消费者，连同当前系统/音频事务提交，返回与同次不可变世界绑定的计划；桌面只投影该对状态/计划，重复画面复用冻结随机，等待时保留最后一份完整可绘publication，不造第二个可写世界或从60FPS反向推进随机。计分引用沿当前系统Owner核验，66包装资格保持false。主责风险是迟到/重复/新局代次、暂停、错页、联合提交失败以及音频一次性；复用world_session/management及源application/runtime_tasks/skin套件，不新增target。
+
+底栏提案使用实际逻辑视口、side_width0，在底部18单位按原序画；有可绘探索条时隐藏底部鼠标暂停/菜单按钮及村名人气扇形，保留现有快捷键/右键菜单，显示和命中共用条件。显式产品语言profile选基础English＋简中资源＋gate开启，按正式e59×45源换算消费118×90原PNG，目标尺寸沿原SEB；这是产品设置，不推断用户Steam语言。纯计划保留负源X，桌面只画源纹理交集并在对应目标位置留下透明空白，明确作为原GPU行为未证时的PC适配；头像局部ImageClip与两层父clip分别恢复。资源/GPU末端放resources，纯映射/有序执行放ui/tasks，Owner/FIFO放app/session，window循环只协调。
+
+验收沿两Debug标准（仅排三个月）、Release受影响合同及月196只读冷载；图形补最小/宽窗、滑入、宝箱/怪物、撤退头像、特效4/8边界与中英简繁资源条件图，检查重复投影不改Owner及两个Pop恢复。自然窗口/物理输入、原GPU越界和完整经营资格分别保留。按上述已确认范围实现Owner交接及桌面布局；维护底座验收与桌面接线分别记录。
+
 <a id="research-82b7e3a-integration"></a>
 ## 3db316f通知与探索底栏接续
 

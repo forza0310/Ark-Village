@@ -380,6 +380,70 @@ void crew_item_reward_writeback() {
               missing.catalog.at({0, 0}).inventory == before &&
               missing.item_rewards == s.item_rewards && missing.scene.random.draws() == draws,
           "crew callback missing item mirror rolls back reward, notices and random");
+
+    // 真实crew先让单人领队前进10：40→50%，对应原横坐标88；不是自然探索进度证据。
+    auto charge = s;
+    charge.active_task = task;
+    charge.dungeon_facilities.at(facility).extent = 100;
+    charge.dungeon_facilities.at(facility).updates = 25;
+    charge.dungeon_facilities.at(facility).challenges = {{0, 1, 0, 0, 0, 2}};
+    charge.dungeon_actors.at(actor_id).progress = 40;
+    charge.dungeon_actors.at(actor_id).endurance = 3;
+    charge.scene.world.floating_notes = {{7, 42, 231}};
+    const auto charge_before = persistence_detail::encode_state(charge);
+    const auto charged = prepare_startup_world_runtime_dungeon_crew(charge, facility);
+    check(charged && charged->scene.world.floating_notes ==
+                         std::vector<std::vector<int>>{{7, 42, 231}, {0, 88, 231}} &&
+              charged->dungeon_labels.size() == charge.dungeon_labels.size() + 1 &&
+              charged->dungeon_labels.back().kind == ref::DungeonCrewRequestKind::progress_label231 &&
+              charged->dungeon_labels.back().first == 88 &&
+              charged->dungeon_actors.at(actor_id).endurance == 2 &&
+              charged->dungeon_facilities.at(facility).challenges.front()[5] == 1 &&
+              charged->scene.random.draws() == draws &&
+              persistence_detail::encode_state(charge) == charge_before,
+          "actual crew writes age0 aW and one observation output after depletion, preserving old notes and random");
+    auto quiet = charge;
+    quiet.dungeon_facilities.at(facility).updates = 26;
+    const auto uncharged = prepare_startup_world_runtime_dungeon_crew(quiet, facility);
+    check(uncharged && uncharged->scene.world.floating_notes == quiet.scene.world.floating_notes &&
+              uncharged->dungeon_labels.size() == quiet.dungeon_labels.size(),
+          "non-depletion crew invocation neither replays old observation outputs nor appends aW");
+    auto outer = charge;
+    outer.dungeon_facilities.at(facility).updates = 24;
+    const auto through_facility = ref::prepare_owned_world_runtime_domain(
+        outer, {ref::WorldScheduleStage::facility, facility, {}}, {}, startup_world_runtime_adapter());
+    check(through_facility && through_facility->state.scene.world.floating_notes ==
+                                 std::vector<std::vector<int>>{{7, 42, 231}, {0, 88, 231}} &&
+              through_facility->state.dungeon_facilities.at(facility).updates == 25 &&
+              through_facility->state.dungeon_labels.size() == outer.dungeon_labels.size() + 1,
+          "actual outer facility callback preserves new aW through projection/writeback without aging it twice");
+
+    // 复用空人物新局隔离共同前段：旧年龄7先退休，新提示下一轮才从0推进至1。
+    auto schedule = test_support::world_fixture().scene.world;
+    schedule.floating_notes = charged->scene.world.floating_notes;
+    const auto keep = [](const ref::WorldScheduleState &current, const ref::WorldScheduleCall &,
+                         const ref::CombatInfluenceCandidate &) -> std::optional<ref::WorldScheduleStep> {
+        return ref::WorldScheduleStep{current};
+    };
+    for (int age = 1; age <= 8; ++age) {
+        const auto advanced = ref::prepare_world_schedule(schedule, {}, keep);
+        check(advanced.candidate.has_value(), "actual shared prefix admits the isolated effect-age fixture");
+        schedule = advanced.candidate->state;
+        check(schedule.floating_notes == (age < 8
+                  ? std::vector<std::vector<int>>{{age, 88, 231}}
+                  : std::vector<std::vector<int>>{}),
+              "shared prefix advances source231 once per admitted update and retires at8");
+    }
+
+    // 反向挑战次序先产231，再让真实道具奖励拒绝非法累计数；整个Owner候选必须丢弃。
+    auto late = charge;
+    late.dungeon_facilities.at(facility).challenges.insert(
+        late.dungeon_facilities.at(facility).challenges.begin(), {0, 0, 0, 0, 0, 0});
+    late.item_rewards = std::numeric_limits<int>::max();
+    const auto late_before = persistence_detail::encode_state(late);
+    check(!prepare_startup_world_runtime_dungeon_crew(late, facility) &&
+              persistence_detail::encode_state(late) == late_before,
+          "late invalid reward count rolls back prior aW, observation output, endurance, challenge and random together");
 }
 void encounter() {
     StartupSession initial;

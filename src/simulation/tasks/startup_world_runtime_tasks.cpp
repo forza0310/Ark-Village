@@ -299,8 +299,11 @@ std::optional<State> prepare_startup_world_runtime_dungeon_crew(const State &sta
             const ref::DungeonWorldRequest &request) -> std::optional<ref::DungeonWorldState> {
             if (!write(current))
                 return {};
-            if (request.source.kind == ref::DungeonCrewRequestKind::progress_label231)
+            if (request.source.kind == ref::DungeonCrewRequestKind::progress_label231) {
+                // 原共同前段已过：设施AI减耐力后追加aW，本轮年龄保持0。
+                next.scene.world.floating_notes.push_back({0, request.source.first, 231});
                 next.dungeon_labels.push_back(request.source);
+            }
             for (const auto &r : request.catalog_requests) {
                 if (r.kind == ref::ObjectCommitRequestKind::event) {
                     const auto executed = ref::prepare_world_script(

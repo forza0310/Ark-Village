@@ -4,11 +4,12 @@
 
 ## 当前接入与收口
 
-当前冻结正式5708375：503来源/81产品适配、749素材/26音频。已完成批次和旧经营前缀集中在[B1](docs/stages/B1-playable-prototype.md)，TODO只保留当前状态和后继。
+当前冻结正式a9dc1bd：505来源/81产品适配、766素材/26音频。已完成批次和旧经营前缀集中在[B1](docs/stages/B1-playable-prototype.md)，TODO只保留当前状态和后继。
 
 - [x] 正式3db316f已合并接入并通过本地验收：505来源/81适配/759素材、99/100正式桌面皮肤及探索底栏维护计划；两Debug适用标准、Release定向、月196冷载和两尺寸条件窗口已验，见[本批记录](docs/stages/B1-playable-prototype.md#research-3db316f-notices-footer)。
 - [ ] 探索底栏桌面同次表现事务、宽窗口负源X裁片及与底部鼠标按钮的排版适配；动态标题/平台语言宿主仍分别待接，不以维护纯计划当窗口完成。
-- [ ] 本批验收期间正式发布4f66ce1/45b480b/a9dc1bd：下一批合并核攻略特效生产、应用Owner表现交接和语言底栏资源，保留当前已验收3db316f批次的来源资格。
+- [x] 合并接入4f66ce1/45b480b/a9dc1bd的攻略特效生产、应用表现事务和语言底栏资源；两Debug标准、Release定向和月196只读冷载通过。桌面底栏方案已获用户确认、待接线，见[本批记录](docs/stages/B1-playable-prototype.md#research-a9dc1bd-maintenance)。
+- [ ] 正式9692bb8/197d5b2已交植物路线绑定修正、施工只读计划及设施完工/装备库存头标；按独立批次核对和接入，不混入a9dc1bd验收结果。
 
 - [x] 正式建设/人物/设施/任务/村办/魔法壶/奖励/税收/怪物等维护消费者、只读皮肤及桌面接线已接，保留唯一Owner、整帧FIFO和建设Draw交接；最新接入见[B1](docs/stages/B1-playable-prototype.md#research-9cee27a-build-record)。未交付后继见下文。
 - [x] 用户指定的preview.mjs及小窗示例已纳入本goal，复用正式合同与套件；预览服务、CSS和夹具数值不进游戏，见[对照入口](docs/reference/REFERENCE_CHECKLIST.md#ui-small-window-goal)。
@@ -29,7 +30,7 @@
 
 ## 表现与研究边界
 
-- [ ] 桌面自动表现请求及探索底栏：补原准入/包装资格、滑入/背景/资源桥后接线，见[最小缺口](docs/reference/RESEARCH_REQUESTS.md#dungeon-strip-consumer-gap)；不按60FPS推导随机调用。
+- [ ] 桌面自动表现请求及探索底栏：维护应用事务已交付，桌面FIFO与源裁片按[已确认方案](docs/MILESTONES.md#research-45b480b-footer-owner)接线，原平台准入/包装资格另保留[缺口](docs/reference/RESEARCH_REQUESTS.md#dungeon-strip-consumer-gap)；不按60FPS推导随机调用。
 - [ ] 完整施工、正门/进出、手持武器/物体/投射物、连击/升级/浮标按精确帧、锚点和时钟合同接入；76/77已按755fdf2正式计划接线；受击不凭观感添加减速、硬直或击退，见[受击缺口](docs/reference/RESEARCH_REQUESTS.md#hit-reaction-gap)。
 - [ ] 设置、世界内排行榜/退出及标题完整动效等余项按[候选门槛](docs/reference/REFERENCE_CHECKLIST.md#候选接续状态与接入门槛)推进；已接的真实菜单和34/39不再列为缺失消费者。
 - [ ] 自动跨周中断档等待轮内恢复合同后单独设计，保持既有玩家存档政策，见[RQ12](docs/reference/RESEARCH_REQUESTS.md#persistence-integration-gap)。

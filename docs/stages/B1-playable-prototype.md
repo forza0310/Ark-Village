@@ -1,5 +1,16 @@
 # B1：持续世界产品接入
 
+<a id="research-a9dc1bd-maintenance"></a>
+## 2026-10-16：攻略特效、应用表现事务与经营回执审计
+
+固定正式a9dc1bd，合并4f66ce1/45b480b，保留505项维护来源与81项产品适配；七份原字节语言资源增加13771字节，素材共766项、音频26项。真实攻略扣耐力时追加age0的aW，由共同前段推进、age8退休；历史dungeon_labels仅作已应用观察，不回放生产特效。维护应用present_world沿私有候选/既有联合提交校验标题、暂停与计分引用并输出同次表现事实，语言底栏按基础语言、资源语言和gate区分。三份含适配文件三方重基，旧runtime_tasks测试机械基线已精确重建并匹配记录身份；产品include、性能观察钩子及全部有效断言保留。完整冻结和19目标写前核对在`build/validation/research-a9dc1bd-integration/`，research在途不纳入。
+
+公共DLL及三套消费者完整构建通过；desktop-debug标准140/140、headless-debug119/119，仅排simulation.startup_world_continuous_test，Release受影响9/9通过。随后修正现经营汇总器漏识别的paid_equipped/popularity_queued：前者核真实人物/实例、现金减少、库存不变和装备槽/定义，后者按正式活动参数核季度次数及排队幅度，不当已兑现人气；保留C++原报价/效果oracle。最终解析器的现campaign合同在两Debug及Release各1/1通过，不新增target。Release资源检查通过，新增语言素材已由源visuals套件实际解码。当前Release对月196有效根只读冷载通过phase2/continued_month195/总分154750，九份玩家/系统/策略/生命周期/装备输入逐字节未变；未推进新经营月或倒填配方18后继。
+
+复用现inventory/receipts/captureCoverage只读审计月135—196的62个成功且独立冷载通过的分段，共2101条有效回执、0隔离项；逐父输入核身份并保留每段实际5708375来源，不能重签为本版经营。唯一汇总入口为上述批次目录的`latest-coverage-audit.txt`；较早解析不完整结果已明确作废。有回执只证明记录的环节，775分母及取得/消费/效果/后继/持久边界均不缩减；本窗口仅1项升星回执，也不推翻窗口外的历史五星资格。旧格式月134及以前尚未合并到本轮审计，继续/继承分别沿各自前缀保留。
+
+本批未改变桌面Owner/FIFO或探索条交互；用户随后批准[桌面映射方案](../MILESTONES.md#research-45b480b-footer-owner)，接线作为下一独立阶段。玩家schema5、独立系统2与随机不保存保持。当前维护批未运行新经营段、GUI/OS输入、完整Release标准/三个月或CI，不自动推送；上批便携包仍只代表3db316f身份。后继正式9692bb8/197d5b2的植物路线绑定、施工及设施头标另批审核，不混入本批资格。
+
 <a id="research-3db316f-notices-footer"></a>
 ## 2026-10-16：通知皮肤与探索底栏维护接续
 

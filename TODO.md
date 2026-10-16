@@ -21,14 +21,15 @@
 
 - [ ] 按[全解锁合同](docs/stages/ACTIVE_VILLAGE_PLAN.md#full-unlock-campaign)逐定义覆盖取得、消费、实际效果与后继，保留775分母；代表样例、仅解锁或日期推进不算全覆盖。
 - 历史回执2838条：80个已核分段外补核5个旧格式阶段，配方7完整消费及职业4人物0/1/3已联接；旧来源字段缺失、失败后段和每定义未完环节保留，见[审计](docs/stages/B1-playable-prototype.md#campaign-history-receipt-audit)，不把“有回执”当全覆盖。
-- [x] 配方17在合法月177独立分支实际制造/免费赠送人物21，完整后继月178设施收入41707G、月179严格装备冷载通过；现装备入口支持显式目标，普通经营仍保留不降属性策略，见[本批](docs/stages/B1-playable-prototype.md#campaign-pot17-branch)。
+- [x] 配方14/16/17从合法月177分别实际制造/免费赠送人物21，完整后继月178设施收入均41707G、月179严格装备冷载通过；复用显式目标入口，普通经营仍保留不降属性策略，见[本批](docs/stages/B1-playable-prototype.md#campaign-pot17-branch)。
 - [x] 未举办常规活动预算已接：保留图纸/扩张点数、按源报价/ID安排首次消费；22/9/11实际付款、9/11的25人属性效果及后继月/冷载通过，见[活动批次](docs/stages/B1-playable-prototype.md#campaign-unheld-activities)。20已真实付200点并排队50人气、冷载次数1；排队不当实际人气归因，见[后继](docs/stages/B1-playable-prototype.md#campaign-material-plant-planning)。
 - [x] 后建商店入口保护/修复已接：原付费搬迁300G，焰火店50实际营业598G，恢复设施46的40点图纸/600G建设及库存强化；活动13的25人效果/冷载通过，见[本批](docs/stages/B1-playable-prototype.md#campaign-external-shop-access)。
 - [x] 四项条件及真实五星晋级/庆典/冷载已验，源收入73374G；配方36准确制造、领取、占卜屋2000G建设及任务库存强化已验，见[本批](docs/stages/B1-playable-prototype.md#campaign-fifth-star-pot36)。
 - [x] 配方26/防具24主角实际装配、完整后继及冷载通过；四本魔法书永久学习和当前Q均已取得，雷书12由人物8实际消费；自然到月183计分154750、系统纪录提交及玩家冷载通过，见[本批](docs/stages/B1-playable-prototype.md#campaign-natural-clear-books)。
 - [x] 完整月184真实营业30258G、付费装备/强化/任务胜利，月185保存/独立冷载已认证；另进程继承新局，5000G起步/600G建设面包店/实际营业545G及再次冷载通过，见[继续与继承](docs/stages/B1-playable-prototype.md#campaign-continued-months)。自然生命周期闭合不等于全775。
 - [ ] 从有效父世界月196接续：18已实际制造/装配，完整后继月197两次耗尽6分钟、未认证；可选预算待确认，见[本批](docs/stages/B1-playable-prototype.md#campaign-pot18-followup)。32/33完整后继冷载、52实际营业7115G保持；继续1/2/3/37/39等产物，39缺四元素6/0/5/10。17的独立分支资格不改签主线；29未开放，20付款排队不当人气兑现。保留两月现金及图纸预算、40配方与775分母，实际施法不以学习/Q替代。
-- [ ] 4魔法实际施放、投射/延迟伤害归因及全23职业后继等待真实局部消费事实；Q可用不等于学习/施法，见[研究请求](docs/reference/RESEARCH_REQUESTS.md#spell-consumption-receipts)。
+- [ ] 4魔法实际施放、投射/延迟伤害等待d4ed6be导入，物理武器另需局部归因，见[研究请求](docs/reference/RESEARCH_REQUESTS.md#spell-consumption-receipts)；Q可用、装配属性及退休现金均不替代实际作用。
+- [ ] 补23职业的显式消费分支和后继。现普通培养策略仅在当前职业精通且总属性提升/新增魔法时换职，这些是经营策略，不是源转职门槛；按已证开放/性别/勋章/点数和工资预算定向覆盖，复用既有62付款→55转入→197收尾及冷载，不把策略跳过标作不可达。
 
 ## 表现与研究边界
 

@@ -1,5 +1,7 @@
 # 研究交接需求
 
+当前产品冻结a9dc1bd。9692bb8/d4ed6be已正式交付植物绑定修正及魔法消费回执，d8d38e1/a0238f7已交80/87目录问答Owner、84实际反馈与整轮输入；均待产品分批接入，不再作为未交付项重复请求。下面旧来源的最小复现与当时边界保留，当前接入状态见[对照索引](REFERENCE_CHECKLIST.md#research-history-current-audit)；物理战斗归因后继见[战斗回执](#spell-consumption-receipts)。
+
 <a id="plant-route-projection-gap"></a>
 ## 新建植物的路径格投影差异（2026-10-16）
 
@@ -36,13 +38,15 @@
 本批正式bcf5340/4c7a490接职业61两统计页、赠礼64五分类/真实scroll及68/69冻结结果，整帧输入/首帧预选/页面生命周期分别验收，见[B1](../stages/B1-playable-prototype.md#research-4c7a490-human-catalogues)。755fdf2商品/强化/口碑、fd69d44村办/晋级领取、e4dc38a魔法壶七页，以及57a31cb/48574b5任务选择/募集与追踪均已接产品；cee9cee的25–28及31–33 Owner载荷/严格恢复已正式交付并接入；原字体、OS动态和全775定义仍分开认证。
 
 <a id="spell-consumption-receipts"></a>
-## 魔法真实经营的归因接口（2026-10-14）
+## 战斗真实经营的归因接口
 
 5708375的[战斗](../../research/dungeon_village_1/rules/ai/COMBAT.md)、[控制](../../research/dungeon_village_1/rules/ai/CONTROL.md)已闭合四槽来源及实际消费者，不请求重复逆向。产品已接职业三阶段及Q可用回执，下一步需分别证明实际施放、接触、延迟伤害和回复。攻击15/动作26才发type1投射（效果4–9），回复16/动作26直接改变实际J目标；排队、声音、attack_count或显示HP不作为上述效果证据。
 
-当前维护RuntimeResult只有最终Owner/检查点/失败信息；同轮type1可能已碰撞转type2，type2没有原effect或父ID，整轮HP可能混合多个物理/法术/回复。最小补交是**可选、只用于观察的实际消费者局部成功事实**：实例/定义/槽、瞄准与实际目标、父子投射身份、保存伤害/延迟、landed及局部HP目标/命中累计前后值；明确无法绑定时的gap。仅在完整外层事务成功后可发布，失败/晚期回滚不留下成功事实；不重复执行消费者或抽随机，不向Owner/玩家档补造历史，不要求改原type2字段。
+产品冻结a9dc1bd的RuntimeResult仍只有最终Owner/检查点/失败信息；同轮type1可能已碰撞转type2，type2没有原effect或父ID，整轮HP可能混合多个物理/法术/回复。此前请求的可选局部成功事实已由正式d4ed6be交付：launch/contact/delayed_hit/healing、实例/定义/Q槽、瞄准/实际目标、父子投射、保存伤害/延迟、landed及局部HP目标/命中累计前后值；产品导入仍待已发出的29目标批准。旧type2保留prior_launch_unavailable，不补造施放历史；完整外层失败不发布事实，不向Owner/玩家档增加观察历史。
 
 边界沿现combat_commit、ai_rewards、world_nonactor_schedule、combat_random短套件：竞争父子、换碰撞目标、缺引用/当前miss、尸体仍可命中、0/负回复及倒地B推进、晚期失败与随机原序。产品复用campaign_battle_receipts与receipt主责套件接真实长跑，不另起规则库/一次性套件；载入既有type2不能认证此前施放，Q仅可用也不认证学习/伤害。其余收入/任务/解锁经营继续独立推进。
+
+2026-10-16后继最小缺口是**物理攻击与实际装备的局部归因**。现WorldAttackCandidate已有target/hit/physical_damage，外层未返回；d4ed6be的接触观察限定spell投射，不能据此认证近战或普通箭矢。请沿现消费者可选返回实际攻击者/目标实例和定义、所用武器解析身份（可证时给定义，未知明确留空）、近战或箭矢/父子对象、miss/实际伤害及局部HP目标/命中统计前后。保持原N()解析及随机次序，事实只在外层成功后发布，不重复执行命中，也不从旧投射或当前持有装备倒填发射时身份；无需新增Owner/存档字段。研究扩现战斗/非人物/运行时短套件核边界、随机及晚期回滚，产品负责合法征集持有所测装备的人物及实际战斗后继。现14/16/17分支只认证制造、装配属性、后继营业和冷载，怪物退休奖励及整轮净HP均不替代武器伤害证据。
 
 
 <a id="task-roster-owner-gap"></a>

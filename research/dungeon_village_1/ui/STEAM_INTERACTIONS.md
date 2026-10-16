@@ -192,8 +192,10 @@ raw12同身份静态子批进一步核定以下生命周期；字段含义及四
 | 系统模板 | APK `d/a.java:125`的F与Steam defSysSaveI均为J3=3、J4=3、J9=0、J13=−1。Steam静态数据槽110F36F8经fieldRefs[188]映射17项int，版本字段256且比APK多一末尾0；不能只按相似字节猜字段。 |
 | 系统初始化覆盖 | APK `d/a.java:3427–3435`还按语言设置J14；Steam `102589CA–10258A08`只有Config.MUTE_SE为真且AppData +B8字符串StartsWith("ap")时才将J4置0。模板SE=3不等于所有平台最后都为3，也不能反推Steam无条件默认0。 |
 | 新局 | APK `d/a.java:1017–1036`及Steam `1025F203–1025F4BC`保留J，先写所选栏J8并SaveSystem，再新建P；P13沿模板0，不继承旧局速度。P12先置0，应用GetWidth／GetHeight任一≤480再置1；不是按研究窗口固定240坐标猜设备初值。 |
-| 世界读取 | APK `d/a.java:1280–1290`及Steam `1025A183–1025A2CA`先经NewGame，再用世界默认模板重建P并SetData，因此P12／P13由所读世界字节恢复。APK Property `kairo/android/i/k.java:47–114`缺尾字段保留模板；Steam SetData的内层尚未独立逐分支核完，不将APK回退细节认证为Steam事实。 |
+| 世界读取 | APK `d/a.java:1280–1290`及Steam `1025A183–1025A2CA`先经NewGame，再用世界默认模板重建P并SetData，因此P12／P13由所读世界字节恢复。两版tag1都复用非空模板数组，短声明保留尾项，超长消费但不扩容；Steam已核完整4字节才覆盖单项，物理截断抛异常且已写前缀不回滚，见[整数读取合同](../rules/PERSISTENCE.md#steam已初始化整数数组的兼容读取)。不外推其它tag或全部旧版兼容。 |
 | 系统读取／保存 | APK `d/a.java:3905–3933`先初始化J再读记录0，保存只写J；Steam SaveSystem的同一归属见上文。世界档的速度／画质与跨局J权威分别恢复，不由高分或世界镜像重新推算音量／高速资格。 |
+
+J9的进入计分开启／保存时点及加载旧世界仍保留资格见[通关权威合同](../rules/STARTUP_RECORDS.md#通关六类计分固定apk及steam有限交叉)；P14与J9不能绑成恒等条件。标题Init也不沿用“改值才生效”的设置setter过滤：APK `b/h.java:294–298`与Steam `1020B007／1020B04A／1020B089／1020B0CC／1020B0E4`依序直接SetVolume(0,J3×51)→SetMute(0,J3==0)→SetVolume(1,J4×51)→SetMute(1,J4==0)→PlayBgm(0)。标题这一层没有额外显式Reflect或SE试听7；PlayBgm内部后继独立，不因省略外层Reflect就删改。当前应用只请求BGM0，不代表这四项初始音量操作已接。
 
 维护`StartupSystemRecords`系统2的三个必需分区均拒绝尾字节，且系统文件没有应用／世界schema字段；新增正式设置不能只改应用schema或借opaque占位。系统正式分区／版本、世界画质、跨局高速权威及实际输出／返回失败的联合方案仍须独立设计；本次纯计划不改变该布局。
 

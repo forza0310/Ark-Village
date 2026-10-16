@@ -480,6 +480,12 @@ ConvertExtension只替换.gif／.mld，数字记录名不加扩展。实际目�
 `Storage.Setup(...,"kairosoft/bouken")`写另一字段，不应误添为记录子目录。
 证据：[配置链](../work/original-save-analysis/exe/CONFIG_CHAIN.md)、[Steam字节合同](../work/original-save-analysis/steam-codec/README.md)。
 
+### Steam已初始化整数数组的兼容读取
+
+2026-10-16有限交叉`Property.SetData RVA853CA0`及`Read(stream,type,size,ids) VA108544D0`，仅收口tag1整数数组，不扩大为全部五类容器兼容。type1在`1085488A–1085494D`读取ints字段+10，非null就复用当前数组；只有null才按声明size分配。正常系统J17项／世界P16项在加载前已经由各自模板建立，因此短声明只覆盖前缀，未覆盖尾项保留模板；0声明或无tag1保留原整数，超长声明则消费全部声明整数但只写数组范围内部分，不扩容模板。APK `kairo/android/i/k.java:47–114`的tag1有同样局部行为，两版分别核准，不由根形状相同外推全部内部段。
+
+每项严格先`StreamUtil.Read(stream,4) @1085490C`，再`ByteAryToInt(...,true) @10854916`，最后`10854937`覆盖一个元素。**声明较短与物理字节截断不同**：前者可合法保留尾项，后者由`StreamUtil.Read RVA863C50`在累计不足时抛EOFException（`10863D30–D40／10863E55–E69`），不补零或写入不完整的当前整数；失败前已经覆盖的整数和前分区仍保留。顶层SetData在`10853EB1–EF1`只Dispose流并重抛，没有字段备份／回滚。LoadSystem／LoadGame又在解析前安装新Property，不能据完整4字节才写一项便称整个加载失败保留旧应用。这里是静态失败顺序，未对原档故障注入；维护格式仍严格验证必需字段并候选联合安装，不借原兼容行为放宽校验或迁移旧档。
+
 ### APK二十五段的内部布局与目录长度
 
 固定APK的各段不都自描述：共享定义段通常没有记录数量，人物职业数组等按固定目录长度读写。

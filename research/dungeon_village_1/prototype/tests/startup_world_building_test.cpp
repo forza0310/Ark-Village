@@ -13,6 +13,7 @@
 #include "support/world_fixture.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
@@ -509,6 +510,69 @@ void new_shop_projection() {
     const auto route = startup_world_runtime_routes(s);
     check(route.shops.count(*r.created) && route.shop_order == s.shop_order,
           "current route projection includes player-built shop without a second owner");
+}
+void new_plant_route_projection() {
+    StartupSession startup;
+    StartupWorldRuntimeSession owner(startup.state(), ref::WorldRandomStream::from_java_seed(1));
+    const auto anchor = empty_anchor(owner.state(), 66);
+    check(owner.begin_build(66).error == StartupWorldRuntimeError::none,
+          "source initial sunflower is available without invented unlocks");
+    const auto planted = owner.confirm_build(anchor, ref::FacilityOrientation::first);
+    check(planted.created && owner.cancel_build() == StartupWorldRuntimeError::none,
+          "real plant creation commits through Session and returns to stable scene");
+    const auto id = *planted.created;
+    const auto verify = [&](const StartupWorldRuntimeState &s) {
+        const auto &map = s.scene.world.world.map;
+        const auto index = static_cast<std::size_t>(anchor.y) * map.width + anchor.x;
+        const auto &tile = map.cells.at(index);
+        check(tile.legacy_state == 2 && tile.category == ref::RouteCategory::blocked &&
+              tile.facility && tile.facility->instance_id.value == id &&
+              s.scene.world.surface.at(index) == static_cast<int>(ref::RouteCategory::blocked),
+              "plant immediately binds state2/category3 in logical map and AI surface");
+        std::optional<ref::Position> start;
+        for (const auto delta : std::array<ref::Position,4>{{{1,0},{-1,0},{0,1},{0,-1}}}) {
+            const ref::Position p{anchor.x + delta.x, anchor.y + delta.y};
+            if (p.x < 0 || p.y < 0 || p.x >= map.width || p.y >= map.height) continue;
+            const auto &from = map.cells.at(p.y * map.width + p.x);
+            if (!from.facility && (from.category == ref::RouteCategory::ground ||
+                                  from.category == ref::RouteCategory::road)) { start = p; break; }
+        }
+        check(start.has_value(), "real plant has an adjacent legal route starting cell");
+        const auto route = ref::search_legacy_map(map, *start);
+        check(route.field && !route.field->distances.at(index),
+              "source blocked plant is not reachable from adjacent road or ground");
+    };
+    verify(owner.state());
+    // 原66 flags37不含64：放置即state1，不能伪造一段施工来验证类别切换。
+    check(owner.state().scene.world.world.facilities.at(id).status == 1,
+          "sunflower has no processBuild flag and is ready immediately");
+    const auto tick = owner.update();
+    check(tick.candidate.has_value(), "one actual common update after plant creation succeeds");
+    owner.take_audio_requests();
+    verify(owner.state());
+    auto refreshed = owner.state();
+    const auto draws = refreshed.scene.random.draws();
+    check(refresh_startup_world_map(refreshed, false) && refreshed.scene.random.draws() == draws,
+          "display/road/neighbour refresh preserves plant projection without random draws");
+    verify(refreshed);
+    struct File {
+        std::filesystem::path root = std::filesystem::current_path() /
+            ("plant-map-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+        std::filesystem::path path = root / "world.avrs";
+        File() {
+            if(!std::filesystem::create_directory(root))
+                throw std::runtime_error("plant save requires a newly created exclusive directory");
+        }
+        ~File() { std::error_code error; std::filesystem::remove_all(root, error); }
+    } file;
+    const auto saved = save_startup_world_file(file.path, owner, {});
+    if (!saved.ok) throw std::runtime_error("plant stable normal save: " + saved.error);
+    auto loaded = load_startup_world_file(file.path, startup_world_rules(), StartupWorldSavePurpose::normal);
+    if (!loaded.snapshot) throw std::runtime_error("plant normal cold load: " + loaded.error);
+    verify(loaded.snapshot->session.state());
+    check(loaded.snapshot->session.update().candidate.has_value(),
+          "cold-loaded plant continues through actual common update");
+    verify(loaded.snapshot->session.state());
 }
 void details() {
     auto s = test_support::world_fixture();
@@ -2361,6 +2425,7 @@ int main() {
         definition_values();
         multi_tile_and_rollback();
         new_shop_projection();
+        new_plant_route_projection();
         details();
         facility_bonus_rows();
         shared_upgrade();

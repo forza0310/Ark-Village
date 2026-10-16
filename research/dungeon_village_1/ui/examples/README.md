@@ -14,6 +14,8 @@
 
 [建设目录三类、叠图条件与详情返回](steam-build-menu.png)（960×1920／188721字节）：左上设备、右上一般、左下饮食、右下全开放条件。`build-menu-equipment`／`build-menu-general`／`build-menu-food`／`build-menu-overlays`各8帧、0世界更新、不加`--world`。前三态从真实新局读取，调用正式NEW刷新后投影完整源目录；第四态的全开放／移动／住宅H1／入住／NEW／余额0及左箭头高亮仅为显示条件，不写世界。原尺寸拼接保留图块、五行空项、不足价色、Steam入住图、数量、手形与surface箭头；中文／Noto、绿色背景及画布平移40为适配。前四态仍只证明条件绘制。新增最下排为`--world --inspect-page world-building-preview`／`world-building-return`，各8帧，从真实新局目录选定义24进入74并返回；选择2／首行0、5000G及0世界更新保持。原`world-building`入口同批短验。父页仅背景绘制，软标签归栈顶；主钟只在实际Draw后提交。Noto／手形关键帧0、40像素画布平移与物理输入转换是研究适配，不认证原OS动态，详见[建设合同](../STEAM_BUILD_LIST.md#维护纯计划与产品消费)。
 
+[真实新局面包房施工](steam-construction.png)（480×640／123456字节）：`--world --inspect-page world-construction --frames 8 --paused`通过实际目录资格及原价600G放置35，余额4400G、冻结工期280，8帧世界更新0／随机0。本图为施工计数0的阶段0和真实V0工人帧2，选址仅按当前镜头可见性排序，不注入资金、实例、工期或日期；邻接头标也来自真实放置消费者，不是完工奖励。消费同一[施工计划](../PAGES.md#steam-construction)及原深度，保存原尺寸窗口像素，仅无损PNG重编码；未取得自然完工或原Steam动态，中文／Noto／画布仍属研究适配。
+
 [怪物详情初值／成长条件](steam-monster-detail.png)（960×640／35556字节）：`monster-detail`、`monster-detail-grown`各8帧、0世界更新、不加`--world`。实际遭遇消费者生成首只怪物，经当前实例入口打开92并真实Init；右图仅将共享累计击败设100、倒下人数设2，不制造自然战果。两图读取原定义名／说明，Lv1不画级别、Lv2按实测名宽布置；金币由50变60、经验整数截断仍4。非JP单句没有足够分段，沿原后备显示静态日文标签；中文／Noto及研究背景不认证Steam字体或翻译。钱袋使用原common2图与SEB内部偏移，定义页不保留实例、收费或发奖；见[92合同](../../rules/STEAM_MONSTER_PROGRESSION.md#raw92怪物信息共享定义入口与局部皮肤)。
 
 [怪物介绍及后期通知四态](steam-monster-introduction.png)（960×1280／59884字节）：上排保留`monster-introduction-early`、`monster-introduction`两图，各8帧、0世界更新、不加`--world`。真实介绍请求绑定原怪物定义3，经真实Init后将主钟固定为20／40，属于显示条件，不认证自然开放。原尺寸拼图消费正式窗框、三段背景、定义阴影、方向2身体、文字clip和继续箭头，未创建怪物实体、运行介绍脚本或发奖。中文／Noto、绿色背景与VIEW_Y23是研究适配；正常根游戏的共享显示前提、子应用／调试态限制、字体与OS动态仍按[合同限制](../../rules/STEAM_MONSTER_PROGRESSION.md)登记。

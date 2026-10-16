@@ -15,6 +15,8 @@
 | 已识别固定槽目标缺失 | 0 | 只适用于本次匹配的固定库／常数下标 |
 | 由自动字符串扫描认证的完整消费者 | 0 | 不用命中数代替规则或动态验收 |
 
+施工背景与工人的后继已核至Steam `Map.Draw／DrawBuildAnimeChara`及Map构造，见[实际消费者](../ui/PAGES.md#steam-construction)：common图片46–48／SEB53–55按施工阶段替图，图片122／SEB86按真实V与末30轮选择六帧，保持原深度与四格单工人。八文件同字节复用现original；SEB额外帧按各自图片引用验证，不因头maxFrame1删记录。
+
 ## 索引怎么读
 
 - `records`以`归档组/条目`作稳定键；保留来源hash、文件大小、PNG／SEB／INF类型、原索引槽和修饰参数。`code_candidates`记录代码位置与候选类型；同名字面量跨多个归档时保留歧义数量。

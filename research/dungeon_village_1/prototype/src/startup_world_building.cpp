@@ -748,6 +748,11 @@ static StartupBuildResult install_facility(State &s, ref::Position anchor,
         tile.facility = ref::FacilityTileBinding{{id}, d->id, c.fragment_index};
         tile.legacy_state = d->kind == 1 ? 8 : d->kind == 8 ? 9 : d->kind == 9 ? 10 : 1;
         tile.category = ref::RouteCategory::terminal;
+        // 原Mapchip.BuildTenant／c/i.a在绑定时即将植物置2/g3；不等待施工或刷新。
+        if (d->kind == 2) {
+            tile.legacy_state = 2;
+            tile.category = ref::RouteCategory::blocked;
+        }
         if (map_creation) {
             tile.legacy_state = d->kind == 4 ? 6 : 7;
             tile.category = ref::RouteCategory::access;

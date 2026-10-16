@@ -781,6 +781,73 @@ const std::array<std::vector<std::array<int,3>>,6> building_source_parts{{
     {{0,0,-30},{2,-30,-15},{4,30,-15},{6,0,0}},
     {{1,0,-30},{3,30,-15},{5,-30,-15},{7,0,0}}
 }};
+void construction_draw_queries(const std::filesystem::path &root) {
+    struct Case {int elapsed,duration,clock,stage,worker;};
+    const Case cases[]{{0,120,0,0,2},{39,120,6,0,1},{40,120,0,1,5},
+        {79,120,8,1,3},{80,120,22,2,1},{89,120,23,2,2},{90,120,0,2,0},
+        {119,120,6,2,0},{0,1,0,2,0},{0,2,0,1,3},{0,0,0,2,0}};
+    const std::vector<std::vector<ref::Position>> cells{{{5,5}},{{6,5},{5,5}},
+        {{4,4},{4,5},{5,4},{5,5}}};
+    const std::array<std::array<int,2>,3> offsets{{{13,12},{42,6},{15,-2}}};
+    for(int shape=0;shape<3;++shape)for(const auto &c:cases) {
+        const auto plan=startup_world_construction_draws(
+            StartupConstructionInput{c.elapsed,c.duration,c.clock,shape,{5,5},cells[shape]});
+        check(plan&&plan->size()==cells[shape].size()+(shape==2?1:cells[shape].size()),
+              "construction replaces every source fragment; square has one base-address worker");
+        std::size_t n{};
+        for(const auto cell:cells[shape]) {
+            const auto &base=plan->at(n++);
+            check(base.cell==cell&&base.depth_offset==0&&base.image.image==46+c.stage&&
+                  base.image.sprite==53+c.stage&&base.image.frame==0,
+                  "construction thirds use frozen duration, integer boundaries and frame0 replacement");
+            if(shape!=2||cell==ref::Position{5,5}) {
+                const auto &worker=plan->at(n++);
+                check(worker.cell==cell&&worker.depth_offset==1&&worker.image.image==122&&
+                      worker.image.sprite==86&&worker.image.frame==c.worker&&worker.image.offset==offsets[c.stage],
+                      "worker phase uses V modulo23, middle-stage bank and last30 clamp at source depth+1");
+            }
+        }
+    }
+    StartupConstructionInput bad{0,120,0,0,{5,5},{{5,5}}};
+    bad.duration=std::numeric_limits<int>::max();check(!startup_world_construction_draws(bad),"construction rejects doubled-duration int32 overflow");
+    bad.duration=120;bad.elapsed=-1;check(!startup_world_construction_draws(bad),"construction rejects negative counter");
+    bad.elapsed=0;bad.shape=2;bad.cells={{5,5},{5,5},{6,5},{5,6}};
+    check(!startup_world_construction_draws(bad),"construction rejects duplicate source cells");
+    auto s=test_support::world_fixture();const auto id=s.scene.world.facility_order.front();
+    check(startup_world_construction_draws(s,id)->empty(),"ready initial facility retains actual building art");
+    s.scene.world.world.facilities.at(id).status=0;s.facility_details.at(id).construction_limit=120;
+    s.dungeon_facilities.at(id).updates=40;s.entry_updates=0;
+    const auto digest=startup_world_state_digest(s);
+    const auto plan=startup_world_construction_draws(s,id);
+    check(plan&&plan->size()==2&&plan->front().image.image==47&&plan->back().image.frame==5&&
+          startup_world_state_digest(s)==digest,"Owner bridge reads frozen duration/stateCnt/V without changing full state");
+    auto missing=s;missing.facility_details.erase(id);
+    check(!startup_world_construction_draws(missing,id),"initialized construction never invents missing duration");
+    missing=s;missing.dungeon_facilities.erase(id);
+    check(!startup_world_construction_draws(missing,id),"initialized construction never invents missing instance clock");
+    missing=s;
+    const auto anchor=missing.scene.world.world.facilities.at(id).placement.anchor;
+    missing.scene.world.world.map.cells.at(anchor.y*missing.scene.world.world.map.width+anchor.x)
+        .facility->instance_id.value=id+1;
+    check(!startup_world_construction_draws(missing,id),"construction rejects another instance bound to the same tile without partial drawings");
+    const char *names[]{"buildAnime00","buildAnime01","buildAnime02","buildAnime_chara"};
+    const int widths[]{60,60,60,99},heights[]{41,47,55,58};
+    for(int i=0;i<4;++i) {
+        const auto seb=dungeon_village_tools::parse_legacy_seb(bytes(root/"common"/(std::string(names[i])+".seb")));
+        Image image=LoadImage((root/"common"/(std::string(names[i])+".png")).string().c_str());
+        check(image.data&&image.width==widths[i]&&image.height==heights[i],"construction binds actual published PNG size");
+        check(seb.frame_count==(i==3?6:1)&&seb.layers.size()==1&&seb.layers.front().parts.size()==(i==3?6:3),
+              "construction keeps all raw SEB records even when header maxFrame is1");
+        for(const auto &part:seb.layers.front().parts) {
+            const int picture=i==3?3:part.frame==0?i:part.frame;
+            check(picture>=0&&picture<4&&part.image_index==(picture==3?122:46+picture)&&
+                  part.source_x>=0&&part.source_y>=0&&
+                  part.source_x+part.width<=widths[picture]&&part.source_y+part.height<=heights[picture],
+                  "each retained SEB record validates its own image; extra frame1/2 refer to47/48");
+        }
+        UnloadImage(image);
+    }
+}
 void building_draw_queries() {
     auto s=test_support::world_fixture();
     for (int shape=0;shape<3;++shape) {
@@ -1118,6 +1185,7 @@ int main(int argc, char **argv) {
         cpu_equipment_and_growth(argv[1]);
         cpu_attribute_gains(argv[1]);
         building_draw_queries();
+        construction_draw_queries(argv[1]);
         build_menu_skin(argv[1]);
         cpu_building_thumbnails(argv[1]);
         ordinary_item_icons(argv[1]);

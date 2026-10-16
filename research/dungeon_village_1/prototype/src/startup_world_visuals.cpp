@@ -361,4 +361,58 @@ std::optional<std::vector<StartupBuildingDraw>> startup_world_building_preview_d
     if (!result) return {};
     return s.scene.scene_counter % 20 < 10 ? result : std::optional<std::vector<StartupBuildingDraw>>(empty);
 }
+std::optional<std::vector<StartupConstructionDraw>> startup_world_construction_draws(
+    const StartupConstructionInput &in) {
+    constexpr std::array<std::array<int,2>,3> offsets{{{13,12},{42,6},{15,-2}}};
+    constexpr std::array<std::size_t,3> counts{1,2,4};
+    if(in.shape<0||in.shape>2||in.elapsed<0||in.duration<0||
+       in.duration>std::numeric_limits<int>::max()/2||in.updates<0||
+       in.cells.size()!=counts[static_cast<std::size_t>(in.shape)]||
+       std::count(in.cells.begin(),in.cells.end(),in.anchor)!=1)return {};
+    for(std::size_t n=0;n<in.cells.size();++n)
+        if(in.cells[n].x<0||in.cells[n].x>65535||in.cells[n].y<0||in.cells[n].y>65535||
+           std::find(in.cells.begin(),in.cells.begin()+n,in.cells[n])!=in.cells.begin()+n)return {};
+    const int stage=in.duration==1?2:in.elapsed<in.duration/3?0:
+        in.elapsed<(in.duration*2)/3?1:2;
+    const int phase=in.updates%23;
+    int worker=in.elapsed>=in.duration-30?0:phase<6?2:phase<8?1:phase<22?0:1;
+    if(stage==1)worker+=3;
+    std::vector<StartupConstructionDraw> result;
+    for(const auto cell:in.cells) {
+        result.push_back({cell,0,{StartupVisualResource::common,53+stage,46+stage,0,0,{},{},{}}});
+        // 原shape2只在baseAddress画一个工人；双格仍每格一名，不按朝向重排。
+        if(in.shape!=2||cell==in.anchor)
+            result.push_back({cell,1,{StartupVisualResource::common,86,122,worker,0,{},offsets[stage],{}}});
+    }
+    return result;
+}
+std::optional<std::vector<StartupConstructionDraw>> startup_world_construction_draws(
+    const StartupWorldRuntimeState &s,std::uint64_t id) {
+    const auto &world=s.scene.world.world;
+    const auto facility=world.facilities.find(id);
+    if(!s.rules||!id||facility==world.facilities.end()||facility->second.placement.instance_id.value!=id)return {};
+    if(facility->second.status!=0)return std::vector<StartupConstructionDraw>{};
+    const auto detail=s.facility_details.find(id);
+    const auto progress=s.dungeon_facilities.find(id);
+    const auto definition=std::find_if(s.rules->facilities.begin(),s.rules->facilities.end(),
+        [&](const auto &d){return d.id==facility->second.placement.definition_id;});
+    const auto &placement=facility->second.placement;
+    if(detail==s.facility_details.end()||progress==s.dungeon_facilities.end()||
+       definition==s.rules->facilities.end()||definition->shape<0||definition->shape>2||
+       static_cast<int>(placement.shape)!=definition->shape||facility->second.kind!=definition->kind||
+       world.map.width<=0||world.map.height<=0||world.map.width>65535||world.map.height>65535)return {};
+    const auto footprint=ref::facility_footprint(placement.shape,placement.orientation,
+        placement.anchor,world.map.width,world.map.height);
+    if(footprint.error!=ref::GeometryError::none||
+       world.map.cells.size()!=static_cast<std::size_t>(world.map.width)*world.map.height)return {};
+    StartupConstructionInput input{progress->second.updates,detail->second.construction_limit,
+        s.entry_updates,definition->shape,placement.anchor,{}};
+    for(const auto &part:footprint.cells) {
+        const auto &cell=world.map.cells[static_cast<std::size_t>(part.position.y)*world.map.width+part.position.x];
+        if(!cell.facility||cell.facility->instance_id.value!=id||
+           cell.facility->definition_id!=definition->id||cell.facility->fragment_index!=part.fragment_index)return {};
+        input.cells.push_back(part.position);
+    }
+    return startup_world_construction_draws(input);
+}
 } // namespace dungeon_village_prototype

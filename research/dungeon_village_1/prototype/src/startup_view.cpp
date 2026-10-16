@@ -3865,6 +3865,32 @@ int run_startup_world_window(const std::filesystem::path &assets,
             if(!saved || saved->stage!=2 || saved->saved!=true)
                 throw std::runtime_error("应用保存检查没有成功结果");
         }
+    } else if (inspect_page == "world-construction") {
+        if(session.begin_build(35).error!=StartupWorldRuntimeError::none)
+            throw std::runtime_error("施工诊断真实面包房入口拒绝");
+        std::optional<std::uint64_t> built;
+        const int map_width=session.state().scene.world.world.map.width;
+        const int map_height=session.state().scene.world.world.map.height;
+        const auto camera=session.state().camera;
+        std::vector<ref::Position> positions;
+        for(int y=0;y<map_height;++y)for(int x=0;x<map_width;++x)positions.push_back({x,y});
+        const auto distance=[&](ref::Position cell) {
+            const auto p=project(cell,{camera[0],camera[1]});
+            return (p.x-120)*(p.x-120)+(p.y-170)*(p.y-170);
+        };
+        // 诊断只改变真实玩家选址的优先序，保证例图可见；不改镜头、地图或资格。
+        std::stable_sort(positions.begin(),positions.end(),[&](auto a,auto b){return distance(a)<distance(b);});
+        for(const auto position:positions) {
+            const auto result=session.confirm_build(position,ref::FacilityOrientation::first);
+            if(result.error!=StartupWorldRuntimeError::none)
+                throw std::runtime_error("施工诊断放置事务拒绝");
+            if(result.created) {built=result.created;break;}
+        }
+        if(!built||session.cancel_build()!=StartupWorldRuntimeError::none||
+           session.state().scene.world.world.facilities.at(*built).status!=0)
+            throw std::runtime_error("施工诊断没有真实可付费位置");
+        std::cout<<"construction inspection: facility="<<*built
+            <<" duration="<<session.state().facility_details.at(*built).construction_limit<<'\n';
     } else if (inspect_page == "world-editing") {
         const auto road = available_road(session.state());
         if (!road)
@@ -5945,6 +5971,17 @@ int run_startup_world_window(const std::filesystem::path &assets,
             {{13, 22}, {16, 22}, {13, 21}, {42, 22}, {15, 23}, {16, 9}}};
         constexpr std::array<ref::Position, 4> entry_offsets{
             {{15, 24}, {26, 19}, {15, 18}, {28, 24}}};
+        std::map<std::size_t,std::vector<StartupConstructionDraw>> construction;
+        // 每实例只准备一次，按占地格接回同一深度队列；不在每个图块重复复制Owner。
+        for(const auto id:state.scene.world.facility_order) {
+            const auto found=world.facilities.find(id);
+            if(found==world.facilities.end())throw std::runtime_error("施工显示实例名单失效");
+            if(found->second.status!=0)continue;
+            const auto draws=startup_world_construction_draws(state,id);
+            if(!draws)throw std::runtime_error("施工显示真实载荷拒绝");
+            for(const auto &draw:*draws)
+                construction[static_cast<std::size_t>(draw.cell.y)*world.map.width+draw.cell.x].push_back(draw);
+        }
         for (int y = world.map.height - 1; y >= 0; --y)
             for (int x = 0; x < world.map.width; ++x) {
                 const auto index = static_cast<std::size_t>(y * world.map.width + x);
@@ -5956,7 +5993,13 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 const float base_depth =
                     ((record.flags & 1U) ? p.y - 50 : p.y + 15) + record.offset_y;
                 // c/i.i已经是占地分片帧；逐格绘制双格/四格，不能再只画设施锚点。
-                overlays.push_back(
+                const auto build=construction.find(index);
+                if(build!=construction.end()) {
+                    for(const auto &draw:build->second)
+                        overlays.push_back({base_depth+draw.depth_offset,[&,p,image=draw.image] {
+                            sprites.visual(image,p);
+                        }});
+                } else overlays.push_back(
                     {base_depth, [&, p, sprite = record.sprite, frame = cell.variant] {
                          sprites.draw(sprite, frame, p);
                      }});

@@ -113,4 +113,24 @@ startup_world_building_draws(const StartupWorldRuntimeState &state, int definiti
 std::optional<std::vector<StartupBuildingDraw>>
 startup_world_building_preview_draws(const StartupWorldRuntimeState &state, ref::Position cursor,
                                      ref::FacilityOrientation orientation);
+
+// Map.Draw施工替图：elapsed取实例stateCnt，duration取创建时冻结buildTime，
+// updates取UserData.V；它们不是场景钟、墙钟或绘制次数。cells保持实际占地原序。
+struct StartupConstructionInput {
+    int elapsed{},duration{},updates{},shape{};
+    ref::Position anchor;
+    std::vector<ref::Position> cells;
+};
+struct StartupConstructionDraw {
+    ref::Position cell;
+    int depth_offset{}; // 相对该格正常建筑深度；工人+1，不是整个场景置顶。
+    StartupVisualDraw image;
+};
+// 返回替代本体的阶段图与工人，不推进施工/随机/声音；只负责state0的已核正常分支。
+// 中间2*duration的int32溢出和损坏占地显式拒绝，不返回部分图元。
+std::optional<std::vector<StartupConstructionDraw>>
+startup_world_construction_draws(const StartupConstructionInput &);
+// 非施工实例返回空；真实定义、冻结工期、实例主钟和格绑定须齐全，查询不补字段。
+std::optional<std::vector<StartupConstructionDraw>>
+startup_world_construction_draws(const StartupWorldRuntimeState &,std::uint64_t facility);
 } // namespace dungeon_village_prototype

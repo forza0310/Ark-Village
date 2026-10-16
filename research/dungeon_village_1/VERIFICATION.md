@@ -1,5 +1,13 @@
 # 当前研究验证与历史索引
 
+## 公共对话纯计划与TextLayout计时 2026-10-16
+
+接`0ac41e6`，新增实际职责模块[steam_dialogue_skin](prototype/include/dungeon_village_prototype/steam_dialogue_skin.hpp)，显式加入现application target；复用现公共窗框及原素材，无新target。标准零坐标raw0按原序给正文实例Draw、固定三头像／当前人物／怪物请求、姓名布局及末Touch2；English专属字号10／恢复独立保留，Steam姓名x53已从实际float位型纠正。输入纯合同保留Frame→键查询→IsEnd→Flush／SetText／Pop，必须提供Frame后的真实观测，Pop返回未知、非−1续talk显式未支持；不接Owner或改变现有直接关闭，不把trace再执行成重复Frame。现启动公共皮肤套件集中补头像／几何／原序／隐藏／绑定拒绝、DEBUG短路及分段边界，单Release动态构建和visuals **1/1通过1.80秒**；新模块独立标准C++17严格语法检查通过。纯计划无渲染末端变化，不重复窗口或长跑，不编译三份他人在途存取测试。
+
+[字体现合同](ui/STEAM_FONT_CONSUMER.md#渐显时钟复位与完成资格)补墙钟重读、两次TotalFrames采样、同帧offset、整数渐显／Flush、SetText与Reset的不同复位及独立动画计数。墙钟未证单调，完成量可被下一Frame重算；speed0的Flush可在已写pos后除零，原溢出／异常不当作维护事务。raw5／6／8压入[保留菜单](ui/PAGES.md#保留菜单568的实际消费者)：5有壶后继，8有壳／回传，6无专属内容；正常producer均未证，有限扫描不认定不可达。覆盖与队列同步，未新建过程报告、audit、指纹、素材或快照。
+
+计划按次返回、由调用者消费并释放，不建立实体根、持久字段或长期输出；世界5／应用8／系统2及128MiB保持。Release1395文件／225216829字节，assets872文件／9504668字节；此前审批限制的两份AST保留本地，不擅删。合法世界历史不称永久有界。本轮编译、短测和静态任务已结束，仅白名单提交research、不推送，保留其它维护者及待确认Rank设计。
+
 ## 公共对话、税收与Boot失败合同 2026-10-16
 
 接`5fe3592`，仅静态／文档收口：raw0构造、TextLayout真实快进／分段、speaker与有序绘制合入[现页面合同](ui/PAGES.md#steam-common-dialog)，两版固定talk目录均next−1；raw2没有专属Draw、raw19是后网站请求及18空内容类型的产生者限制分别保留。原逐字钟使用墙钟与总帧补偿，维护确认直接关页仍是缺口，不猜成page_counter。Steam98独立核当前居民重新合计→分类4→半角G通知→全人物清累计→Pop，无专属窗；[税收合同](rules/ACCOUNTING.md#steam98独立更新交叉)不外推跨年producer或原动态。[Boot合同](ui/STEAM_LANGUAGE_INSTALL.md#加载异常错误保留与线程交接)补异常表的实际捕获、state3错误UI、旧异常保留、正常state4先于清线程引用；不把引用为空当Join／原子发布。标题fresh Rank入口和位置缓存措辞也合入现合同。

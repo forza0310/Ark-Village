@@ -143,6 +143,37 @@ APK的TAG只有前9项，`aa.java`同样先翻译、精确`<br>`换LF，再以�
 
 APK `aa.f()`同三组使用十进制参数，`</si>`回原Font请求`n.c()`，`</st>`回`n.d()`，`</bl>`清0；`ab`构造复制`n`并冻结周期`f552f`。`aa.c()`按每调用一次推进块`g=(g+1)%(2*f552f)`，`aa.a()`普通绘制用同半周期资格但继续扣字符预算，与Steam普通块局部一致。后端分别登记：APK `n.b(style)`用三项`[0,1,2]`映射Android Typeface.NORMAL／BOLD／ITALIC并创建Typeface；Steam交Unity GUIStyle，不能据接口语义相同认证字形／测宽相同。APK换行循环失真不作为Steam布局依据；换行主干、整词前瞻、位置及其余标签见本节后继合同。图标注册的有限排查和真实中文字体边界分别保留。
 
+### 渐显时钟、复位与完成资格
+
+`Frame` RVA7CACD0完整432字节、`Flush` 7CAC70／96字节、`IsEnd` 7CB640／32字节及
+`SetSpeed` 7CC0B0／96字节分别顺序核对；渐显位置不是按世界tick直接累加。
+外部时间来自JSystem.CurrentTimeMillis RVA849830：DateTime.UtcNow减共享基准，取TotalMilliseconds转long，
+不是已证单调计时器。TotalFrames getter 790F60返回当前IApplication的int32 totalFrames_，本批未追其全部写者／回绕策略。
+
+Frame先在beginTime_（int64，+30）恰0时取一次墙钟并写`begin=now0−50`（107CACF7–CAD11）；
+然后读取**第一次**TotalFrames，符号扩为int64，与lastAppFrame_（+40）相等才使timeOffset_（int32，+38）加50。
+再读取**第二次**TotalFrames覆盖lastAppFrame，最后重新取墙钟now；两次帧查询及条件墙钟查询不能合成一个采样。
+令`L=int32(length_*1000)`、`E=int64(now−begin+sign_extend(timeOffset_))`，原次序为
+`P=trunc_toward_zero(int64(E*speed_)/50)`，先把负P置0，再把大于符号扩展L的P置L，最后低32位写pos_（+28）。
+乘法helper 196150、除法helper 195FC0保留有符号64位阶段；length乘1000、offset加50及速度换算是32位，
+上述32位及64位乘加均无溢出保护；L回绕为负时后一步可把0再改成负值，不能扩大为任意输入下合法的0..总长度clamp。
+正长度且无溢出时，负时差会使正speed的位置退到0；Frame无“只增不减”或“已完成则不动”守卫。
+同一应用帧重复Frame可通过offset继续推进，即使墙钟未变；不是由绘制次数或固定秒率推导。
+
+SetSpeed先原样写speed_（+2C），非Japanese时再以`trunc_toward_zero(int32(3*speed)/2)`覆盖；不重置位置或时钟。
+负speed没有夹限；正常正E下其P会被清0，负E与负speed则可能产生正P。正常非负L下speed0的Frame只得P0，
+但Flush先写pos=L，再取墙钟并算`begin=now−trunc(trunc(int64(L)*1000/speed_)/20)`（107CAC7B–CACCA）。
+此处speed0无除零保护；失败前pos已写，不能作为原子Flush。Flush不清offset或lastAppFrame，逐次截断也不能合并，
+下一Frame仍会重算位置，不能承诺永远保持Flush后的完成状态。IsEnd仅返回`pos==-1 || pos>=L`，不读取时间或推进文字。
+
+公开SetText归一null及替换后，每次实际进入私有SetText均在107CC4C2–4D7清pos／begin／offset；
+不清lastAppFrame、speed或两个动画计数，同串也没有此入口的相等早退；重建块及长度沿前后既有合同。
+Reset RVA7CBA00则清pos／begin／offset及lastAppFrame，不清speed、原块／长度、blink或动画计数；
+Init的默认speed1000不经过SetSpeed的非JP换算，其再Init与空SetText的分工仍沿下节，不能互换为完整复位。
+每次Frame随后独立更新块blink，规则见上节，不要求TotalFrames改变或文字尚未完成；仅commonFramesUpdate_真时
+还把实例frame_（+58）递增至INT_MAX后保持。Draw自己的draw_（+5C）另在107CA11D–A128封顶递增，二者不是渐显时钟。
+以上只给外部时钟／实例读取合同，SDK时钟精度与跨线程可见性未验；raw0可消费真实Frame后的IsEnd结果，不据此新增Owner时钟、持久布局或像素认证。
+
 ### 普通宽溢出、显式换行与块提交
 
 `_makeTextBlocks`的107CE90A–CEA40、107CEE44–CF250补齐普通行提交主干；以下自动断行结论限定在未被后述组合探测／整词前瞻改写的路径，不认证完整语言排版。设当前行累计宽L、布局宽W、本字符增量D：新块用工作Font.StringWidthF测当前字符；已有块用`StringWidthF(块当前文字+字符)−块已测宽`，保留float32差值（107CE948–E9DA），不能将每个字独立测宽再相加。自动断行条件为W不等于精确−1、非组合续体、`L+D>W`且multiLine_为真；等宽不换行，也没有epsilon或最小行宽修正。format_为真且溢出字符是U+3001／U+3002时另将D置0而不在该处置断行标志（107CEA18–3A）；当轮跳过普通追加，最终是否进入块字符串由下述源范围重建决定，不据此认证完整标点悬挂算法。

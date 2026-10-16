@@ -3,6 +3,7 @@
 #include "dungeon_village_prototype/steam_manual_skin.hpp"
 #include "dungeon_village_prototype/steam_record_skin.hpp"
 #include "dungeon_village_prototype/steam_font_metrics.hpp"
+#include "dungeon_village_prototype/steam_dialogue_skin.hpp"
 #include "dungeon_village_tools/sprite.hpp"
 #include <raylib.h>
 #include <algorithm>
@@ -31,6 +32,98 @@ auto sprite(const std::filesystem::path &p) {
     std::ifstream input(p,std::ios::binary);
     if(!input) throw std::runtime_error("Steam皮肤公共资源缺失："+p.string());
     return dungeon_village_tools::parse_legacy_seb({std::istreambuf_iterator<char>(input),{}});
+}
+// raw0按原调用常量验证局部组合；不重复公共木框、人物scratch或TextLayout后端测试。
+void dialogue_page(Checks &check) {
+    SteamDialogueSkinInput in;
+    in.width=239;in.height=261;in.view_y=23;in.main=197;
+    in.title="会话";in.speaker_name="当前姓名";in.title_widths=std::array<int,2>{24,24};
+    for(const auto ids:std::array<std::array<int,3>,3>{{{-1,126,87},{2,173,38},{3,176,95}}}) {
+        in.speaker_index=ids[0];
+        for(bool english:{false,true}) {
+            in.english=english;
+            const auto p=steam_dialogue_skin(in);
+            check(p&&p->origin==std::array<int,2>{0,10}&&p->title=="会话",
+                  "raw0外层共同居中条件保留负奇数向零；VIEW_Y不重复加原点");
+            const auto images=parts<StartupSkinDraw>(*p);
+            const auto names=parts<SteamDialogueNameDraw>(*p);
+            const auto fonts=parts<SteamDialogueFont>(*p);
+            check(images.size()==2&&images[0].image==143&&images[0].sprite==-1&&
+                  images[0].crop==std::array<int,4>{0,0,7,7}&&images[0].offset==std::array<int,2>{174,169}&&
+                  images[1].image==ids[1]&&images[1].sprite==ids[2]&&images[1].frame==1&&
+                  images[1].offset==std::array<int,2>{193,189},
+                  "point整图后接秘书/南瓜/大臣原SEB frame1；不能按main猜头像动画");
+            check(names.size()==1&&names[0].text=="当前姓名"&&names[0].rectangle==
+                  std::array<int,4>{53,english?175:174,120,11}&&names[0].anchor==34&&names[0].line_space==0&&
+                  parts<SteamDialogueBodyDraw>(*p).size()==1&&
+                  parts<SteamDialogueBodyDraw>(*p)[0].position==std::array<int,2>{37,100},
+                  "Steam姓名float位型x53独立oracle，不能套APK84；正文保留实例Draw");
+            check(fonts.size()==(english?2U:0U)&&(!english||
+                  (fonts[0].action==SteamDialogueFontAction::set_size10&&fonts[1].action==SteamDialogueFontAction::reset))&&
+                  std::holds_alternative<SteamStartupTouch>(p->draws.back())&&
+                  parts<SteamStartupTouch>(*p)[0].component==2&&!parts<SteamStartupTouch>(*p)[0].rectangle,
+                  "仅English临时字体10再恢复，最后无矩形AddTouch2不造按钮或取消热区");
+            const auto body=std::find_if(p->draws.begin(),p->draws.end(),[](const auto &v){return std::holds_alternative<SteamDialogueBodyDraw>(v);});
+            const auto avatar=std::find_if(p->draws.begin(),p->draws.end(),[](const auto &v){
+                const auto *image=std::get_if<StartupSkinDraw>(&v);return image&&image->sprite>=0;});
+            check(body<avatar&&(!english||std::holds_alternative<SteamDialogueFont>(*(body+1))),
+                  "正文在临时字体与头像之前，字形后端不能重排图像/文字层");
+        }
+    }
+    in.english=false;in.speaker_kind=1;in.speaker_index=9;
+    check(!steam_dialogue_skin(in),"真实人物缺当前外观不回退出生表");
+    in.human=SteamDialogueHuman{9,28,5};
+    const auto human=steam_dialogue_skin(in);
+    const auto sets=parts<SteamDialogueHumanSet>(*human);
+    const auto humans=parts<SteamDialogueHumanDraw>(*human);
+    check(sets.size()==1&&sets[0].definition==9&&sets[0].body_sprite==28&&sets[0].action==0&&
+          sets[0].step==0&&sets[0].direction==2&&sets[0].main==197&&humans.size()==1&&humans[0].weapon==5&&
+          humans[0].step==0&&humans[0].position==std::array<int,2>{193,189},
+          "人物当前身体/武器显式传递，Set/Draw各原参数，不执行共享scratch");
+    in.human->definition=8;check(!steam_dialogue_skin(in),"错人物外观绑定拒绝");
+    in.speaker_kind=2;in.speaker_index=4;
+    check(!steam_dialogue_skin(in),"怪物缺真实bit4结果拒绝");
+    for(bool bit:{false,true}) {
+        in.monster_flag4=bit;const auto p=steam_dialogue_skin(in);
+        const auto monsters=parts<SteamDialogueMonsterDraw>(*p);
+        check(monsters.size()==1&&monsters[0].definition==4&&monsters[0].direction==2&&
+              monsters[0].position==std::array<int,2>{bit?188:177,188},"怪物bit4两头像锚独立原常量");
+    }
+    in.speaker_kind=1;in.speaker_index=-1;
+    check(parts<SteamDialogueNameDraw>(*steam_dialogue_skin(in)).empty(),"原人物负索引不画姓名头像，不补默认秘书");
+    in.speaker_kind=2;in.speaker_index=-1;
+    check(!steam_dialogue_skin(in),"可见怪物负索引拒绝");
+    for(int gate=0;gate<3;++gate) {
+        auto hidden=in;hidden.title_widths.reset();hidden.speaker_name=std::string(4097,'x');
+        hidden.on_top=gate!=0;hidden.until_active_hide=gate==1;hidden.wait=gate==2?1:0;
+        check(steam_dialogue_skin(hidden)&&steam_dialogue_skin(hidden)->draws.empty(),
+              "覆盖/untilActiveHide/wait各自隐藏且不消费缺失头像或测宽");
+    }
+    using R=SteamDialogueUpdateRequest;
+    SteamDialogueUpdateInput u;u.paragraphs={"首段<br>原标签","第二段"};
+    auto p=steam_dialogue_update(u);
+    check(p&&p->requests==std::vector<R>{R::frame,R::confirm_pulse,R::debug_gate}&&p->paragraph==0&&
+          !p->next_text&&p->normal_return==true,"无确认不消费IsEnd，Frame先于键查询且无取消分支");
+    u.debug_held=true;
+    check(steam_dialogue_update(u)->requests==p->requests,"DEBUG未开不查询Held，不让Held偷过资格");
+    u.debug_enabled=true;
+    check(!steam_dialogue_update(u),"确认资格已成立却缺Frame之后IsEnd真实观测应拒绝");
+    u.ended_after_frame=false;p=steam_dialogue_update(u);
+    check(p&&p->requests==std::vector<R>{R::frame,R::confirm_pulse,R::debug_gate,R::debug_held,R::is_end,R::flush}&&
+          p->paragraph==0&&!p->next_text,"DEBUG合格只补完本段，不用字符串长度或main计数猜逐字结束");
+    u.confirm_pulse=true;u.ended_after_frame=true;p=steam_dialogue_update(u);
+    check(p&&p->requests==std::vector<R>{R::frame,R::confirm_pulse,R::is_end,R::set_text}&&
+          p->paragraph==1&&p->next_text==std::optional<std::string>{"第二段"},
+          "Pulse优先跳过DEBUG查询，展开完才增段并SetText，不额外LT或关闭");
+    u.paragraph=1;p=steam_dialogue_update(u);
+    check(p&&p->paragraph==2&&p->requests.back()==R::pop&&!p->normal_return&&!p->next_text,
+          "末段确认请求Pop并保持其返回未知，不把候选当成功关闭");
+    u.next_talk=3;p=steam_dialogue_update(u);
+    check(p&&p->requests.back()==R::unsupported_next_talk&&!p->normal_return,
+          "未支持续记录显式输出，不能套四字段原表或假装Pop成功");
+    u.paragraph=-1;check(!steam_dialogue_update(u),"负段号拒绝");
+    u.paragraph=2;check(!steam_dialogue_update(u),"越界段号拒绝");
+    u.paragraphs.clear();u.paragraph=0;check(!steam_dialogue_update(u),"空正文拒绝，不补演示句");
 }
 // 字体请求数值与本地化准入独立于字形后端，不以渲染截图生成这些期望值。
 void font_metrics(Checks &check) {
@@ -1009,5 +1102,6 @@ int check_steam_startup_skin(const std::filesystem::path &root) {
     record_page(check);
     record_update(check);
     font_metrics(check);
+    dialogue_page(check);
     return check.count;
 }

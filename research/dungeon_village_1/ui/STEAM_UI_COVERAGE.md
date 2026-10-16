@@ -39,15 +39,15 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 
 | 页值 | Steam TYPE名称 | 功能组 | 当前Steam证据／缺口 |
 | --- | --- | --- | --- |
-| 0 | TALK | 对话 | 静态：[通用对话](PAGES.md#steam-common-dialog)已核构造、原TextLayout先Frame再快进／换段／Pop、五类speaker与有序绘制；固定两版talk目录next均−1。维护目前确认直接关闭，逐字／分段尚未接；原窗口截图未绑定TYPE，字体／OS动态另验 |
+| 0 | TALK | 对话 | 静态：[通用对话](PAGES.md#steam-common-dialog)已核构造、原TextLayout先Frame再快进／换段／Pop、五类speaker与有序绘制；固定两版talk目录next均−1。维护纯皮肤／有序输入请求已交，Owner确认仍直接关闭，逐字／分段及精确恢复尚未接；原窗口截图未绑定TYPE，字体／OS动态另验 |
 | 1 | DIALOG | 对话 | raw20重开／删除询问的默认否、横向输入、父页结果及局部绘制已核，见[合同](STEAM_SAVE_MENU.md)；其它调用者／原窗口组合仍待逐项 |
 | 2 | DIALOG_CHARA | 对话 | 静态：与1／19共用右→左→确认→取消询问输入；Draw沿默认分派直接返回，无专属人物皮肤。正常产生者未核，见[通用对话](PAGES.md#steam-common-dialog)；不因枚举名补画或因有限扫描断言不可达 |
 | 3 | MAIN_MENU | 菜单 | 静态：缓存重入／目录／NEW／父位置／type0计划已核；维护：真实Owner与任务NEW／建设缓存已接。原字体、整栈输入和虚拟光标仍缺，见[菜单合同](PAGES.md#steam主菜单缓存输入与局部皮肤) |
 | 4 | ADVENTURE_MENU | 菜单 | 静态及维护：可变type1菜单、真实任务入口与父子返回已交付；原OS投递另验，见[菜单合同](PAGES.md) |
-| 5 | DEVELOP_MENU | 菜单 | 仅声明；更新／绘制／动态链待逐项 |
-| 6 | SHOPPING_MENU | 菜单 | 仅声明；更新／绘制／动态链待逐项 |
+| 5 | DEVELOP_MENU | 菜单 | 静态：单tag13目录、FrameMenu→41魔法壶及DrawMenu2(type1)已核；当前raw3壶入口直接到41，5正常producer未证，见[保留菜单](PAGES.md#保留菜单568的实际消费者) |
+| 6 | SHOPPING_MENU | 菜单 | 无专属Init／Update2或内容Draw分支，仍有共同框架处理；正常producer未核，不由名称补商店，见[保留菜单](PAGES.md#保留菜单568的实际消费者) |
 | 7 | ACTION_MENU | 菜单 | 静态及维护：可变type1目录、真实Owner及活动／晋级／商会入口已接；原字体与OS动态另验，见[菜单合同](PAGES.md) |
-| 8 | SETTING_MENU | 菜单 | 仅声明；更新／绘制／动态链待逐项 |
+| 8 | SETTING_MENU | 菜单 | 静态：FrameMenu／dialog回传及DrawMenu2(type1)菜单壳已核；目录及正常producer未核，不混作raw12设置，见[保留菜单](PAGES.md#保留菜单568的实际消费者) |
 | 9 | INFO_MENU | 菜单 | 静态：[五标签／输入、菜单及HUD摘要](INFORMATION_MENU.md)已核；维护：Owner、五行与HUD摘要只读计划已接。动态：无本页完整窗口认证；实际父原点、字体／触摸保护和一次性光标消费仍独立 |
 | 10 | SYSTEM_MENU | 菜单 | 静态：五tags20–24及type1已核，APK末项28差异保留；维护：真实Owner、14保存与13说明已接；设置／RankForm／结束平台闭环另验，见[菜单合同](PAGES.md) |
 | 11 | EVENT | 事件／系统 | 仅声明；更新／绘制／动态链待逐项 |

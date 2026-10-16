@@ -77,7 +77,11 @@ next非−1的保留分支在VA10327380–10327452读取**同一talk数组的nex
 
 raw19的`MakeNoMymenu RVA315A70`沿MakeDialog(text,“はい\tいいえ”)再改type19，正常上游调用入口尚未证。确认写结果、Pop之后，VA10328370–103283C0仅在type19且result0时调用OpenBrowser(AppData.SITE_URL)；**没有按Pop返回bool分流**，该支最后返回true，也未把Pop返回值当父页答案。其它结果回通用true尾。这里只登记原保留外链消费者，不在维护产品主动打开网站；调用者结果读取与正常可达性另验。
 
-**维护缺口。** 现`WorldScriptPage`已有人物、替换文本、正文数组和legacy_tag，足够提供raw0窗框／头像／显式当前正文的只读计划；`world_scripts.cpp`的opcode2／3已按初始talk结构保存这些字段。但现通用`acknowledge_startup_world_runtime_page`直接关闭dialogue，没有原“先全文→换段→最终关闭”的消费者，也没有原TextLayout完整展开状态；不能把已有dialogue页存在视为完整操作已还原。本节不新增Owner或持久布局，未把raw2不可达推成删除规则，也未改变原表。
+**可直接消费的纯计划。** [steam_dialogue_skin](../prototype/include/dungeon_village_prototype/steam_dialogue_skin.hpp)仅覆盖MakeTalkForm的x/y零入口：复用公共Window／Box，按原序输出实例正文Draw、固定头像或显式人物Set→Draw／怪物helper、姓名TextLayout及末AddTouch2。English临时字号10与恢复独立输出；姓名x53由Steam浮点位型重新核实，不沿APK的84。三种隐藏条件各自短路，不消费隐藏正文／头像／测宽；不执行scratch、翻译、字形或平台触摸。现有资源已足够，不再出版副本。
+
+`steam_dialogue_update`是带真实查询观测的纯合同：Frame→确认／DEBUG短路→IsEnd→Flush或换段SetText或Pop。IsEnd必须来自本轮实际Frame之后，已执行的Frame不能再按trace重复运行；未查询的IsEnd无需提供。Pop真实返回未知，next非−1在末段显式标为未支持，不假造成功。输出预算4096属于维护保护，不是原字符串／段数限制。它不接Owner，不改变现有关闭行为，也不把page_counter或文本长度当展开状态。
+
+**维护缺口。** 现`WorldScriptPage`与opcode2／3已保存人物、替换文本、正文数组和legacy_tag，但通用`acknowledge_startup_world_runtime_page`仍直接关闭dialogue。原“先全文→换段→最终关闭”的Owner及完整TextLayout展开／精确恢复尚缺，纯计划通过不视为完整操作还原。本节不新增Owner或持久布局，不因raw2入口未证删除规则，也不改变原表。
 
 <a id="steam-village-progress"></a>
 
@@ -471,6 +475,14 @@ tag24在`1032772D–10327764`创建“结束游戏”是／否询问，默认1�
 维护菜单使用冻结tags而非每轮按当前flag重建；缓存仅与活跃3选择／位置同步，退休旧3可保留后来已改变的旧行。初始化后缺字段、错父、越界行与孤立载荷显式拒绝；精确恢复保留原目录、位置与帧，不再次刷新P/aY。普通世界无待Init菜单时不额外复制Owner。3→建设、冒险、村办、情报及魔法壶的副作用由唯一候选提交；raw10导航可用，raw14应用保存及raw13说明后续已接；未交付的设置、游戏内纪录与结束平台消费者仍明确拒绝，不能用可关闭空页假装业务成功。
 
 raw4的tag9为赠礼人物目录40，**不是装备情报38**。APK `b/g:10809–10822,12018–12062`及Steam Init `10313753–10313A7B`／Update `1032388A–10323C82`核全人物p非零原序、仅35重算贡献、40三页签及五行滚动、两种关闭清冻结X的NEW，40确认绑定所选人物到64并保留父40。首98说明与64首99说明均走真实对话返回，不以注入seen或通用关页跳过。58则按当前任务site地图投影加(30,−15)逐更新跟踪，无任务自动关闭，严格距离小于步长才直接对齐；沿既有56／57算法，确认／取消不能跳过，坏site拒绝。
+
+#### 保留菜单5／6／8的实际消费者
+
+2026-10-16，固定Steam局部入口交叉，正常产生者仍未核，不由枚举名填演示菜单。raw5在Init312460的`10312716–10312719→10315088–1031509F`仅AddMenu(tag13,原实参1)；Update `10321D35–10321D38→103279E3`消费FrameMenu，tag13在`10327A19`请求OpenMPotDevelWindow并于`10327A36–10327A3A`创建41，共同尾Push后RemoveAllMenuForms。Draw `103531D3–103531D6→10356CB6`调用DrawMenu2(type1)。当前主菜单raw3的tag3却在`10327FC0–10327FC3→10328081`清event2后直接开41，故5不是已核主菜单壶入口的必经页。
+
+raw8没有专属Init目录，Update `10321D3E–10321D41→1032797C`在dialog为空时消费FrameMenu，无结果保留、有结果进入RemoveAllMenuForms；有dialog则result0先Pop，随后清引用并返回false（`103279A3–103279E2`），本局部不创建该dialog。Draw `103531E5–103531E8`同样走DrawMenu2(type1)。这仅是共用子菜单壳／回传处理，不替代raw12设置合同。raw6在Init／Init2和Update没有专属分支，Update2默认true；Draw沿所有默认后继到`1034C7A6`返回，没有raw6内容或Touch，本身仍受共同钟／共享表现处理。
+
+入口查找仅核三类构造器直调用的有限近端实参与常量type写形态，未取得5／6／8正常producer；计算type、较远寄存器传值、脚本和间接调用仍可能存在。不宣称全程序不可达，不新增C++菜单、虚构目录或开放设置／壶旁路。
 
 #### 设置12：值所属与返回边界
 

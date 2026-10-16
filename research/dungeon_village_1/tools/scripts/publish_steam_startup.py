@@ -22,6 +22,10 @@ SELECTED = {
                'hi/saveload.png', 'it/saveload.png', 'pt/saveload.png', 'ru/saveload.png', 'tr/saveload.png',
                'zh-CN/saveload.png', 'img.inf', 'seb.inf'],
 }
+DUNGEON_FOOTER_LANGUAGE = [
+    'English.lproj/menuRT00.png', 'English.lproj/menuRT00.seb', 'English.lproj/menuRT01.png',
+    'zh-CN/menuRT00.png', 'zh-CN/menuRT00.seb', 'zh/menuRT00.png', 'zh/menuRT00.seb',
+]
 
 
 def need(ok, message):
@@ -75,18 +79,15 @@ def seb_refs(data):
     return frames, sorted(refs)
 
 
-def planned_payloads():
-    """从固定Unity对象重新读取，只发布38逻辑身份；不读取work。"""
+def source_archives(groups):
+    """核固定容器、对象及载荷身份后解包；两个发布白名单共用，不读取work。"""
     coverage = json.loads((ROOT / 'assets/IMAGE_COVERAGE.json').read_text(encoding='utf-8'))
     records = coverage['records']
     raw = (ROOT / 'DungeonVillageEXE/KairoGames_Data/resources.assets').read_bytes()
     need(sha(raw) == CONTAINER_HASH, 'resources.assets身份不同')
     ns, key = readers()
-    payloads, result, inputs = {}, [], []
-    selected_ids = {r['id'] for r in records if r.get('source') == 'EXE' and r.get('group') in SELECTED
-                    and r.get('entry') in SELECTED[r['group']]}
-    need(len(selected_ids) == 38, '固定白名单数量不符')
-    for group, entries in SELECTED.items():
+    archives, inputs = {}, []
+    for group in groups:
         obj = next(r for r in records if r.get('kind') == 'TextAsset' and r.get('name') == group)
         need(obj['container'] == 'resources.assets', '对象容器不符')
         start, count = obj['offset'], obj['bytes']
@@ -101,8 +102,20 @@ def planned_payloads():
         need(len(encrypted) == size and sha(encrypted) == obj['payload_sha256'], 'TextAsset载荷身份')
         decoded = bytes(v ^ key[i % len(key)] for i, v in enumerate(encrypted))
         fmt, unpacked = ns['archive'](decoded)
-        archive = {name: (b, flags) for name, b, flags in unpacked}
+        archives[group] = {name: (b, flags) for name, b, flags in unpacked}
         inputs.append({k: obj[k] for k in ('id', 'name', 'offset', 'bytes', 'sha256', 'payload_sha256')})
+    return records, ns, archives, inputs
+
+
+def planned_payloads():
+    """从固定Unity对象重新读取，只发布38逻辑身份；不读取work。"""
+    records, ns, archives, inputs = source_archives(SELECTED)
+    payloads, result = {}, []
+    selected_ids = {r['id'] for r in records if r.get('source') == 'EXE' and r.get('group') in SELECTED
+                    and r.get('entry') in SELECTED[r['group']]}
+    need(len(selected_ids) == 38, '固定白名单数量不符')
+    for group, entries in SELECTED.items():
+        archive = archives[group]
         for entry in entries:
             need(entry in archive and archive[entry][1] == 0, '白名单条目或压缩标志不同')
             b = archive[entry][0]
@@ -142,15 +155,37 @@ def planned_payloads():
     return payloads, manifest
 
 
-def verify_existing(directory, payloads, require_all):
-    """任何写入前核整棵目标；不接受联接、符号链接或未登记多余文件。"""
+def planned_footer_languages():
+    """仅发布探索底栏七个原语言条目；不重采样，不生成交付核对产物。"""
+    records, ns, archives, _ = source_archives(['common'])
+    archive, payloads = archives['common'], {}
+    for entry in DUNGEON_FOOTER_LANGUAGE:
+        matches = [r for r in records if r.get('source') == 'EXE' and r.get('group') == 'common'
+                   and r.get('entry') == entry]
+        need(len(matches) == 1, '探索底栏来源身份不唯一：'+entry)
+        rec = matches[0]
+        need(entry in archive and archive[entry][1] == 0, '探索底栏条目或压缩标志不同')
+        b = archive[entry][0]
+        need(len(b) == rec['bytes'] and sha(b) == rec['sha256'], '探索底栏字节不符：'+entry)
+        if rec['kind'] == 'image':
+            info = ns['image_info'](b)
+            need(info and all(info.get(k) == rec[k] for k in ('width', 'height', 'rgba_sha256')),
+                 '探索底栏PNG核验失败：'+entry)
+        else:
+            need(rec['kind'] == 'SEB' and seb_refs(b) == (4, [84]), '探索底栏SEB引用不同：'+entry)
+        payloads[entry] = b
+    return payloads
+
+
+def verify_existing(directory, payloads, require_all, selected_only=False):
+    """写入前拒绝路径跳转及异内容；扩展共用素材时只限定本批目标，保留已有素材。"""
     directory = directory.absolute()
     need(directory.is_relative_to(ROOT) and directory.resolve() == directory, '目标必须为研究根内普通路径')
     if directory.exists():
         need(directory.is_dir(), '目标不是目录')
         for p in directory.rglob('*'):
             need(not p.is_symlink() and p.resolve() == p.absolute(), '目标含符号链接／联接')
-            if p.is_file():
+            if p.is_file() and not selected_only:
                 need(p.relative_to(directory).as_posix() in set(payloads) | {'README.md'}, '目标存在未登记文件')
     for name, b in payloads.items():
         target = directory / name
@@ -161,8 +196,8 @@ def verify_existing(directory, payloads, require_all):
             need(not require_all, '缺少发布文件：'+name)
 
 
-def publish(directory, payloads):
-    verify_existing(directory, payloads, False)
+def publish(directory, payloads, selected_only=False):
+    verify_existing(directory, payloads, False, selected_only)
     created, made_dirs = [], []
     try:
         for name, b in payloads.items():
@@ -182,7 +217,7 @@ def publish(directory, payloads):
                 out.write(b)
                 out.flush()
                 os.fsync(out.fileno())
-        verify_existing(directory, payloads, True)
+        verify_existing(directory, payloads, True, selected_only)
     except BaseException:
         for target, b in reversed(created):
             if target.is_file() and not target.is_symlink() and target.read_bytes() == b:
@@ -197,7 +232,20 @@ def publish(directory, payloads):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--check', action='store_true')
+    parser.add_argument('--dungeon-footer-language', action='store_true',
+                        help='仅发布探索底栏七个原语言条目，不改变默认启动白名单')
     args = parser.parse_args()
+    if args.dungeon_footer_language:
+        payloads = planned_footer_languages()
+        directory = ROOT / 'assets/steam-common'
+        if args.check:
+            verify_existing(directory, payloads, True, selected_only=True)
+            created = 0
+        else:
+            created = publish(directory, payloads, selected_only=True)
+        print(json.dumps(dict(mode='check' if args.check else 'publish', logical_count=len(payloads),
+                             created=created, payload_bytes=sum(map(len, payloads.values()))), ensure_ascii=False))
+        return
     payloads, manifest = planned_payloads()
     directory = ROOT / 'assets/steam-startup'
     if args.check:

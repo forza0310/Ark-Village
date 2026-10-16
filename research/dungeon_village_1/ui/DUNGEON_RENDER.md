@@ -190,17 +190,44 @@ Owner桥使用已有`scene.world.updates`（原p／cnt_dungeonBar，安装活动
 
 common上述7张同字节PNG、SEB10／27／76／93与固定Steam对象1148逐字节核对；
 `steam-common/menuRT00.png/.seb`及`menuRT01.png`也均为既有Steam root原条目，未裁切／规范化。
-root标签59×45；简繁语言图118×90并带INF逻辑尺度`e59x45`，各语言SEB整文件独立；
-百分号没有简繁变体，按实际基础语言目录／root回退。当前交付仅绑定root，
-不得把APK中文或未经处理的118×90物理裁片称作Steam中文皮肤；实际字体／语言安装及OS动态另验。
+root／English标签59×45，简繁语言图118×90，各语言SEB整文件独立；首帧源区域均为逻辑59×14。
+百分号没有简繁变体，按实际基础语言目录／root回退。现资源重载显式接收基础语言、资源语言和线程资源gate，
+返回原文件、物理尺寸及可选标准尺寸；普通源矩形换算与目标尺寸分开，不从中文画面推断英语基础。
+七个必要语言条目已由现`publish_steam_startup.py --dungeon-footer-language`出版，共13771字节，
+沿固定Steam common对象1148与[全图像索引](../assets/IMAGE_COVERAGE.md)核身份，不复制全包或新增清单。
+
+| 显式上下文 | 图片84／SEB75 | 图片85／SEB76 | 84标准尺寸 |
+| --- | --- | --- | --- |
+| 资源root，基础root | 根 | 根 | 无 |
+| 资源English，gate开启 | English.lproj | English.lproj | 仅基础English时59×45 |
+| 资源SC／TC，gate开启 | zh-CN／zh | 基础English取English.lproj，否则根 | 仅基础English时59×45 |
+| gate关闭 | 按基础English／根 | 按基础English／根 | 仅基础English时59×45 |
+
+这里基础root只表示已核的根回退上下文，不是对所有平台语言的枚举。`Language.Get`先取有效priority，
+再cached／Config与locale初始化；`GetFolder`（RVA`80DEE0`）按Get索引FOLDERS，
+`UseResourceLanguage`（`836BD0`）取线程unuseResourceLanguage_的反值，文字码不是这两个状态的替代。
+图像任务`7B9990`在`107BA4B3`仅当`Language.English()`（Get恰1）才解析INF的`e59x45`，
+`107BAAF7`安装标准尺寸；`Image.SetStandardResolution`（`79FE20`）只写+4C／+50，
+`GetWidth`（`1E0B60`）／`GetHeight`（`1C7B50`）仍读物理+14／+18。
+普通`_drawBitmap`的`1077857F–107785E7`按物理／standard比率换算源x／y／w／h，目标尺寸不变。
+因此118×90且标准59×45时，逻辑源59×14变物理118×28，目标仍59×14；基础非English不自动乘2。
+换算保留负源与越界，不认证GPU最终像素。未读取用户实际语言设置；正常研究窗口仍显式使用根资源，
+不把已出版变体称作自动语言安装已接，实际字体／语言安装及OS动态另验。
 
 现任务皮肤功能套件主责几何／层序、跨条目dy、两次Pop、头像裁剪、g/h、平铺末片、
 Owner同次只读、拒绝及真实PNG／SEB映射；Owner随机／清理／回滚由现runtime_tasks套件负责。
 `dungeon-footer`／`dungeon-footer-entry`条件研究窗口独立消费此计划，头像临时裁剪与普通父clip分开恢复；
 不复用会清掉父clip的旧人物摘要执行器。只适配正常未翻转图元，不认证原ImageClip后端或GPU越界行为。
 两个窗口使用真实新局首访人物及任务工厂，指定挑战年龄／人物进退／页滑入与aW显示条件；
-保留初建g/h（h=0显示0%），未付款、自然出发或完成探索。它们仍不是正常世界窗口的自动表现接线，
-更不认证原程序动态；现S032仍只作独立视觉参考。
+保留初建g/h（h=0显示0%），未付款、自然出发或完成探索；不认证原程序动态，现S032仍只作独立视觉参考。
+
+正常研究世界窗口现于每次实际全画布重绘前提交一次`full_redraw`，按真实页栈冻结名单，再取Owner只读引用，
+按同次计划绘制底栏；世界暂停仍允许重绘。应用宿主走`StartupApplication::present_world`的私有候选及
+既有联合提交，不导出长期可操作Session，拒绝缺世界／标题、错页名单或计分引用不一致。
+合法待Init raw17和完整计分控制器允许表现但不推进计分；计分页动态接线尚未定向实测。
+声音沿原唯一队列一次领取，66包装资格保持false；窗口日志分别输出表现调用及其随机消耗。
+维护窗口的每次全重绘策略不等于原平台准入，实际Steam全栈／顶页调度、原OS和GPU越界另验；
+headless逻辑回放也不因这条窗口接线自动成为含表现随机的等价轨迹。
 
 ### 攻略推进特效的生产与退休
 

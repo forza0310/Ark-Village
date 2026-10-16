@@ -242,7 +242,7 @@ DLL中Add入口绝对VA的唯一四字节匹配在`.data`的1112D608；邻项依
 
 此处找到的是**表值writer，尚未找到翻译委托writer**。类型槽`110FB03C`沿MetadataRegistration.types独立解析为Language（TypeDef600）。`SetSoftLabelTable` RVA`81F210`在`1081F264`原样安装数组引用到静态`+0x14`，随后原序就地将每行前两列中的单个反斜线替为`¥`；不转换第三列，也不跳过null行或不足两列的行：这些输入走原异常路径，表已发布、此前行修改仍保留。`SetTextTable` RVA`81F400`先清静态`+0x18`，非null输入交`MakeTextTable`，正常返回才安装其三维表；失败不恢复旧表。两入口均不写静态`translateTableMethod_ +0x3C`，也不生成ThreadStart。消费者仍沿[保存页翻译链](STEAM_SAVE_MENU.md#文本翻译的已核边界)处理当前表／内置表／语言包资格，不能机械把所有中文列固定为第2或第3列。
 
-本批有限排查另外顺序读取`IApplication.Awake` RVA`781120`（7008字节）、`BootForm.InitApp` RVA`1FB3A0`（352字节）及`BootForm.Load` RVA`1FBE90`（9712字节）：Awake可见语言Get／TranslateEnable及Config安装，Boot两个入口负责业务初始化／定义与资源加载，没有在这些已读入口直接安装翻译委托。这个范围不覆盖其全部间接构造、虚调用、平台注册或反射，也未展开Language的大静态构造；[语言安装合同](STEAM_LANGUAGE_INSTALL.md#启动选择与翻译注册的边界)的`+0x3C`注册者仍未知。直接供给与当前回调是否存在必须分别认证，不将已找到两表安装升级为“从未注册回调”或当前中文逐字内容已经取得。
+本批有限排查另外顺序读取`IApplication.Awake` RVA`781120`（7008字节）、`BootForm.InitApp` RVA`1FB3A0`（352字节）及`BootForm.Load` RVA`1FBE90`（9712字节）：Awake可见语言Get／TranslateEnable及Config安装，Boot两个入口负责业务初始化／定义与资源加载，没有在这些已读入口直接安装翻译委托。2026-10-16补核`Language.cctor` RVA`822FB0`内经该类型槽读取的静态字段写入，亦未见`+0x3C`委托安装；这不是对其全部内置表内容的认证。已定位的真实委托字段writer仍为`InitStaticFields` RVA`80F3A0`在`1080F463`清零，以及`RegistTranslateTable` RVA`81DC40`在`1081DC7F`原样安装ThreadStart参数；`LoadTranslateTable` RVA`816D70`的`10816E59／10817113`仅检查／读取它。这些局部入口与类型槽直接引用检查不覆盖全部间接构造、虚调用、平台注册、反射或别名写入；[语言安装合同](STEAM_LANGUAGE_INSTALL.md#启动选择与翻译注册的边界)的实际注册调用者仍未知。直接供给与当前回调是否存在必须分别认证，不将已找到两表安装升级为“从未注册回调”或当前中文逐字内容已经取得。
 
 ### 正文索引、列选择与退休
 

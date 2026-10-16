@@ -4542,6 +4542,8 @@ int run_startup_world_window(const std::filesystem::path &assets,
                    static_cast<float>(startup_evidence().camera.y)};
     Vector2 view_offset{};
     int frame_count{}, paragraph_index{};
+    std::uint64_t presentation_ordinal{}; // 本窗口调用身份；不是精确回放Driver或原平台帧数。
+    std::size_t presentation_random{};
     int moved_frames{};
     int confirmation_inputs{}, pause_inputs{}, speed_inputs{};
     std::size_t world_pixel_colors{};
@@ -5878,7 +5880,21 @@ int run_startup_world_window(const std::filesystem::path &assets,
                         std::to_string(static_cast<int>(result.world_error)));
             }
         }
-        // 本研究窗口暂未实现音频；明确消费一次性请求，不保存无限声音历史。
+        // 此适配器每次实际重合整张画布，明确准入一次full_redraw；不声称原OS也逐帧准入。
+        // 必须先提交Owner，再取得所有下方只读引用；应用宿主不得导出第二个可操作Session。
+        if(presentation_ordinal==std::numeric_limits<std::uint64_t>::max())
+            throw std::runtime_error("窗口表现调用身份溢出");
+        StartupPresentationRequest presentation_request;
+        presentation_request.ordinal=presentation_ordinal+1;
+        presentation_request.mode=StartupPresentationMode::full_redraw;
+        const auto presentation_pages=startup_world_presentation_pages(session.state(),presentation_request.mode);
+        if(!presentation_pages)throw std::runtime_error("窗口表现页栈准入拒绝");
+        presentation_request.expected_pages=*presentation_pages;
+        // 原66包装/平台SoundPlayer守卫尚未完整接，不默默声明gift_wrapper_ready=true。
+        const auto presentation=session.present(presentation_request);
+        presentation_ordinal=presentation.ordinal;
+        presentation_random+=presentation.random_after-presentation.random_before;
+        // 本研究窗口暂未实现音频；表现提交产生的声音也在同轮一次领取。
         (void)session.take_sound_requests();
         std::vector<std::uint64_t> build_pages_drawn;
         const auto &state = session.state();
@@ -6112,6 +6128,16 @@ int run_startup_world_window(const std::filesystem::path &assets,
                          [](const auto &a, const auto &b) { return a.depth < b.depth; });
         for (const auto &overlay : overlays)
             overlay.draw();
+        for(const auto id:presentation.pages) {
+            const auto page=std::find_if(state.scripts.pages.begin(),state.scripts.pages.end(),
+                [=](const auto &p){return p.id==id;});
+            if(page==state.scripts.pages.end())throw std::runtime_error("窗口冻结表现页已丢失");
+            if(page->kind!=ref::WorldScriptPageKind::scene)continue;
+            // 研究画布240x320，原世界区的显示上下文在此显式适配；不伪装原客户区实测值。
+            const auto footer=steam_dungeon_footer_skin(state,id,presentation,{0,35,width,259},0,false);
+            if(!footer)throw std::runtime_error("窗口探索底栏只读桥拒绝");
+            draw_dungeon_footer(*footer,sprites,{0,0});
+        }
         if(!top_page()&&state.scene.scene_state==4) {
             const auto plan=steam_task_information_scene_skin(state,window_task_info_options(font,true));
             if(!plan)throw std::runtime_error("Task scene drawing source rejected");
@@ -6777,6 +6803,8 @@ int run_startup_world_window(const std::filesystem::path &assets,
               << " updates=" << session.state().scene.world.updates
               << " actors=" << session.state().scene.world.world.ai.human_order.size()
               << " random_draws=" << session.state().scene.random.draws()
+              << " presentation_calls=" << presentation_ordinal
+              << " presentation_random=" << presentation_random
               << " funds=" << session.state().scene.world.world.ai.accounting.funds()
               << " moved_frames=" << moved_frames << " map_colors=" << world_pixel_colors
               << " confirm_inputs=" << confirmation_inputs << " pause_inputs=" << pause_inputs

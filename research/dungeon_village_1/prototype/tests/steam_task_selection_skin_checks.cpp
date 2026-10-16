@@ -1099,6 +1099,74 @@ void dungeon_footer_resources(Checks &c,const std::filesystem::path &root) {
     }
     c(!steam_dungeon_footer_resource(-1)&&!steam_dungeon_footer_resource(103),"非底栏图片不猜映射");
 }
+void dungeon_footer_language(Checks &c,const std::filesystem::path &root) {
+    using Base=SteamDungeonFooterBaseLanguage;
+    using Language=SteamDungeonFooterResourceLanguage;
+    struct Case {Base base;Language resource;bool gate;const char *image84,*image85;int scale;};
+    // 独立首命中oracle：resource gate关闭后仍追加基础目录，不等于强制根目录。
+    const Case cases[]{
+        {Base::root,Language::root,true,"menuRT00.png","menuRT01.png",1},
+        {Base::root,Language::english,true,"English.lproj/menuRT00.png","English.lproj/menuRT01.png",1},
+        {Base::root,Language::simplified_chinese,true,"zh-CN/menuRT00.png","menuRT01.png",1},
+        {Base::root,Language::traditional_chinese,true,"zh/menuRT00.png","menuRT01.png",1},
+        {Base::english,Language::root,true,"English.lproj/menuRT00.png","English.lproj/menuRT01.png",1},
+        {Base::english,Language::english,true,"English.lproj/menuRT00.png","English.lproj/menuRT01.png",1},
+        {Base::english,Language::simplified_chinese,true,"zh-CN/menuRT00.png","English.lproj/menuRT01.png",2},
+        {Base::english,Language::traditional_chinese,true,"zh/menuRT00.png","English.lproj/menuRT01.png",2},
+        {Base::root,Language::root,false,"menuRT00.png","menuRT01.png",1},
+        {Base::root,Language::english,false,"menuRT00.png","menuRT01.png",1},
+        {Base::root,Language::simplified_chinese,false,"menuRT00.png","menuRT01.png",1},
+        {Base::root,Language::traditional_chinese,false,"menuRT00.png","menuRT01.png",1},
+        {Base::english,Language::root,false,"English.lproj/menuRT00.png","English.lproj/menuRT01.png",1},
+        {Base::english,Language::english,false,"English.lproj/menuRT00.png","English.lproj/menuRT01.png",1},
+        {Base::english,Language::simplified_chinese,false,"English.lproj/menuRT00.png","English.lproj/menuRT01.png",1},
+        {Base::english,Language::traditional_chinese,false,"English.lproj/menuRT00.png","English.lproj/menuRT01.png",1},
+    };
+    for(const auto &test:cases) {
+        const SteamDungeonFooterLanguageProfile profile{test.base,test.resource,test.gate};
+        const auto label=steam_dungeon_footer_resource(84,profile),percent=steam_dungeon_footer_resource(85,profile);
+        c(label&&percent,"显式基础语言、资源语言及线程gate可独立绑定");
+        c(label->resource.published_image==std::string("steam-common/")+test.image84&&
+          percent->resource.published_image==std::string("steam-common/")+test.image85,
+          "84中文首命中、85缺中文继续基础目录再根；不按画面文字猜语言");
+        c(bool(label->standard_size)==(test.base==Base::english)&&!percent->standard_size,
+          "仅基础English安装84的e标准尺寸，85不跟随");
+        if(label->standard_size)c(*label->standard_size==std::array<int,2>{59,45},"e59x45不改变物理PNG尺寸");
+        for(const auto *request:{&*label,&*percent}) {
+            Image image=LoadImage((root.parent_path()/request->resource.published_image).string().c_str());
+            c(image.data&&std::array<int,2>{image.width,image.height}==request->physical_size,
+              "语言请求的物理尺寸来自实际原PNG");
+            UnloadImage(image);
+        }
+        std::ifstream stream(root.parent_path()/label->resource.published_sprite,std::ios::binary);
+        const std::vector<std::uint8_t> bytes{std::istreambuf_iterator<char>(stream),{}};
+        const auto seb=dungeon_village_tools::parse_legacy_seb(bytes);
+        bool found{};
+        for(const auto &layer:seb.layers)for(const auto &part:layer.parts)if(part.frame==0) {
+            found=true;
+            c(part.image_index==84&&part.source_x==0&&part.source_y==0&&part.width==59&&part.height==14,
+              "四种原语言SEB首帧都保留逻辑59x14而非物理118宽");
+        }
+        c(found,"语言SEB首帧存在");
+        const auto source=steam_dungeon_footer_physical_source(*label,{0,0,59,14});
+        c(source&&*source==std::array<float,4>{0,0,float(59*test.scale),float(14*test.scale)},
+          "只在基础English且实际高分辨PNG时源坐标乘2；目标尺寸由原SEB保留");
+        const auto outside=steam_dungeon_footer_physical_source(*label,{-2,-3,120,50});
+        c(outside&&*outside==std::array<float,4>{float(-2*test.scale),float(-3*test.scale),
+          float(120*test.scale),float(50*test.scale)},"源换算保留负坐标与越界，不冒充GPU钳制");
+    }
+    SteamDungeonFooterLanguageProfile bad;
+    bad.base=static_cast<Base>(9);c(!steam_dungeon_footer_resource(84,bad),"非法基础语言显式拒绝");
+    bad={};bad.resource=static_cast<Language>(9);
+    c(!steam_dungeon_footer_resource(84,bad),"非法资源语言显式拒绝");
+    c(!steam_dungeon_footer_resource(103,{}),"语言重载不扩大资源白名单");
+    auto request=*steam_dungeon_footer_resource(84,{});request.standard_size=std::array<int,2>{0,45};
+    c(!steam_dungeon_footer_physical_source(request,{0,0,59,14}),"零标准尺寸拒绝");
+    request=*steam_dungeon_footer_resource(84,{});request.physical_size[0]=0;
+    c(!steam_dungeon_footer_physical_source(request,{0,0,59,14}),"零物理尺寸拒绝");
+    request=*steam_dungeon_footer_resource(84,{});
+    c(!steam_dungeon_footer_physical_source(request,{0,0,0,14}),"空源矩形不产生绘制请求");
+}
 } // namespace
 
 // 仅扩现visuals套件；报名扣费、held推进、随机次序与回滚由pages主责。
@@ -1107,5 +1175,5 @@ int check_steam_task_selection_skins(const std::filesystem::path &source_root) {
     rosters(c);departure(c);roster_resources(c,source_root);results(c,source_root);
     task_information(c);task_information_owner(c);victory(c);victory_owner(c);deadline(c,source_root);
     result_owner(c);deadline_owner(c);roster_owner(c);dungeon_footer(c);dungeon_footer_owner(c);
-    dungeon_footer_resources(c,source_root);return c.count;
+    dungeon_footer_resources(c,source_root);dungeon_footer_language(c,source_root);return c.count;
 }

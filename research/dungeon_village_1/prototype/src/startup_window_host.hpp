@@ -76,6 +76,23 @@ class StartupWindowHost {
         if (application_mode()) throw std::runtime_error("应用宿主不能导出独立可操作Session");
         return std::get<StartupWorldRuntimeSession>(owner_);
     }
+    // 一次已由窗口准入的表现提交；应用仍通过自己的事务，回执不携带第二个世界。
+    // 成功重绘不清最近玩家命令诊断，声音交原唯一队列随后领取。
+    StartupPresentationPlan present(const StartupPresentationRequest &request) {
+        auto result=std::visit([&](auto &owner) -> StartupApplicationPresentationResult {
+            if constexpr(std::is_same_v<std::decay_t<decltype(owner)>,StartupApplication>)
+                return owner.present_world(request);
+            else {
+                auto prepared=owner.present(request);
+                if(prepared.error!=StartupWorldRuntimeError::none||!prepared.plan)
+                    return {"世界表现请求拒绝："+std::to_string(static_cast<int>(prepared.error)),{}};
+                return {{},std::move(prepared.plan)};
+            }
+        },owner_);
+        if(!result.error.empty()||!result.plan)
+            throw std::runtime_error(result.error.empty()?"表现提交缺少计划":result.error);
+        return std::move(*result.plan);
+    }
     StartupWindowUpdate update(bool clear_confirm = false) {
         return std::visit([clear_confirm](auto &owner) -> StartupWindowUpdate {
             if constexpr (std::is_same_v<std::decay_t<decltype(owner)>, StartupApplication>) {

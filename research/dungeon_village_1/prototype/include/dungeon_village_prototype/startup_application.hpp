@@ -8,6 +8,7 @@
 #include "dungeon_village_prototype/startup_title_presentation.hpp"
 #include "dungeon_village_prototype/startup_title_menu.hpp"
 #include "dungeon_village_prototype/startup_application_storage.hpp"
+#include "dungeon_village_prototype/startup_world_presentation.hpp"
 #include <array>
 #include <utility>
 
@@ -64,6 +65,10 @@ struct StartupApplicationTaskResult {
     ref::TaskCommandDenial denial{ref::TaskCommandDenial::none};
     bool accepted{}, departed{};
 };
+struct StartupApplicationPresentationResult {
+    std::string error;
+    std::optional<StartupPresentationPlan> plan;
+};
 // 应用协调系统文件与世界候选；从未向UI暴露可写世界或任意纪录setter。
 class StartupApplication {
   public:
@@ -109,6 +114,8 @@ class StartupApplication {
     std::optional<StartupTitleReplay> capture_title_replay() const;
     std::string restore_title_replay(const StartupTitleReplay &snapshot);
     std::string update(bool confirm = false);
+    // 实际重绘先经应用Owner提交表现副作用；返回计划仅供本次只读绘制。
+    StartupApplicationPresentationResult present_world(const StartupPresentationRequest &request);
     // 窗口桥仅提交明确设置，不开放可写Session；同值输入通过资格检查后不复制世界。
     std::string set_paused(bool paused);
     std::string set_speed(int setting);

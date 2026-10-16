@@ -145,7 +145,7 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 GameForm 0 MAIN、1 BUILD有局部窗口证据；6 CHASE_CHARA、7 CHASE_TENANT另有[具名追踪／确认与镜头静态合同及维护接线](INFORMATION_MENU.md)，不再仅有声明，但原窗口追踪全链未认证。2 USER、3 BACK、4 DUNGEON_SELECT、5 DUNGEON_MOVE在此仍仅登记声明。
 S066–S068自然对话不按旧标签补写具名详情，见[非空p实验](../work/window-restore-observation/20261007-131546-nonempty-p-reload/RESULT.md)。
 
-探索底栏的[Steam纯计划／Owner只读桥](DUNGEON_RENDER.md#steam底栏维护消费者与资源边界)已交，包含两遍挑战、跨条目dy、冻结抖动、头像、特效与右段，根资源复用现出版。aW同事务生产／退休及两个条件研究窗口已接；正常窗口自动表现接线、语言变体及原Draw准入／GPU越界像素另列，不能由静态合同或条件短测认证完整原动态。
+探索底栏的[Steam纯计划／Owner只读桥](DUNGEON_RENDER.md#steam底栏维护消费者与资源边界)已交，包含两遍挑战、跨条目dy、冻结抖动、头像、特效与右段。aW同事务生产／退休、两个条件研究窗口及正常窗口显式全重绘请求已接；应用通过唯一Owner提交并一次领取声音。根及七个必要语言素材、独立基础语言／资源gate／标准尺寸请求已交，正常窗口仍显式选根。原Draw准入、66包装资格、实际语言安装／字体及GPU越界像素另列，不能由静态合同或条件短测认证完整原动态。
 
 ## 26组件与14事件分母
 

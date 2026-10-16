@@ -136,6 +136,67 @@ std::optional<SteamFacilityResource> steam_dungeon_footer_resource(int image) {
     default:return {};
     }
 }
+std::optional<SteamDungeonFooterResourceRequest> steam_dungeon_footer_resource(
+    int image,const SteamDungeonFooterLanguageProfile &profile) {
+    using Base=SteamDungeonFooterBaseLanguage;
+    using Language=SteamDungeonFooterResourceLanguage;
+    if(profile.base!=Base::root&&profile.base!=Base::english)return {};
+    switch(profile.resource) {
+    case Language::root:case Language::english:case Language::simplified_chinese:
+    case Language::traditional_chinese:break;
+    default:return {};
+    }
+    const auto original=steam_dungeon_footer_resource(image);
+    if(!original)return {};
+    SteamDungeonFooterResourceRequest out{*original,{},{}};
+    // 首命中：允许资源语言才先试包目录，随后基础目录，最后根。
+    const auto language=profile.use_resource_language?profile.resource:Language::root;
+    const bool english=profile.base==Base::english;
+    switch(image) {
+    case 6:case 97:out.physical_size={22,95};break;
+    case 24:out.physical_size={144,18};break;
+    case 84:
+        out.physical_size={59,45};
+        if(language==Language::simplified_chinese) {
+            out.resource.published_image="steam-common/zh-CN/menuRT00.png";
+            out.resource.published_sprite="steam-common/zh-CN/menuRT00.seb";
+            out.physical_size={118,90};
+        } else if(language==Language::traditional_chinese) {
+            out.resource.published_image="steam-common/zh/menuRT00.png";
+            out.resource.published_sprite="steam-common/zh/menuRT00.seb";
+            out.physical_size={118,90};
+        } else if(language==Language::english||english) {
+            out.resource.published_image="steam-common/English.lproj/menuRT00.png";
+            out.resource.published_sprite="steam-common/English.lproj/menuRT00.seb";
+        }
+        if(english)out.standard_size=std::array<int,2>{59,45};
+        break;
+    case 85:
+        out.physical_size={57,10};
+        // 中文目录没有85；不能跟随84选择虚构的中文百分号。
+        if(language==Language::english||english)
+            out.resource.published_image="steam-common/English.lproj/menuRT01.png";
+        break;
+    case 86:out.physical_size={77,18};break;
+    case 102:out.physical_size={80,24};break;
+    case 127:out.physical_size={217,108};break;
+    case 141:out.physical_size={34,18};break;
+    default:return {};
+    }
+    return out;
+}
+std::optional<std::array<float,4>> steam_dungeon_footer_physical_source(
+    const SteamDungeonFooterResourceRequest &request,std::array<int,4> source) {
+    if(request.physical_size[0]<=0||request.physical_size[1]<=0||source[2]<=0||source[3]<=0)return {};
+    float x=1,y=1;
+    if(request.standard_size) {
+        const auto standard=*request.standard_size;
+        if(standard[0]<=0||standard[1]<=0)return {};
+        x=float(request.physical_size[0])/standard[0];
+        y=float(request.physical_size[1])/standard[1];
+    }
+    return std::array<float,4>{source[0]*x,source[1]*y,source[2]*x,source[3]*y};
+}
 std::optional<SteamDungeonFooterPlan> steam_dungeon_footer_skin(
     const StartupWorldRuntimeState &s,std::uint64_t page,const StartupPresentationPlan &presentation,
     std::array<int,4> view,int side_width,bool japanese) {

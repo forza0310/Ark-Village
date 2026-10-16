@@ -17,6 +17,8 @@
 
 施工背景与工人的后继已核至Steam `Map.Draw／DrawBuildAnimeChara`及Map构造，见[实际消费者](../ui/PAGES.md#steam-construction)：common图片46–48／SEB53–55按施工阶段替图，图片122／SEB86按真实V与末30轮选择六帧，保持原深度与四格单工人。八文件同字节复用现original；SEB额外帧按各自图片引用验证，不因头maxFrame1删记录。
 
+设施通知后继见[完成／住宅／NEW](../ui/EQUIPMENT_FACILITY_RENDER.md#steam队首完成住宅与商品new)：Steam `Tenant.Draw` RVA2C2590只读队首；SEB68／91展开五帧全层，SEB97固定帧0层0，末帧零面积星爆不继承。三SEB及图片69／134复用同字节original；图片68／150的Steam根RGBA确有差异，现出版`steam-common/eff_open00.png`与`eff_equipStock.png`，合1336字节，身份和尺寸复用现[全容器记录](IMAGE_COVERAGE.json)。既有publisher新增`--facility-notices`白名单，默认启动白名单不变，不新增交付指纹清单。
+
 ## 索引怎么读
 
 - `records`以`归档组/条目`作稳定键；保留来源hash、文件大小、PNG／SEB／INF类型、原索引槽和修饰参数。`code_candidates`记录代码位置与候选类型；同名字面量跨多个归档时保留歧义数量。

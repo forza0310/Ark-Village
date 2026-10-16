@@ -195,6 +195,15 @@ class SourceSprites {
              WHITE, monster ? Binding::monster : Binding::human, 1, image_index);
     }
     void visual(const StartupVisualDraw &plan, Vector2 anchor) {
+        if(plan.resource==StartupVisualResource::steam_common) {
+            if(plan.sprite!=-1 || (plan.image!=68 && plan.image!=150))
+                throw std::runtime_error("Steam设施通知资源绑定非法");
+            crop(std::filesystem::path("steam-common")/(plan.image==68?"eff_open00.png":"eff_equipStock.png"),
+                 {static_cast<float>(plan.crop[0]),static_cast<float>(plan.crop[1]),
+                  static_cast<float>(plan.crop[2]),static_cast<float>(plan.crop[3])},
+                 {anchor.x+plan.offset[0],anchor.y+plan.offset[1]},true);
+            return;
+        }
         const char *group = plan.resource == StartupVisualResource::weapon ? "weapon" : "common";
         const Vector2 p{anchor.x + plan.offset[0], anchor.y + plan.offset[1]};
         if (plan.sprite >= 0) {
@@ -2880,6 +2889,53 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
     Window window;
     Canvas canvas;
     SourceSprites sprites(assets / "original");
+    if(inspect_page=="facility-notices") {
+        // 只读表现条件图：原定义与已有实例上更换通知年龄，不安装世界、不发完工奖励。
+        StartupSession initial;
+        StartupWorldRuntimeSession runtime(initial.state(),ref::WorldRandomStream::from_java_seed(1));
+        auto state=runtime.state();
+        const auto id=state.scene.world.facility_order.front();
+        std::array<std::vector<StartupVisualDraw>,9> plans;
+        constexpr std::array<int,3> ages{0,8,16};
+        for(int row=0;row<3;++row)for(int column=0;column<3;++column) {
+            const auto definition=std::find_if(state.rules->facilities.begin(),state.rules->facilities.end(),
+                [&](const auto &d){return row==1?d.kind==12:d.id==35;});
+            if(definition==state.rules->facilities.end())throw std::runtime_error("设施提示例图缺原定义");
+            auto &facility=state.scene.world.world.facilities.at(id);
+            facility.kind=definition->kind;facility.placement.definition_id=definition->id;
+            state.facility_details.at(id).notices={{row==2?7:0,row==2?column*6:ages[column]}};
+            const auto plan=startup_world_facility_notice_draws(state,id);
+            if(!plan)throw std::runtime_error("设施提示条件绘制拒绝");
+            plans[row*3+column]=*plan;
+        }
+        int count{};
+        while(!WindowShouldClose()&&count<frames) {
+            BeginTextureMode(canvas.value);ClearBackground(Color{83,141,77,255});
+            // 例图说明用raylib像素字，不将Noto或原版字体混入源图片比较。
+            DrawText("RESEARCH DRAW FIXTURE",8,8,10,WHITE);
+            for(int row=0;row<3;++row) {
+                DrawText(row==0?"COMPLETION":row==1?"RESIDENCE":"STOCK NEW",8,38+80*row,10,WHITE);
+                for(int column=0;column<3;++column) {
+                    const Vector2 anchor{48.0F+72*column,110.0F+80*row};
+                    for(const auto &draw:plans[row*3+column])sprites.visual(draw,anchor);
+                    DrawText(std::to_string(row==2?column*6:ages[column]).c_str(),int(anchor.x)-4,int(anchor.y)-7,10,WHITE);
+                }
+            }
+            DrawText("AGES / NO NATURAL RUN",8,300,10,WHITE);
+            EndTextureMode();BeginDrawing();ClearBackground(BLACK);
+            DrawTexturePro(canvas.value.texture,{0,0,width,-height},{0,0,width*scale,height*scale},{0,0},0,WHITE);
+            EndDrawing();++count;
+            if(count==frames&&screenshot) {
+                if(!screenshot->parent_path().empty())std::filesystem::create_directories(screenshot->parent_path());
+                auto pixels=LoadImageFromScreen();
+                if(!pixels.data)throw std::runtime_error("设施提示例图截图失败");
+                const bool saved=ExportImage(pixels,screenshot->string().c_str());UnloadImage(pixels);
+                if(!saved)throw std::runtime_error("设施提示例图写入失败");
+            }
+        }
+        std::cout<<"facility notice drawing fixture: frames="<<count<<" plans=9 world_updates=0 natural_trigger_verified=false\n";
+        return 0;
+    }
     const bool title_backdrop_fixture=inspect_page=="title-backdrop-early"||inspect_page=="title-backdrop-entry"||
         inspect_page=="title-backdrop-original"||inspect_page=="title-backdrop-english";
     const bool title_prompts_fixture=inspect_page=="title-platform-prompts"||inspect_page=="title-platform-prompts-faded";
@@ -6116,7 +6172,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 overlays.push_back({depth, [&, id] { draw_actor(id); }});
             }
         for (const auto id : state.scene.world.facility_order) {
-            const auto growth = startup_world_facility_growth_draws(state, id);
+            const auto growth = startup_world_facility_notice_draws(state, id);
             if (!growth) throw std::runtime_error("设施增长头标载荷非法");
             if (!growth->empty()) {
                 const auto target = startup_world_runtime_facility_target(state, id);

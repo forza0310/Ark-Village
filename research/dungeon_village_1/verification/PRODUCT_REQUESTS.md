@@ -1,5 +1,7 @@
 # 产品研究需求回应与剩余交付
 
+施工后继已补[完成／住宅／商品NEW合同](../ui/EQUIPMENT_FACILITY_RENDER.md#steam队首完成住宅与商品new)：`startup_world_facility_notice_draws`读取既有队首，0／7展开全部有效裁片，1–6复用原增长接口；正常研究窗口已改用完整入口。Steam图片68／150与APK像素不同，须连同`StartupVisualResource::steam_common`的直接裁片绑定迁入，不能继续指向original同名图或再次添加SEB偏移。真实完工／商品产生、队首年龄／退休与奖励仍沿原Owner；新查询不增加持久字段、随机或声音。根尺寸以外的语言加载／原OS动态及产品接入分别验收。
+
 2026-10-16接[新建植物路径投影差异](../../../docs/reference/RESEARCH_REQUESTS.md#plant-route-projection-gap)：已核APK创建／完工／刷新／加载与Steam创建绑定，植物kind2在绑定时即为state2／blocked，不等施工。正式维护修正`install_facility`遗漏，现建设套件短验真实66新建、更新、刷新、普通存读与继续更新；66／74均无flags64，不伪造施工过程。普通维护文件不改布局、不迁移或偷偷修复历史误写格值，原加载重建与维护精确格保存分开，见[路径合同](../rules/MAP_ACCESS.md)。产品真实74取得／建设仍由产品验证。
 
 当前回应[启动Owner／字体缺口](../../../docs/reference/RESEARCH_REQUESTS.md#startup-owner-font-gaps)：91纯皮肤已修正为接收维护合法空村名／姓名并原样留空，产品无需再填占位后还原；这不是原平台空串输入资格的新认证。选择／主钟的Owner载荷仍未交付，80／87目录／问答保持已写具体设计待确认。

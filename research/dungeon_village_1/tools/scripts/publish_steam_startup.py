@@ -177,6 +177,29 @@ def planned_footer_languages():
     return payloads
 
 
+def planned_facility_notices():
+    """只出版设施完工／NEW所需两张Steam根差异图；同字节SEB仍引用original。"""
+    records, ns, archives, _ = source_archives(('common',))
+    payloads = {}
+    for entry, slot, width, height, size in (
+        ('eff_open00.png', 68, 132, 18, 771), ('eff_equipStock.png', 150, 60, 21, 565)):
+        b, flags = archives['common'][entry]
+        rec = next(r for r in records if r.get('source')=='EXE' and r.get('group')=='common' and r.get('entry')==entry)
+        directory = next(r for r in records if r.get('source')=='EXE' and r.get('group')=='common' and r.get('entry')=='img.inf')
+        need(flags==0 and len(b)==size==rec['bytes'] and sha(b)==rec['sha256'], '设施通知原图身份：'+entry)
+        need(any(t['index']==slot and t['record']==rec['id'] for t in directory['index_targets']), '设施通知INF槽')
+        info = ns['image_info'](b)
+        apk = ns['image_info']((ROOT/'assets/original/common'/entry).read_bytes())
+        need((info['width'],info['height'])==(width,height) and info['rgba_sha256']==rec['rgba_sha256'] and
+             info['rgba_sha256']!=apk['rgba_sha256'], '设施通知PNG尺寸／实际像素差异')
+        payloads[entry] = b
+    for entry, frames, refs in (('eff_open00.seb',5,[68,69]),('eff_open02.seb',5,[69,134]),('eff_equipStock.seb',1,[150])):
+        b, flags = archives['common'][entry]
+        need(flags==0 and b==(ROOT/'assets/original/common'/entry).read_bytes() and
+             seb_refs(b)==(frames,refs), '设施通知SEB别名：'+entry)
+    return payloads
+
+
 def verify_existing(directory, payloads, require_all, selected_only=False):
     """写入前拒绝路径跳转及异内容；扩展共用素材时只限定本批目标，保留已有素材。"""
     directory = directory.absolute()
@@ -234,9 +257,11 @@ def main():
     parser.add_argument('--check', action='store_true')
     parser.add_argument('--dungeon-footer-language', action='store_true',
                         help='仅发布探索底栏七个原语言条目，不改变默认启动白名单')
+    parser.add_argument('--facility-notices', action='store_true', help='仅发布设施完工／NEW两张根差异图')
     args = parser.parse_args()
-    if args.dungeon_footer_language:
-        payloads = planned_footer_languages()
+    need(not(args.dungeon_footer_language and args.facility_notices), '一次只选一个出版范围')
+    if args.dungeon_footer_language or args.facility_notices:
+        payloads = planned_facility_notices() if args.facility_notices else planned_footer_languages()
         directory = ROOT / 'assets/steam-common'
         if args.check:
             verify_existing(directory, payloads, True, selected_only=True)

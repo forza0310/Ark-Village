@@ -534,6 +534,85 @@ void facility_growth_queries() {
               s.scene.world.world.ai.accounting.funds()==cash && s.sound_requests.empty(),
           "growth query rejects missing owner references and preserves neighbour cache, cash, random and sounds");
 }
+void facility_notice_queries(const std::filesystem::path &root) {
+    auto s=test_support::world_fixture();
+    const auto id=s.scene.world.facility_order.front();
+    auto &facility=s.scene.world.world.facilities.at(id);
+    const auto ordinary=std::find_if(s.rules->facilities.begin(),s.rules->facilities.end(),[](const auto &d){return d.id==35;});
+    const auto residence=std::find_if(s.rules->facilities.begin(),s.rules->facilities.end(),[](const auto &d){return d.kind==12;});
+    check(ordinary!=s.rules->facilities.end()&&residence!=s.rules->facilities.end(),"notice fixture uses actual source definitions");
+    constexpr std::array<int,10> ages{0,3,4,7,8,11,12,15,16,43};
+    constexpr std::array<int,10> frames{0,0,1,1,2,2,3,3,4,4};
+    for(const bool home:{false,true}) {
+        const auto &d=home?*residence:*ordinary;
+        facility.placement.definition_id=d.id;facility.kind=d.kind;
+        const auto seb=dungeon_village_tools::parse_legacy_seb(bytes(root/"common"/(home?"eff_open02.seb":"eff_open00.seb")));
+        check(seb.layers.size()==2&&seb.frame_count==5,"completion has two source layers and five explicit frames");
+        for(std::size_t n=0;n<ages.size();++n) {
+            s.facility_details.at(id).notices={{0,ages[n]},{7,6}};
+            const auto digest=startup_world_state_digest(s);
+            const auto plan=startup_world_facility_notice_draws(s,id);
+            check(plan&&plan->size()==(frames[n]<4?2U:1U)&&plan->front().frame==frames[n],
+                  "completion uses strict threshold frame, queue head only and zero-area final star disappears");
+            std::size_t drawn{};
+            for(std::size_t layer=0;layer<seb.layers.size();++layer)
+                for(const auto &part:seb.layers[layer].parts) {
+                    if(part.frame!=frames[n]||part.width==0||part.height==0)continue;
+                    const auto &request=plan->at(drawn++);
+                    check(request.sprite==-1&&request.frame==frames[n]&&request.layer==static_cast<int>(layer)&&
+                        request.image==part.image_index&&request.crop==std::array<int,4>{part.source_x,part.source_y,part.width,part.height}&&
+                        request.offset==std::array<int,2>{part.offset_x,part.offset_y-37}&&
+                        request.resource==(!home&&layer==0?StartupVisualResource::steam_common:StartupVisualResource::common),
+                        "all completion layers expand actual SEB order, rectangle, image and offset exactly once");
+                }
+            check(drawn==plan->size()&&startup_world_state_digest(s)==digest,"completion query preserves entire Owner and one-time outputs");
+        }
+    }
+    const auto stock=dungeon_village_tools::parse_legacy_seb(bytes(root/"common/eff_equipStock.seb"));
+    check(stock.layers.size()==1&&stock.frame_count==1&&stock.layers.front().parts.size()==1,"NEW exact source single record");
+    const auto &part=stock.layers.front().parts.front();
+    for(const auto sample:{std::array<int,2>{0,-50},{5,-50},{6,-52},{11,-52},{12,-50},{59,-52},{60,-50}}) {
+        s.facility_details.at(id).notices={{7,sample[0]},{0,0}};
+        const auto plan=startup_world_facility_notice_draws(s,id);
+        check(plan&&plan->size()==1&&plan->front().resource==StartupVisualResource::steam_common&&
+            plan->front().image==150&&part.image_index==150&&plan->front().sprite==-1&&
+            plan->front().crop==std::array<int,4>{part.source_x,part.source_y,part.width,part.height}&&
+            plan->front().offset==std::array<int,2>{part.offset_x,sample[1]},"NEW exact six-age bounce, source crop and no invented pure Draw lifetime guard");
+    }
+    for(int kind=1;kind<=6;++kind) {
+        s.facility_details.at(id).notices={{kind,6},{0,0}};
+        const auto all=startup_world_facility_notice_draws(s,id),growth=startup_world_facility_growth_draws(s,id);
+        check(all&&growth&&all->size()==growth->size()&&all->front().sprite==growth->front().sprite&&
+              all->front().offset==growth->front().offset,"complete notice dispatch preserves existing growth consumer");
+    }
+    s.facility_details.at(id).notices={{0,std::numeric_limits<int>::max()}};
+    check(startup_world_facility_notice_draws(s,id)->size()==1,"pure completion Draw clamps last frame without overflowing at maximum age");
+    for(const auto bad:{std::array<int,2>{-1,0},{8,0},{0,-1},{7,-1}}) {
+        s.facility_details.at(id).notices={bad};
+        check(!startup_world_facility_notice_draws(s,id),"bad notice kind or negative age explicitly rejects");
+    }
+    s.facility_details.at(id).notices={{0,0}};
+    facility.placement.definition_id=std::numeric_limits<int>::max();
+    check(!startup_world_facility_notice_draws(s,id),"unknown completed facility definition explicitly rejects");
+    facility.placement.definition_id=ordinary->id;facility.kind=residence->kind;
+    check(!startup_world_facility_notice_draws(s,id),"wrong facility definition binding cannot select residence art");
+    s.facility_details.erase(id);
+    check(!startup_world_facility_notice_draws(s,id)&&!startup_world_facility_notice_draws(s,0),"missing notice payload or instance explicitly rejects");
+    for(const auto entry:{"eff_open00.png","eff_equipStock.png"}) {
+        const auto file=root.parent_path()/"steam-common"/entry;
+        Image steam=LoadImage(file.string().c_str()),apk=LoadImage((root/"common"/entry).string().c_str());
+        const bool open=std::string(entry)=="eff_open00.png";
+        check(steam.data&&apk.data&&steam.width==(open?132:60)&&steam.height==(open?18:21)&&
+              steam.width==apk.width&&steam.height==apk.height,"Steam difference images have source dimensions and APK counterpart");
+        bool different{};
+        for(int y=0;y<steam.height;++y)for(int x=0;x<steam.width;++x) {
+            const auto a=GetImageColor(steam,x,y),b=GetImageColor(apk,x,y);
+            different|=a.r!=b.r||a.g!=b.g||a.b!=b.b||a.a!=b.a;
+        }
+        check(different,"Steam completion/NEW uses actual different pixels rather than APK alias");
+        UnloadImage(steam);UnloadImage(apk);
+    }
+}
 void attribute_gain_queries() {
     auto s = lift_fixture();
     auto &ai = s.scene.world.world.ai;
@@ -1181,6 +1260,7 @@ int main(int argc, char **argv) {
         cpu_portraits(argv[1]);
         equipment_lift_queries();
         facility_growth_queries();
+        facility_notice_queries(argv[1]);
         attribute_gain_queries();
         cpu_equipment_and_growth(argv[1]);
         cpu_attribute_gains(argv[1]);

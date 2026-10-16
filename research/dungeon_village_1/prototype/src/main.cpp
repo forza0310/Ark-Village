@@ -129,7 +129,7 @@ Options parse_options(int argc, char **argv) {
                                     "world-menu/world-system/world-information/world-adventure/world-village/world-save/world-manual/world-manual-about");
     if (!options.inspect_page.empty() &&
         (options.frames == 0 || options.fixture || options.check ||
-         (options.inspect_page != "roads" && options.inspect_page != "shops" &&
+         (options.inspect_page != "roads" && options.inspect_page != "shops" && options.inspect_page != "facility-notices" &&
           options.inspect_page != "title-backdrop-early" && options.inspect_page != "title-backdrop-entry" &&
           options.inspect_page != "title-backdrop-original" && options.inspect_page != "title-backdrop-english" &&
           options.inspect_page != "title-menu-start" && options.inspect_page != "title-menu-records" &&

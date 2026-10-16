@@ -177,6 +177,8 @@ Enter或确认点击逐段处理当前页；暂停同时冻结世界和栈顶页
 确认放置可连续建设，Esc退出不退款；施工仅在回到正常场景后推进。点击现有设施开raw74，普通两页箭头/返回已接。
 正常窗口施工state0按真实冻结工期／实例主钟替换成三阶段原图，工人读UserData.V／末30轮守卫，沿原格深度+1；
 `--world --inspect-page world-construction --frames 8 --paused`可检查真实付费面包房，详见[施工合同](../ui/PAGES.md#steam-construction)。
+正常窗口另消费`startup_world_facility_notice_draws`的完成／住宅／NEW与既有增长头标；
+`--inspect-page facility-notices --frames 8`（不加`--world`）只展示九格通知关键帧条件图，不推进世界或产生奖励，见[完整通知合同](../ui/EQUIPMENT_FACILITY_RENDER.md#steam队首完成住宅与商品new)。
 募集的入住按钮进入raw80，以人物原费用替换为住宅25并绑定同一定义；建成后奖励/96/67由真实消费者提交。
 已绑定住宅点击转到原居民raw60，不误开普通设施74或创建人物；正常场景也可直接点击可见冒险者查看详情，不控制移动。
 有升级提示时先开81，第一次初始化真正升共享等级；40/55分段确认最终才清提示。

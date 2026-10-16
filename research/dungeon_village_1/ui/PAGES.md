@@ -355,7 +355,9 @@ Steam common对象1148的上述四PNG／四SEB与现original/common原字节相�
 维护[只读查询](../prototype/include/dungeon_village_prototype/startup_world_visuals.hpp)从真实实例、冻结工期／主钟与占地绑定生成替图计划，
 正常窗口每实例准备一次，再按格接入原深度队列；不替正常建筑重复叠图，不在绘制推进施工、人气或完工脚本。
 缺载荷／错绑定／形状及有符号2*t溢出显式拒绝，后者为维护边界；未改Owner布局／档案身份。
-`world-construction`仅通过真实新局的35建设／原价支付进入施工；研究画布、字体、原OS动态及完整完工特效分别登记。
+`world-construction`仅通过真实新局的35建设／原价支付进入施工；研究画布、字体及原OS动态分别登记。
+完工后改由[设施队首完成提示](EQUIPMENT_FACILITY_RENDER.md#steam队首完成住宅与商品new)读取真实通知，普通完工不凭观感补全局X10烟雾。
+APK `c/m.c`先推进旧队首再判断完工，列表任意位置已有kind0就不重插；新提示、人气／共享奖励及后继脚本仍由Owner提交。
 
 ## 主菜单修正
 

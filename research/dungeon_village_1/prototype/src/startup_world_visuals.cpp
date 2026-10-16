@@ -173,6 +173,37 @@ std::optional<std::vector<StartupVisualDraw>> startup_world_facility_growth_draw
     }
     return result;
 }
+std::optional<std::vector<StartupVisualDraw>> startup_world_facility_notice_draws(
+    const StartupWorldRuntimeState &s, std::uint64_t id) {
+    const auto facility=s.scene.world.world.facilities.find(id);
+    const auto details=s.facility_details.find(id);
+    if(facility==s.scene.world.world.facilities.end() || details==s.facility_details.end())return {};
+    if(details->second.notices.empty())return std::vector<StartupVisualDraw>{};
+    const auto &head=details->second.notices.front();
+    const int kind=head[0], age=head[1];
+    if(kind<0 || kind>7 || age<0)return {};
+    if(kind>=1 && kind<=6)return startup_world_facility_growth_draws(s,id);
+    if(kind==7)return std::vector<StartupVisualDraw>{{StartupVisualResource::steam_common,
+        -1,150,0,0,{0,0,60,21},{-30,-50-2*((age%12)/6)}}};
+    if(!s.rules)return {};
+    const auto definition=std::find_if(s.rules->facilities.begin(),s.rules->facilities.end(),
+        [&](const auto &d){return d.id==facility->second.placement.definition_id;});
+    if(definition==s.rules->facilities.end() || facility->second.kind!=definition->kind)return {};
+    const bool residence=definition->kind==12;
+    constexpr std::array<int,5> thresholds{4,8,12,16,44};
+    const int frame=std::min(4,static_cast<int>(std::upper_bound(thresholds.begin(),thresholds.end(),age)-thresholds.begin()));
+    const int text_phase=std::min(frame,2);
+    // 展开SEB68/91全层原序，offset已含外锚Y-37及SEB内部偏移。
+    std::vector<StartupVisualDraw> result;
+    result.push_back({residence?StartupVisualResource::common:StartupVisualResource::steam_common,
+        -1,residence?134:68,frame,0,{text_phase*(residence?32:44),0,residence?32:44,residence?14:18},
+        {residence?-16:-22,residence?-51-2*text_phase:-55}});
+    constexpr std::array<std::array<int,4>,4> crop{{{19,19,16,16},{63,9,36,36},{3,57,48,48},{54,54,54,54}}};
+    constexpr std::array<std::array<int,2>,4> offsets{{{-8,-50},{-18,-62},{-24,-70},{-27,-73}}};
+    // frame4是显式零宽高记录，星爆消失，不继承上一帧。
+    if(frame<4)result.push_back({StartupVisualResource::common,-1,69,frame,1,crop[frame],offsets[frame]});
+    return result;
+}
 std::optional<std::vector<StartupAttributeGainDraw>> startup_world_attribute_gain_draws(
     const StartupWorldRuntimeState &s, ref::CharacterId id,
     const std::function<int(const std::string &)> &measure) {

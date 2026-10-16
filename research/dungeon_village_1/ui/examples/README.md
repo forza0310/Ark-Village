@@ -1,5 +1,7 @@
 # 产品侧小窗 UI 示例
 
+[Steam设施完成／住宅／商品NEW](steam-facility-notices.png)（480×640／7744字节）：`--inspect-page facility-notices --frames 8`，不加`--world`。上、中排是队首kind0年龄0／8／16，分别用普通SEB68与住宅SEB91；下排kind7年龄0／6／12展示两档上下偏移。每行只画对应队首，右列完成星爆已消失，不继承前帧。消费完整[通知查询](../EQUIPMENT_FACILITY_RENDER.md#steam队首完成住宅与商品new)与两张Steam差异图；原尺寸窗口像素无损重编码，已逐像素核对。现有实例／原表定义只用于绘制条件，没有完成施工、发奖、产生商品或推进世界；绿底、英文说明／数字及raylib像素字仅为例图标注，不是原版窗口、字体、场景深度或自然触发认证。
+
 [Steam纪录两页](steam-record-pages.png)（960×640／118885字节）：`record-score`／`record-cash`两个480×640研究窗口各8帧、0世界更新，不加`--world`。按Steam原序消费两次木框、buttoneffect箭头、event9背景、当前初装人物及文字；非日文分数只显示0，资金显示0Ｇ。两个0及“没有记录”来自维护默认系统纪录，未借世界5000G或造通关分数；frame19、冻结定义0／1、空父背景演员是显示条件，不代表原Init抽选／自然纪录。中文/Noto、VIEW_Y23及mdpi按钮图为适配；底部软标签0／2和触区仅记录请求，未接物理返回／翻页、完整字体、联网getter或独立动画钟恢复。见[Steam局部合同与模块](../STARTUP_SKIN.md#steam纪录的独立绘制交叉)。
 
 [标题平台／语言四态](steam-title-platform.png)（960×1280／301115字节）：四张480×640原尺寸窗口，各8帧、0世界更新，不加`--world`。上排`title-platform`／`title-platform-touched`保留无登记表的常态／高亮；本次复验与旧图逐像素一致。下排`title-platform-prompts`／`title-platform-prompts-faded`显式有表、有手柄、无SDK动态图、InputType2，用原包Xbox后备frame9／8；右下仅在绘制前显式释放两按钮三次，life1／alpha63，重复Draw不继续消退或恢复life。登记按语言9/2→绑定8/24保持两项，先Reset、随页面登记、末尾统一消费8操作／2图元；缩放仅作用图元局部，登记锚不缩放。ratio100及零尺寸补偿是显示条件，角落裁剪不调坐标补偿。

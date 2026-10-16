@@ -30,9 +30,9 @@ struct StartupInnRow {
 std::optional<std::vector<StartupInnRow>>
 startup_world_inn_rows(const StartupWorldRuntimeState &state, std::uint64_t facility);
 
-enum class StartupVisualResource { common, weapon };
+enum class StartupVisualResource { common, weapon, steam_common };
 // 源资源索引的只读绘制命令；sprite>=0使用SEB指定层，否则裁image的矩形。
-// offset相对人物脚底/设施f()原投影，SEB内部offset另由画图适配器应用一次。
+// offset相对人物脚底/设施f()原投影；sprite>=0由适配器另加SEB偏移，直接裁片已展开所需偏移。
 struct StartupVisualDraw {
     StartupVisualResource resource{StartupVisualResource::common};
     int sprite{-1}, image{-1}, frame{}, layer{};
@@ -55,6 +55,10 @@ std::optional<std::vector<StartupVisualDraw>>
 startup_world_equipment_lift_draws(const StartupWorldRuntimeState &state, ref::CharacterId actor);
 std::optional<std::vector<StartupVisualDraw>>
 startup_world_facility_growth_draws(const StartupWorldRuntimeState &state, std::uint64_t facility);
+// Steam根资源：完整队首通知0..7；0/7展开真实SEB裁片，1..6沿旧增长查询。
+// steam_common只绑定已出版差异图片68/150；无语言安装或e修饰缩放推断。
+std::optional<std::vector<StartupVisualDraw>>
+startup_world_facility_notice_draws(const StartupWorldRuntimeState &state, std::uint64_t facility);
 
 // cd13气泡：背景/图标→蓝色属性名→数字/加号；各命令offset相对身体绘制锚点H+bl。
 // 与举物按record_index归并，不能把所有13集中放到所有15/21/22之后。

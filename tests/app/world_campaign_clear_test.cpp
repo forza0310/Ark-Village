@@ -86,11 +86,48 @@ void continuation_segments(const State &completed, const app::WorldSystemState &
     qualify(Segment::continue_month_prefix, 184, true, true, true, true, 1, true);
     for (int missing = 0; missing < 3; ++missing)
         qualify(Segment::continue_month_prefix, 184, missing != 0, missing != 1, missing != 2,
-                false, 1, false);
+                false, missing == 0 ? 1 : 2, false);
     qualify(Segment::continue_whole_month, 183, true, true, true, true, 2, true);
     for (int missing = 0; missing < 3; ++missing)
         qualify(Segment::continue_whole_month, 183, missing != 0, missing != 1, missing != 2, false,
                 2, false);
+
+    // The completed month can have income before the next budget enables an input.
+    // A stable scene alone must neither reject that opportunity nor certify it early.
+    auto state = completed;
+    state.scene.calendar.year = 184 / 12;
+    state.scene.calendar.month = 184 % 12;
+    auto application = system;
+    auto evidence = finished;
+    ActiveTradeEvidence trade;
+    std::uint64_t commands{}, effects{};
+    int steps{}, saves{};
+    run_campaign_clear_segment(
+        {state, application, evidence, trade,
+         [&] {
+             require(steps < 3 && saves == 0 && !evidence.continued(),
+                     "late monthly input cannot certify before its observed effect");
+             if (steps == 0) {
+                 trade.revenue[184] = 123;
+                 state.scene.calendar.year = 185 / 12;
+                 state.scene.calendar.month = 185 % 12;
+             } else if (steps == 1) {
+                 ++commands;
+             } else {
+                 ++effects;
+             }
+             ++steps;
+         },
+         [&](int slot) {
+             require(slot == 1 && steps == 3 && month(state) == 185,
+                     "late input must preserve the single monthly output boundary");
+             ++saves;
+         },
+         [] { return true; }, [&] { return effects; }, [&] { return commands; },
+         [] { return std::string("late monthly input fixture"); }},
+        Segment::continue_month_prefix);
+    require(saves == 1 && evidence.continued(),
+            "income plus a later real input and effect must qualify exactly once");
 }
 } // namespace
 

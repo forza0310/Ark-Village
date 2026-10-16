@@ -6,6 +6,8 @@
 
 当前冻结正式5708375：503来源/81产品适配、749素材/26音频。已完成批次和旧经营前缀集中在[B1](docs/stages/B1-playable-prototype.md)，TODO只保留当前状态和后继。
 
+- [ ] 统一评估并接正式82b7e3a/b1f2403/3db316f：82的503项及六目标已准备，尚未导入；后续通知皮肤/探索底栏交付须合并核闭包、资源及Owner边界后集中重建，见[本批计划](docs/MILESTONES.md#research-82b7e3a-integration)。
+
 - [x] 正式建设/人物/设施/任务/村办/魔法壶/奖励/税收/怪物等维护消费者、只读皮肤及桌面接线已接，保留唯一Owner、整帧FIFO和建设Draw交接；最新接入见[B1](docs/stages/B1-playable-prototype.md#research-9cee27a-build-record)。未交付后继见下文。
 - [x] 用户指定的preview.mjs及小窗示例已纳入本goal，复用正式合同与套件；预览服务、CSS和夹具数值不进游戏，见[对照入口](docs/reference/REFERENCE_CHECKLIST.md#ui-small-window-goal)。
 - [x] 玩家两栏schema5/独立系统2、正常保存桥及维护回放已接；旧身份拒绝，月度真实经营独立冷载和字节复制持续验证。周期扣费可负、主动支付仍核余额，见[B1](docs/stages/B1-playable-prototype.md#campaign-negative-balance)。
@@ -20,7 +22,7 @@
 - [x] 四项条件及真实五星晋级/庆典/冷载已验，源收入73374G；配方36准确制造、领取、占卜屋2000G建设及任务库存强化已验，见[本批](docs/stages/B1-playable-prototype.md#campaign-fifth-star-pot36)。
 - [x] 配方26/防具24主角实际装配、完整后继及冷载通过；四本魔法书永久学习和当前Q均已取得，雷书12由人物8实际消费；自然到月183计分154750、系统纪录提交及玩家冷载通过，见[本批](docs/stages/B1-playable-prototype.md#campaign-natural-clear-books)。
 - [x] 完整月184真实营业30258G、付费装备/强化/任务胜利，月185保存/独立冷载已认证；另进程继承新局，5000G起步/600G建设面包店/实际营业545G及再次冷载通过，见[继续与继承](docs/stages/B1-playable-prototype.md#campaign-continued-months)。自然生命周期闭合不等于全775。
-- [ ] 从有效父世界月194接续：52实际营业5692G、46/56营业及32/33制造/装配/完整后继冷载已验；继续1/2/3/17/18/37/39等产物。39尚缺四元素44/38/0/6；17需合法前缀的定向消费分支，不以当前收益策略跳过判不可用。29未开放，20已付款排队；预留两月现金及图纸点数，实际施法不以学习/Q替代，40配方与775分母保持，见[经营现状](docs/stages/ACTIVE_VILLAGE_PLAN.md)。
+- [ ] 从有效父世界月196接续：18已实际制造/装配，完整后继月197两次耗尽6分钟、未认证；可选预算待确认，见[本批](docs/stages/B1-playable-prototype.md#campaign-pot18-followup)。32/33完整后继冷载、52实际营业7115G保持；继续1/2/3/17/37/39等产物，39缺四元素6/0/5/10。17需合法前缀的定向消费分支，不以收益策略跳过判不可用。29未开放，20付款排队不当人气兑现；保留两月现金及图纸预算、40配方与775分母，实际施法不以学习/Q替代。
 - [ ] 4魔法实际施放、投射/延迟伤害归因及全23职业后继等待真实局部消费事实；Q可用不等于学习/施法，见[研究请求](docs/reference/RESEARCH_REQUESTS.md#spell-consumption-receipts)。
 
 ## 表现与研究边界

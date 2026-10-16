@@ -25,6 +25,8 @@ class SteamVillageStrategy {
     void observe_tick(const app::WorldState &before, const app::WorldState &after,
                       const CampaignReceiptSink &receipts = {});
     const SteamVillageStats &stats() const { return stats_; }
+    // Private player-bound gift transactions verified by the people observer, including Update.
+    int completed_gifts() const { return people_.gifts(); }
     bool checkpoint(const app::WorldState &state) const;
     bool complete(const app::WorldState &state) const;
     void continue_campaign() { checkpoint_phase_ = false; }

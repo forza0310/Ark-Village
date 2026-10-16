@@ -350,19 +350,22 @@ void run_campaign_clear_segment(CampaignClearDriver driver, CampaignClearSegment
         }
         if (ready && segment == CampaignClearSegment::continue_month_prefix &&
             month(driver.state) > start_month) {
+            require(month(driver.state) == start_month + 1,
+                    "continued monthly route missed its stable save boundary");
             const int whole_month = month(driver.state) - 1;
-            if (whole_month > 183) {
-                const auto whole = driver.trade.revenue.find(whole_month);
-                require(
-                    whole != driver.trade.revenue.end() && whole->second > 0 &&
-                        driver.commands() > start_commands &&
-                        driver.input_effects() > start_effects,
-                    "continued monthly certification needs actual income, commands and effects");
+            if (whole_month == 183)
+                break; // The first post-clear month is only a stable preparation prefix.
+            const auto whole = driver.trade.revenue.find(whole_month);
+            require(whole != driver.trade.revenue.end() && whole->second > 0,
+                    "continued monthly certification needs actual completed-month income");
+            if (driver.commands() > start_commands && driver.input_effects() > start_effects) {
                 driver.evidence.certify_continuation(whole_month, whole->second,
                                                      driver.commands() - start_commands,
                                                      driver.input_effects() - start_effects);
+                break;
             }
-            break; // The first post-clear month is a stable prefix, never premature certification.
+            // New monthly budgets can enable the first useful player action only now.
+            // Give that action the remaining segment budget; never save a passive segment.
         }
         bounded_step(driver, rounds, start);
     }

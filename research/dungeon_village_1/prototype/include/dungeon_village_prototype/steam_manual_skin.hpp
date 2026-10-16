@@ -1,6 +1,8 @@
 #pragma once
 
 #include "dungeon_village_prototype/steam_startup_skin.hpp"
+#include "dungeon_village_prototype/steam_touch_commands.hpp"
+#include <functional>
 #include <string>
 
 namespace dungeon_village_prototype {
@@ -48,6 +50,41 @@ struct SteamManualArrowPlan {
 // 密度image_width/128与逻辑缩放0.75分开；选用哪个实际密度纹理由调用方明确。
 std::optional<SteamManualArrowPlan> steam_manual_arrow_skin(
     const SteamManualArrowRequest &,std::array<int,4> seb_bounds,int image_width);
+
+// 共用箭头id0的临时表现状态，不属于世界Owner或文件快照；无效果池/平台对象所有权。
+// clock在源调用位置读取：Init一次，存活Frame三次，退休Frame一次，Draw一次。
+using SteamTouchEffectClock = std::function<std::optional<std::int64_t>()>;
+struct SteamTouchArrowState {
+    std::uint64_t surface{}, component_key{};
+    int texture_index{};
+    float x{}, y{}, velocity_x{};
+    std::array<float,6> arguments{}; // 目的宽高、密度换算后源x/y/宽高；包装时不舍入。
+    std::int64_t created{}, last_frame{};
+};
+struct SteamTouchArrowFrame {
+    SteamTouchArrowState state;
+    bool retire{}; // 仅请求从active移除；退休不清arg/绑定，也不推入第二份buffer。
+};
+struct SteamTouchArrowSurface { int x{}, y{}, scale_ratio{100}; };
+struct SteamTouchArrowBlend { int mode{}, source{}, destination{}; };
+struct SteamTouchArrowImage {
+    std::array<int,4> crop{};
+    std::array<float,4> destination{};
+};
+struct SteamTouchArrowDraw {
+    std::uint64_t surface{};
+    std::vector<std::variant<SteamTouchArrowBlend,SteamTouchArrowImage>> operations;
+};
+// 只消费1/18正常DOWN的既有请求；绑定非0是维护资格，实际纹理宽由宿主供给。
+std::optional<SteamTouchArrowState> prepare_steam_touch_arrow_effect(
+    const SteamTouchArrowEffect &,std::uint64_t surface,int image_width,const SteamTouchEffectClock &);
+// 保留低32位年龄比较、完整long积分差及float32存储。时钟失败/异常无部分候选。
+std::optional<SteamTouchArrowFrame> advance_steam_touch_arrow_effect(
+    const SteamTouchArrowState &,const SteamTouchEffectClock &);
+// 读取同次真实surface观测，返回原RenderMode→DrawScaledImage→固定恢复模式，空计划是不绘制。
+// 不代调Frame/退休，不把BlendMode请求简化成已核等价tint或推进世界/随机。
+std::optional<SteamTouchArrowDraw> steam_touch_arrow_effect_skin(
+    const SteamTouchArrowState &,const SteamTouchArrowSurface &,const SteamTouchEffectClock &);
 // 触摸在原绘制位置登记；image_draw索引引用本draws中的箭头，不能自行改成OS矩形。
 // 此处StartupSkinRect只借几何载体保留Steam DrawRect调用实参，不沿用其APK像素+1语义；
 // raylib描边/DPI实际像素覆盖仍由后端单独验，不把153×55实参称为已核半开覆盖区域。

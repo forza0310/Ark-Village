@@ -7,6 +7,86 @@
 #include <cmath>
 
 namespace dungeon_village_prototype {
+namespace {
+std::int32_t low_age(std::int64_t now,std::int64_t then) {
+    const auto bits=static_cast<std::uint32_t>(now)-static_cast<std::uint32_t>(then);
+    return static_cast<std::int32_t>(bits<=0x7fffffffU ? static_cast<std::int64_t>(bits) :
+                                     static_cast<std::int64_t>(bits)-0x100000000LL);
+}
+std::int64_t long_age(std::int64_t now,std::int64_t then) {
+    const auto bits=static_cast<std::uint64_t>(now)-static_cast<std::uint64_t>(then);
+    return bits<=static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max()) ?
+        static_cast<std::int64_t>(bits) : -static_cast<std::int64_t>(~bits)-1;
+}
+bool valid_arrow_effect(const SteamTouchArrowState &s) {
+    if(!s.surface || (s.texture_index!=2 && s.texture_index!=3) ||
+       !std::isfinite(s.x) || !std::isfinite(s.y) ||
+       (s.velocity_x!=10.F && s.velocity_x!=-10.F))return false;
+    for(const auto n:s.arguments)if(!std::isfinite(n))return false;
+    return s.arguments[0]>0 && s.arguments[1]>0 && s.arguments[4]>0 && s.arguments[5]>0;
+}
+}
+std::optional<SteamTouchArrowState> prepare_steam_touch_arrow_effect(
+    const SteamTouchArrowEffect &request,std::uint64_t surface,int image_width,
+    const SteamTouchEffectClock &clock) {
+    if(!surface || image_width<=0 || !clock ||
+       request.texture_row!=(request.paint.frame==3?2:3) ||
+       (request.velocity_x!=10.F && request.velocity_x!=-10.F))return {};
+    try {
+        SteamTouchArrowState s;
+        s.surface=surface;s.component_key=request.paint.component_key;s.texture_index=request.texture_row;
+        s.x=float(request.paint.x)+(request.texture_row==2?-9.F:-6.F)*0.75F;
+        s.y=float(request.paint.y)-12.F*0.75F;
+        const float density=float(image_width)/128.F;
+        s.arguments={20.F*0.75F,26.F*0.75F,
+            (request.texture_row==2?31.F:52.F)*density,57.F*density,20.F*density,26.F*density};
+        const auto now=clock();if(!now)return {};
+        s.created=s.last_frame=*now;s.velocity_x=request.velocity_x;
+        return s;
+    } catch(...) { return {}; }
+}
+std::optional<SteamTouchArrowFrame> advance_steam_touch_arrow_effect(
+    const SteamTouchArrowState &s,const SteamTouchEffectClock &clock) {
+    if(!valid_arrow_effect(s) || !clock)return {};
+    try {
+        const auto age_clock=clock();if(!age_clock)return {};
+        if(low_age(*age_clock,s.created)>=400)return SteamTouchArrowFrame{s,true};
+        const auto integrate_clock=clock();if(!integrate_clock)return {};
+        SteamTouchArrowFrame next{s,false};
+        const double dt=static_cast<double>(long_age(*integrate_clock,s.last_frame))/1000.0;
+        next.state.x=s.x+static_cast<float>(static_cast<double>(s.velocity_x)*dt);
+        // 本入口id0的vy/ax/ay恒0；不扩大成其它TouchEffect类型或对称修复其vy分支。
+        const auto last_clock=clock();if(!last_clock)return {};
+        next.state.last_frame=*last_clock;
+        return next;
+    } catch(...) { return {}; }
+}
+std::optional<SteamTouchArrowDraw> steam_touch_arrow_effect_skin(
+    const SteamTouchArrowState &s,const SteamTouchArrowSurface &surface,
+    const SteamTouchEffectClock &clock) {
+    if(!valid_arrow_effect(s) || !clock)return {};
+    try {
+        const auto now=clock();if(!now)return {};
+        const int k=low_age(*now,s.created)/50,source=160-18*k;
+        SteamTouchArrowDraw plan{s.surface,{}};
+        if(source<=0)return plan;
+        SteamTouchArrowImage image;
+        for(int n=0;n<4;++n) {
+            const float value=s.arguments[n+2]+0.5F;
+            if(double(value)<double(std::numeric_limits<int>::min()) ||
+               double(value)>double(std::numeric_limits<int>::max()))return {};
+            image.crop[n]=static_cast<int>(value);
+        }
+        const float q=float(surface.scale_ratio)/100.F;
+        const float growth=(float(k)*2.5F)*q;
+        image.destination={(s.x*q+float(surface.x))-growth*0.5F,
+            (s.y*q+float(surface.y))-growth*0.5F,s.arguments[0]*q+growth,s.arguments[1]*q+growth};
+        plan.operations.emplace_back(SteamTouchArrowBlend{1,source,255-source});
+        plan.operations.emplace_back(image);
+        plan.operations.emplace_back(SteamTouchArrowBlend{0,255,0});
+        return plan;
+    } catch(...) { return {}; }
+}
 std::optional<SteamManualArrowPlan> steam_manual_arrow_skin(
     const SteamManualArrowRequest &in,std::array<int,4> bounds,int image_width) {
     if((in.bounds_frame!=0 && in.bounds_frame!=3) || image_width<=0 ||

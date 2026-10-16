@@ -178,7 +178,9 @@ Init的默认speed1000不经过SetSpeed的非JP换算，其再Init与空SetText�
 
 实例`Draw` RVA7C9AC0在107C9D0D–9D24比较`Graphics.scale_`（+38）与布局`scaleRatio_`（+64）；不相等或无序时，先写入当前Graphics比例，再调用`_makeTextBlocks`重排。正常尾107CA11D–A128还将布局`draw_`（+5C）递增至INT_MAX后保持，内嵌图标的默认动画可读取该计数。因此已Flush的实例Draw仍有布局／表现状态副作用，不能当成完全冻结的只读查询。
 
-raw15的`pagesNum_`在MakeNews的10315980–15A22按当时实测高度、行距与6／7行资格计算后保存；NEWS更新和绘制不重算它。Draw调用前1035545F–54DB却重新读取语言／当前布局字号选rows，再取当前lineStep算`scrollV=page×rows×lineStep`，随后才进入上述可重排的实例Draw。比例切换的首轮可能用旧块的rows／lineStep滚动新块；下一轮观察才读到重排后的值，冻结总页数仍不变。精确恢复须保留或校验构造期页数与当前布局／比例状态的不同来源，不能恢复时重排后顺便改总页数；此处只确认源行为，不新增持久化设计或字形认证。
+raw15的`pagesNum_`在MakeNews的10315980–15A22按当时实测高度、行距与6／7行资格计算后保存；NEWS更新和绘制不重算它。Draw调用前1035545F–54DB却重新读取语言／当前布局字号选rows，再取当前lineStep算`scrollV=page×rows×lineStep`，随后才进入上述可重排的实例Draw。`GetLineHeight` RVA7CAF40在块非空时直接返回第0块的Font.usedSize（107CAF64–96），不取各块最大字号；无块才复制布局Font并结合adjust／multiLine、本地化及比例计算临时字号。`GetLineStep` RVA7CB110在该值上按int32加lineSpace。因此rows的当前布局字号与lineStep的旧首块字号是独立观测；比例切换首轮可能据此滚动重排后的新块，下一轮才看到新首块字号，冻结总页数仍不变。
+
+`SetSize` RVA7CC090和`SetGraphicsScale` RVA7CBF50仅写字段；`SetFontSize` RVA7CBEB0／`SetFont` RVA7CBEE0修改或复制Font并清adjust标记，都不调用重排。相同比例Draw不会仅因这些setter自动重排；真正重排仍是SetText或上述Draw比例变化。精确恢复须保留构造期页数、当前布局Font及旧块Font／比例状态的不同来源，不能改字号后顺便重算总页数，也不能把两种字号观测合成一个输入；此处只确认源行为，不新增持久化设计或字形认证。
 
 ### 普通宽溢出、显式换行与块提交
 

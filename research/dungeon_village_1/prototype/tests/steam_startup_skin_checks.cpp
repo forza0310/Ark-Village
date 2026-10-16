@@ -13,6 +13,7 @@
 #include "dungeon_village_tools/sprite.hpp"
 #include <raylib.h>
 #include <algorithm>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
@@ -39,6 +40,138 @@ auto sprite(const std::filesystem::path &p) {
     std::ifstream input(p,std::ios::binary);
     if(!input) throw std::runtime_error("Steam皮肤公共资源缺失："+p.string());
     return dungeon_village_tools::parse_legacy_seb({std::istreambuf_iterator<char>(input),{}});
+}
+void touch_arrow_effect(Checks &check) {
+    // 从现公共DOWN计划取得真实id0请求；不重放KeyDown或把绘制当作Frame。
+    SteamTouchCommandInput input;
+    input.admission=SteamTouchAdmission::ready;input.component=1;input.event_type=0;input.value=18;
+    input.arrow_paint=SteamTouchArrowPaint{100,80,3,0x100000012ULL};
+    const auto commands=steam_touch_commands(input);
+    check(commands&&commands->commands.size()==2&&
+              std::holds_alternative<SteamTouchKeyDown>(commands->commands[0])&&
+              std::holds_alternative<SteamTouchArrowEffect>(commands->commands[1]),
+          "箭头生命周期消费既有DOWN后继请求，不另造触摸或确认");
+    const auto request=std::get<SteamTouchArrowEffect>(commands->commands[1]);
+    int reads{};
+    const auto initialized=prepare_steam_touch_arrow_effect(request,41,128,[&] {
+        ++reads;return std::optional<std::int64_t>{1000};
+    });
+    check(initialized&&reads==1&&initialized->surface==41&&
+              initialized->component_key==0x100000012ULL&&initialized->texture_index==2&&
+              initialized->x==93.25F&&initialized->y==71.F&&initialized->velocity_x==10.F&&
+              initialized->arguments==std::array<float,6>{15.F,19.5F,31.F,57.F,20.F,26.F}&&
+              initialized->created==1000&&initialized->last_frame==1000,
+          "id0原裁片与0.75目的尺寸分开，Init只读一次钟并保留surface/组件绑定");
+    const auto original=*initialized;
+    const auto same=[](const SteamTouchArrowState &a,const SteamTouchArrowState &b) {
+        return a.surface==b.surface&&a.component_key==b.component_key&&
+            a.texture_index==b.texture_index&&a.x==b.x&&a.y==b.y&&a.velocity_x==b.velocity_x&&
+            a.arguments==b.arguments&&a.created==b.created&&a.last_frame==b.last_frame;
+    };
+    const std::array<std::int64_t,3> clocks{1300,1250,1280};reads=0;
+    const auto moved=advance_steam_touch_arrow_effect(original,[&]() -> std::optional<std::int64_t> {
+        return clocks.at(static_cast<std::size_t>(reads++));
+    });
+    check(moved&&!moved->retire&&reads==3&&moved->state.x==95.75F&&moved->state.y==71.F&&
+              moved->state.created==1000&&moved->state.last_frame==1280&&same(original,*initialized),
+          "Frame三次时钟分别决定退休/积分/末时点，不合并采样或修改旧状态");
+    reads=0;
+    const auto drawn=steam_touch_arrow_effect_skin(moved->state,{0,0,100},[&] {
+        ++reads;return std::optional<std::int64_t>{1300};
+    });
+    check(drawn&&reads==1&&drawn->surface==41&&drawn->operations.size()==3,
+          "id0绘制只读一次钟，有序输出混合/图像/固定恢复");
+    const auto &blend=std::get<SteamTouchArrowBlend>(drawn->operations[0]);
+    const auto &image=std::get<SteamTouchArrowImage>(drawn->operations[1]);
+    const auto &restore=std::get<SteamTouchArrowBlend>(drawn->operations[2]);
+    check(blend.mode==1&&blend.source==52&&blend.destination==203&&
+              image.crop==std::array<int,4>{31,57,20,26}&&
+              image.destination==std::array<float,4>{88.25F,63.5F,30.F,34.5F}&&
+              restore.mode==0&&restore.source==255&&restore.destination==0,
+          "300ms独立源oracle保留渐扩几何及固定0/255/0恢复，非任意旧模式恢复");
+    const auto shifted=steam_touch_arrow_effect_skin(moved->state,{20,-10,150},[] {
+        return std::optional<std::int64_t>{1300};
+    });
+    check(shifted&&std::get<SteamTouchArrowImage>(shifted->operations[1]).destination==
+              std::array<float,4>{152.375F,85.25F,45.F,51.75F},
+          "绘制消费当时surface偏移与150比例，偏移不再次缩放");
+    const auto dense=prepare_steam_touch_arrow_effect(request,41,256,[] {
+        return std::optional<std::int64_t>{1000};
+    });
+    check(dense.has_value(),"实际256密度保留有效箭头候选");
+    const auto dense_draw=steam_touch_arrow_effect_skin(*dense,{0,0,100},[] {
+        return std::optional<std::int64_t>{1000};
+    });
+    check(dense&&dense_draw&&dense->x==93.25F&&dense->arguments[0]==15.F&&
+              std::get<SteamTouchArrowImage>(dense_draw->operations[1]).crop==
+                  std::array<int,4>{62,114,40,52},
+          "256密度只改变源裁片，不能重复放大逻辑目的尺寸");
+    auto opposite=request;opposite.paint.frame=0;opposite.texture_row=3;opposite.velocity_x=-10.F;
+    const auto opposite_initial=prepare_steam_touch_arrow_effect(opposite,41,128,[] {
+        return std::optional<std::int64_t>{1000};
+    });
+    check(opposite_initial&&opposite_initial->x==95.5F&&opposite_initial->arguments[2]==52.F,
+          "另向箭头保留TEXTURES3偏移和源52，不复用左向裁片");
+    reads=0;
+    const auto opposite_moved=advance_steam_touch_arrow_effect(*opposite_initial,
+        [&]() -> std::optional<std::int64_t> {return clocks.at(static_cast<std::size_t>(reads++));});
+    check(opposite_moved&&reads==3&&opposite_moved->state.x==93.F,
+          "原负vx在同一250ms积分中向相反方向移动");
+    reads=0;
+    const auto retired=advance_steam_touch_arrow_effect(original,[&] {
+        ++reads;return std::optional<std::int64_t>{1400};
+    });
+    const auto still_drawn=steam_touch_arrow_effect_skin(original,{0,0,100},[] {
+        return std::optional<std::int64_t>{1400};
+    });
+    const auto faded=steam_touch_arrow_effect_skin(original,{0,0,100},[] {
+        return std::optional<std::int64_t>{1450};
+    });
+    check(retired&&retired->retire&&reads==1&&same(retired->state,original)&&
+              still_drawn&&still_drawn->operations.size()==3&&
+              std::get<SteamTouchArrowBlend>(still_drawn->operations[0]).source==16&&
+              faded&&faded->operations.empty(),
+          "恰400退休只读首钟且保留状态，Draw450无图是另一门槛，Draw不代Frame");
+    const auto backwards=steam_touch_arrow_effect_skin(original,{0,0,100},[] {
+        return std::optional<std::int64_t>{999};
+    });
+    check(backwards&&std::get<SteamTouchArrowBlend>(backwards->operations[0]).source==160&&
+              std::get<SteamTouchArrowImage>(backwards->operations[1]).destination==
+                  std::array<float,4>{93.25F,71.F,15.F,19.5F},
+          "负一毫秒年龄按有符号除50截零，不能向下取整成负一槽");
+    auto rollover=original;rollover.created=rollover.last_frame=std::numeric_limits<std::int64_t>::max()-10;
+    const std::array<std::int64_t,3> wrapped{std::numeric_limits<std::int64_t>::min()+289,
+        std::numeric_limits<std::int64_t>::min()+239,std::numeric_limits<std::int64_t>::min()+269};
+    reads=0;
+    const auto wrap=advance_steam_touch_arrow_effect(rollover,[&]() -> std::optional<std::int64_t> {
+        return wrapped.at(static_cast<std::size_t>(reads++));
+    });
+    check(wrap&&!wrap->retire&&reads==3&&wrap->state.x==95.75F&&
+              wrap->state.last_frame==std::numeric_limits<std::int64_t>::min()+269,
+          "int64回卷按原位型相减，250ms积分与300ms退休观察分别保留");
+    const std::array<std::int64_t,3> long_clocks{4294968596LL,4294968546LL,4294968576LL};reads=0;
+    const auto long_step=advance_steam_touch_arrow_effect(original,[&]() -> std::optional<std::int64_t> {
+        return long_clocks.at(static_cast<std::size_t>(reads++));
+    });
+    check(long_step&&!long_step->retire&&reads==3&&long_step->state.x>40000000.F&&
+              std::isfinite(long_step->state.x)&&long_step->state.last_frame==4294968576LL,
+          "低32年龄回卷不退休，但积分仍使用完整long差，不能也截成250ms");
+    for(const bool throws:std::array<bool,2>{false,true}) {
+        reads=0;
+        const auto failed=advance_steam_touch_arrow_effect(original,[&]() -> std::optional<std::int64_t> {
+            if(++reads==3) { if(throws)throw std::runtime_error("clock fixture");return {}; }
+            return reads==1?1300:1250;
+        });
+        check(!failed&&reads==3&&same(original,*initialized),
+              "第三次读钟失败或异常不发布已经积分的部分候选");
+    }
+    reads=0;
+    const auto unavailable=[&]() -> std::optional<std::int64_t> { ++reads;return {}; };
+    check(!prepare_steam_touch_arrow_effect(request,41,128,unavailable)&&reads==1,
+          "Init无时钟不得造创建时点");
+    reads=0;
+    check(!steam_touch_arrow_effect_skin(original,{0,0,100},unavailable)&&reads==1&&
+              same(original,*initialized),"Draw无时钟拒绝且不制造模式或图像输出");
 }
 void touch_commands(Checks &check) {
     SteamTouchCommandInput in;in.admission=SteamTouchAdmission::ready;
@@ -1856,6 +1989,7 @@ int check_steam_startup_skin(const std::filesystem::path &root) {
     record_update(check);
     font_metrics(check);
     touch_commands(check);
+    touch_arrow_effect(check);
     touch_menu_and_marker(check);
     touch_flow(check);
     dialogue_page(check);

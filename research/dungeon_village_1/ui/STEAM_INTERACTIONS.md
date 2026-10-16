@@ -95,7 +95,7 @@ dy = (y_×q+float(surface.y_))−grow×0.5f
 
 `TouchEffectManager.AddEffect` RVA2AF8C0顺序找buffer中不在active的首对象，无则创建并加入buffer，Init后加入active。本链没有正常null返回；叶端null会抛异常，原KeyDown已先发生，创建失败不回滚键状态。退休／RemoveEffect仅从active移除；`Clear` RVA2AFB40也仅清active，**buffer持有全部已分配对象，退休不清arg／Image／surface引用**，不能称退回池时释放引用或永久有界。
 
-维护纯请求目前只冻结同一事件组件key位型、paint、行及vx，不创建效果池。现窗口`SourceSprites::crop`支持同PNG缓存、目的宽高和tint，可复用资源／几何能力，但静态`steam_manual_arrow_skin`不是id0生命周期消费者；真实状态调度、墙钟顺序、RenderMode混合及原OS动态仍未接，不能单凭tint宣称后端等价。
+维护[公共箭头接口](../prototype/include/dungeon_village_prototype/steam_manual_skin.hpp)已消费同一DOWN请求：`prepare_steam_touch_arrow_effect`冻结组件key、surface、paint、实际密度、行及vx；`advance_steam_touch_arrow_effect`返回积分候选或退休请求；`steam_touch_arrow_effect_skin`返回有序混合→图像→固定模式恢复。时钟在源调用位置读取，缺失／异常不发布部分候选；非0 surface是维护绑定资格。状态仅属临时表现，不写世界／文件，也不创建效果池；宿主须按次消费候选与绘制计划，并在实际退休后撤下active引用。静态`steam_manual_arrow_skin`仍不是动态效果。现窗口`SourceSprites::crop`支持同PNG缓存、目的宽高和tint，但实际效果池调度、surface宿主、RenderMode后端与原OS动态尚未接，不能单凭tint宣称后端等价或将原buffer保留解释为引用释放。
 
 ### 列表确认与Canvas同步回调
 

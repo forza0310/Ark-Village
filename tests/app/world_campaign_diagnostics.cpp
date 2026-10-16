@@ -3,6 +3,7 @@
 #include "../support/world_fixture.hpp"
 #include "ark/assets/sha256.hpp"
 #include "ark/simulation/persistence/startup_world_persistence.hpp"
+#include "ark/simulation/village/rules/world_award_page.hpp"
 #include "ark_library_contract.hpp"
 #include <algorithm>
 #include <chrono>
@@ -408,6 +409,45 @@ void replay_campaign_failure(const std::filesystem::path &directory, bool expect
     std::cout << "PASS exact Owner/random single-update failure replay: " << expected
               << " producer_library=" << producer << " current_library=" << ARK_LIBRARY_CONTRACT
               << std::endl;
+    const auto active = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
+                                     [](const auto &page) { return page.lifecycle != 4; });
+    if (active != state.scripts.pages.rend() && active->legacy_page == 87 &&
+        active->kind == sim::rules::WorldScriptPageKind::raw_page) {
+        // Match the runtime's read-only award projection, then call its source rule.
+        // This secondary probe neither initializes the real page nor installs a candidate.
+        sim::rules::WorldAwardPageState award;
+        award.medal_count = state.medal_count;
+        const auto counter = state.page_counters.find(active->id);
+        if (counter != state.page_counters.end())
+            award.page_counter = counter->second;
+        const auto ranking = state.award_rankings.find(active->id);
+        if (ranking != state.award_rankings.end()) {
+            award.initialized = true;
+            award.ranked_definitions = ranking->second;
+            award.announced = state.award_announced.at(active->id);
+            award.termination_pending = state.award_termination_pending.at(active->id);
+            const auto pending = state.award_pending_humans.find(active->id);
+            if (pending != state.award_pending_humans.end())
+                award.pending_award = pending->second;
+        }
+        for (const auto &human : state.rules->humans) {
+            const int id = human.identity;
+            const auto &calendar = state.human_calendar.at(id);
+            auto totals = calendar.yearly_totals;
+            totals[1] = state.scene.world.world.ai.battle.humans.at(id).killed_stat1;
+            totals[2] = state.scene.world.world.human_spending.at(id);
+            award.humans.push_back({id, state.human_presence.at(id), totals, calendar.contribution});
+            std::cout << "AWARD_INPUT human=" << id << " presence=" << state.human_presence.at(id)
+                      << " earned=" << totals[1] << " spent=" << totals[2] << '\n';
+        }
+        const auto initialized = sim::rules::prepare_world_award_page_initialization(award);
+        std::cout << "AWARD_PROBE page=" << active->id << " initialized=" << award.initialized
+                  << " counter=" << award.page_counter << " medals=" << award.medal_count
+                  << " error=" << int(initialized.error)
+                  << " candidate=" << bool(initialized.candidate) << '\n';
+        require(sim::startup_world_state_digest(state) == before,
+                "award secondary probe mutated the captured Owner/random");
+    }
     if (result.failure && result.failure->stage == sim::rules::WorldScheduleStage::projectile) {
         // Secondary probe of the public adapter, after the exact production replay above.
         // Forward every request unchanged; inspect the failing transaction, never install it.

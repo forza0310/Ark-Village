@@ -30,6 +30,7 @@
 - [ ] 从有效父世界月196接续：18已实际制造/装配，完整后继月197两次耗尽6分钟、未认证；可选预算待确认，见[本批](docs/stages/B1-playable-prototype.md#campaign-pot18-followup)。32/33完整后继冷载、52实际营业7115G保持；继续1/2/3/37/39等产物，39缺四元素6/0/5/10。17的独立分支资格不改签主线；29未开放，20付款排队不当人气兑现。保留两月现金及图纸预算、40配方与775分母，实际施法不以学习/Q替代。
 - [ ] 4魔法实际施放、投射/延迟伤害等待d4ed6be导入，物理武器另需局部归因，见[研究请求](docs/reference/RESEARCH_REQUESTS.md#spell-consumption-receipts)；Q可用、装配属性及退休现金均不替代实际作用。
 - [ ] 继续23职业的显式消费分支和后继。现月段已接`--profession=H:J`；职业7由未精通的人物0真实付10点、完成62→55→197、完整后继月166营业27268G并于月167冷载通过，见[B1](docs/stages/B1-playable-prototype.md#campaign-profession7-branch)。其余定义按源门槛及预算接续，普通策略精通/收益筛选保持，不把策略跳过标作不可达。
+- [ ] 修复正常经营跨年授勋：月167→168在raw87贡献平方和超int32时拒绝；已有完整Owner/随机的双配置单轮复现与[最小研究请求](docs/reference/RESEARCH_REQUESTS.md#award-contribution-overflow)，等待正式数值语义修正后复验玩家路线。职业0三阶段已做，失败后继不当存档认证。
 
 ## 表现与研究边界
 

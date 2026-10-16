@@ -893,7 +893,8 @@ void verify_third_endpoint(const LateCampaign &campaign, const BusinessCheckpoin
 }
 
 std::filesystem::path isolated_directory(const char *executable, const char *supplied,
-                                         const char *marker = "ark-active-first-star-v1\n") {
+                                         const char *marker = "ark-active-first-star-v1\n",
+                                         const char *alternate_marker = nullptr) {
     const auto build = std::filesystem::canonical(executable).parent_path().parent_path();
     require(build.filename() == "build",
             "Campaign binary must be in the product build/bin directory");
@@ -902,7 +903,8 @@ std::filesystem::path isolated_directory(const char *executable, const char *sup
     require(!relative.empty() && relative != "." && !relative.is_absolute() &&
                 *relative.begin() != ".." && std::filesystem::is_directory(directory),
             "Campaign files must stay strictly below the real product build directory");
-    require(bytes(directory / "ACTIVE_CAMPAIGN") == marker,
+    const auto actual_marker = bytes(directory / "ACTIVE_CAMPAIGN");
+    require(actual_marker == marker || (alternate_marker && actual_marker == alternate_marker),
             "Use the isolated process runner to create a fresh campaign directory");
     return directory;
 }
@@ -1499,8 +1501,11 @@ int main(int argc, char **argv) {
             return 0;
         }
         if (mode == "replay-failure" || mode == "verify-failure-fixed") {
+            // The failure codec is shared by both active campaign families.
+            // Preserve the directory guard and original markers when replaying Steam evidence.
             const auto directory =
-                isolated_directory(argv[0], argv[2], "ark-active-third-star-v1\n");
+                isolated_directory(argv[0], argv[2], "ark-active-third-star-v1\n",
+                                   "ark-steam-village-v1\n");
             ark::test::replay_campaign_failure(directory, mode == "verify-failure-fixed");
             return 0;
         }

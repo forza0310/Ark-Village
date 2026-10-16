@@ -2,6 +2,15 @@
 
 当前产品冻结a9dc1bd。9692bb8/d4ed6be已正式交付植物绑定修正及魔法消费回执，d8d38e1/a0238f7已交80/87目录问答Owner、84实际反馈与整轮输入；均待产品分批接入，不再作为未交付项重复请求。下面旧来源的最小复现与当时边界保留，当前接入状态见[对照索引](REFERENCE_CHECKLIST.md#research-history-current-audit)；物理战斗归因后继见[战斗回执](#spell-consumption-receipts)。
 
+<a id="award-contribution-overflow"></a>
+## 授勋贡献的正常消费群体溢出（2026-10-16）
+
+产品a9dc1bd从月167有效档沿真实经营/转职进入年末raw87，第1861轮更新拒绝runtime2/scene2。失败根为`build/validation/business-liquidity/steam-natural-month-month168-goal-461fbc3dbb414a8d9424e39117361ed3/`，保留原玩家/策略输入、month.log及完整Owner/随机failure-state.bin/txt；没有月168玩家档，失败观察不认证职业0后继。用当前Debug或Release的`ark_world_campaign_tests-<配置>.exe replay-failure <失败根>`可单轮精确复现，输入Owner/随机保持；日志在`build/validation/research-a9dc1bd-integration/award87-exact-replay-{debug,release}.log`。
+
+次级只读投影调用正式`prepare_world_award_page_initialization`，未初始化页39、主钟0、勋章3，返回WorldAwardError::overflow。25人的年度消费合计569204、整数均值22768，离均差平方和2424293360，在最后定义24时超过int32上限2147483647；击杀项平方和8328正常。最小实际数值见同目录`award87-contribution-INPUT.json`。现`example/src/world_award_page.cpp`对平方累加要求fits(int32)，从a9dc1bd到正式a378818未改；d8d38e1的目录Owner不直接修正该规则。
+
+请核固定APK和Steam贡献消费者在平方、累加、方差、sqrt及转换的实际数值语义，区分原算术与维护拒绝预算，交付能处理该真实合法群体的定向修正和短边界/回滚检查。保留有效overflow拒绝或按新来源明确其适用范围，不能只扩大整数类型、夹值或删断言凑通过。产品暂不改冻结规则、不改消费历史来掩盖故障；修后从失败快照核单轮，再从月167有效玩家前缀复验经营/授勋/保存与冷载，研究无需重跑世界长链。
+
 <a id="plant-route-projection-gap"></a>
 ## 新建植物的路径格投影差异（2026-10-16）
 

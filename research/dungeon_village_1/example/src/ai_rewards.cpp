@@ -739,6 +739,24 @@ WorldProjectileResult prepare_world_projectile(const AiRewardState &s,
             c.physical_damage = physical.candidate;
             damage = physical.candidate->value;
         }
+        // type2只保留目标、伤害与延迟；回执不倒推已丢失的原法术/Q/父对象历史。
+        std::optional<SpellConsumptionReceipt> observed_hit;
+        if (i.observe_spell_consumption && p.kind == ProjectileKind::delayed_damage) {
+            SpellConsumptionReceipt receipt;
+            receipt.kind = SpellConsumptionKind::delayed_hit;
+            receipt.caster = p.caster;
+            receipt.caster_definition = caster->definition;
+            receipt.actual_target = *c.step.damage_target;
+            receipt.target_definition = victim->definition;
+            receipt.projectile = i.projectile;
+            receipt.amount = p.damage;
+            receipt.delay = p.delay;
+            receipt.prior_launch_unavailable = true;
+            receipt.target_delta = SpellLocalTargetDelta{
+                victim->hp.target, 0, victim->damage_total, 0, victim->hit_count, 0,
+                victim->state_counter, 0};
+            observed_hit = std::move(receipt);
+        }
         // Temporarily project retained actors for the shared hit consumer, then restore ownership.
         std::vector<CharacterId> retained;
         for (const auto id : {p.caster, *c.step.damage_target})
@@ -771,6 +789,16 @@ WorldProjectileResult prepare_world_projectile(const AiRewardState &s,
             return fail(AiRewardError::preparation_failed);
         c.hit = hit.candidate->hit;
         c.state.battle = hit.candidate->state;
+        if (observed_hit) {
+            const auto &after = c.state.battle.actors.at(*c.step.damage_target);
+            auto &delta = *observed_hit->target_delta;
+            delta.hp_after = after.hp.target;
+            delta.damage_after = after.damage_total;
+            delta.hits_after = after.hit_count;
+            delta.down_counter_after = after.state_counter;
+            observed_hit->landed = c.hit->landed;
+            c.spell_consumption.push_back(std::move(*observed_hit));
+        }
         if (c.state.battle.next_object_id != old_next_object)
             c.spawned_objects.push_back(old_next_object);
         for (const auto id : retained) {
@@ -786,6 +814,27 @@ WorldProjectileResult prepare_world_projectile(const AiRewardState &s,
         c.spawned_projectile = c.state.next_projectile_id++;
         c.state.projectiles.emplace(*c.spawned_projectile, *c.step.spawned);
         c.state.projectile_order.push_back(*c.spawned_projectile);
+        if (i.observe_spell_consumption && p.kind == ProjectileKind::spell &&
+            c.step.spawned->kind == ProjectileKind::delayed_damage) {
+            const auto *target = resolve(c.state, c.step.spawned->original_target);
+            // 原碰撞名单已校验引用；只观察实际成功创建的延迟伤害，不把接触当命中。
+            if (caster && target) {
+                SpellConsumptionReceipt receipt;
+                receipt.kind = SpellConsumptionKind::contact;
+                receipt.caster = p.caster;
+                receipt.caster_definition = caster->definition;
+                receipt.aimed_target = p.original_target;
+                receipt.actual_target = c.step.spawned->original_target;
+                receipt.target_definition = target->definition;
+                receipt.effect = p.effect;
+                receipt.projectile = i.projectile;
+                receipt.parent_projectile = i.projectile;
+                receipt.child_projectile = c.spawned_projectile;
+                receipt.amount = c.step.spawned->damage;
+                receipt.delay = c.step.spawned->delay;
+                c.spell_consumption.push_back(std::move(receipt));
+            }
+        }
     }
     if (c.step.remove) {
         c.state.projectiles.erase(i.projectile);

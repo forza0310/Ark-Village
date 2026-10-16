@@ -424,6 +424,7 @@ struct StartupWorldRuntimeResult {
     ref::WorldSceneError scene_error{ref::WorldSceneError::none};
     ref::WorldScheduleError world_error{ref::WorldScheduleError::none};
     std::vector<std::shared_ptr<const StartupWorldRuntimeState>> checkpoints; // 独立不可变审计。
+    std::vector<ref::SpellConsumptionReceipt> spell_consumption{}; // 本次成功调用的瞬态事实，不进入Owner/codec。
 };
 // 附加真实消费者由routes提供；公开构造不隐式注入演示策略或自动关闭页面。
 ref::WorldRuntimeAdapter<StartupWorldRuntimeState> startup_world_runtime_adapter();
@@ -458,13 +459,14 @@ std::optional<int> startup_world_actor_direction(const StartupWorldRuntimeState 
                                                  ref::CharacterId actor, ref::CharacterId target);
 std::optional<ref::DropSelectionInput>
 startup_world_drop_selection(const StartupWorldRuntimeState &state, ref::CharacterId actor);
-StartupWorldRuntimeResult prepare_startup_world_runtime(const StartupWorldRuntimeState &state);
+StartupWorldRuntimeResult prepare_startup_world_runtime(const StartupWorldRuntimeState &state,
+                                                       bool observe_spell_consumption = false);
 
 class StartupWorldRuntimeSession {
   public:
     StartupWorldRuntimeSession(const StartupState &startup, ref::WorldRandomStream random);
     const StartupWorldRuntimeState &state() const;
-    StartupWorldRuntimeResult update(); // 一次框架b入口，内部保留原1/2轮与日历27。
+    StartupWorldRuntimeResult update(bool observe_spell_consumption = false); // 原1/2轮与日历27；观察默认关闭。
     StartupPresentationResult present(const StartupPresentationRequest &request);
     void set_paused(bool paused);
     void set_speed(int setting); // 只恰1双轮；不是人物位移乘二。

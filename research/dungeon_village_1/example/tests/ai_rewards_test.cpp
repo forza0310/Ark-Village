@@ -379,7 +379,8 @@ void projectile_world() {
         const auto p = prepare_projectile(ProjectileKind::arrow, {1}, {3}, {}, {1000, 0, 0}, 0);
         s.projectiles.emplace(10, *p.candidate);
         s.battle.actors.at({1}).miss = miss;
-        const auto c = prepare_world_projectile(s, projectile_input());
+        auto observed = projectile_input(); observed.observe_spell_consumption = true;
+        const auto c = prepare_world_projectile(s, observed);
         check(c.candidate && c.candidate->step.damage_target == CharacterId{2} &&
                   c.candidate->physical_damage->value == 120 && c.candidate->hit->landed == !miss &&
                   c.candidate->state.battle.actors.at({2}).hp.target == (miss ? 500 : 380) &&
@@ -387,6 +388,7 @@ void projectile_world() {
                   c.candidate->step.contact_effect && c.candidate->state.projectiles.empty(),
               "arrow hits actual first collision not original, rederives damage/current miss; "
               "contact even miss");
+        check(c.candidate->spell_consumption.empty(), "physical arrows never publish spell receipts");
         check(s.projectiles.at(10).position.x == 0 && s.battle.actors.at({2}).hp.target == 500,
               "private projectile transaction doesn't mutate input owners");
     }
@@ -399,6 +401,30 @@ void projectile_world() {
     p.effect = 4;
     p.damage = 10;
     s.projectiles.emplace(10, p);
+    const auto silent = prepare_world_projectile(s, projectile_input());
+    check(silent.candidate && silent.candidate->spawned_projectile == 11 &&
+              silent.candidate->spell_consumption.empty(), "default projectile observation is disabled");
+    auto observed = projectile_input(); observed.observe_spell_consumption = true;
+    const auto contact = prepare_world_projectile(s, observed);
+    check(contact.candidate && contact.candidate->spell_consumption.size() == 1,
+          "successful spell contact emits one receipt only after creating actual delayed child");
+    const auto &receipt = contact.candidate->spell_consumption.front();
+    check(receipt.kind == SpellConsumptionKind::contact && receipt.caster == CharacterId{1} &&
+              receipt.caster_definition == 1 && receipt.aimed_target == CharacterId{3} &&
+              receipt.actual_target == CharacterId{2} && receipt.target_definition == 7 &&
+              receipt.projectile == 10 && receipt.parent_projectile == 10 &&
+              receipt.child_projectile == 11 && receipt.effect == 4 && receipt.amount == 10 &&
+              receipt.delay == 6 && !receipt.selected_q_slot && !receipt.landed &&
+              !receipt.target_delta && !receipt.prior_launch_unavailable,
+          "contact distinguishes launch aim from actual collision and records saved child damage/delay");
+    auto no_contact = s; no_contact.projectiles.at(10).position.x = 2000;
+    const auto ground = prepare_world_projectile(no_contact, observed);
+    check(ground.candidate && ground.candidate->step.ground_effect22 &&
+              ground.candidate->spell_consumption.empty(), "empty spell landing is not a successful contact");
+    auto exhausted = s; exhausted.next_projectile_id = std::numeric_limits<std::uint64_t>::max();
+    check(!prepare_world_projectile(exhausted, observed).candidate &&
+              exhausted.projectiles.count(10) && exhausted.battle.actors.at({2}).hp.target == 500,
+          "child allocation failure publishes neither contact receipt nor partial projectile state");
     auto next = s;
     AiScheduleInput schedule;
     schedule.rosters[2] = {10};
@@ -423,9 +449,10 @@ void projectile_world() {
           "spell collision appends delayed object, reverse current pass excludes new projectile");
     WorldProjectileInput delayed;
     delayed.projectile = 11;
+    delayed.observe_spell_consumption = true;
     for (int tick = 0; tick < 6; ++tick) {
         const auto c = prepare_world_projectile(next, delayed);
-        check(c.candidate && !c.candidate->hit &&
+        check(c.candidate && !c.candidate->hit && c.candidate->spell_consumption.empty() &&
                   c.candidate->state.projectiles.at(11).counter == tick + 1,
               "delayed old-counter0..5 waits without damage");
         next = c.candidate->state;
@@ -436,6 +463,20 @@ void projectile_world() {
               c.candidate->state.battle.actors.at({2}).hp.target == 500 &&
               c.candidate->state.projectiles.empty(),
           "seventh delayed check reads caster current miss, not launch snapshot");
+    check(c.candidate->spell_consumption.size() == 1, "current miss is still an actual delayed hit-consumer call");
+    const auto &miss_receipt = c.candidate->spell_consumption.front();
+    check(miss_receipt.kind == SpellConsumptionKind::delayed_hit && miss_receipt.projectile == 11 &&
+              miss_receipt.caster == CharacterId{1} && miss_receipt.caster_definition == 1 &&
+              miss_receipt.actual_target == CharacterId{2} && miss_receipt.target_definition == 7 &&
+              miss_receipt.amount == 10 && miss_receipt.delay == 6 && miss_receipt.landed == false &&
+              miss_receipt.prior_launch_unavailable && !miss_receipt.aimed_target &&
+              !miss_receipt.effect && !miss_receipt.selected_q_slot && !miss_receipt.parent_projectile &&
+              !miss_receipt.child_projectile && miss_receipt.target_delta &&
+              miss_receipt.target_delta->hp_before == 500 && miss_receipt.target_delta->hp_after == 500 &&
+              miss_receipt.target_delta->damage_before == 0 && miss_receipt.target_delta->damage_after == 0 &&
+              miss_receipt.target_delta->hits_before == 0 && miss_receipt.target_delta->hits_after == 0 &&
+              miss_receipt.target_delta->down_counter_before == 0 && miss_receipt.target_delta->down_counter_after == 0,
+          "delayed miss reports local unchanged target slots without inventing old launch provenance");
     s = projectile_fixture();
     p = {};
     p.kind = ProjectileKind::delayed_damage;
@@ -454,7 +495,7 @@ void projectile_world() {
     const auto death = prepare_monster_death_commit(s, {2});
     check(death.candidate && death.candidate->state.retired_actors.count({2}),
           "projectile reference keeps corpse alive after removal from bm");
-    c = prepare_world_projectile(death.candidate->state, projectile_input());
+    c = prepare_world_projectile(death.candidate->state, observed);
     check(c.candidate && c.candidate->hit->lethal &&
               c.candidate->state.battle.humans.at(1).kills == 1 &&
               !c.candidate->state.battle.actors.count({2}) &&
@@ -462,6 +503,17 @@ void projectile_world() {
               c.candidate->state.retired_actors.empty(),
           "delayed corpse rehit commits stats without re-adding instance or hitting reused UID, "
           "then releases ref");
+    // c/b.g(delta)的伤害目标槽不封0：尸体am3=0再受10伤害，真实结果为−10。
+    check(c.candidate->spell_consumption.size() == 1 &&
+              c.candidate->spell_consumption.front().landed == true &&
+              c.candidate->spell_consumption.front().target_delta &&
+              c.candidate->spell_consumption.front().target_delta->hp_before == 0 &&
+              c.candidate->spell_consumption.front().target_delta->hp_after == -10 &&
+              c.candidate->spell_consumption.front().target_delta->damage_after == 10 &&
+              c.candidate->spell_consumption.front().target_delta->hits_after == 1 &&
+              c.candidate->spell_consumption.front().target_delta->down_counter_before == 12 &&
+              c.candidate->spell_consumption.front().target_delta->down_counter_after == 0,
+          "retained corpse receipt freezes actual negative HP target after rehit and B reset before reference collection");
     s = projectile_fixture();
     s.projectiles.emplace(
         10, *prepare_projectile(ProjectileKind::arrow, {1}, {3}, {}, {1000, 0, 0}, 0).candidate);
@@ -476,9 +528,67 @@ void projectile_world() {
     check(!c.candidate, "unresolved projectile ID is invalid not fabricated");
     WorldProjectileInput missing;
     missing.projectile = 10;
+    missing.observe_spell_consumption = true;
     c = prepare_world_projectile(s, missing);
-    check(c.candidate && c.candidate->step.remove && c.candidate->state.projectiles.empty(),
+    check(c.candidate && c.candidate->step.remove && c.candidate->state.projectiles.empty() &&
+              c.candidate->spell_consumption.empty(),
           "missing original reference deletes before collision metadata/physical draws");
+    for (const auto kind : {ProjectileKind::spell, ProjectileKind::delayed_damage}) {
+        auto absent = s;
+        absent.projectiles.at(10).kind = kind;
+        absent.projectiles.at(10).effect = 4;
+        const auto removed = prepare_world_projectile(absent, missing);
+        check(removed.candidate && removed.candidate->step.remove &&
+                  removed.candidate->spell_consumption.empty(),
+              "missing spell/delayed reference deletion is not a successful contact or hit receipt");
+    }
+
+    auto failed_hit = projectile_fixture();
+    p = {}; p.kind = ProjectileKind::delayed_damage; p.caster = {1}; p.original_target = {2};
+    p.damage = 500; failed_hit.projectiles.emplace(10, p);
+    auto no_drop = projectile_input(); no_drop.observe_spell_consumption = true; no_drop.drop_ticket.reset();
+    check(!prepare_world_projectile(failed_hit, no_drop).candidate &&
+              failed_hit.projectiles.count(10) && failed_hit.battle.actors.at({2}).hp.target == 500 &&
+              failed_hit.battle.actors.at({2}).hit_count == 0,
+          "late lethal delayed consumer failure publishes no candidate or receipt and leaves source intact");
+    for (const bool observing : {false, true}) {
+        std::vector<int> draws;
+        auto provider = no_drop;
+        provider.observe_spell_consumption = observing;
+        provider.draw = [&](int bound) -> std::optional<int> { draws.push_back(bound); return 99; };
+        const auto landed = prepare_world_projectile(failed_hit, provider);
+        check(landed.candidate && draws == std::vector<int>{100} &&
+                  landed.candidate->spell_consumption.size() == (observing ? 1U : 0U) &&
+                  landed.candidate->state.battle.actors.at({2}).hp.target == 0 &&
+                  landed.candidate->state.battle.actors.at({2}).damage_total == 500 &&
+                  landed.candidate->state.battle.actors.at({2}).hit_count == 1 &&
+                  landed.candidate->state.battle.humans.at(1).kills == 1,
+              "observing lethal delayed hit preserves the sole real drop draw and complete hit effects");
+    }
+
+    // 同一目标的多次真实type2消费各自报告局部前后；零伤害也按原hit规则累加命中。
+    s = projectile_fixture();
+    p = {}; p.kind = ProjectileKind::delayed_damage; p.caster = {1}; p.original_target = {2};
+    s.projectiles.emplace(10, p);
+    p.damage = 20; s.projectiles.emplace(11, p); s.projectile_order.push_back(11);
+    s.next_projectile_id = 12;
+    s.battle.actors.at({2}).state_counter = 7;
+    for (const auto id : {10U, 11U}) {
+        auto input = projectile_input(); input.projectile = id; input.observe_spell_consumption = true;
+        const auto consumed = prepare_world_projectile(s, input);
+        check(consumed.candidate && consumed.candidate->spell_consumption.size() == 1,
+              "each competing delayed object yields exactly its own consumption receipt");
+        const auto &r = consumed.candidate->spell_consumption.front();
+        check(r.target_delta.has_value(), "successful delayed receipt includes local target delta");
+        const auto &delta = *r.target_delta;
+        check(r.projectile == id && r.landed == true && r.amount == (id == 10 ? 0 : 20) &&
+                  delta.hp_before == 500 && delta.hp_after == (id == 10 ? 500 : 480) &&
+                  delta.damage_before == 0 && delta.damage_after == (id == 10 ? 0 : 20) &&
+                  delta.hits_before == (id == 10 ? 0 : 1) && delta.hits_after == (id == 10 ? 1 : 2) &&
+                  delta.down_counter_before == 7 && delta.down_counter_after == 7,
+              "zero and subsequent hit receipts preserve exact local HP target, damage, hit count and B");
+        s = consumed.candidate->state;
+    }
 }
 void reference_graph() {
     auto s = fixture();

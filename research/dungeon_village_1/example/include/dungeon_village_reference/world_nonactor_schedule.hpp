@@ -58,6 +58,7 @@ struct WorldNonactorCandidate {
     WorldNonactorScheduleState state;
     WorldScheduleDisposition disposition{WorldScheduleDisposition::keep};
     std::vector<WorldNonactorRequest> consumed;
+    std::vector<SpellConsumptionReceipt> spell_consumption{};
 };
 struct WorldNonactorResult {
     WorldNonactorError error{WorldNonactorError::none};
@@ -85,6 +86,7 @@ template <class Owner> struct WorldNonactorScheduleAdapter {
     std::function<std::optional<OwnedWorldScheduleStep<Owner>>(
         const Owner &, const WorldScheduleCall &, const CombatInfluenceCandidate &)>
         other;
+    bool observe_spell_consumption{};
 };
 // 直接用作WorldActorScheduleAdapter.other，或供prepare_owned_world_schedule消费非人物阶段。
 template <class Owner>
@@ -104,6 +106,8 @@ prepare_owned_world_nonactor_stage(const Owner &state, const WorldScheduleCall &
     WorldNonactorStageInput input{call, {}, {}, adapter.primary_expression_table};
     if (call.stage == WorldScheduleStage::projectile && call.id && adapter.projectile)
         input.projectile = adapter.projectile(state, *call.id);
+    if (input.projectile)
+        input.projectile->observe_spell_consumption=adapter.observe_spell_consumption;
     if (call.stage == WorldScheduleStage::encounter && call.id && adapter.encounter)
         input.encounter = adapter.encounter(state, *call.id);
     WorldNonactorConsumer consume;
@@ -125,6 +129,7 @@ prepare_owned_world_nonactor_stage(const Owner &state, const WorldScheduleCall &
     if (!result.candidate || !adapter.write_routes(next, result.candidate->state))
         return {};
     adapter.write_common(next) = result.candidate->state.common;
-    return OwnedWorldScheduleStep<Owner>{std::move(next), result.candidate->disposition};
+    return OwnedWorldScheduleStep<Owner>{std::move(next), result.candidate->disposition,
+                                         result.candidate->spell_consumption};
 }
 } // namespace dungeon_village_reference

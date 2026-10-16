@@ -286,6 +286,69 @@ void loop_and_rollback(const WorldScriptCatalog &catalog) {
     check(idle.state && idle.state->scene.frame_counter == 0 && idle.state->entries == 0,
           "framework non-main admission is exact freeze not missing unused callback failure");
 }
+void spell_observation_rollback(const WorldScriptCatalog &catalog) {
+    auto source=fixture(catalog);
+    source.scene.speed_setting=1; // 两个已获准轮，不重放自然经营前缀。
+    auto &ai=source.scene.world.world.ai;
+    for(const std::uint64_t id:{1ULL,2ULL}) {
+        BattleActorRecord actor;actor.id={id};actor.definition=int(id);
+        actor.kind=id==1?ActorKind::human:ActorKind::monster;
+        actor.control.state=1;actor.control.flags=2;
+        actor.position=actor.decision_start={20,0,0};
+        actor.hp={0,500,500,500,false,0};actor.capacity=500;
+        ai.retired_actors.emplace(actor.id,actor);
+        ai.contexts.emplace(actor.id,RewardActorContext{{1,1},true,{}, {},true,{2,2}});
+    }
+    ai.battle.humans.emplace(1,HumanBattleRecord{});
+    ai.battle.monsters.emplace(2,MonsterBattleRecord{});
+    RewardHumanDefinition human;human.derived.combat={500,100,100,100};ai.growth.emplace(1,human);
+    RewardMonsterDefinition monster;monster.base_hp=500;monster.base_attack=100;monster.base_defense=50;
+    ai.monster_growth.emplace(2,monster);
+    ProjectileState delayed;delayed.kind=ProjectileKind::delayed_damage;
+    delayed.caster={1};delayed.original_target={2};delayed.damage=7;delayed.delay=delayed.counter=6;
+    ai.projectiles.emplace(9,delayed);ai.projectile_order={9};ai.next_projectile_id=10;
+    auto a=adapter(catalog);a.observe_spell_consumption=true;
+    // 仅已到期投射与保留引用的条件夹具；不认证取得法术或自然发射来源。
+    a.nonactors.projectile=[](const Owner &,std::uint64_t id)->std::optional<WorldProjectileInput> {
+        WorldProjectileInput input;input.projectile=id;return input;
+    };
+    a.nonactors.primary_expression_table=true;
+    a.nonactors.request=[](Owner &current,const WorldNonactorRequest &request)
+        ->std::optional<WorldNonactorWriteback> {
+        if(request.kind!=WorldNonactorRequestKind::projectile_hit||!request.hit)return {};
+        WorldNonactorWriteback output{encounter_external_writeback(current.scene.world.world.ai),{}};
+        if(request.hit->kind==HitRequestKind::face_attacker)output.target_facing=0;
+        return output;
+    };
+    const auto observed=prepare_owned_world_runtime(source,{27},a);
+    check(observed.state&&observed.worlds.size()==2&&
+          observed.worlds[0].spell_consumption.size()==1&&observed.worlds[1].spell_consumption.empty()&&
+          observed.worlds[0].spell_consumption[0].kind==SpellConsumptionKind::delayed_hit&&
+          observed.worlds[0].spell_consumption[0].projectile==9,
+          "retained type2 fixture emits one first-round receipt; second round does not replay it");
+    auto disabled=a;disabled.observe_spell_consumption=false;disabled.nonactors.observe_spell_consumption=true;
+    const auto silent=prepare_owned_world_runtime(source,{27},disabled);
+    check(silent.state&&silent.worlds.size()==2&&silent.worlds[0].spell_consumption.empty()&&
+          silent.worlds[1].spell_consumption.empty()&&silent.state->random.draws()==observed.state->random.draws(),
+          "runtime switch is authoritative over nested adapter and preserves successful random sequence");
+    bool reached_second{};
+    auto reject=a;reject.before_common=[&](const Owner &current)->std::optional<Owner> {
+        if(current.scene.world.updates==1) {reached_second=true;return {};}
+        return current;
+    };
+    const auto second_failed=prepare_owned_world_runtime(source,{27},reject);
+    check(reached_second&&!second_failed.state&&second_failed.worlds.empty()&&
+          source.scene.world.world.ai.projectiles.size()==1&&source.scene.world.updates==0&&
+          source.scene.world.world.ai.retired_actors.at({2}).hp.target==500&&source.random.draws()==0,
+          "second-round failure clears prior spell receipts together with private HP,projectile,date and random");
+    auto boundary=source;boundary.scene.speed_setting=0;
+    boundary.scene.calendar={0,3,3,10790,0,1599};reject=a;reject.tasks={};
+    const auto calendar_failed=prepare_owned_world_runtime(boundary,{27},reject);
+    check(!calendar_failed.state&&calendar_failed.worlds.empty()&&
+          boundary.scene.world.world.ai.projectiles.size()==1&&boundary.scene.calendar.units==10790&&
+          boundary.scene.world.world.ai.retired_actors.at({2}).hp.target==500,
+          "late calendar refusal clears first-world spell receipt instead of publishing a partial frame");
+}
 void scoped_calendar_consumers(const WorldScriptCatalog &catalog) {
     auto source = fixture(catalog);
     source.scene.calendar = {0, 3, 0, 10790, 0, 399};
@@ -424,6 +487,7 @@ int main() {
         check(parsed.catalog.has_value(), "published scripts parse");
         source_scan(*parsed.catalog);
         loop_and_rollback(*parsed.catalog);
+        spell_observation_rollback(*parsed.catalog);
         scoped_calendar_consumers(*parsed.catalog);
         actual_facility_completion(*parsed.catalog);
         std::cout << "world runtime: " << checks << " checks passed\n";

@@ -1128,7 +1128,7 @@ StartupWorldRuntimeError StartupWorldRuntimeSession::act_rank_page(std::uint64_t
 StartupWorldRuntimeError StartupWorldRuntimeSession::input_rank_page(std::uint64_t page,const StartupTownRankInput &input) {
     return input_startup_world_runtime_rank_page(state_,page,input);
 }
-StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
+StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s, bool observe_spell_consumption) {
     if (!valid_startup_world_human_profiles(s))
         return {StartupWorldRuntimeError::invalid_initial_state, {}, {}, {}, {}};
     // 原30/67/88/96载荷在producer已完整安装；退休前拒绝损坏，不以清理掩盖半载荷。
@@ -1374,7 +1374,13 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
     }
     // 固定原表和回调只读共享；Owner、随机及下方检查点收集器仍属于本次调用。
     // 公开adapter工厂仍返回独立值，诊断／测试对其修改不会污染这个缓存。
-    static const auto a = startup_world_runtime_adapter();
+    static const auto normal_adapter = startup_world_runtime_adapter();
+    static const auto observing_adapter = [] {
+        auto adapter=startup_world_runtime_adapter();
+        adapter.observe_spell_consumption=true;
+        return adapter;
+    }();
+    const auto &a=observe_spell_consumption?observing_adapter:normal_adapter;
     std::vector<std::shared_ptr<const State>> checkpoints;
     const ref::WorldRuntimeCalendarConsumer<State> calendar_other =
         [&](const State &current, ref::WorldCalendarStage stage) -> std::optional<State> {
@@ -1397,11 +1403,15 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
     auto next = std::move(*result.state);
     next.scripts.executing_page.reset(); // kairo/android/a/b.g的finally清j；检查点不保留回调根。
     next.simulation_steps += result.scene ? result.scene->begun_rounds : 0;
+    std::vector<ref::SpellConsumptionReceipt> receipts;
+    if(observe_spell_consumption)
+        for(auto &world:result.worlds)
+            for(auto &receipt:world.spell_consumption)receipts.push_back(std::move(receipt));
     return {StartupWorldRuntimeError::none, std::move(next), ref::WorldSceneError::none,
-            ref::WorldScheduleError::none, std::move(checkpoints)};
+            ref::WorldScheduleError::none, std::move(checkpoints),std::move(receipts)};
 }
-StartupWorldRuntimeResult StartupWorldRuntimeSession::update() {
-    auto result = prepare_startup_world_runtime(state_);
+StartupWorldRuntimeResult StartupWorldRuntimeSession::update(bool observe_spell_consumption) {
+    auto result = prepare_startup_world_runtime(state_,observe_spell_consumption);
     if (result.candidate) {
         if (!update_startup_world_render_cache(*result.candidate))
             return {StartupWorldRuntimeError::missing_source,

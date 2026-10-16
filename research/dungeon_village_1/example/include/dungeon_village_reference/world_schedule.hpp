@@ -2,6 +2,7 @@
 
 // 共同世界调度：这里只持有一个人物/设施所有者，控制与领域消费者不重复推进共同前段。
 #include "dungeon_village_reference/ai_schedule.hpp"
+#include "dungeon_village_reference/ai_rewards.hpp"
 #include "dungeon_village_reference/world_actor_tail.hpp"
 #include "dungeon_village_reference/world_overlap.hpp"
 
@@ -51,6 +52,7 @@ enum class WorldScheduleDisposition { keep, remove_requested, already_removed };
 struct WorldScheduleStep {
     WorldScheduleState state;
     WorldScheduleDisposition disposition{WorldScheduleDisposition::keep};
+    std::vector<SpellConsumptionReceipt> spell_consumption{};
 };
 using WorldScheduleConsumer = std::function<std::optional<WorldScheduleStep>(
     const WorldScheduleState &, const WorldScheduleCall &, const CombatInfluenceCandidate &)>;
@@ -75,6 +77,7 @@ struct WorldScheduleCandidate {
     std::vector<AiScheduleVisit> visits;
     std::vector<WorldScheduleCall> calls;
     std::vector<WorldScheduleEffects> effects;
+    std::vector<SpellConsumptionReceipt> spell_consumption{}; // 按实际调用序，整轮失败不返回。
 };
 struct WorldScheduleResult {
     WorldScheduleError error{WorldScheduleError::none};
@@ -98,6 +101,7 @@ prepare_world_schedule_overlap(const WorldScheduleState &state, const std::vecto
 template <class Owner> struct OwnedWorldScheduleStep {
     Owner state;
     WorldScheduleDisposition disposition{WorldScheduleDisposition::keep};
+    std::vector<SpellConsumptionReceipt> spell_consumption{};
 };
 template <class Owner> struct OwnedWorldScheduleAdapter {
     std::function<const WorldScheduleState &(const Owner &)> read;
@@ -135,7 +139,8 @@ prepare_owned_world_schedule(const Owner &state, const WorldScheduleInput &input
             if (!step)
                 return {};
             scratch = std::move(step->state);
-            return WorldScheduleStep{adapter.read(scratch), step->disposition};
+            return WorldScheduleStep{adapter.read(scratch), step->disposition,
+                                     std::move(step->spell_consumption)};
         });
     if (!result.candidate)
         return {result.error, {}, {}};

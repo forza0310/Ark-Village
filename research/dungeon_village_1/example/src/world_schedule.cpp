@@ -204,6 +204,8 @@ WorldScheduleResult prepare_world_schedule(const WorldScheduleState &s,
                 return {};
             }
         }
+        c.spell_consumption.insert(c.spell_consumption.end(), step->spell_consumption.begin(),
+                                    step->spell_consumption.end());
         return step->disposition;
     };
     auto disposition = invoke({WorldScheduleStage::arrival_front, {}, {}});

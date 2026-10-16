@@ -40,6 +40,54 @@ StartupWorldRuntimeState fixture() {
     s.shop_actors.emplace(human.id, ref::ShopActorRecord{});
     return s;
 }
+void committed_spell_receipts() {
+    auto s=fixture();
+    s.scripts.pages.front().lifecycle=3;
+    s.scene.scene_state=2; // 已有focus分支夹具避开新局教程；不声称自然施法或学习。
+    auto &ai=s.scene.world.world.ai;
+    for(auto &[id,actor]:ai.battle.actors) {
+        actor.capacity=100;
+        actor.hp=*ref::prepare_hp_assignment(actor.hp,100).candidate;
+        ai.retired_actors.emplace(id,actor);
+    }
+    ai.battle.actors.clear(); // type2引用保留，不能重新混入活跃人物名单。
+    ai.next_actor_id=3;
+    ai.retired_actors.at({2}).damage_total=9;
+    ai.retired_actors.at({2}).hit_count=4;
+    ref::ProjectileState projectile;
+    projectile.kind=ref::ProjectileKind::delayed_damage;
+    projectile.caster={1};projectile.original_target={2};
+    projectile.counter=6;projectile.delay=6;projectile.damage=7;
+    ai.projectiles.emplace(77,projectile);ai.projectile_order={77};ai.next_projectile_id=78;
+    const auto before=startup_world_state_digest(s);
+    const auto plain=prepare_startup_world_runtime(s);
+    const auto observed=prepare_startup_world_runtime(s,true);
+    if(!plain.candidate || !observed.candidate)
+        throw std::runtime_error("spell receipt runtime fixture rejected: "+std::to_string(int(observed.error))+"/"+
+            std::to_string(int(observed.scene_error))+"/"+std::to_string(int(observed.world_error)));
+    check(plain.spell_consumption.empty()&&observed.spell_consumption.size()==1&&
+        startup_world_state_digest(*plain.candidate)==startup_world_state_digest(*observed.candidate)&&
+        startup_world_state_digest(s)==before,"optional whole-runtime receipts preserve exact complete Owner and common random");
+    const auto &receipt=observed.spell_consumption.front();
+    check(receipt.kind==ref::SpellConsumptionKind::delayed_hit&&receipt.projectile==77&&
+        receipt.caster==ref::CharacterId{1}&&receipt.actual_target==ref::CharacterId{2}&&receipt.landed==true&&
+        receipt.amount==7&&receipt.delay==6&&receipt.prior_launch_unavailable&&
+        !receipt.aimed_target&&!receipt.effect&&!receipt.parent_projectile&&!receipt.selected_q_slot&&receipt.target_delta&&
+        receipt.target_delta->hp_before==100&&receipt.target_delta->hp_after==93&&
+        receipt.target_delta->damage_before==9&&receipt.target_delta->damage_after==16&&
+        receipt.target_delta->hits_before==4&&receipt.target_delta->hits_after==5,
+        "full outer success publishes exact local delayed hit after retained references can retire, without reconstructing launch history");
+    auto invalid=s;invalid.scene.world.map_flags.pop_back();
+    const auto rejected=prepare_startup_world_runtime(invalid,true);
+    check(!rejected.candidate&&rejected.spell_consumption.empty()&&rejected.checkpoints.empty(),
+        "failed whole-runtime candidate never exposes spell success or checkpoints");
+    StartupSession initial;
+    StartupWorldRuntimeSession session(initial.state(),ref::WorldRandomStream::from_java_seed(17));
+    session.set_paused(true);
+    const auto paused=session.update(true);
+    check(paused.candidate&&paused.spell_consumption.empty()&&session.state().simulation_steps==0,
+        "session observation switch does not manufacture consumption while framework is paused");
+}
 void contact_and_spells() {
     auto s = fixture();
     const auto adapter = startup_world_runtime_adapter();
@@ -425,6 +473,7 @@ int main(int argc, const char **argv) {
             if (argc == 2 && std::string(argv[1]) == "projection_benchmark") return projection_benchmark();
             throw std::runtime_error("未知nonactor测试模式");
         }
+        committed_spell_receipts();
         contact_and_spells();
         hit_object_and_projection();
         actor_presentation_and_frame_cache();

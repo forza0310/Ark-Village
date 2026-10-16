@@ -178,6 +178,24 @@ void spell_contact_target() {
           contact->state.common.world.ai.contexts.at({2}).effects.display.size()==1 &&
           contact->state.common.world.ai.contexts.at({3}).effects.display.empty(),
           "successful spell contact installs one delayed object and only actual target presentation");
+    check(contact->spell_consumption.empty(),"default nonactor adapter publishes no spell observation");
+    consumer.observe_spell_consumption=true;
+    const auto observed=prepare_owned_world_nonactor_stage(owner,{WorldScheduleStage::projectile,9,{}},field(),consumer);
+    check(observed && observed->spell_consumption.size()==1 &&
+          observed->spell_consumption[0].kind==SpellConsumptionKind::contact &&
+          observed->spell_consumption[0].projectile==9 &&
+          observed->spell_consumption[0].child_projectile==10 &&
+          observed->state.random.draws()==contact->state.random.draws() &&
+          observed->state.common.world.ai.projectile_order==contact->state.common.world.ai.projectile_order,
+          "enabled adapter forwards actual contact receipt without changing random or projectile sequence");
+    auto disabled=consumer;disabled.observe_spell_consumption=false;
+    const auto provider=disabled.projectile;
+    disabled.projectile=[&](const Owner &current,std::uint64_t id) {
+        auto input=provider(current,id);input->observe_spell_consumption=true;return input;
+    };
+    const auto suppressed=prepare_owned_world_nonactor_stage(owner,{WorldScheduleStage::projectile,9,{}},field(),disabled);
+    check(suppressed && suppressed->spell_consumption.empty(),
+          "adapter observation switch overrides provider input and remains off by default");
     auto rejected=consumer;
     rejected.request=[&](Owner &current,const WorldNonactorRequest &request)->std::optional<WorldNonactorWriteback> {
         const auto accepted=consumer.request(current,request);
@@ -197,6 +215,7 @@ void spell_contact_target() {
               waiting->state.common.world.ai.battle.actors.at({2}).hp.target==500 &&
               waiting->state.random.draws()==0 && waiting->state.visual==std::vector<int>{4},
               "old delay counter0..5 waits without repeat presentation,early damage or random");
+        check(waiting->spell_consumption.empty(),"waiting delayed projectile does not repeat a contact/hit receipt");
         delayed=waiting->state;
     }
     const auto hit=prepare_owned_world_nonactor_stage(delayed,{WorldScheduleStage::projectile,10,{}},field(),consumer);
@@ -204,6 +223,9 @@ void spell_contact_target() {
           hit->state.common.world.ai.battle.actors.at({2}).hp.target==490 &&
           hit->state.common.world.ai.battle.actors.at({3}).hp.target==500 && hit->state.random.draws()==0,
           "seventh delayed check damages actual collision2 with saved10, never original aim3");
+    check(hit->spell_consumption.size()==1 && hit->spell_consumption[0].kind==SpellConsumptionKind::delayed_hit &&
+          hit->spell_consumption[0].projectile==10 && hit->spell_consumption[0].prior_launch_unavailable,
+          "final hit receipt reaches owned step without reconstructing lost launch provenance");
     auto ground=owner;ground.common.world.ai.projectiles.at(9).position.x=1000;
     auto ground_consumer=adapter();const auto ground_existing=ground_consumer.request;
     ground_consumer.request=[&](Owner &current,const WorldNonactorRequest &request)->std::optional<WorldNonactorWriteback> {

@@ -548,10 +548,11 @@ void errors_and_atomic_extension() {
         auto output = w;
         output.common = next->state;
         ++output.committed;
-        return OwnedWorldScheduleStep<Owner>{output, next->disposition};
+        SpellConsumptionReceipt observation;observation.projectile=output.committed;
+        return OwnedWorldScheduleStep<Owner>{output, next->disposition,{observation}};
     };
     const auto owned = prepare_owned_world_schedule(outer, {}, adapter);
-    check(!owned.state && outer.committed == 0 &&
+    check(!owned.state && !owned.audit && outer.committed == 0 &&
               outer.common.world.facilities.at(3).occupants.empty(),
           "outer catalogue/task/random-cursor extension and common world fail atomically");
     adapter.consume = [&](const Owner &w, const auto &call,
@@ -562,13 +563,22 @@ void errors_and_atomic_extension() {
         auto output = w;
         output.common = next->state;
         ++output.committed;
-        return OwnedWorldScheduleStep<Owner>{output, next->disposition};
+        // 仅传输观察夹具：按调用次数标记，不证明任何真实法术已消耗。
+        SpellConsumptionReceipt observation;observation.projectile=output.committed;
+        return OwnedWorldScheduleStep<Owner>{output, next->disposition,{observation}};
     };
     const auto success = prepare_owned_world_schedule(outer, {}, adapter);
     check(success.state && success.state->committed == 5 &&
               success.state->common.world.ai.battle.actors.at({1}).state_counter == 1 &&
               success.state->common.world.facilities.at(3).occupants.size() == 1,
           "all private outer and common fields commit once after final L");
+    check(success.audit && success.audit->spell_consumption.size()==5 &&
+          success.audit->spell_consumption[0].projectile==1 &&
+          success.audit->spell_consumption[1].projectile==2 &&
+          success.audit->spell_consumption[2].projectile==3 &&
+          success.audit->spell_consumption[3].projectile==4 &&
+          success.audit->spell_consumption[4].projectile==5,
+          "synthetic observation receipts cross owned/common steps in actual callback order only on success");
     s.world.actors.clear();
     check(!valid_world_schedule_owner(s), "spawn without shared actor context rejects before c");
 }

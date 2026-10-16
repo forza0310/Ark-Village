@@ -1,5 +1,13 @@
 # 当前研究验证与历史索引
 
+## 实际法术消费的可选观察 2026-10-16
+
+接`197d5b2`，回应产品的[法术归因请求](../../docs/reference/RESEARCH_REQUESTS.md#spell-consumption-receipts)，复用已证消费者，不重复逆向或更改战斗规则。叶层成功事实经control／nonactor／owned schedule／共同审计转到完整Runtime；`StartupWorldRuntimeSession::update(true)`显式开启，默认关闭。四类回执及Q原下标、瞄准／实际目标、父子ID、局部HP目标槽／ao／ap／B、旧type2历史gap见[现战斗合同](rules/ai/COMBAT.md#spell-consumption-receipts)。失败无候选或成功回执，不增加Owner／codec字段、原type2历史、外部callback、随机或声音；调用结果只保留值，消费／释放由调用者负责。
+
+Windows单Release动态构建通过，九项ai_rewards／combat_commit／world_schedule／actor_routes／actor_schedule／combat_random／nonactor_schedule／world_runtime／prototype runtime_nonactors **9/9通过1.60秒**，另现prototype runtime基线 **1/1通过0.08秒**。覆盖稀疏Q／增强、原抽序、含零／负回复及倒地B、换碰撞目标、当前miss、尸体重击、竞争局部HP、等待不重复、第二轮／日历后段拒绝清空和完整Owner摘要一致。新尸体oracle误以为目标HP封0，按原`g(delta)`及既有HP实现改为0→−10后最终复验，未放宽或删除有效断言；首轮缺默认vector初始化的Werror也已修正。未新增套件／target或长跑，未构建他人在途住宅持久化测试。原型与应用DLL调用者已重建，最终`--world --check`首轮正常退出；本批无UI改动或新增原窗口动态认证。
+
+两项80／87目录问答及84反馈金额设计已由用户批准，现[存取模块](prototype/PERSISTENCE.md)与主线只更新授权状态，未冒称实现；下一批按既定范围接线。未新增素材、audit、指纹、过程报告或临时文件；Release1388文件／146732906字节、assets872文件／9504668字节。观察默认关闭且只收当次事实，不建立永久日志或实体引用；正常历史增长仍不称永久有界。本轮构建／测试／CLI及子任务已收齐，仅本地提交已验research，保留其他维护者修改、不推送。
+
 ## 设施完成／住宅／商品NEW 2026-10-16
 
 接`9692bb8`，Steam `Tenant.Draw／cctor／Update_fukidashi`独立交叉固定APK，合入[现通知合同](ui/EQUIPMENT_FACILITY_RENDER.md#steam队首完成住宅与商品new)。新增完整0–7只读入口，旧growth的1–6及遇0／7空输出契约保留；普通与住宅完成展开全层五帧，末帧星爆为零面积空绘制，NEW按自身年龄6轮浮动。正常窗口消费同一原设施锚／深度队列，不新增Owner、codec字段、奖励、随机或声音。Steam根图片68／150实际RGBA不同，复用现publisher仅出版两图1336字节；三SEB与图片69／134沿同字节original，默认启动白名单和旧资源不改。

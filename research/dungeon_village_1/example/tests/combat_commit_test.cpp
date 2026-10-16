@@ -69,11 +69,14 @@ void human_windows() {
             a.control.action_counter = counter;
             auto i = input();
             i.weapon.kind = kind;
+            i.observe_spell_consumption = true;
             const auto r = prepare_world_attack_control(s, i);
             const bool direct = kind != 1 && counter >= 5 && counter <= 8;
             check(r.candidate && r.candidate->hit.has_value() == direct &&
                       r.candidate->projectile.has_value() == (kind == 1 && counter == 8),
                   "direct5..8 vs bow8 current-world consumption");
+            check(r.candidate && r.candidate->spell_consumption.empty(),
+                  "physical attacks and arrows never publish spell consumption");
             if (direct)
                 check(r.candidate->state.battle.actors.at({2}).hp.target == 9927 &&
                           !r.candidate->state.battle.actors.at({1}).attack_armed,
@@ -161,17 +164,70 @@ void magic_and_healing() {
               r.candidate->state.projectiles.at(*r.candidate->projectile).damage == 45 &&
               r.candidate->state.battle.actors.at({2}).hp.target == 10000,
           "offensive26 queries fresh target and creates stored-damage spell, not direct HP");
+    check(r.candidate->spell_consumption.empty(), "spell observation defaults off");
     auto i = input();
+    i.observe_spell_consumption = true;
+    r = prepare_world_attack_execution(s, i);
+    check(r.candidate && r.candidate->spell_consumption.size() == 1,
+          "actual launch receipt survives the execution wrapper");
+    const auto &launch_receipt = r.candidate->spell_consumption.front();
+    check(launch_receipt.kind == SpellConsumptionKind::launch &&
+              launch_receipt.caster == CharacterId{1} && launch_receipt.caster_definition == 1 &&
+              launch_receipt.aimed_target == CharacterId{2} && !launch_receipt.actual_target &&
+              launch_receipt.target_definition == 7 && launch_receipt.selected_q_slot == 0 &&
+              launch_receipt.effect == 4 && launch_receipt.amount == 45 &&
+              launch_receipt.projectile == r.candidate->projectile &&
+              !launch_receipt.parent_projectile && !launch_receipt.child_projectile &&
+              !launch_receipt.landed && !launch_receipt.target_delta && !launch_receipt.delay &&
+              !launch_receipt.prior_launch_unavailable,
+          "launch records actual Q/effect/projectile and aimed definition without claiming a hit");
+    s.growth.at(1).derived.available_spells = {false, false, true, false};
+    for (int enhancement : {99, 0}) {
+        i.enhancement_ticket = enhancement;
+        r = prepare_world_attack_control(s, i);
+        check(r.candidate && r.candidate->spell_consumption.size() == 1 &&
+                  r.candidate->spell_consumption.front().selected_q_slot == 2 &&
+                  r.candidate->spell_consumption.front().effect == (enhancement ? 6 : 9),
+              "sparse Q selection retains original slot for ordinary and enhanced effects");
+    }
+    s.growth.at(1).derived.available_spells = {true, false, false, false};
+    std::vector<int> ordinary_draws, observed_draws;
+    i = input();
+    i.spell_ticket.reset();
+    i.enhancement_ticket.reset();
+    i.magic_jitter.reset();
+    i.draw = [&](int bound) { ordinary_draws.push_back(bound); return std::optional<int>{0}; };
+    const auto ordinary = prepare_world_attack_control(s, i);
+    i.observe_spell_consumption = true;
+    i.draw = [&](int bound) { observed_draws.push_back(bound); return std::optional<int>{0}; };
+    r = prepare_world_attack_control(s, i);
+    check(ordinary.candidate && r.candidate && ordinary_draws == std::vector<int>{1, 100, 22} &&
+              observed_draws == ordinary_draws && ordinary.candidate->spell_consumption.empty() &&
+              r.candidate->spell_consumption.size() == 1 &&
+              ordinary.candidate->state.projectiles.begin()->second.damage ==
+                  r.candidate->state.projectiles.begin()->second.damage &&
+              ordinary.candidate->state.next_projectile_id == r.candidate->state.next_projectile_id,
+          "observation preserves spell draw bounds/order and projectile allocation");
+    i = input();
+    i.observe_spell_consumption = true;
+    i.facing = 4;
+    check(!prepare_world_attack_control(s, i).candidate && s.projectiles.empty() &&
+              s.battle.actors.at({1}).control.facing == 0,
+          "failed actual launch exposes no receipt or partial projectile/facing");
+    i = input();
+    i.observe_spell_consumption = true;
     i.enhancement_ticket.reset();
     check(!prepare_world_attack_control(s, i).candidate && s.projectiles.empty(),
           "missing actual spell draw rejects entire command");
     s.monster_order.clear();
     i = {};
     i.actor = {1};
+    i.observe_spell_consumption = true;
     r = prepare_world_attack_control(s, i);
     check(r.candidate && !r.candidate->projectile && !r.candidate->completed &&
               r.candidate->state.battle.actors.at({1}).control.queue.size() == 2,
           "no target26 stops without random consumption or premature completion");
+    check(r.candidate->spell_consumption.empty(), "missing spell target is not a consumption");
     s.battle.actors.at({1}).control.action_counter = 42;
     s.battle.actors.at({1}).attack_idle = 99;
     r = prepare_world_attack_control(s, i);
@@ -187,6 +243,8 @@ void magic_and_healing() {
     down.hp = {0, 0, 0, 0, false, 0};
     down.capacity = 100;
     down.state_counter = 5;
+    down.damage_total = 17;
+    down.hit_count = 2;
     s.battle.actors.emplace(down.id, down);
     s.contexts.emplace(down.id, s.contexts.at({1}));
     s.human_order.insert(s.human_order.begin(), down.id);
@@ -199,11 +257,56 @@ void magic_and_healing() {
               r.candidate->state.contexts.at({4}).effects.display.back() ==
                   ActorEffectRecord{2, 0, 90, 160, -26, 2},
           "J first down target gets HP90, recovery B810 and six-field healing display append");
+    check(r.candidate->spell_consumption.empty(), "healing observation defaults off");
+    i = input();
+    i.observe_spell_consumption = true;
+    r = prepare_world_attack_execution(s, i);
+    check(r.candidate && r.candidate->spell_consumption.size() == 1,
+          "completed healing receipt survives interpreter tail processing");
+    const auto &healing_receipt = r.candidate->spell_consumption.front();
+    check(healing_receipt.kind == SpellConsumptionKind::healing &&
+              healing_receipt.caster == CharacterId{1} && healing_receipt.caster_definition == 1 &&
+              healing_receipt.aimed_target == CharacterId{4} &&
+              healing_receipt.actual_target == CharacterId{4} &&
+              healing_receipt.target_definition == 1 && healing_receipt.selected_q_slot == 3 &&
+              healing_receipt.amount == 90 && !healing_receipt.effect &&
+              !healing_receipt.projectile && !healing_receipt.landed && healing_receipt.target_delta,
+          "healing records actual target and known restoration Q slot without inventing effect");
+    const auto &delta = *healing_receipt.target_delta;
+    check(delta.hp_before == 0 && delta.hp_after == 90 && delta.damage_before == 17 &&
+              delta.damage_after == 17 && delta.hits_before == 2 && delta.hits_after == 2 &&
+              delta.down_counter_before == 5 && delta.down_counter_after == 810,
+          "healing delta uses target HP and local damage/hit/down counters");
+    s.growth.at(1).derived.combat[3] = 1;
+    r = prepare_world_attack_control(s, i);
+    check(r.candidate && r.candidate->spell_consumption.size() == 1 &&
+              r.candidate->spell_consumption.front().amount == 0 &&
+              r.candidate->spell_consumption.front().target_delta->hp_after == 0,
+          "zero amount is still an actual healing consumer receipt");
     s.growth.at(1).derived.combat[3] = 0;
-    r = prepare_world_attack_control(s, input());
+    r = prepare_world_attack_control(s, i);
     check(r.candidate && r.candidate->state.battle.actors.at({4}).hp.target == -1 &&
               r.candidate->state.battle.actors.at({4}).state_counter == 5,
           "magic0 negative heal preserved without eager death/baseline or reduced old B");
+    check(r.candidate->spell_consumption.size() == 1 &&
+              r.candidate->spell_consumption.front().amount == -1 &&
+              r.candidate->spell_consumption.front().target_delta->hp_after == -1 &&
+              r.candidate->spell_consumption.front().target_delta->down_counter_after == 5,
+          "negative healing preserves its signed amount and local recovery result");
+    s.battle.actors.at({4}).capacity = 0;
+    check(!prepare_world_attack_control(s, i).candidate &&
+              s.battle.actors.at({4}).hp.target == 0 && s.battle.actors.at({4}).state_counter == 5,
+          "invalid healing capacity rejects receipt and all partial target updates");
+    s = fixture();
+    s.battle.actors.at({1}).control.queue = {{16}};
+    s.battle.actors.at({1}).control.action_counter = 26;
+    r = prepare_world_attack_control(s, i);
+    check(r.candidate && !r.candidate->target && r.candidate->spell_consumption.empty(),
+          "missing healing target is not a consumption");
+    s.battle.actors.at({1}).control.action_counter = 1;
+    r = prepare_world_attack_control(s, i);
+    check(r.candidate && !r.candidate->requests.empty() && r.candidate->spell_consumption.empty(),
+          "healing preparation visual is not an actual consumption");
 }
 void monsters_and_setup() {
     for (int ticket : {0, 11, 12, 99}) {

@@ -9,6 +9,27 @@
 #include "dungeon_village_reference/human_growth.hpp"
 
 namespace dungeon_village_reference {
+// 可选观察回执，随候选返回；不属于Owner/存档，外层事务成功前不能对外发布。
+enum class SpellConsumptionKind { launch, contact, delayed_hit, healing };
+struct SpellLocalTargetDelta {
+    int hp_before{}, hp_after{}; // HP目标槽，不能用显示HP替代局部消费者事实。
+    int damage_before{}, damage_after{}, hits_before{}, hits_after{};
+    int down_counter_before{}, down_counter_after{};
+};
+struct SpellConsumptionReceipt {
+    SpellConsumptionKind kind{};
+    CharacterId caster;
+    std::optional<int> caster_definition;
+    std::optional<CharacterId> aimed_target, actual_target;
+    std::optional<int> target_definition;
+    std::optional<int> selected_q_slot; // 实际Q下标0..3，不证明学习来源或职业来源。
+    std::optional<int> effect;
+    std::optional<std::uint64_t> projectile, parent_projectile, child_projectile;
+    std::optional<int> amount, delay;
+    std::optional<bool> landed;
+    std::optional<SpellLocalTargetDelta> target_delta;
+    bool prior_launch_unavailable{}; // 原type2无effect/父ID，禁止从旧档补造历史。
+};
 struct RewardHumanDefinition {
     HumanDefinitionStatsInput definition;
     HumanDerivedStats derived;
@@ -178,6 +199,7 @@ struct WorldProjectileInput {
     CombatRandomDraw draw{};
     WorldCombatExpressionConsumer expression{};
     WorldCombatEventConsumer event{}; // 致命命中131/217真实原位置，非事后request遍历。
+    bool observe_spell_consumption{};
 };
 struct WorldProjectileCandidate {
     AiRewardState state;
@@ -187,6 +209,7 @@ struct WorldProjectileCandidate {
     std::optional<std::uint64_t> spawned_projectile;
     std::vector<std::uint64_t> spawned_objects;
     std::optional<std::vector<std::array<int, 3>>> popularity_queue{};
+    std::vector<SpellConsumptionReceipt> spell_consumption{};
 };
 struct WorldProjectileResult {
     AiRewardError error{AiRewardError::none};

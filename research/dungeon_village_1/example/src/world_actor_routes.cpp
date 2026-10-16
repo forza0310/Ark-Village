@@ -604,6 +604,8 @@ WorldActorControlResult prepare_world_actor_control(const WorldActorRoutesState 
                 next.state.popularity_queue = *r.candidate->popularity_queue;
             audit.attack_requests.insert(audit.attack_requests.end(), r.candidate->requests.begin(),
                                          r.candidate->requests.end());
+            audit.spell_consumption.insert(audit.spell_consumption.end(),
+                r.candidate->spell_consumption.begin(), r.candidate->spell_consumption.end());
             if (i.presentation) {
                 if (r.candidate->hit)
                     for (const auto &request : r.candidate->hit->requests)

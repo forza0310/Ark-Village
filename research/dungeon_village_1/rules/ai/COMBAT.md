@@ -172,6 +172,20 @@ miss仍请求接触效果并删除箭，不把命中失败解释为穿透。晚�
   首选az不重复备用七状态过滤，miss仍消耗ai但不安排接触/表情0。结束只移除本码，让解释器继续后续动作/等待。
 - 任一晚期掉落、投射身份或HP失败回滚本段的ai、连攻、HP、统计、掉落和队列，维护安全契约不复制Java异常回绕。
 
+<a id="spell-consumption-receipts"></a>
+### 可选的实际法术消费回执
+
+`WorldAttackInput／WorldProjectileInput.observe_spell_consumption`及三个调度adapter的同名开关默认关闭；共同Runtime以最外层开关覆盖下层，不能因某provider残留true意外启用。研究`prepare_startup_world_runtime(state,true)`返回私有候选；调用者须完成自己的提交后消费其`spell_consumption`。`StartupWorldRuntimeSession::update(true)`仅在整轮／第二pass／日历与最终render-cache成功并安装后返回这些事实，失败无候选／回执／检查点。普通应用调用默认关闭；不向Owner、原type2、codec或玩家档增加历史，也不提供提前向外发布的callback。
+
+| kind | 产生位置与事实 | 不能据此宣称 |
+| --- | --- | --- |
+| launch | 控制15实际26帧成功创建type1；施放者实例／定义、瞄准目标及定义、原选中Q下标0–2、effect4–9、投射ID、保存伤害 | 此时`actual_target`为空；不证明已经接触或命中，也不证明学习／职业来源 |
+| contact | type1真实碰撞且成功创建type2；父／子投射ID、原瞄准与实际碰撞目标、实际目标定义、effect及子保存伤害／delay | 不把接触当作扣HP，不由人物当前装备倒推过去技能 |
+| delayed_hit | type2真正调用hit成功；其ID、当前保存目标、saved damage／delay、实际landed、HP目标槽／ao伤害累计／ap命中累计／B前后值 | `prior_launch_unavailable=true`；原type2没有发射effect／父ID／Q槽和原瞄准历史，这些字段留空。调用方可按已有contact.child ID关联观察历史，但不能从载入的孤立type2伪造此前发射 |
+| healing | 控制16实际J目标成功消费回复；Q下标3、含0／负数的原amount及同样局部前后值 | 不经过hit，landed不填；排队、声音、准备光效及显示HP不是回复证据 |
+
+launch的`target_definition`对应瞄准对象，其余对应实际对象；`amount`是保存伤害或原回复量，不能当最终HP差。没有目标、尚在等待、缺引用仅删除、地面空落地或任一后继失败均不伪造消费；物理箭不进入法术回执。四阶段按原调用顺序沿候选传到共同审计，再由最外层成功结果一次交付；只保留ID／局部数值，不保留实体引用。既有真实消费者及随机票序不变，回执是维护观察接口，不新增原规则、自然路线证据或原存档兼容。
+
 ### 武器窗口与动作端点分开
 
 来源`c/b.java:121–124,3520–3668`与既有低层`L46e→L61d`：当前武器p.h控制直接命中窗口，

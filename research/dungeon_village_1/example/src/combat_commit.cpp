@@ -442,6 +442,21 @@ WorldAttackResult prepare_world_attack_control(const AiRewardState &s, const Wor
                                 i.facing_for ? i.facing_for(i.actor, *c.target) : i.facing,
                                 damage.candidate->effect, damage.candidate->damage.value))
                         return fail(AiRewardError::preparation_failed);
+                    if (i.observe_spell_consumption) {
+                        const auto &projectile = c.state.projectiles.at(*c.projectile);
+                        SpellConsumptionReceipt receipt;
+                        receipt.kind = SpellConsumptionKind::launch;
+                        receipt.caster = i.actor;
+                        receipt.caster_definition = original.definition;
+                        receipt.aimed_target = c.target;
+                        receipt.target_definition = resolve(c.state, *c.target)->definition;
+                        // effect4..9保留实际选中的Q槽；回执不再抽取法术或预告命中。
+                        receipt.selected_q_slot = (projectile.effect - 4) % 3;
+                        receipt.effect = projectile.effect;
+                        receipt.projectile = c.projectile;
+                        receipt.amount = projectile.damage;
+                        c.spell_consumption.push_back(std::move(receipt));
+                    }
                 } else {
                     const auto amount =
                         prepare_healing_amount(growth.derived.combat[3], i.magic_jitter, i.draw);
@@ -452,6 +467,13 @@ WorldAttackResult prepare_world_attack_control(const AiRewardState &s, const Wor
                         prepare_hp_change(target.hp, amount.candidate->value, target.capacity);
                     if (!hp.candidate)
                         return fail(AiRewardError::preparation_failed);
+                    SpellLocalTargetDelta delta;
+                    if (i.observe_spell_consumption) {
+                        delta.hp_before = target.hp.target;
+                        delta.damage_before = target.damage_total;
+                        delta.hits_before = target.hit_count;
+                        delta.down_counter_before = target.state_counter;
+                    }
                     target.hp = *hp.candidate;
                     // a(amount,target) also advances down recovery proportionally to the new HP.
                     if (target.control.state == 2) {
@@ -465,6 +487,22 @@ WorldAttackResult prepare_world_attack_control(const AiRewardState &s, const Wor
                         {2, 0, amount.candidate->value, 160, -26, 2});
                     c.requests.push_back(
                         {WorldAttackVisual::healing_target, i.actor, *c.target, 0});
+                    if (i.observe_spell_consumption) {
+                        delta.hp_after = target.hp.target;
+                        delta.damage_after = target.damage_total;
+                        delta.hits_after = target.hit_count;
+                        delta.down_counter_after = target.state_counter;
+                        SpellConsumptionReceipt receipt;
+                        receipt.kind = SpellConsumptionKind::healing;
+                        receipt.caster = i.actor;
+                        receipt.caster_definition = original.definition;
+                        receipt.aimed_target = receipt.actual_target = c.target;
+                        receipt.target_definition = target.definition;
+                        receipt.selected_q_slot = 3;
+                        receipt.amount = amount.candidate->value;
+                        receipt.target_delta = delta;
+                        c.spell_consumption.push_back(std::move(receipt));
+                    }
                 }
             }
         }

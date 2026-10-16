@@ -32,6 +32,7 @@ template <class Owner> struct WorldActorScheduleAdapter {
     std::function<std::optional<OwnedWorldScheduleStep<Owner>>(
         const Owner &, const WorldScheduleCall &, const CombatInfluenceCandidate &)>
         other;
+    bool observe_spell_consumption{};
 };
 template <class Owner> struct WorldActorScheduleResult {
     WorldScheduleError error{WorldScheduleError::none};
@@ -104,6 +105,7 @@ prepare_world_actor_schedule(const Owner &state, const WorldScheduleInput &input
             return result;
         };
         WorldScheduleDisposition disposition{WorldScheduleDisposition::keep};
+        std::vector<SpellConsumptionReceipt> spell_consumption;
         const WorldActorPresentationConsumer present =
             [&](const WorldActorRoutesState &r, const WorldActorPresentationRequest &request)
             -> std::optional<WorldActorRoutesState> {
@@ -159,6 +161,8 @@ prepare_world_actor_schedule(const Owner &state, const WorldScheduleInput &input
                     input->event = consume_event;
                 if (input && adapter.presentation)
                     input->presentation = present;
+                if (input && input->attack)
+                    input->attack->observe_spell_consumption=adapter.observe_spell_consumption;
                 return input;
             };
             auto r = prepare_world_actor_control(routes, actor, command);
@@ -167,6 +171,7 @@ prepare_world_actor_schedule(const Owner &state, const WorldScheduleInput &input
             routes = r.candidate->state;
             if (r.candidate->flow == WorldControlFlow::delete_requested)
                 disposition = WorldScheduleDisposition::remove_requested;
+            spell_consumption = r.candidate->spell_consumption;
             output.controls.push_back(std::move(*r.candidate));
         } else {
             if (!adapter.primary_expression_table || !routes.world.ai.contexts.count(actor))
@@ -180,7 +185,8 @@ prepare_world_actor_schedule(const Owner &state, const WorldScheduleInput &input
         }
         if (!publish(routes))
             return {};
-        return OwnedWorldScheduleStep<Owner>{std::move(next), disposition};
+        return OwnedWorldScheduleStep<Owner>{std::move(next), disposition,
+                                             std::move(spell_consumption)};
     };
     auto schedule_input = input;
     schedule_input.publish_actor_tail = static_cast<bool>(adapter.tail_cache);

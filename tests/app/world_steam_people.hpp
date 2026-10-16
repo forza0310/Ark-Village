@@ -10,12 +10,19 @@
 namespace ark::test {
 // Prospective test-player eligibility only: reuse the gift policy for an equipment
 // recipe's possible free grant. This neither grants stock nor certifies consumption.
-bool steam_equipment_reward_usable(const app::WorldState &state, int kind, int definition);
+bool steam_equipment_reward_usable(const app::WorldState &state, int kind, int definition,
+                                   bool require_upgrade = true);
 
 // Test observation only: keep one worn slot until its following-business check finishes.
 // Other slots, people and management actions remain eligible; nothing is persisted here.
 struct SteamEquipmentSlot {
     int human{}, slot{};
+};
+
+// An explicit coverage branch may consume this one real free grant even when
+// it lowers stats. Recipient fairness and source-page qualifications still apply.
+struct SteamEquipmentGoal {
+    int kind{}, definition{};
 };
 
 // Player policy only. Commands consume real award pages, reward qualifications and quotes;
@@ -24,7 +31,8 @@ class SteamPeopleStrategy {
   public:
     IncomeDecision next(const app::WorldState &state, int reserved_points,
                         std::int64_t cash_reserve, bool start,
-                        std::optional<SteamEquipmentSlot> retained = {});
+                        std::optional<SteamEquipmentSlot> retained = {},
+                        std::optional<SteamEquipmentGoal> goal = {});
     void observe(const app::WorldState &before, const app::WorldCommand &command,
                  const app::WorldCommandResult &result, const app::WorldState &after,
                  const CampaignReceiptSink &receipts = {});
@@ -55,6 +63,7 @@ class SteamPeopleStrategy {
     struct Gift {
         int human{}, slot{}, definition{};
         int charge{}, stock{}; // Source quote/qualification captured before the actual gift flow.
+        bool coverage{}; // Transient free-grant objective; pending gifts are never serialized.
     };
     std::optional<Gift> gift_;
     bool consumed_{};

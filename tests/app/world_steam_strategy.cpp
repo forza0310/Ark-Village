@@ -331,13 +331,14 @@ std::optional<Command> SteamVillageStrategy::layout(const State &s) {
 }
 
 std::optional<Command> SteamVillageStrategy::next(const State &s,
-                                                  std::optional<SteamEquipmentSlot> retained) {
+                                                  std::optional<SteamEquipmentSlot> retained,
+                                                  std::optional<SteamEquipmentGoal> goal) {
     if (stats_.initial_month < 0)
         reconcile(s);
     const auto &p = top(s);
     if (p.lifecycle == 0)
         return {};
-    const auto people = people_.next(s, steam_point_reserve(s), reserve(s), false, retained);
+    const auto people = people_.next(s, steam_point_reserve(s), reserve(s), false, retained, goal);
     if (people.handled)
         return people.command;
     if (income_.active()) {
@@ -389,7 +390,8 @@ std::optional<Command> SteamVillageStrategy::next(const State &s,
             next_management_ = stats_.ticks + 100;
             if (const auto home = housing(s, false))
                 return home;
-            const auto value = people_.next(s, steam_point_reserve(s), reserve(s), true, retained);
+            const auto value = people_.next(s, steam_point_reserve(s), reserve(s), true, retained,
+                                            goal);
             if (value.handled)
                 return value.command;
             const auto invest = income_.next(s, reserve(s), true);

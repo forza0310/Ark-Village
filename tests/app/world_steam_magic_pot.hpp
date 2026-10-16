@@ -13,7 +13,7 @@ void inspect_steam_magic_pot(const app::WorldState &state, std::ostream &out);
 // owns equipment allocation; this module only observes its real resulting gift.
 class SteamPotEquipmentPlayer {
   public:
-    void reconcile(const app::WorldState &state);
+    void reconcile(const app::WorldState &state, std::optional<int> requested = {});
     // Legacy prefixes wait for trade after gifting; active business retains just the worn slot.
     IncomeDecision next(const app::WorldState &state, std::int64_t budget, bool wait_for_trade,
                         const ActiveTradeEvidence &trade);
@@ -28,11 +28,17 @@ class SteamPotEquipmentPlayer {
     bool certified() const { return certified_; }
     // A new isolated segment retains the prior sidecar as its input. Replace the
     // controller only after certifying that input's gift and following business.
-    bool begin_next(const app::WorldState &state, const ActiveTradeEvidence &trade);
+    bool begin_next(const app::WorldState &state, const ActiveTradeEvidence &trade,
+                    std::optional<int> requested = {});
     std::string diagnose() const;
     void encode(std::ostream &out) const;
     static SteamPotEquipmentPlayer decode(std::istream &in);
     int recipe() const { return recipe_; }
+    std::optional<SteamEquipmentGoal> pending_grant() const {
+        return crafted_ && !equipped_
+                   ? std::optional<SteamEquipmentGoal>{{kind_, definition_}}
+                   : std::nullopt;
+    }
     std::optional<SteamEquipmentSlot> retained_slot() const {
         return equipped_ ? std::optional<SteamEquipmentSlot>{{human_, slot_}} : std::nullopt;
     }

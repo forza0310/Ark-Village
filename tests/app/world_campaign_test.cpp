@@ -18,6 +18,7 @@
 #include "world_steam_magic_facilities.hpp"
 #include "world_steam_magic_pot.hpp"
 #include "world_steam_strategy.hpp"
+#include <charconv>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -241,6 +242,7 @@ template <class PlayerStrategy> struct CampaignRun {
     std::optional<ark::test::SteamVillageStrategy> steam_observer{};
     std::optional<ark::test::SteamPotEquipmentPlayer> pot_equipment{};
     bool pot_followup_business{}; // Per-process observation scope; never a persisted player policy.
+    bool pot_coverage_objective{}; // Only the explicit --recipe branch may lower a free gift's stats.
     std::optional<ark::test::SteamPotSpellBookPlayer> pot_book{};      // Never serialized mid-flow.
     std::optional<ark::test::SteamPotDiscoveryPlayer> pot_discovery{}; // Source pending work saves.
     std::optional<ark::test::SteamPotFacilityPlayer> pot_facility{};   // Claim before saving.
@@ -420,7 +422,10 @@ template <class PlayerStrategy> struct CampaignRun {
             if constexpr (std::is_same_v<PlayerStrategy, ark::test::SteamVillageStrategy>)
                 return strategy.next(state, pot_followup_business && pot_equipment
                                                 ? pot_equipment->retained_slot()
-                                                : std::nullopt);
+                                                : std::nullopt,
+                                     pot_coverage_objective && pot_equipment
+                                         ? pot_equipment->pending_grant()
+                                         : std::nullopt);
             else
                 return strategy.next(state);
         }();
@@ -1154,11 +1159,24 @@ int main(int argc, char **argv) {
             return 0;
         }
         require(argc == 3 || argc == 4,
-                "Expected campaign phase, isolated directory and optional --trace-activity");
+                "Expected campaign phase, isolated directory and optional mode-specific argument");
         const std::string mode = argv[1];
-        require(argc == 3 ||
-                    (mode == "steam-observe" && std::string(argv[3]) == "--trace-activity"),
-                "--trace-activity is supported only by bounded steam-observe");
+        std::optional<int> requested_recipe;
+        if (argc == 4 && mode == "steam-pot-equipment-month") {
+            const std::string option = argv[3], prefix = "--recipe=";
+            int id{};
+            require(option.compare(0, prefix.size(), prefix) == 0,
+                    "equipment coverage expects --recipe=ID");
+            const auto parsed = std::from_chars(option.data() + prefix.size(),
+                                                option.data() + option.size(), id);
+            require(parsed.ec == std::errc{} && parsed.ptr == option.data() + option.size() &&
+                        id >= 0 && id < 40,
+                    "invalid explicit recipe identity");
+            requested_recipe = id;
+        } else
+            require(argc == 3 ||
+                        (mode == "steam-observe" && std::string(argv[3]) == "--trace-activity"),
+                    "unsupported campaign-mode argument");
         if (mode == "steam-natural-month" || mode == "steam-continue-month" ||
             mode == "steam-pot-equipment-month" || mode == "steam-pot-spell-month" ||
             mode == "steam-pot-discover-month" || mode == "steam-pot-facility-month" ||
@@ -1232,14 +1250,22 @@ int main(int argc, char **argv) {
                 if (mode == "steam-pot-equipment-month") {
                     if (!run.pot_equipment) {
                         run.pot_equipment.emplace();
-                        run.pot_equipment->reconcile(run.state);
-                    } else if (run.pot_equipment->begin_next(run.state,
-                                                             run.strategy.stats().trade)) {
-                        std::cout << "POT_NEXT " << run.pot_equipment->diagnose() << std::endl;
+                        run.pot_equipment->reconcile(run.state, requested_recipe);
+                    } else if (requested_recipe && run.pot_equipment->recipe() == *requested_recipe)
+                        run.pot_equipment->reconcile(run.state, requested_recipe);
+                    else {
+                        const bool changed = run.pot_equipment->begin_next(
+                            run.state, run.strategy.stats().trade, requested_recipe);
+                        require(!requested_recipe || changed,
+                                "an unfinished recipe cannot be replaced by explicit coverage");
+                        if (changed)
+                            std::cout << "POT_NEXT " << run.pot_equipment->diagnose() << std::endl;
                     }
                 }
-                run.pot_followup_business = run.lifecycle->finished() && run.pot_equipment &&
-                                            !run.pot_equipment->certified();
+                run.pot_coverage_objective = requested_recipe.has_value();
+                run.pot_followup_business =
+                    (run.lifecycle->finished() || run.pot_coverage_objective) && run.pot_equipment &&
+                    !run.pot_equipment->certified();
                 if (mode == "steam-pot-equipment-verify") {
                     require(run.pot_equipment.has_value(),
                             "Missing recorded equipment pot controller");

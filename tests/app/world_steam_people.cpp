@@ -80,7 +80,7 @@ std::optional<ref::HumanManagementEquipment> equipment(const State &s, int slot,
                                          f->shop.combat};
 }
 bool useful(const State &s, int person, const ref::HumanManagementEquipment &target,
-            bool paid = false) {
+            bool paid = false, bool allow_lower = false) {
     if (!target.availability || target.stock < 0 || (!paid && target.stock == 0))
         return false;
     const auto old_id = s.shop_humans.at(person).equipment[target.slot];
@@ -89,6 +89,8 @@ bool useful(const State &s, int person, const ref::HumanManagementEquipment &tar
     const auto old = old_id ? equipment(s, target.slot, *old_id) : std::nullopt;
     if (old_id && !old)
         return false;
+    if (allow_lower && !paid)
+        return true;
     const std::array<int, 4> prior = old ? old->combat : std::array<int, 4>{};
     return (!paid || !old || target.combat != prior) && (!old || target.grade >= old->grade) &&
            std::equal(prior.begin(), prior.end(), target.combat.begin(),
@@ -115,7 +117,8 @@ std::optional<int> award_index(const State &s, const std::vector<int> &ranked) {
 
 IncomeDecision SteamPeopleStrategy::next(const State &s, int reserved_points,
                                          std::int64_t cash_reserve, bool start,
-                                         std::optional<SteamEquipmentSlot> retained) {
+                                         std::optional<SteamEquipmentSlot> retained,
+                                         std::optional<SteamEquipmentGoal> goal) {
     const auto *p = top(s);
     if (!p || s.scene.framework_paused)
         return {};
@@ -165,9 +168,12 @@ IncomeDecision SteamPeopleStrategy::next(const State &s, int reserved_points,
                         continue;
                     if (key.first != kind(slot))
                         continue;
+                    if (goal && (key.first != goal->kind || key.second != goal->definition ||
+                                 entry.free_purchases <= 0))
+                        continue;
                     const auto target = equipment(s, slot, key.second);
                     const bool paid = entry.free_purchases == 0;
-                    if (!target || !useful(s, person, *target, paid))
+                    if (!target || !useful(s, person, *target, paid, bool(goal)))
                         continue;
                     const auto quote = ref::human_equipment_gift_cost(*target);
                     if (!quote ||
@@ -178,7 +184,8 @@ IncomeDecision SteamPeopleStrategy::next(const State &s, int reserved_points,
                                         slot, key.second);
                     if (!priority || value < *priority) {
                         priority = value;
-                        gift_ = Gift{person, slot, key.second, paid ? *quote : 0, target->stock};
+                        gift_ = Gift{person, slot, key.second, paid ? *quote : 0, target->stock,
+                                     bool(goal)};
                     }
                 }
         }
@@ -217,7 +224,7 @@ IncomeDecision SteamPeopleStrategy::next(const State &s, int reserved_points,
         if (consumed_)
             return {true, human_command(p->id, Human::cancel)};
         const auto target = equipment(s, gift_->slot, gift_->definition);
-        require(target && useful(s, gift_->human, *target, gift_->charge > 0) &&
+        require(target && useful(s, gift_->human, *target, gift_->charge > 0, gift_->coverage) &&
                     target->stock == gift_->stock,
                 "selected equipment is no longer available");
         const auto &list = s.equipment_page_catalogs.at(p->id)[gift_->slot];
@@ -238,7 +245,8 @@ IncomeDecision SteamPeopleStrategy::next(const State &s, int reserved_points,
     return {true, human_command(p->id, Human::confirm)};
 }
 
-bool steam_equipment_reward_usable(const State &s, int equipment_kind, int definition) {
+bool steam_equipment_reward_usable(const State &s, int equipment_kind, int definition,
+                                   bool require_upgrade) {
     const auto source =
         std::find_if(s.rules->equipment.begin(), s.rules->equipment.end(), [&](const auto &e) {
             return e.shop.kind == equipment_kind && e.shop.id == definition;
@@ -258,7 +266,7 @@ bool steam_equipment_reward_usable(const State &s, int equipment_kind, int defin
         const auto details = presence ? sim::startup_world_human_details(s, human) : std::nullopt;
         if (details && details->live_actor &&
             s.scene.world.world.ai.battle.actors.at(*details->live_actor).control.state != 4 &&
-            useful(s, human, *target))
+            useful(s, human, *target, false, !require_upgrade))
             return true;
     }
     return false;
@@ -281,7 +289,9 @@ void SteamPeopleStrategy::observe_world(const State &before, const State &after,
     const auto old = sim::startup_world_human_details(before, g.human);
     const auto now = sim::startup_world_human_details(after, g.human);
     const auto target = equipment(before, g.slot, g.definition);
-    require(old && now && target && old->live_actor && old->live_actor == now->live_actor &&
+    require(old && now && target && old->live_actor && old->live_actor == now->live_actor,
+            "gift changed its bound recipient or source equipment");
+    require((g.coverage && g.charge == 0 && g.stock > 0) ||
                 std::equal(old->combat.begin(), old->combat.end(), now->combat.begin(),
                            [](int a, int b) { return a <= b; }),
             "gift reduced recipient combat attributes");
@@ -293,6 +303,13 @@ void SteamPeopleStrategy::observe_world(const State &before, const State &after,
                 after.scene.world.world.ai.battle.actors.at(*now->live_actor).capacity ==
                     now->combat[0],
             "equipped source attributes or live capacity were not synchronized");
+    if (g.coverage) {
+        const auto &ai = after.scene.world.world.ai;
+        const auto derived = ref::derive_human_stats(ai.growth.at(g.human).definition,
+                                                     ai.professions);
+        require(derived.candidate && derived.candidate->combat == now->combat,
+                "explicit gift did not apply all four actual derived source attributes");
+    }
     std::uint64_t page{};
     for (const auto &p : before.scripts.pages)
         if (p.legacy_page == 64 && p.lifecycle != 4 && before.human_page_answers.count(p.id) &&
@@ -484,6 +501,35 @@ void steam_people_contract() {
         require(gifts.gifts() == 0 && retention.catalog.at({1, 1}).free_purchases == 1 &&
                     !retention.shop_humans.at(human).equipment[0],
                 "retention selection cannot equip, spend or invent gift history");
+    }
+    // Decision projections only: a recorded free objective can cover a lower
+    // weapon without weakening ordinary upgrades, stock checks or retention.
+    auto lower = retention;
+    lower.shop_humans.at(human).equipment[0] = 30;
+    require(!steam_equipment_reward_usable(lower, 1, 1) &&
+                steam_equipment_reward_usable(lower, 1, 1, false),
+            "source eligibility must stay distinct from the conservative upgrade policy");
+    for (int scenario = 0; scenario < 6; ++scenario) {
+        auto candidate = lower;
+        if (scenario == 2)
+            candidate.catalog.at({1, 1}).free_purchases = 0;
+        else if (scenario == 3)
+            candidate.catalog.at({1, 1}).status = 0;
+        else if (scenario == 4)
+            candidate.shop_humans.at(human).equipment[0] = 1;
+        const auto before = sim::startup_world_state_digest(candidate);
+        SteamPeopleStrategy player;
+        const auto choice = player.next(
+            candidate, 1000, 0, true,
+            scenario == 5 ? std::optional<SteamEquipmentSlot>{{human, 0}} : std::nullopt,
+            scenario == 0 ? std::nullopt : std::optional<SteamEquipmentGoal>{{1, 1}});
+        require(scenario == 1 ? choice.handled && choice.command &&
+                                    choice.command->kind == Kind::open_human &&
+                                    choice.command->definition == human
+                              : !choice.handled && !player.active(),
+                "explicit free objective bypassed policy isolation, stock, opening or retention");
+        require(sim::startup_world_state_digest(candidate) == before && player.gifts() == 0,
+                "coverage selection cannot change equipment, cash, stock, random or gift history");
     }
     const std::vector<int> list{0, 1, 2};
     for (const int person : list) {

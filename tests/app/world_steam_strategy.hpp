@@ -18,7 +18,8 @@ class SteamVillageStrategy {
   public:
     void reconcile(const app::WorldState &state);
     std::optional<app::WorldCommand> next(const app::WorldState &state,
-                                          std::optional<SteamEquipmentSlot> retained = {});
+                                          std::optional<SteamEquipmentSlot> retained = {},
+                                          std::optional<SteamEquipmentGoal> goal = {});
     void observe(const app::WorldState &before, const app::WorldCommand &command,
                  const app::WorldCommandResult &result, const app::WorldState &after,
                  const CampaignReceiptSink &receipts = {});

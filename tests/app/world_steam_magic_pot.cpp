@@ -171,12 +171,21 @@ void inspect_steam_magic_pot(const State &s, std::ostream &out) {
     }
 }
 
-void SteamPotEquipmentPlayer::reconcile(const State &s) {
+void SteamPotEquipmentPlayer::reconcile(const State &s, std::optional<int> requested) {
     require(s.rules && s.rank >= 2 && (s.scripts.user_flags & 1U),
             "requires the real imported pot");
+    require(!requested || recipe_ < 0 || recipe_ == *requested,
+            "explicit selection cannot replace an existing recipe objective");
     if (recipe_ < 0) {
-        const auto selected = next_equipment_recipe(s);
+        const auto selected = requested ? requested : next_equipment_recipe(s);
         require(selected.has_value(), "no known unowned equipment recipe with a useful recipient");
+        const auto &chosen = source_recipe(s, *selected);
+        require((chosen.flags & 2U) && chosen.reward_kind >= 1 && chosen.reward_kind <= 3 &&
+                    s.magic_pot_recipes.at(chosen.identity).status == 1 &&
+                    s.catalog.at({chosen.reward_kind, chosen.reward_definition}).status == 0 &&
+                    (!requested || steam_equipment_reward_usable(
+                                       s, chosen.reward_kind, chosen.reward_definition, false)),
+                "explicit recipe needs a known unowned equipment reward and live recipient");
         recipe_ = *selected;
         const auto &r = source_recipe(s, recipe_);
         kind_ = r.reward_kind;
@@ -553,14 +562,18 @@ void SteamPotEquipmentPlayer::certify(const State &s, const ActiveTradeEvidence 
         certified_ = true;
     }
 }
-bool SteamPotEquipmentPlayer::begin_next(const State &s, const ActiveTradeEvidence &trade) {
+bool SteamPotEquipmentPlayer::begin_next(const State &s, const ActiveTradeEvidence &trade,
+                                         std::optional<int> requested) {
     if (!complete(s, trade))
         return false;
-    certify(s, trade);
-    if (!next_equipment_recipe(s))
+    auto verified = *this;
+    verified.certify(s, trade);
+    if (!requested && !next_equipment_recipe(s)) {
+        *this = std::move(verified);
         return false;
+    }
     SteamPotEquipmentPlayer candidate;
-    candidate.reconcile(s);
+    candidate.reconcile(s, requested);
     *this = std::move(candidate);
     return true;
 }
@@ -658,6 +671,46 @@ void steam_pot_equipment_contract() {
     again.str({});
     copy.encode(again);
     require(again.str() == encoded.str(), "unfinished advancement changed the recorded objective");
+    // A legal named branch uses the same persisted target and refuses replacing
+    // an unfinished objective. These qualifications are not acquisition evidence.
+    auto named = s;
+    named.magic_pot_recipes.at(17).status = 1;
+    SteamPotEquipmentPlayer directed;
+    const auto named_before = sim::startup_world_state_digest(named);
+    directed.reconcile(named, 17);
+    std::ostringstream directed_wire;
+    directed.encode(directed_wire);
+    std::istringstream directed_input(directed_wire.str());
+    auto directed_copy = SteamPotEquipmentPlayer::decode(directed_input);
+    directed_copy.reconcile(named, 17);
+    std::ostringstream directed_again;
+    directed_copy.encode(directed_again);
+    require(directed.recipe() == 17 && !directed.pending_grant() &&
+                directed_again.str() == directed_wire.str() &&
+                sim::startup_world_state_digest(named) == named_before,
+            "named coverage must roundtrip without inventing a free gift or modifying Owner");
+    for (const int invalid : {0, 18, 35, 40}) {
+        bool refused{};
+        try {
+            SteamPotEquipmentPlayer invalid_player;
+            invalid_player.reconcile(named, invalid);
+        } catch (const std::runtime_error &) {
+            refused = true;
+        }
+        require(refused, "named coverage accepted unknown/non-equipment/unpublished recipe");
+    }
+    require(!directed_copy.begin_next(named, {}, 22),
+            "an unfinished named recipe cannot be advanced by a second explicit target");
+    bool replacement_refused{};
+    try {
+        directed_copy.reconcile(named, 22);
+    } catch (const std::runtime_error &) {
+        replacement_refused = true;
+    }
+    directed_again.str({});
+    directed_copy.encode(directed_again);
+    require(replacement_refused && directed_again.str() == directed_wire.str(),
+            "explicit replacement of an unfinished target must leave its evidence unchanged");
     auto owned = s;
     owned.catalog.at({2, 13}).status = 1; // Selection fixture only, not observed crafting.
     SteamPotEquipmentPlayer successor;
@@ -828,6 +881,20 @@ void steam_pot_equipment_contract() {
                 !copy.next(business, 0, false, trade).handled,
             "observed equipment permits primary business while only its worn slot is retained");
     equipped.scene.calendar.month += 2;
+    auto rejected_successor = copy;
+    std::ostringstream before_rejection;
+    rejected_successor.encode(before_rejection);
+    bool invalid_successor_refused{};
+    try {
+        rejected_successor.begin_next(equipped, trade, 0);
+    } catch (const std::runtime_error &) {
+        invalid_successor_refused = true;
+    }
+    std::ostringstream after_rejection;
+    rejected_successor.encode(after_rejection);
+    require(invalid_successor_refused && !rejected_successor.certified() &&
+                before_rejection.str() == after_rejection.str(),
+            "late successor validation must not partially archive or replace prior evidence");
     copy.certify(equipped, trade);
     require(copy.certified(), "strict live endpoint must archive its successful checks");
     std::ostringstream certificate;

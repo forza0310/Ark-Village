@@ -620,4 +620,20 @@ std::optional<SteamTextDrawReflow> steam_reflow_text_for_draw(
     if(!layout)return {};
     return SteamTextDrawReflow{graphics_scale,std::move(layout)};
 }
+
+std::optional<std::int32_t> steam_draw_text_block_sequence(
+        const std::vector<SteamLayoutBlock> &blocks,std::int32_t pos,float dx,float dy,
+        std::int32_t scroll_v,float box_height,SteamTextBlockDrawBackend &out) {
+    if(blocks.size()>block_budget)return {};
+    auto budget=pos/1000; // 107CA040–50 signed截零，不以length钳位或调用Frame。
+    if(blocks.empty()||budget<=0)return budget;
+    const auto scrolled_y=f32(dy-static_cast<float>(scroll_v));
+    if(!std::isfinite(dx)||!std::isfinite(dy)||!std::isfinite(scrolled_y)||!std::isfinite(box_height))return {};
+    for(const auto &block:blocks) {
+        if(budget<=0)break;
+        const auto consumed=out.draw_block(block,{dx,scrolled_y,dy,box_height,budget});
+        budget=sub32(budget,consumed); // 源无min/非负修补；后继仍看signed预算。
+    }
+    return budget;
+}
 } // namespace dungeon_village_prototype

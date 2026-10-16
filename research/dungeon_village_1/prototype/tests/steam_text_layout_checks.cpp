@@ -926,6 +926,103 @@ void draw_scale_reflow(Checks &check) {
               changed.request_font_size==99&&FixtureBackend::font(changed.font)->used==12,
           "变比例排块测宽失败只传播一次原错并清理，没有候选安装；原输入和入场Font不改，不宣称后端副作用回滚");
 }
+
+class BlockSequenceFixture final:public SteamTextBlockDrawBackend {
+public:
+    std::vector<std::int32_t> receipts;
+    std::vector<const SteamLayoutBlock *> seen;
+    std::vector<SteamTextBlockDrawRequest> requests;
+    std::size_t fail_at{};
+    std::int32_t draw_block(const SteamLayoutBlock &block,const SteamTextBlockDrawRequest &request) override {
+        seen.push_back(&block);requests.push_back(request);
+        if(fail_at==seen.size())throw LayoutBackendFailure{"blockDraw"};
+        if(seen.size()>receipts.size())throw std::runtime_error("逐块夹具缺少已声明的实际消费回执");
+        return receipts[seen.size()-1];
+    }
+};
+
+void draw_block_sequence(Checks &check) {
+    const auto nan=std::numeric_limits<float>::quiet_NaN();
+    std::vector<SteamLayoutBlock> one(1);
+    struct PositionCase {std::int32_t pos,budget;};
+    for(const auto c:std::array<PositionCase,8>{{
+             {std::numeric_limits<std::int32_t>::min(),-2147483},{-1001,-1},{-999,0},{0,0},
+             {999,0},{1000,1},{1999,1},{std::numeric_limits<std::int32_t>::max(),2147483}}}) {
+        BlockSequenceFixture backend;backend.receipts={0};
+        const auto p=steam_draw_text_block_sequence(one,c.pos,c.budget<=0?nan:1.25F,2.5F,0,-1.F,backend);
+        check(p&&*p==c.budget&&backend.seen.size()==(c.budget>0?1U:0U)&&
+                  (c.budget<=0||backend.requests[0].budget==c.budget),
+              "逐块入口按signed pos/1000截零，负值及INT边界不取绝对值/夹length，预算非正不消费未用坏坐标");
+    }
+    BlockSequenceFixture no_blocks;
+    const auto empty=steam_draw_text_block_sequence({},1000,nan,nan,17,nan,no_blocks);
+    check(empty&&*empty==1&&no_blocks.seen.empty(),
+          "空块目录即使正预算也不读取无用坐标/盒高或调用后端，不伪造消费");
+    struct ScrollCase {float dy;std::int32_t scroll;float text_y;};
+    for(const auto c:std::array<ScrollCase,3>{{{0.F,16777217,-16777216.F},
+             {16777216.F,16777217,0.F},{1.F,-16777217,16777216.F}}}) {
+        BlockSequenceFixture backend;backend.receipts={1};
+        const auto p=steam_draw_text_block_sequence(one,1000,1.25F,c.dy,c.scroll,-1.F,backend);
+        check(p&&*p==0&&backend.requests.size()==1&&backend.seen[0]==&one[0]&&
+                  backend.requests[0].dx==1.25F&&backend.requests[0].dy==c.text_y&&
+                  backend.requests[0].box_y==c.dy&&backend.requests[0].box_height==-1.F,
+              "scroll先转float32再减：16777217先成16777216；文字y变而boxY保持原dy，分数x及盒高-1不舍整");
+    }
+    // 回执分别来自已隐藏普通AB、图标、普通空块、按钮和普通C；执行器不再猜类型消费量。
+    std::vector<SteamLayoutBlock> blocks(5);
+    blocks[0].text=u"AB";blocks[0].blink=2;
+    blocks[1].kind=SteamLayoutBlockKind::pictograph;
+    blocks[3].kind=SteamLayoutBlockKind::button;
+    blocks[4].text=u"C";
+    BlockSequenceFixture mixed;mixed.receipts={2,1,0,1,1};
+    const auto result=steam_draw_text_block_sequence(blocks,5999,3.5F,9.75F,2,16.F,mixed);
+    check(result&&*result==0&&mixed.seen==std::vector<const SteamLayoutBlock *>{
+                  &blocks[0],&blocks[1],&blocks[2],&blocks[3],&blocks[4]}&&
+              mixed.requests.size()==5&&mixed.requests[0].budget==5&&mixed.requests[1].budget==3&&
+              mixed.requests[2].budget==2&&mixed.requests[3].budget==2&&mixed.requests[4].budget==1&&
+              std::all_of(mixed.requests.begin(),mixed.requests.end(),[](const auto &request) {
+                  return request.dx==3.5F&&request.dy==7.75F&&request.box_y==9.75F&&request.box_height==16.F;
+              }),
+          "逐块以原对象引用和真实回执推进：隐藏普通仍消费2，pic/btn各1，普通空块回0仍前进且不重画本块");
+    struct ReceiptCase {
+        std::vector<std::int32_t> receipts,budgets;
+        std::int32_t remaining;
+    };
+    const std::vector<ReceiptCase> unusual{
+        {{2},{1},-1},{{-2,1},{1,3},2},
+        {{std::numeric_limits<std::int32_t>::min()},{1},-2147483647},
+        {{std::numeric_limits<std::int32_t>::max()},{1},-2147483646},
+        {{-2147483646,-2},{1,2147483647},-2147483647}
+    };
+    for(const auto &c:unusual) {
+        BlockSequenceFixture backend;backend.receipts=c.receipts;
+        const std::vector<SteamLayoutBlock> candidates(c.receipts.size()+(c.remaining<=0?1U:0U));
+        const auto p=steam_draw_text_block_sequence(candidates,1000,0,0,0,-1.F,backend);
+        bool budgets=backend.requests.size()==c.budgets.size();
+        for(std::size_t i=0;budgets&&i<c.budgets.size();++i)budgets=backend.requests[i].budget==c.budgets[i];
+        check(p&&*p==c.remaining&&budgets,
+              "故障后端的过量/负回执仍按源int32减法回卷，不min修补；新预算非正立即停止，正预算才走后继");
+    }
+    for(const bool bad_height:std::array<bool,2>{false,true}) {
+        BlockSequenceFixture backend;backend.receipts={1};
+        check(!steam_draw_text_block_sequence(one,1000,bad_height?0.F:nan,0,0,bad_height?nan:-1.F,backend)&&
+                  backend.seen.empty(),
+              "实际访问块前拒绝已消费的坏坐标或盒高，不发后端请求或返回假成功剩余量");
+    }
+    BlockSequenceFixture count_limit;
+    check(!steam_draw_text_block_sequence(std::vector<SteamLayoutBlock>(8193),0,nan,nan,0,nan,count_limit)&&
+              count_limit.seen.empty(),
+          "目录超过8192个块在调用前明确拒绝，不以零预算将超限布局登记为成功");
+    blocks[0].font=input(u"").font;blocks[0].x=4.25F;
+    BlockSequenceFixture failure;failure.receipts={0};failure.fail_at=2;bool exact=false;
+    try {(void)steam_draw_text_block_sequence(blocks,1000,3.5F,9.75F,2,16.F,failure);}
+    catch(const LayoutBackendFailure &error) {exact=error.operation=="blockDraw";}
+    check(exact&&failure.seen==std::vector<const SteamLayoutBlock *>{&blocks[0],&blocks[1]}&&
+              failure.requests[0].budget==1&&failure.requests[1].budget==1&&
+              blocks.size()==5&&blocks[0].text==u"AB"&&blocks[0].blink==2&&blocks[0].x==4.25F&&
+              FixtureBackend::font(blocks[0].font)->used==12&&blocks[1].kind==SteamLayoutBlockKind::pictograph,
+          "晚期后端错误传播一次：前块回0后访问第二块失败，不重试或继续尾块；原布局/Font不改，已画图元不声称回滚");
+}
 } // namespace
 
 int steam_text_layout_checks() {
@@ -934,7 +1031,7 @@ int steam_text_layout_checks() {
     prepared_text_outer(check);prepared_text_failures(check);
     console_text_consumer(check);console_preparation_bridge(check);
     public_text_preparation(check);public_text_rejection_and_faults(check);
-    draw_scale_reflow(check);
+    draw_scale_reflow(check);draw_block_sequence(check);
     // 逐字面代入固定RVA8E8770算式的独立oracle，不使用被测helper构造期望。
     struct HashCase {std::u16string text;std::int32_t hash;};
     for(const auto &c:std::vector<HashCase>{{u"",371857150},{u"A",372029405},

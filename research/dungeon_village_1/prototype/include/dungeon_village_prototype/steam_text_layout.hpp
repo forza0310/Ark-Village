@@ -184,4 +184,24 @@ struct SteamTextDrawReflow {
 // 不是完整实例Draw/GPU，也不调用SetText的缩字循环或末尾复位。
 std::optional<SteamTextDrawReflow> steam_reflow_text_for_draw(
     const SteamTextLayoutInput &current,float graphics_scale,SteamTextLayoutBackend &);
+
+struct SteamTextBlockDrawRequest {
+    float dx{},dy{},box_y{},box_height{-1};
+    std::int32_t budget{};
+};
+class SteamTextBlockDrawBackend {
+public:
+    virtual ~SteamTextBlockDrawBackend()=default;
+    // 返回真实TextBlock.Draw消费量；隐藏、缺图标或没有可见图元不等于消费0。
+    virtual std::int32_t draw_block(const SteamLayoutBlock &,const SteamTextBlockDrawRequest &)=0;
+};
+// 实例Draw的逐块执行段：pos按signed除1000截零，扣实际返回并按int32回卷，
+// 即使返回0也走下一块；budget<=0不访问块/坐标/后端。返回剩余预算候选。
+// blocks须为调用期稳定的真实布局，不复制块或Font；数量<=8192、实际坐标有限
+// 为维护正常域。scroll先转float32再从dy相减，boxY不滚动，盒高-1原样传。
+// 不执行重排、栈/clip、Frame、Draw尾计数或真实字形；这些由外层/后端负责。
+// 后端首错传播，已画图元不回滚，也不安装任何Owner或持久状态。
+std::optional<std::int32_t> steam_draw_text_block_sequence(
+    const std::vector<SteamLayoutBlock> &,std::int32_t pos,float dx,float dy,
+    std::int32_t scroll_v,float box_height,SteamTextBlockDrawBackend &);
 } // namespace dungeon_village_prototype

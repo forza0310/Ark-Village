@@ -1,12 +1,12 @@
 # 当前研究验证与历史索引
 
-## 公开文字准备、Console文案与Draw重排 2026-10-16
+## 公开文字准备、Console文案与Draw执行 2026-10-16
 
-接`0f852c8／7f04cfe`，既有[文字模块](prototype/include/dungeon_village_prototype/steam_text_layout.hpp)已交公开原序替换／固定hash／ff重组和Draw比例重排，现补实际Console文案消费者：表／设备短路、条件定位标签剥离、至多四次查找、保原key换行归一及null值Concat。独立源复核纠正空key的旧异常表述：两处Last均有非空守卫，空key仍可重复查表；前两查命中也必须归一，不能提前成功。实际表、Joystick、文化StartsWith及原Font仍由宿主供给，不把ASCII夹具当原文字运行；具体VA、预算和分层拒绝合入[主责合同](ui/STEAM_FONT_CONSUMER.md#公开文本准备平台文案与hash身份)。
+接`0f852c8／7f04cfe`的公开准备／固定hash／ff／Draw重排，`2ee6a9d`已补[实际Console转换](prototype/include/dungeon_village_prototype/steam_text_layout.hpp)及x86提示显示资格；现补Draw真实消费量块循环，按源float32滚动但保持boxY，0消费仍进入下一块。完整外层的三次Font.GetWidth、局部坐标、重排／clip／诊断框及异常收尾合入[现字体合同](ui/STEAM_FONT_CONSUMER.md#实例draw重排与报纸分页)：Draw不另调StringWidth／对齐，原异常不保证PopClip或栈全恢复。实际表、文化比较、字形和Graphics末端仍须宿主供给，不把局部执行器称为完整实例Draw或窗口已接。
 
-Windows单Release动态构建与头／实现／测试严格C++17语法通过，现visuals最终 **1/1通过1.83秒**。保留此前替换／hash／ff／Draw有效断言，新增19个独立key／输出用例及资格短路、CR查找顺序、null／空值、命中后归一超预算、Concat总预算和真实后端首错；一条实际Console→公开准备→ff组合与重复调用验证分层消费。固定x86的IsShown消费者另覆盖编辑器短路、缺Canvas和完整signed32设备资格，不将Unknown当“有手柄”。没有新target、Owner／codec或世界长跑，三份他人在途住宅存取测试未编译。临时key／归一串按次释放，不复制全表或增加隐式历史；后端缓存不由此保证永久有界。
+Windows单Release动态构建及头／实现／测试严格C++17语法通过，现visuals最终 **1/1通过1.88秒**。保留此前替换／hash／Console／ff／Draw有效断言，扩现文字套件覆盖pos截零、INT边界、16777217先转float32、实际块引用／原序回执、空块继续、回执减法回卷、未用坏坐标短路和第二块晚失败；不重试失败绘制或冒称已画内容回滚。没有新target、Owner／codec或世界长跑，三份他人在途住宅存取测试未编译。块循环不复制Font／布局，不新增隐式历史；临时串按调用释放，真实后端缓存不由此保证永久有界。
 
-Release1411文件／230570210字节，assets仍872文件／9504668字节，无.pending；无新增文件、audit或指纹。Console的16条内置文案、两层可选覆盖／语言后缀、重建时点与有限资源缺席范围合入现字体合同；旧名单helper未知表述及阶段矩阵的旧设置缺口已清理。外部文字观察提示词仍仅在忽略work，未执行原窗口、购买、网络或档案操作；动态结果待转交。91新增持久载荷方案仍待具体批准；设置分支已交系统3，不重复实施。构建／短测与静态子任务均已收齐，仅研究白名单提交，不推送。
+Release1411文件／230618171字节，assets仍872文件／9504668字节，无.pending；无新增文件、audit或指纹。16条内置Console文案、覆盖／重建及有限资源范围保留现字体合同；本记录合并本日连续文字批次，不另增过程报告。外部文字观察提示词仍仅在忽略work，未执行原窗口、购买、网络或档案操作，动态待转交。91新增持久载荷方案仍待具体批准，设置已交系统3。构建／短测及静态子任务均已收齐，仅研究白名单提交，不推送。
 
 ## SetText自适应外层与预留保存使能 2026-10-16
 

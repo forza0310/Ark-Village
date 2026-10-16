@@ -206,7 +206,15 @@ GetNextHeight的本地零begin并不初始化对象；重复查询仍会重新�
 
 ### 实例Draw重排与报纸分页
 
-实例`Draw` RVA7C9AC0在107C9D0D–9D24比较`Graphics.scale_`（+38）与布局`scaleRatio_`（+64）；不相等或无序时，先写入当前Graphics比例，再调用`_makeTextBlocks`重排。正常尾107CA11D–A128还将布局`draw_`（+5C）递增至INT_MAX后保持，内嵌图标的默认动画可读取该计数。因此已Flush的实例Draw仍有布局／表现状态副作用，不能当成完全冻结的只读查询。
+实例`Draw` RVA7C9AC0先在`107C9B38`检查局部矩阵。真时先调用Font.GetWidth并丢弃结果，再取第二次宽及当前usedSize给`GetTransRectGUI(0,0,width,usedSize,null)`；取返回矩形宽、第三次Font.GetWidth得到sx，再取矩形高及再次读取的usedSize得到sy，仅`sy/sx<1`才压`ScaleTemporary(sy/sx,1,0,0)`（`107C9B4B–9CA3`）。三次GetWidth与两次字号读取不合并，它们不是TextLayout.StringWidth或textWidth。随后`BeginLocalCoordination(ref dx,ref dy)`在协调栈活跃时Translate并将两实参清0，否则保留；不是anchor对齐，布局anchor已经在块坐标内，不能再居中一次。
+
+`107C9CDC–9CE3`此后才建立异常清理范围，继而`PushAutoTextLayout(false)`→比较Graphics.scale与布局scaleRatio→必要时先写比例并调用_make重排→`Font.PushLocalizeSetting(false)`→读一次Language.Japanese。非日文且height>0时extraBottom=2，否则0；诊断框在clip之前画，overArea真才`ClipRect(dx,dy,width,height+extraBottom,true)`（`107C9FF3–CA038`），即使预算0也可先压clip，没有另加height>0豁免。
+
+`107CA040–C4`用signed截零的`pos/1000`作为预算，按块原序、每次预算>0才调用`TextBlock.Draw(g,dx,float32(dy−float32(scrollV)),boxY=dy,boxH=height,budget)`，扣**实际返回消费量**再取下一块，0消费仍继续；不按字符串长度统一扣、不按可见图元数量扣。滚动只移动文字Y，boxY与boxH均不滚动／不加extraBottom，此层不截整坐标。Draw正文和TextBlock.Draw均无StringWidth调用，也不读anchor／旧textWidth作额外对齐；宽查询是并列链。本局部没有共同世界随机调用，不外推外部后端无副作用。
+
+现`steam_draw_text_block_sequence`执行上述块循环并把真实调用交后端，保留float32滚动、有符号预算减法回卷及未用坐标短路，不复制布局／Font或累计历史。调用期布局必须稳定、块数≤8192、实际使用坐标有限为维护正常域；后端失败原样传播，已画图元不回滚。它不代替前置矩阵、重排／clip、字形、外层清理或Draw尾计数，不能把此局部消费者标成完整实例Draw／研究窗口已经接线。
+
+正常与body异常均调用helper RVA7BAFC0，原序为`PopLocalizeSetting→EndLocalCoordination→可选补偿矩阵Pop→PopAutoTextLayout`；它不按实际取得义务检查，也不逐项捕获，前项失败会阻断后项。clip仅在正常尾`107CA115`弹出；body异常、helper异常或前置try外失败不保证clip／矩阵全恢复。只有全部正常清理及PopClip成功后，`107CA11D–128`才将draw_小于INT_MAX时加1，负值也加、不夹0，渐显pos／length／时间不因此更新。因此已Flush的Draw仍有表现副作用；维护如额外尽力清理、保留首错或联合安装候选，须标为独立策略，不能反写成原版事务回滚。
 
 raw15的`pagesNum_`在MakeNews的10315980–15A22按当时实测高度、行距与6／7行资格计算后保存；NEWS更新和绘制不重算它。Draw调用前1035545F–54DB却重新读取语言／当前布局字号选rows，再取当前lineStep算`scrollV=page×rows×lineStep`，随后才进入上述可重排的实例Draw。`GetLineHeight` RVA7CAF40在块非空时直接返回第0块的Font.usedSize（107CAF64–96），不取各块最大字号；无块才复制布局Font并结合adjust／multiLine、本地化及比例计算临时字号。`GetLineStep` RVA7CB110在该值上按int32加lineSpace。因此rows的当前布局字号与lineStep的旧首块字号是独立观测；比例切换首轮可能据此滚动重排后的新块，下一轮才看到新首块字号，冻结总页数仍不变。
 
@@ -215,6 +223,8 @@ raw15的`pagesNum_`在MakeNews的10315980–15A22按当时实测高度、行距�
 同模块`steam_reflow_text_for_draw`现接这个比例门：相等（含正负零）不读字体或调用后端，保留旧比例；不等才以新比例调用一次`steam_make_text_blocks`，仅返回新的块／宽／request／overArea候选。无替换载荷表示保留旧块，不能解释成清空。它不进入SetText的首排后备份／自适应／长度尾，不清渐显，不改框高或推进draw钟；后续实际绘制成功与draw钟仍归调用者。新NaN／无限／预算外比例明确拒绝，旧NaN到有限新比例仍能准备重排；维护拒绝不冒称原版无序比较也拒绝。报纸`103554DB`与说明`10355937`是实际已核的实例Draw调用点，窗口后端和分页Owner仍独立待接。
 
 `SetTextCheckSize(int)` RVA7CC110不是缩字入口：`107CC149–158`仅在Config.DEBUG为真时把参数写`textCheckSize_ +68`，false不写；不调用排块或SetText。Draw在`107C9E61–9FEA`只把它用于红色诊断双框：checkSize非0、autoScale、宽高均非−1且有首块才继续；阈值−1改取布局Font.usedSize，首块usedSize非−1、不同于布局字号且严格小于阈值时，画`(x−2,y−2,w+4,h+4)`及`(x−3,y−3,w+6,h+6)`。Draw不重查DEBUG，不能把这个字段改作适配阈值或把request字号代替usedSize。固定DLL可执行区未见此setter的直接E8调用，不排除内联／间接或反射；无需为诊断另造Owner字段。
+
+独立的`SetRenderRectVisible` RVA7CBFD0直接写静态bool，无DEBUG门。Draw在`107C9DA7–9E51`只要求该值真且宽高均非−1，即以RGB(0,255,0)画`(dx−2,dy−2,w+4,h+4)`绿色单框；它不是上述红色双框资格，也不能因称为诊断框就增加DEBUG限制。两种框在clip之前、即使没有文字预算也可能绘制。
 
 ### 普通宽溢出、显式换行与块提交
 

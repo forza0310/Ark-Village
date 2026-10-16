@@ -88,7 +88,7 @@ std::string StartupApplication::apply_title_request_candidate(std::uint64_t id, 
     if (!error.empty()) return error;
     if (page_ != Page::world) {
         sync_title_page();
-        if (page_ != Page::records) decorations_.clear();
+        if (page_ != Page::records) { decorations_.clear(); record_frame_.reset(); }
     }
     return {};
 }
@@ -193,6 +193,7 @@ std::string StartupApplication::return_to_title() {
             if (!error.empty()) return error;
         } else if (title_menu_.save_menu || title_menu_.confirmation) return "请先沿实际菜单取消返回";
         candidate.decorations_.clear();
+        candidate.record_frame_.reset();
         *this = std::move(candidate); return {};
     } catch (const std::exception &e) { return e.what(); }
 }
@@ -216,6 +217,7 @@ std::string StartupApplication::refresh_title_storage() {
         candidate.title_menu_.mode = StartupTitleRootMode::slots;
         candidate.page_ = Page::title;
         candidate.decorations_.clear();
+        candidate.record_frame_.reset();
         candidate.cleanup_pending_ = cleanup_pending_ || loaded.cleanup_pending;
         *this = std::move(candidate); return {};
     } catch (const std::exception &e) { return e.what(); }

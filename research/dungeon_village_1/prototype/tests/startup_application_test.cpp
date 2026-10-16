@@ -131,9 +131,19 @@ void title_and_files(Work &work) {
     good(app.return_to_title()); good(app.open_records());
     check(app.take_sound_requests() == std::vector<int>{0}, "纪录子页不重新初始化标题声音");
     check(app.record_view().unit == "P" && app.record_view().value == 0, "标题第一页读系统最高分");
+    check(app.record_frame() == 0,"新分配的标题纪录独立钟从0开始");
     good(app.turn_record_page(-1));
-    check(app.record_view().unit == "G" && app.record_view().value == 0, "第二页仍不是起始资金");
+    check(app.record_view().unit == "G" && app.record_view().value == 0 && app.record_frame() == 1,
+          "第二页仍不是起始资金，翻页沿独立Update增钟");
     check(!app.turn_record_page(0).empty(), "越界方向显式拒绝");
+    const auto record_id=app.title_page_id();
+    good(app.input_record_frame(record_id,{StartupTitleAdmission::top_lifecycle_ready,true,true,true}));
+    check(app.record_view().page==0 && app.record_frame()==2 && app.page()==StartupApplicationPage::records,
+          "同时左右返回只消费左且不关闭纪录");
+    good(app.input_record_frame(record_id,{StartupTitleAdmission::top_lifecycle_ready,false,false,true}));
+    check(app.page()==StartupApplicationPage::title && !app.record_frame() && !app.title_menu().external &&
+          app.decorations().empty(),"soft2沿父返回消费并退休独立钟及名单");
+    check(!app.input_record_frame(record_id,{}).empty(),"已退休纪录输入拒绝旧子页ID");
 
     // 在同一已核真实blob上制造另一存储写者的目录隐藏，不造无内容的演示目录。
     good(app.return_to_title()); good(app.load_world(0));

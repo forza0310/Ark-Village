@@ -152,12 +152,11 @@ Draw实际循环整个名单，`min(count,5)`只参与居中：`x_i=120−trunc(
 所以纯输入中的soft2应是此具名逻辑查询结果，不等于任意Esc、Right、Confirm或OS鼠标返回动作。
 一次已准入state0更新的检查轨迹可分别记为`[左]`、`[左,右]`、`[左,右,软2]`，
 不得先查询并消费全部键再伪装成源短路顺序。
-维护应用尚无正式纪录页主钟，本批纯绘制必须显式接收条件frame，不能拿标题Logo钟代替；
-本次未运行原窗口、未修改Owner或持久格式，原截图与维护展示验收分别登记。
+维护应用现已按批准设计保存标题入口的独立纪录钟，纯绘制由只读`record_frame()`供给，不能拿标题Logo钟或绘制次数代替。条件窗口仍显式frame，原截图、维护展示与原平台调度分别验收。
 
-维护[纪录独立模块](../prototype/include/dungeon_village_prototype/steam_record_skin.hpp)将正常state0主体组织为原序只读请求：两窗保留各自标题，普通文字保留整数／float实际测宽，冻结名单只限制来源定义身份而不截5，箭头复用已核buttoneffect助手。`steam_record_value_text`只实现本页P／全角Ｇ专支；`steam_record_skin`不从零值推村名占位、不抽人物或读取世界钱包。原点来自view尺寸并在末尾清0；原Draw深层字体／scratch仍沿各自合同。尺寸65536、目录与文字／测宽4096是维护预算，不是原版硬上限。当前应用有页号／冻结名单／系统纪录，但没有独立纪录动画钟；本批显式frame不代表新快照字段或精确恢复已接。
+维护[纪录独立模块](../prototype/include/dungeon_village_prototype/steam_record_skin.hpp)将正常state0主体组织为原序只读请求：两窗保留各自标题，普通文字保留整数／float实际测宽，冻结名单只限制来源定义身份而不截5，箭头复用已核buttoneffect助手。`steam_record_value_text`只实现本页P／全角Ｇ专支；`steam_record_skin`不从零值推村名占位、不抽人物或读取世界钱包。原点来自view尺寸并在末尾清0；原Draw深层字体／scratch仍沿各自合同。尺寸65536、目录与文字／测宽4096是维护预算，不是原版硬上限。应用标题入口已接页号／冻结名单／系统纪录和独立动画钟；精确恢复与严格拒绝沿[持久合同](../prototype/PERSISTENCE.md)。世界菜单的独立RankForm仍不在此入口范围。
 
-同模块`steam_record_update`提供一次已准入更新的纯候选：先推进独立frame，再按state0资格及Left Repeat→Right Repeat→soft2顺序短路，返回下一页／钟、实际检查项及Pop请求。两方向同时命中只翻一次；方向与返回同轮时不查soft2，翻页不重置钟；非state0仍加钟但不查键。页0／1与钟0…INT_MAX−1为维护合法域，缺完整应用时钟不能调用绘制次数来补。该接口没有执行管理器Pop或安装候选，也没有新增Owner／codec字段，不能将请求结果当作父页已恢复。
+同模块`steam_record_update`提供一次已准入更新的纯候选：先推进独立frame，再按state0资格及Left Repeat→Right Repeat→soft2顺序短路，返回下一页／钟、实际检查项及Pop请求。两方向同时命中只翻一次；方向与返回同轮时不查soft2，翻页不重置钟；非state0仍加钟但不查键。页0／1与钟0…INT_MAX−1为维护合法域，缺完整应用时钟不能调用绘制次数来补。纯接口不执行管理器Pop；应用`input_record_frame(pageID,input)`在私有候选内消费它，再按现return_external／consume_return联合返回父页、释放时钟。输入拒绝旧页ID／无准入，完整应用codec与标题v4保存同一钟；具体回滚／恢复短验见[验证入口](../VERIFICATION.md)。
 
 ## 新局91：四项、原图与按钮
 

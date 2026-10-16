@@ -3,6 +3,7 @@
 #include "dungeon_village_prototype/startup_world_save.hpp"
 #include "dungeon_village_prototype/startup_world_manual.hpp"
 #include "dungeon_village_prototype/startup_world_commerce.hpp"
+#include "dungeon_village_prototype/steam_record_skin.hpp"
 #include <algorithm>
 #include <limits>
 #include <stdexcept>
@@ -85,7 +86,7 @@ std::string StartupApplication::start_game_candidate() {
         audio_requests_ = std::move(audio);
         world_ = std::move(candidate);
         handoff_ = std::move(handoff);
-        clear_.reset(); clear_rows_.reset(); clear_id_.reset(); decorations_.clear();
+        clear_.reset(); clear_rows_.reset(); clear_id_.reset(); decorations_.clear(); record_frame_.reset();
         title_menu_.save_menu.reset(); title_menu_.confirmation.reset(); title_menu_.external.reset();
         page_ = Page::world;
         return {};
@@ -119,11 +120,50 @@ std::string StartupApplication::open_records_candidate() {
                 if (h.flags & 1U) choices.push_back(h.identity);
     }
     decorations_ = std::move(choices); random_ = std::move(random);
-    ++requests_; record_page_ = 0; page_ = Page::records; return {};
+    ++requests_; record_page_ = 0; record_frame_ = 0; page_ = Page::records; return {};
+}
+bool StartupApplication::valid_record_page() const {
+    if ((page_ == Page::records) != record_frame_.has_value()) return false;
+    if (page_ != Page::records) return true;
+    return validate_startup_title_menu(title_menu_).empty() && title_menu_.external &&
+           title_menu_.external->kind == StartupTitleExternalPage::records &&
+           !title_menu_.external->returned && !title_menu_.external->completed &&
+           title_menu_.external->parent == title_menu_.root_id &&
+           startup_title_menu_top_id(title_menu_) == title_menu_.external->id &&
+           record_page_ >= 0 && record_page_ <= 1 && *record_frame_ >= 0 &&
+           *record_frame_ < std::numeric_limits<int>::max();
 }
 std::string StartupApplication::turn_record_page(int direction) {
-    if (page_ != Page::records || (direction != -1 && direction != 1)) return "纪录翻页非法";
-    record_page_ = 1 - record_page_; return {};
+    if (direction != -1 && direction != 1) return "纪录翻页非法";
+    return input_record_frame(title_page_id(), {StartupTitleAdmission::top_lifecycle_ready,
+                                               direction == -1, direction == 1, false});
+}
+std::string StartupApplication::input_record_frame(std::uint64_t id,const StartupRecordFrameInput &input) {
+    if (!error_.empty()) return error_;
+    if (page_ != Page::records || !valid_record_page() || !id || id != title_page_id() ||
+        input.admission != StartupTitleAdmission::top_lifecycle_ready)
+        return "纪录输入缺活动子页、独立钟或框架准入";
+    const auto update = steam_record_update({record_page_, *record_frame_, true,
+        input.left_repeat, input.right_repeat, input.back_soft_label});
+    if (!update) return "纪录更新载荷拒绝";
+    // 普通轮仅提交两个不抛异常的标量，避免为动画钟复制可能保留的整套世界。
+    if (!update->request_pop) {
+        record_page_ = update->page; record_frame_ = update->frame;
+        return {};
+    }
+    try {
+        auto candidate = *this;
+        candidate.record_page_ = update->page; candidate.record_frame_ = update->frame;
+        if (update->request_pop) {
+            StartupTitleMenuRequest request; request.kind = StartupTitleMenuRequestKind::return_external;
+            auto error = candidate.apply_title_request_candidate(id,request);
+            if (!error.empty()) return error;
+            request.kind = StartupTitleMenuRequestKind::consume_return;
+            error = candidate.apply_title_request_candidate(candidate.title_page_id(),request);
+            if (!error.empty()) return error;
+        }
+        *this = std::move(candidate); return {};
+    } catch (const std::exception &e) { return e.what(); }
 }
 StartupRecordView StartupApplication::record_view() const {
     return record_page_ == 0 ? StartupRecordView{"最高通关点数", storage_.records.score_village, "P", storage_.records.high_score, 0}
@@ -131,8 +171,8 @@ StartupRecordView StartupApplication::record_view() const {
 }
 std::optional<StartupTitleReplay> StartupApplication::capture_title_replay() const {
     if (!error_.empty() || world_ || page_ == Page::world || clear_ || !audio_requests_.empty() ||
-        !validate_startup_title_menu(title_menu_).empty()) return {};
-    return StartupTitleReplay{"startup-title-v3", mode_, draft_, page_, record_page_, decorations_,
+        !validate_startup_title_menu(title_menu_).empty() || !valid_record_page()) return {};
+    return StartupTitleReplay{"startup-title-v4", mode_, draft_, page_, record_page_, record_frame_, decorations_,
                               random_.snapshot(), requests_, title_, title_menu_, *title_menu_context().catalog};
 }
 std::string StartupApplication::restore_title_replay(const StartupTitleReplay &s) {
@@ -155,10 +195,13 @@ std::string StartupApplication::restore_title_replay(const StartupTitleReplay &s
          storage_.records.save_directory[static_cast<std::size_t>(s.draft.slot)][1].packed_date == -1 ||
          s.menu.save_menu->catalog->revision != catalog->revision || s.menu.save_menu->catalog->digest != catalog->digest)))
         return "标题内存快照的菜单、页面或目录引用不一致";
-    if (world_ || s.controller != "startup-title-v3" || s.mode != mode_ ||
+    if (world_ || s.controller != "startup-title-v4" || s.mode != mode_ ||
         s.page < Page::title || s.page > Page::records || s.record_page < 0 || s.record_page > 1 ||
         s.draft.slot < 0 || s.draft.slot > 1 || !valid_text(s.draft.village) ||
         !valid_startup_world_human_profile(s.draft.main_character)) return "标题快照身份或载荷非法";
+    if ((s.page == Page::records) != s.record_frame.has_value() ||
+        (s.record_frame && (*s.record_frame < 0 || *s.record_frame == std::numeric_limits<int>::max())))
+        return "标题纪录钟缺失、越界或残留";
     const auto random = ref::WorldRandomStream::from_snapshot(s.random);
     if (!random || s.decorations.size() > startup_world_rules().humans.size()) return "标题随机或名单非法";
     std::vector<int> seen;
@@ -191,7 +234,7 @@ std::string StartupApplication::restore_title_replay(const StartupTitleReplay &s
     auto random_candidate = *random;
     static_assert(std::is_nothrow_move_assignable_v<StartupTitleDraft>);
     static_assert(std::is_nothrow_move_assignable_v<ref::WorldRandomStream>);
-    draft_ = std::move(draft); page_ = s.page; record_page_ = s.record_page;
+    draft_ = std::move(draft); page_ = s.page; record_page_ = s.record_page; record_frame_ = s.record_frame;
     decorations_ = std::move(decorations); random_ = std::move(random_candidate);
     requests_ = s.requests; title_ = s.title; title_menu_ = std::move(menu); return {};
 }
@@ -587,7 +630,7 @@ std::string StartupApplication::install_loaded(StartupWorldLoadResult loaded, in
     storage_ = std::move(*committed.snapshot); cleanup_pending_ = committed.cleanup_pending;
     audio_requests_ = std::move(audio);
     world_ = std::move(candidate); draft_.slot = slot; page_ = Page::world;
-    clear_.reset(); clear_rows_.reset(); clear_id_.reset(); decorations_.clear();
+    clear_.reset(); clear_rows_.reset(); clear_id_.reset(); decorations_.clear(); record_frame_.reset();
     title_menu_.save_menu.reset(); title_menu_.confirmation.reset(); title_menu_.external.reset(); return {};
 }
 std::string StartupApplication::load_world(int slot, StartupSaveKind kind) {

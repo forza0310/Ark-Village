@@ -10,11 +10,11 @@
 
 [接口](include/dungeon_village_prototype/startup_application_replay.hpp)提供保存、恢复和规范状态摘要；不开放任意字段setter。应用协调系统／文件／表现输出，Session仍是世界唯一Owner。恢复使用封闭私有候选构造，不执行普通初始化，不调用install_loaded重写世界镜像，不重抽随机、不发标题B0或激活G。
 
-捕获要求健康应用、无执行中页面、应用音频和当前world音频均已消费，Driver也在完整外层轮末。当前维护状态完整保存：系统records、草稿、模式／页面、纪录名单与请求数、标题随机及历史交接、背景`l/f132f/s/t`及20槽全部字段、标题根模式／选择／稳定ID、raw20／询问／外部子页完整载荷，以及可选Session、全部原序审计历史和计分三元组。returned子页尚未被父消费时仍保存，不“修复”为初始菜单；inactive标题槽的age/y也保留。
+捕获要求健康应用、无执行中页面、应用音频和当前world音频均已消费，Driver也在完整外层轮末。当前维护状态完整保存：系统records、草稿、模式／页面、活动纪录独立钟、纪录名单与请求数、标题随机及历史交接、背景`l/f132f/s/t`及20槽全部字段、标题根模式／选择／稳定ID、raw20／询问／外部子页完整载荷，以及可选Session、全部原序审计历史和计分三元组。returned子页尚未被父消费时仍保存，不“修复”为初始菜单；inactive标题槽的age/y也保留。
 
 应用输出仅允许空队列捕获，控制段显式保存已消费位；恢复队列为空。环境路径不保存，`cleanup_pending`不跨环境带入，新根恢复为false。storage的missing和digest是磁盘观察：发布system后重绑为missing=false及该原字节实际摘要；系统修订和内容保留。raw20目录stamp仍是必须验证的输入资格，不能省略。
 
-具名菜单请求各自是事务；原标题背景更新仍有独立显式入口，不能把两次成功API称作同一原版输入轮。未闭合的Steam框架时序、纪录动画、完整皮肤和原自动中断轮内阶段并不因“完整应用”命名而自动获得实现。
+具名菜单请求各自是事务；原标题背景更新仍有独立显式入口，不能把两次成功API称作同一原版输入轮。标题入口Rank独立钟已接有页ID的显式更新与恢复，翻页不清钟，soft2经现父返回后退休。未闭合的Steam框架时序、原纪录动态、完整皮肤和原自动中断轮内阶段并不因“完整应用”命名而自动获得实现。
 
 ## 格式与校验
 
@@ -38,7 +38,7 @@
 
 通用校验还核页面与菜单栈映射、world资格、raw20槽号与draft.slot、实际系统摘要／修订、稳定父子ID、返回结果、纪录名单资格、系统现金镜像、计分三元组、raw17栈顶及counter／phase、六行投影及累计。非法关系拒绝，不能通过推进一轮补状态。world激活后标题子页必须已退休；无计分控制器的raw17只允许未推进入口。
 
-[字段清单](src/startup_application_replay_fields.json)由[Clang脚本](scripts/check_application_replay_fields.mjs)登记19个应用直接成员及43个嵌套字段，嵌套覆盖标题背景、菜单载荷、catalog stamp及storage观察字段；新成员未分类就失败。实际应用schema由实现和清单核对，世界5的独立codec coverage负责Owner字段；文档不重复易过期的完整身份值。
+[字段清单](src/startup_application_replay_fields.json)由[Clang脚本](scripts/check_application_replay_fields.mjs)登记20个应用直接成员及43个嵌套字段，嵌套覆盖标题背景、菜单载荷、catalog stamp及storage观察字段；新成员未分类就失败。实际应用schema由实现和清单核对，世界5的独立codec coverage负责Owner字段；文档不重复易过期的完整身份值。
 
 ## 新根恢复与失败边界
 

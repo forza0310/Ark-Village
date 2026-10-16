@@ -42,6 +42,7 @@ const policies={
   audio_requests_:'require-empty: 一次性音频请求必须已消费，恢复为空',
   cleanup_pending_:'rebind: 源环境文件清理债务不跨环境恢复，新根置false',
   page_:'save: 应用页面枚举', record_page_:'save: 纪录页0或1',
+  record_frame_:'save: 仅活动标题纪录子页持有独立int32钟0至INT_MAX-1',
   decorations_:'save: 原序定义ID名单', requests_:'save: 显式纪录请求序号',
   handoff_:'save: 可选历史交接完整随机快照',
   world_:'save: 可选AVRSAVE1完整Session与原序审计历史',

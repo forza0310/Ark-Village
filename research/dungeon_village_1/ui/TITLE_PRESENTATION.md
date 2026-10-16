@@ -60,7 +60,7 @@ q字段完整映射为`[active, definition, x, y, direction, age]`。每个活�
 
 维护`StartupApplication`已持有背景状态`l/f132f/s/t/q`。`advance_title_background`只在`title_presentation`模式的活动标题页接受具名合格更新；背景与随机候选一次提交，失败保持二者及输入消费结果。开纪录仍由独立`open_records`抽名单；`record_view`不抽；`start_game`将当前random交给新世界候选并记录handoff，系统写失败不提交。world→title从当前世界复制随机，保留旧world但它不再推进，同时重置背景q/l/s/t并保留f132f；配置／纪录返回保留完整背景。logic模式不推进背景，保持既有世界黄金轨迹。
 
-`StartupTitleReplay("startup-title-v3")`保存背景、草稿／页面／名单／随机／requests及标题目录观察，仍拒绝含world的应用；requests只计开纪录，不代表背景更新轮数。
+`StartupTitleReplay("startup-title-v4")`保存背景、草稿／页面／活动纪录独立钟／名单／随机／requests及标题目录观察，仍拒绝含world的应用；requests只计开纪录，不代表背景更新轮数。纪录输入沿独立有页ID的应用入口，不推进父背景，翻页不重抽名单；返回后释放本页钟，旧v3拒绝不迁移。
 完整应用文件另保存保留world时的背景和独立当前标题随机，历史handoff不能强制等于当前流。当前协议为世界5／应用8／系统2，格式、布局及恢复资格统一以[持久化模块](../prototype/PERSISTENCE.md)为准，不在本页复制schema指纹或旧字段计数。恢复不重抽出生／名单、不重初始化q或补更新；logic模式仍要求初始背景，旧不兼容布局／语义拒绝且不迁移。
 
 ## 已接线接口与完整输入缺口

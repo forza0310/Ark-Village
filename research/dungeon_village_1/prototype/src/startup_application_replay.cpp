@@ -238,6 +238,7 @@ struct StartupApplicationReplayAccess {
         need(validate_startup_system_records(a.storage_.records).empty(),"系统记录非法");
         need(a.audio_requests_.empty(),"应用音频输出尚未消费");
         need(validate_startup_title_menu(a.title_menu_).empty(),"标题菜单关系非法");
+        need(a.valid_record_page(),"活动纪录缺钟、非法钟或非纪录残留钟");
         const auto &menu=a.title_menu_;
         if(a.page_!=Page::world) {
             Page projected=Page::title;
@@ -342,6 +343,7 @@ struct StartupApplicationReplayAccess {
             out.i32(slot.direction);out.i32(slot.age);
         }
         write_menu(out,a.title_menu_);
+        out.boolean(a.record_frame_.has_value()); if(a.record_frame_)out.i32(*a.record_frame_);
         out.u32(0); // 已消费的一次性音频输出；非空捕获在validate明确拒绝。
         return std::move(out.bytes);
     }
@@ -382,6 +384,7 @@ struct StartupApplicationReplayAccess {
             slot.direction=in.i32();slot.age=in.i32();
         }
         a.title_menu_=read_menu(in);
+        if(in.boolean())a.record_frame_=in.i32();
         need(in.u32()==0,"应用捕获边界含未消费音频");
         a.cleanup_pending_=false;
         in.end(); validate(a); return a;

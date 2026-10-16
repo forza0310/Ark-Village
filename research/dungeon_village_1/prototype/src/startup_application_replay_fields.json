@@ -39,6 +39,11 @@
       "policy": "save: 纪录页0或1"
     },
     {
+      "name": "record_frame_",
+      "type": "std::optional<int>",
+      "policy": "save: 仅活动标题纪录子页持有独立int32钟0至INT_MAX-1"
+    },
+    {
       "name": "decorations_",
       "type": "std::vector<int>",
       "policy": "save: 原序定义ID名单"

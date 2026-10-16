@@ -6,10 +6,12 @@
 #include "startup_application_storage_paths.hpp"
 #include "startup_persistence_bytes.hpp"
 #include "startup_world_codec.hpp"
+#include "dungeon_village_prototype/steam_record_skin.hpp"
 #include <algorithm>
 #include <array>
 #include <fstream>
 #include <iterator>
+#include <limits>
 #include <iostream>
 #include <map>
 #include <sstream>
@@ -177,6 +179,9 @@ void title_owner_transactions(Checks &check,Work &work) {
     bad=*exhausted.capture_title_replay();bad.controller="startup-title-v2";
     check(!exhausted.restore_title_replay(bad).empty() && digest(exhausted,meta)==before,
           "不静默迁移没有菜单栈和目录身份的标题v2");
+    bad=*exhausted.capture_title_replay();bad.controller="startup-title-v3";
+    check(!exhausted.restore_title_replay(bad).empty() && digest(exhausted,meta)==before,
+          "不迁移缺少独立纪录钟的标题v3");
     StartupApplication logic(work.paths("title-logic-refuse"),ref::WorldRandomStream::from_java_seed(4));
     logic.take_audio_requests();
     const auto lm=metadata(logic,0,0);const auto lb=digest(logic,lm);
@@ -347,6 +352,121 @@ void title_owner_transactions(Checks &check,Work &work) {
           "同一输入重试只推进一次背景四抽，确认优先返回激活中断档，G输出只消费一次");
 }
 
+void record_owner_restore(Checks &check,Work &work) {
+    StartupApplication source(work.paths("record-clock-source"),ref::WorldRandomStream::from_java_seed(17),
+                              StartupApplicationMode::title_presentation);
+    source.take_audio_requests();
+    check.good(source.open_records());
+    const auto child=source.title_page_id(), parent=source.title_menu().root_id;
+    const auto background=source.title_presentation();
+    const auto initial=*source.capture_title_replay();
+    check(initial.controller=="startup-title-v4" && initial.record_frame==0,
+          "新纪录由正式标题external入口安装独立零钟");
+    for(int n=0;n<4;++n)check.good(source.input_record_frame(child,{}));
+    auto meta=metadata(source,4,5);
+    const auto before=digest(source,meta);
+    check(source.record_frame()==4 && source.decorations()==initial.decorations &&
+          source.capture_title_replay()->random.cursor==initial.random.cursor &&
+          same_title(source.title_presentation(),background) && source.take_audio_requests().empty(),
+          "纪录更新不推进父背景、不重抽冻结人物、不发声");
+    check(!source.input_record_frame(parent,{}).empty() && digest(source,meta)==before,
+          "父页ID不能冒充活动Rank子页输入，失败保留全部应用状态");
+    const auto saved=*source.capture_title_replay();
+    for(int error=0;error<8;++error) {
+        auto bad=saved;
+        if(error==0)bad.record_frame.reset();
+        if(error==1)bad.record_frame=-1;
+        if(error==2)bad.record_frame=std::numeric_limits<int>::max();
+        if(error==3)++bad.menu.external->parent;
+        if(error==4)bad.menu.external->kind=StartupTitleExternalPage::configure;
+        if(error==5)bad.menu.external->returned=true;
+        if(error==6)bad.menu.external.reset();
+        if(error==7)bad.controller="startup-title-v3";
+        check(!source.restore_title_replay(bad).empty() && digest(source,meta)==before,
+              "内存纪录缺钟/越界/错父/错类型/返回状态/孤儿/旧控制器严格拒绝且无部分安装");
+    }
+    auto wrap=saved;wrap.record_frame=std::numeric_limits<int>::max()-1;
+    check.good(source.restore_title_replay(wrap));
+    check.good(source.input_record_frame(child,{}));
+    check(source.record_frame()==0 && source.record_view().page==0 &&
+          source.capture_title_replay()->random.cursor==initial.random.cursor,
+          "独立钟恰INT_MAX-1下一次回0，不动纪录页及随机");
+    check.good(source.restore_title_replay(saved));
+    const auto capture=work.directory("record-clock-capture"), file=capture/"record.avrapp";
+    check.good(save_startup_application_replay(capture,file,source,meta,validate_driver));
+    const auto original=read(file);
+    StartupApplication restored(work.paths("record-clock-old-target"),ref::WorldRandomStream::from_java_seed(9),
+                                StartupApplicationMode::title_presentation);
+    restored.take_audio_requests();
+    auto restored_meta=metadata(restored,0,0);
+    check.good(restore_startup_application_replay(file,work.root/"record-clock-restored",controller,
+                                                restored,restored_meta,validate_driver));
+    check(digest(restored,restored_meta)==before && restored.record_frame()==4 &&
+          restored.title_page_id()==child && restored.decorations()==saved.decorations &&
+          restored.take_audio_requests().empty(),"完整应用保存独立钟、页身份及原名单，恢复不Init/抽签/发声");
+    const auto wire=unpack(original);
+    for(int error=0;error<4;++error) {
+        auto bad=wire;auto &control=section(bad,3).bytes;
+        // 控制分区尾：独立钟存在位、钟值、已消费音频计数；独立线格式夹具不调用codec。
+        require(control.size()>=12,"纪录钟尾字段范围");
+        if(error==0)set_number(control,control.size()-8,4,0xffffffffU);
+        if(error==1)set_number(control,control.size()-8,4,0x7fffffffU);
+        if(error==2) {
+            set_number(control,control.size()-12,4,0);
+            control.erase(control.end()-8,control.end()-4);
+        }
+        if(error==3)control.erase(control.end()-12,control.end()-4);
+        const auto badfile=capture/("bad-record"+std::to_string(error)+".avrapp");
+        write(badfile,pack(bad));
+        const auto destination=work.root/("bad-record"+std::to_string(error)+"-target");
+        const auto old_meta=restored_meta;
+        check(!restore_startup_application_replay(badfile,destination,controller,restored,restored_meta,
+                                                 validate_driver).empty() &&
+              digest(restored,restored_meta)==before && same_metadata(old_meta,restored_meta) && read(file)==original,
+              "重签容器的负钟/INT_MAX/缺钟/旧布局在联合安装前拒绝，应用Driver与源字节不变");
+        fresh_targets(check,destination);
+    }
+    const auto left_arrow=[&](const StartupApplication &app) {
+        SteamRecordSkinInput input;input.view_width=240;input.view_height=240;
+        input.page=app.record_view().page;input.frame=*app.record_frame();
+        input.labels={"High Score","纪录","最高通关点数","纪录"};
+        input.topic_width=0;input.value_width=0;input.village_width=0;
+        input.definition_count=static_cast<int>(startup_world_rules().humans.size());
+        input.frozen_definitions=app.decorations();
+        const auto plan=steam_record_skin(input);
+        require(plan.has_value(),"应用独立钟供给正式纪录皮肤");
+        for(const auto &draw:plan->draws)if(const auto *arrow=std::get_if<SteamManualArrowRequest>(&draw))
+            return arrow->position;
+        throw std::runtime_error("纪录皮肤缺左箭头");
+    };
+    check(left_arrow(source)==std::array<int,2>{44,42},"第4轮皮肤读取Rank钟而非标题钟");
+    const std::array<StartupRecordFrameInput,4> inputs{{{},
+        {StartupTitleAdmission::top_lifecycle_ready,true,true,true},
+        {StartupTitleAdmission::top_lifecycle_ready,false,true,true},
+        {StartupTitleAdmission::top_lifecycle_ready,false,false,true}}};
+    for(std::size_t n=0;n<inputs.size();++n) {
+        check.good(source.input_record_frame(child,inputs[n]));
+        check.good(restored.input_record_frame(child,inputs[n]));
+        meta=metadata(source,5+n,6+n);restored_meta=metadata(restored,5+n,6+n);
+        check(digest(source,meta)==digest(restored,restored_meta),"完整往返后的同输入逐步应用/随机/父选择一致");
+        if(n==0)check(source.record_frame()==5 && left_arrow(source)==std::array<int,2>{43,42},
+                      "恢复后的下一轮独立钟立即供给正式箭头动画相位");
+        if(n==1)check(source.record_view().page==1 && source.record_frame()==6,
+                      "左优先于右和soft2，翻页不清独立钟");
+        if(n==2)check(source.record_view().page==0 && source.record_frame()==7,
+                      "无左时右优先于soft2，仍保留原名单");
+    }
+    check(source.page()==StartupApplicationPage::title && source.title_menu().selection==1 &&
+          !source.record_frame() && !source.title_menu().external && source.decorations().empty() &&
+          same_title(source.title_presentation(),background),"soft2联合消费父返回并退休钟/名单，父背景不偷跑");
+    auto stale=*source.capture_title_replay();stale.record_frame=0;
+    const auto retired=digest(source,meta);
+    check(!source.restore_title_replay(stale).empty() && digest(source,meta)==retired &&
+          !source.input_record_frame(child,{}).empty(),"非纪录残留钟及退休ID拒绝，不凭恢复修补状态");
+    check.good(source.open_records());
+    check(source.record_frame()==0 && source.title_page_id()!=child,
+          "重新分配纪录使用新身份与零钟，不复用已退休Rank载荷");
+}
 void title_natural_dual_restore(Checks &check,Work &work) {
     StartupApplication source(work.paths("title-natural-source"),ref::WorldRandomStream::from_java_seed(42),
                                StartupApplicationMode::title_presentation);
@@ -855,7 +975,15 @@ void corruption(Checks &check,Work &work) {
     const auto &source_control=section(wire,3).bytes;
     std::size_t title_at=control_offsets(source_control).world;
     for(int i=0;i<4;++i)require(number(source_control,title_at,4)==0,"源无world/rows/clear/id载荷");
-    require(source_control.size()-title_at==124U*4U+44U,"语义7保持完整标题字段及空菜单/空音频尾部布局");
+    require(source_control.size()-title_at==124U*4U+48U,
+            "当前布局保持完整标题、空菜单、无纪录钟及空音频尾部");
+    auto menu_at=title_at+124U*4U;
+    require(number(source_control,menu_at,4)==0 && number(source_control,menu_at,4)==0 &&
+            number(source_control,menu_at,4)==1 && number(source_control,menu_at,8)==1 &&
+            number(source_control,menu_at,8)==2,"根菜单模式/选择/行与稳定身份独立布局golden");
+    for(int i=0;i<5;++i)require(number(source_control,menu_at,4)==0,
+                               "三个空子页、无独立纪录钟和已消费音频均有显式零标记");
+    require(menu_at==source_control.size(),"独立尾字段golden恰好消费整个控制分区");
     wire=decoded;set_number(section(wire,3).bytes,title_at+16U+19U*24U,4,2);
     reject(pack(wire),"重签末槽active非法仍由标题语义校验拒绝");
     wire=decoded;section(wire,3).bytes.resize(section(wire,3).bytes.size()-4);
@@ -868,6 +996,11 @@ void corruption(Checks &check,Work &work) {
     reject(pack(wire),"根菜单稳定ID零值拒绝");
     wire=decoded;set_number(section(wire,3).bytes,section(wire,3).bytes.size()-4,4,1);
     reject(pack(wire),"重签应用音频未消费标志拒绝");
+    wire=decoded;
+    auto &unexpected_clock=section(wire,3).bytes;
+    set_number(unexpected_clock,unexpected_clock.size()-8,4,1);
+    unexpected_clock.insert(unexpected_clock.end()-4,4,0);
+    reject(pack(wire),"非纪录页面预装零钟也显式拒绝，不当作可修补初值");
     wire=decoded;set_number(section(wire,6).bytes,0,4,5);
     reject(pack(wire),"槽位文件视图超过最多四个唯一blob拒绝");
     wire=decoded;wire.sections.erase(std::remove_if(wire.sections.begin(),wire.sections.end(),
@@ -945,6 +1078,7 @@ int run_startup_application_replay_state_checks(const std::filesystem::path &par
         try {run();}catch(const std::exception &e) {throw std::runtime_error(std::string(name)+"："+e.what());}
     };
     scenario("标题Owner事务",[&]{title_owner_transactions(check,work);});
+    scenario("纪录独立钟与恢复",[&]{record_owner_restore(check,work);});
     scenario("标题自然双恢复",[&]{title_natural_dual_restore(check,work);});
     scenario("标题CLI边界",[&]{title_cli_boundary(check,work);});
     scenario("四槽文件视图",[&]{directory_view_roundtrip(check,work);});

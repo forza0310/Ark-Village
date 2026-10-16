@@ -30,11 +30,12 @@ struct StartupRecordView {
 };
 // 只捕获无世界的标题控制器；系统纪录由独立文件验证，世界有自己的快照协议。
 struct StartupTitleReplay {
-    std::string controller{"startup-title-v3"};
+    std::string controller{"startup-title-v4"};
     StartupApplicationMode mode{StartupApplicationMode::logic};
     StartupTitleDraft draft;
     StartupApplicationPage page{StartupApplicationPage::title};
     int record_page{};
+    std::optional<int> record_frame{};
     std::vector<int> decorations;
     ref::WorldRandomSnapshot random;
     std::uint64_t requests{};
@@ -52,6 +53,11 @@ struct StartupTitleApplyResult {
 struct StartupTitleFrameInput {
     StartupTitleAdmission admission{StartupTitleAdmission::top_lifecycle_ready};
     StartupTitleMenuKeys keys;
+};
+// 仅标题新分配RankForm的正常state0；调用方已明确获准更新，不从绘制或FPS推导。
+struct StartupRecordFrameInput {
+    StartupTitleAdmission admission{StartupTitleAdmission::top_lifecycle_ready};
+    bool left_repeat{}, right_repeat{}, back_soft_label{};
 };
 // 命令回执，不属于存档字段。error表示事务未提交；denial是原业务拒绝，
 // 可能已经提交不足资金提示等合法页面，调用者不能据此自动重试付款。
@@ -81,6 +87,7 @@ class StartupApplication {
     StartupApplicationMode mode() const { return mode_; }
     const StartupWorldRuntimeSession *world() const { return world_ ? &*world_ : nullptr; }
     const std::vector<int> &decorations() const { return decorations_; }
+    const std::optional<int> &record_frame() const { return record_frame_; }
     const std::optional<StartupClearScorePageState> &clear_page() const { return clear_; }
     const std::optional<StartupClearScoreRows> &clear_rows() const { return clear_rows_; }
     const std::optional<ref::WorldRandomSnapshot> &handoff_random() const { return handoff_; }
@@ -110,6 +117,7 @@ class StartupApplication {
     std::string return_to_title();
     std::string open_records(); // 一次显式表现请求；重画record_view不抽取。
     std::string turn_record_page(int direction);
+    std::string input_record_frame(std::uint64_t expected_page_id,const StartupRecordFrameInput &input);
     StartupRecordView record_view() const;
     std::optional<StartupTitleReplay> capture_title_replay() const;
     std::string restore_title_replay(const StartupTitleReplay &snapshot);
@@ -208,6 +216,7 @@ class StartupApplication {
     // 仅供外层事务的私有候选调用，失败可能改该候选，不能直接施于真实Owner。
     std::string apply_title_request_candidate(std::uint64_t id, const StartupTitleMenuRequest &request);
     void sync_title_page();
+    bool valid_record_page() const;
     std::string commit_world(StartupWorldRuntimeSession candidate, bool save_system = false);
     std::string world_action_error() const;
     template <class Action> std::string apply_world_action(Action &&action);
@@ -221,6 +230,7 @@ class StartupApplication {
     StartupApplicationMode mode_;
     StartupApplicationPage page_{StartupApplicationPage::title};
     int record_page_{};
+    std::optional<int> record_frame_;
     std::vector<int> decorations_;
     std::uint64_t requests_{};
     std::optional<ref::WorldRandomSnapshot> handoff_;
